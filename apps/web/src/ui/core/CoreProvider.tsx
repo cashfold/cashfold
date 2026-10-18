@@ -15,7 +15,7 @@ export interface AccountInfo {
 export interface Core {
   readonly phase: Phase;
   readonly account: AccountInfo | undefined;
-  /** True while financial content must be hidden: locked, window hidden, or out of focus (FR-007). */
+  /** True while the window is hidden or out of focus: financial content must not show (FR-007). A locked app shows its own screen. */
   readonly covered: boolean;
   call<R = unknown>(method: string, args?: unknown): Promise<R>;
   refresh(): Promise<void>;
@@ -110,7 +110,7 @@ export function CoreProvider({ children, makeWorker }: { children: ReactNode; ma
     () => ({
       phase,
       account,
-      covered: phase === 'locked' || phase === 'loading' || hidden || blurred,
+      covered: hidden || blurred,
       call: (method, args) => client().call(method, args),
       refresh,
       lock() {

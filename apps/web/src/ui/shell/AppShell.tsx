@@ -2,7 +2,10 @@
 
 import Link from 'next/link';
 import type { ReactNode } from 'react';
+import { useCore } from '../core/CoreProvider';
+import { buttonClass } from '../forms/TextField';
 import { useI18n } from '../i18n/I18nProvider';
+import { PrivacyCover } from './PrivacyCover';
 
 const NAV = [
   ['/dashboard/', 'nav.dashboard'],
@@ -16,6 +19,7 @@ const NAV = [
 
 export function AppShell({ children }: { children: ReactNode }) {
   const { t } = useI18n();
+  const core = useCore();
   return (
     <>
       <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:start-2 focus:top-2 focus:rounded-ui focus:bg-primary focus:px-3 focus:py-2 focus:text-on-primary">
@@ -32,8 +36,12 @@ export function AppShell({ children }: { children: ReactNode }) {
             ))}
           </ul>
         </nav>
+        {core.phase === 'unlocked' ? (
+          <button type="button" className={`${buttonClass} ms-auto`} onClick={() => core.lock()}>{t('lock.button')}</button>
+        ) : null}
       </header>
-      <div className="mx-auto max-w-4xl p-4">{children}</div>
+      {core.covered ? <PrivacyCover /> : null}
+      <div className="mx-auto max-w-4xl p-4" inert={core.covered}>{children}</div>
     </>
   );
 }

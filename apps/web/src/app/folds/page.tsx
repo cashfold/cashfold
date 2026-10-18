@@ -1,5 +1,12 @@
-import { Page } from '../../ui/shell/Page';
+'use client';
 
-export default function Screen() {
-  return <Page titleKey="page.folds.title" />;
+import { RequireUnlocked } from '../../ui/core/RequireUnlocked';
+import { FoldsScreen } from '../../ui/folds/FoldsScreen';
+
+export default function FoldsPage() {
+  return (
+    <RequireUnlocked titleKey="page.folds.title">
+      <FoldsScreen />
+    </RequireUnlocked>
+  );
 }

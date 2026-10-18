@@ -49,12 +49,17 @@ const core = (holder.core = createCoreRuntime({
   rpcTimeoutMs: 30_000,
 }));
 
-await core.start();
-core.onEvent((event) => self.postMessage({ rpc: 'event', event }));
+// Register the page-facing server before anything is awaited: the page sends its first message as soon as the worker exists,
+// and a message that arrives before a listener is attached is lost. Calls simply wait until the runtime is ready.
+const ready = core.start();
+void ready.then(() => core.onEvent((event) => self.postMessage({ rpc: 'event', event })));
 setInterval(() => app.session.tick(), 5_000);
 
 // Page -> worker: one pass-through method, so every call (leader or follower) takes the same path.
 serveRpc(pageEndpoint, {
-  invoke: ((args: { method: string; args?: unknown }, ctx: { signal: AbortSignal }) => core.call(args.method, args.args, ctx.signal)) as never,
-  role: (async () => core.role()) as never,
+  invoke: (async (args: { method: string; args?: unknown }, ctx: { signal: AbortSignal }) => {
+    await ready;
+    return core.call(args.method, args.args, ctx.signal);
+  }) as never,
+  role: (async () => (await ready, core.role())) as never,
 });

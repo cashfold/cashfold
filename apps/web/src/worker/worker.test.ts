@@ -154,6 +154,34 @@ describe('core runtime', () => {
     await expect(orphan.call('ping')).rejects.toMatchObject({ code: 'no_response' });
   });
 
+  it('a follower takes over when the leader goes away, and answers calls that were waiting on the dead leader', async () => {
+    const bus = createFakeBus();
+    const locks = createFakeLocks();
+    const held = await acquire(locks, 'cashfold-core'); // a leader that never answers (it is shutting down)
+    const next = createCoreRuntime({ locks, channel: bus.open(), tabId: 'next', handlers: { ping: async () => 'pong from the new leader' }, onLock: () => undefined, terminate: () => undefined, rpcTimeoutMs: 5000 });
+    await next.start();
+    expect(next.role()).toBe('follower');
+    const pending = next.call('ping'); // goes to a leader that will never reply
+    held.relinquish?.(); // the old worker finally dies and frees the lock
+    expect(await pending).toBe('pong from the new leader');
+    expect(next.role()).toBe('leader');
+  });
+
+  it('a promoted follower then serves the other tabs', async () => {
+    const bus = createFakeBus();
+    const locks = createFakeLocks();
+    const held = await acquire(locks, 'cashfold-core');
+    const mk = (tabId: string) => createCoreRuntime({ locks, channel: bus.open(), tabId, handlers: { who: async () => tabId }, onLock: () => undefined, terminate: () => undefined, rpcTimeoutMs: 500 });
+    const [b, c] = [mk('b'), mk('c')];
+    await b.start();
+    await c.start();
+    expect([b.role(), c.role()]).toEqual(['follower', 'follower']);
+    held.relinquish?.();
+    await new Promise((r) => setTimeout(r, 10));
+    expect([b.role(), c.role()]).toEqual(['leader', 'follower']); // the earlier waiter wins
+    expect(await c.call('who')).toBe('b');
+  });
+
   it('channelEndpoint ignores messages meant for others', async () => {
     const bus = createFakeBus();
     const [x, y] = [bus.open(), bus.open()];

@@ -36,6 +36,7 @@ export function createCoreRuntime(options: RuntimeOptions): CoreRuntime {
   let leadership: Leadership | undefined;
   let server: RpcServer | undefined;
   let isLocked = false;
+  let promoted: Promise<void> = new Promise(() => undefined);
 
   const publish = (event: CoreEvent) => channel.postMessage({ event: true, body: event });
 
@@ -74,14 +75,26 @@ export function createCoreRuntime(options: RuntimeOptions): CoreRuntime {
   return {
     async start() {
       leadership = await acquire(locks, LOCK_NAME);
-      if (leadership.role === 'leader') becomeLeader();
+      if (leadership.role === 'leader') {
+        becomeLeader();
+      } else {
+        // A leader that is still shutting down (a reloaded page's old worker) or that crashed must not strand this tab:
+        // when the lock frees, the earliest waiting follower takes over.
+        const follower = leadership;
+        promoted = follower.whenLeader().then((next) => {
+          leadership = next;
+          becomeLeader();
+        });
+      }
     },
     role: () => leadership?.role ?? 'starting',
     locked: () => isLocked,
     async call<R>(method: string, args?: unknown, signal?: AbortSignal): Promise<R> {
       if (isLocked) throw new RpcError('RpcError', 'locked');
       if (leadership?.role === 'leader' && server) return (await server.invoke(method, args, signal)) as R;
-      return proxy<R>(method, args, signal);
+      // Ask the leader, but if this tab becomes the leader first, answer locally.
+      const local = promoted.then(() => (isLocked ? Promise.reject(new RpcError('RpcError', 'locked')) : server!.invoke(method, args, signal))) as Promise<R>;
+      return Promise.race([proxy<R>(method, args, signal), local]);
     },
     publish,
     onEvent(listener) {

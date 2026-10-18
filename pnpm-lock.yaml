@@ -105,9 +105,6 @@ importers:
 
   apps/web:
     dependencies:
-      '@aztec/sqlite3mc-wasm':
-        specifier: 5.2.1
-        version: 5.2.1
       '@cashfold/core':
         specifier: workspace:*
         version: link:../../packages/core
@@ -117,9 +114,6 @@ importers:
       '@cashfold/protocol':
         specifier: workspace:*
         version: link:../../packages/protocol
-      '@sqlite.org/sqlite-wasm':
-        specifier: 3.53.4-build2
-        version: 3.53.4-build2
       '@tailwindcss/postcss':
         specifier: 4.3.3
         version: 4.3.3
@@ -148,6 +142,12 @@ importers:
         specifier: 4.6.7
         version: 4.6.7
     devDependencies:
+      '@aztec/sqlite3mc-wasm':
+        specifier: 5.2.1
+        version: 5.2.1
+      '@sqlite.org/sqlite-wasm':
+        specifier: 3.53.4-build2
+        version: 3.53.4-build2
       '@types/react':
         specifier: 19.3.0
         version: 19.3.0
