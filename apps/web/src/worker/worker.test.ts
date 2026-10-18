@@ -144,13 +144,10 @@ describe('core runtime', () => {
     await expect(b.call('ping')).rejects.toMatchObject({ code: 'locked' });
   });
 
-  it('a follower with no live leader reports Locked instead of hanging', async () => {
+  it('a follower whose leader never answers fails with no_response instead of hanging', async () => {
     const bus = createFakeBus();
-    const lone = createCoreRuntime({ locks: createFakeLocks(), channel: bus.open(), tabId: 'solo', handlers: {}, onLock: () => undefined, terminate: () => undefined, rpcTimeoutMs: 30 });
-    await lone.start();
-    // a second runtime pretends a leader exists by holding the lock, but never answers
     const locks = createFakeLocks();
-    await acquire(locks, 'cashfold-core');
+    await acquire(locks, 'cashfold-core'); // someone holds the lock but serves nothing
     const orphan = createCoreRuntime({ locks, channel: bus.open(), tabId: 'orphan', handlers: {}, onLock: () => undefined, terminate: () => undefined, rpcTimeoutMs: 30 });
     await orphan.start();
     expect(orphan.role()).toBe('follower');
