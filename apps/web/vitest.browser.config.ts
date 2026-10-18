@@ -3,7 +3,7 @@ import { defineConfig } from 'vitest/config';
 
 // Adapter tests that need a real browser (OPFS, Web Workers, WASM). Run with: pnpm --filter @cashfold/web test:browser
 export default defineConfig({
-  optimizeDeps: { include: ['@aztec/sqlite3mc-wasm', '@cashfold/crypto'] },
+  optimizeDeps: { include: ['@aztec/sqlite3mc-wasm', '@cashfold/crypto', '@cashfold/core', '@cashfold/core/testing', '@cashfold/protocol'] },
   test: {
     name: 'web-browser',
     include: ['src/**/*.browser.test.ts'],

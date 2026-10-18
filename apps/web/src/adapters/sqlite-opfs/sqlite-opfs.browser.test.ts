@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { storeContract } from '@cashfold/core/testing';
 import type { ScenarioName, scenarios } from './test-scenarios.js';
 
 type Result<K extends ScenarioName> = Awaited<ReturnType<(typeof scenarios)[K]>>;
@@ -7,13 +8,13 @@ let counter = 0;
 const unique = () => `/sqlite-test-${Date.now().toString(36)}-${counter++}`;
 
 /** Runs a scenario in a fresh dedicated worker and terminates it afterwards (which releases OPFS handles). */
-async function run<K extends ScenarioName>(scenario: K, opts: { dir?: string; clear?: boolean } = {}): Promise<Result<K>> {
+async function run<K extends ScenarioName>(scenario: K, opts: { dir?: string; clear?: boolean; arg?: number } = {}): Promise<Result<K>> {
   const worker = new Worker(new URL('./test.worker.ts', import.meta.url), { type: 'module' });
   try {
     return await new Promise<Result<K>>((resolve, reject) => {
       worker.onmessage = (ev: MessageEvent) => (ev.data.ok ? resolve(ev.data.result) : reject(new Error(ev.data.error)));
       worker.onerror = (ev) => reject(new Error(ev.message));
-      worker.postMessage({ scenario, ctx: { dir: opts.dir ?? unique(), clear: opts.clear ?? true } });
+      worker.postMessage({ scenario, ctx: { dir: opts.dir ?? unique(), clear: opts.clear ?? true, arg: opts.arg } });
     });
   } finally {
     worker.terminate();
@@ -134,5 +135,13 @@ describe('50,000 transactions (SC-008 working set)', () => {
     expect(r.insertMs).toBeLessThan(30_000);
     expect(r.plan.join(' ')).toMatch(/txn_acct_date/);
     expect(r.plan.join(' ')).not.toMatch(/SCAN txn/);
+  });
+});
+
+describe('SQLite stores satisfy the same contract as the in-memory stores', () => {
+  storeContract.forEach((c, index) => {
+    it(c.name, async () => {
+      expect(await run('contractCase', { arg: index })).toEqual(c.expected);
+    });
   });
 });

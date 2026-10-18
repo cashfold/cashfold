@@ -33,6 +33,7 @@ CREATE TABLE op_log (                                              -- every op e
 ) STRICT;
 CREATE INDEX op_log_push ON op_log(fold_id, state) WHERE state = 0;
 CREATE UNIQUE INDEX op_log_dev ON op_log(fold_id, dev_id, dev_seq);
+CREATE INDEX op_log_hlc ON op_log(fold_id, hlc_wall DESC, hlc_ctr DESC);   -- the newest stamp seeds the clock
 
 -- Ops that failed verification or validation are kept (not applied) so the user can see them in Needs attention.
 CREATE TABLE sync_quarantine (
