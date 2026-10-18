@@ -64,6 +64,7 @@ export interface NewAccountMaterial {
 
 /** The secrets a session is started with. The session takes ownership. */
 export interface SessionSecrets {
+  readonly deviceId: Id;
   readonly sessionKey: Secret;
   readonly deviceSigningKey: Secret;
 }

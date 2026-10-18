@@ -89,7 +89,7 @@ export function createAccount(deps: CreateAccountDeps) {
     };
 
     try {
-      services = await sessionPort.start({ sessionKey: material.sessionKey, deviceSigningKey: material.deviceSigningKey });
+      services = await sessionPort.start({ deviceId: material.deviceId, sessionKey: material.sessionKey, deviceSigningKey: material.deviceSigningKey });
       await credentials.save({ ...material.credentials, email: email.value, server: server.value, registration: 'pending' });
 
       foldId = newIdV4((n) => random.bytes(n));

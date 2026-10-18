@@ -35,10 +35,12 @@ export function createFoldCommands({ directory, foldKeys }: { directory: FoldDir
       if (!valid.ok) return valid;
       if ((await directory.get(c.fold)) !== undefined) return err('fold_exists', 'A Fold with this id already exists');
 
-      const epoch = await foldKeys.createFoldKey(c.fold);
-      const summary: FoldSummary = { id: c.fold, name: valid.value.name, baseCurrency: valid.value.baseCurrency, epoch, role: 'owner' };
+      // The directory entry comes first: the Fold key row belongs to it. A new Fold always starts at epoch 1.
+      const summary: FoldSummary = { id: c.fold, name: valid.value.name, baseCurrency: valid.value.baseCurrency, epoch: 1, role: 'owner' };
       try {
         await directory.add(summary);
+        const epoch = await foldKeys.createFoldKey(c.fold);
+        if (epoch !== summary.epoch) throw new Error('a new Fold must start at key epoch 1');
         const written = await ctx.submit([{ fold: c.fold, rec: settingsRecordId(c.fold), sets: new Map(), ...foldSettingsPatch(valid.value) }]);
         if (!written.ok) throw Object.assign(new Error(written.error.code), { result: written });
       } catch (e) {
