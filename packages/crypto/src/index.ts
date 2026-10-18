@@ -9,3 +9,6 @@ export * from './adapters/noble/ed25519';
 export * from './adapters/noble/x25519';
 export * from './adapters/argon2-wasm/argon2id';
 export * from './hpke/hpke';
+export * from './secret-key/secret-key';
+export * from './two-skd/two-skd';
+export * from './keyset/keyset';
