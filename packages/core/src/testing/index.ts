@@ -2,3 +2,4 @@
 // import it from '@cashfold/core/testing' only in tests.
 export * from './memory-ports.js';
 export * from './world.js';
+export * from './fixtures.js';
