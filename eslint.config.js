@@ -1,6 +1,10 @@
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import tseslint from 'typescript-eslint';
 import boundaries from 'eslint-plugin-boundaries';
 import noNumberInMoney from './eslint-rules/no-number-in-money.js';
+
+const root = dirname(fileURLToPath(import.meta.url));
 
 const MONEY_FILES = [
   '**/money/**',
@@ -38,7 +42,7 @@ export default tseslint.config(
         { type: 'web', pattern: 'apps/web/**', partialMatch: false },
         { type: 'server', pattern: 'apps/server/**', partialMatch: false },
       ],
-      'import/resolver': { typescript: { noWarnOnMultipleProjects: true, project: ['packages/*/tsconfig.json', 'apps/*/tsconfig.json'] } },
+      'import/resolver': { typescript: { noWarnOnMultipleProjects: true, project: [join(root, 'packages/*/tsconfig.json'), join(root, 'apps/*/tsconfig.json')] } },
       'boundaries/include': ['packages/**', 'apps/**'],
     },
     rules: {
