@@ -1,6 +1,6 @@
 import {
-  createAccount, createFoldCommands, createSession, describeFoldDeletion, DEFAULT_LOCK_POLICY, newIdV4, unlock,
-  parseSettings, toLockPolicy, type AccountCryptoPort, type CredentialStorePort, type DeviceSettings, type DeviceSettingsPort, type Id, type LockPolicy, type Session, type UnlockCryptoPort,
+  createAccount, createFoldCommands, createQuickUnlock, createSession, describeFoldDeletion, DEFAULT_LOCK_POLICY, newIdV4, unlock,
+  parseSettings, toLockPolicy, type AccountCryptoPort, type CredentialStorePort, type DeviceSettings, type DeviceSettingsPort, type Id, type LockPolicy, type QuickUnlockCryptoPort, type QuickUnlockStorePort, type Session, type SessionPort, type UnlockCryptoPort,
 } from '@cashfold/core';
 import { SecretBuf } from '@cashfold/crypto';
 import { createWebSession } from '../adapters/sqlite-opfs/web-session';
@@ -17,6 +17,8 @@ export interface AppHandlerDeps {
   readonly credentials: CredentialStorePort;
   readonly accountCrypto: AccountCryptoPort & UnlockCryptoPort;
   readonly settings: DeviceSettingsPort;
+  readonly quickStore: QuickUnlockStorePort;
+  readonly quickCrypto: QuickUnlockCryptoPort;
   readonly nowMs: () => number;
   /** Called after the session locks itself (idle, hidden, page gone): announce and end the worker. */
   readonly onLocked: () => void;
@@ -39,8 +41,12 @@ const secretFrom = (bytes: unknown): SecretBuf => {
 
 export function createAppHandlers(deps: AppHandlerDeps): AppRuntime {
   let webSession: ReturnType<typeof createWebSession> | undefined;
+  const quickHolder: { quick?: ReturnType<typeof createQuickUnlock> } = {};
   const session = createSession({
-    closeDatabase: async () => void (await webSession?.stop()),
+    closeDatabase: async () => {
+      await webSession?.stop();
+      await quickHolder.quick?.markLocked().catch(() => undefined); // the inactivity period for quick unlock runs from here
+    },
     terminateWorker: deps.onLocked,
     policy: deps.lockPolicy ?? DEFAULT_LOCK_POLICY,
     nowMs: deps.nowMs,
@@ -50,6 +56,14 @@ export function createAppHandlers(deps: AppHandlerDeps): AppRuntime {
     webSession = createWebSession({ runtime: await deps.runtime(), rng: deps.rng, nowMs: deps.nowMs, isUnlocked: () => session.state() === 'unlocked' });
     return webSession;
   }
+
+  // Quick unlock starts its own session through the same wiring as the password path.
+  const lazySession: SessionPort = {
+    start: async (secrets) => (await newWebSession()).start(secrets),
+    stop: async () => void (await webSession?.stop()),
+  };
+  const quick = createQuickUnlock({ crypto: deps.quickCrypto, store: deps.quickStore, settings: deps.settings, credentials: deps.credentials, sessionPort: lazySession, session, nowMs: deps.nowMs });
+  quickHolder.quick = quick;
 
   /** Applies the saved lock preferences to the running session. */
   const applySettings = async () => session.setPolicy(toLockPolicy(await deps.settings.load()));
@@ -81,8 +95,32 @@ export function createAppHandlers(deps: AppHandlerDeps): AppRuntime {
     async unlock(args: { password: Uint8Array }) {
       const sessionPort = await newWebSession();
       const result = await unlock({ unlockCrypto: deps.accountCrypto, credentials: deps.credentials, sessionPort, session })({ password: secretFrom(args.password) });
+      if (result.ok) {
+        await applySettings();
+        await quick.recordPasswordUnlock();
+      }
+      return result.ok ? { ok: true, value: { accountId: result.value.accountId, email: result.value.email, server: result.value.server } } : result;
+    },
+
+    async 'quickUnlock.status'(args: { sessionMarker?: string }) {
+      return quick.status(args.sessionMarker);
+    },
+
+    async 'quickUnlock.enable'(args: { password: Uint8Array; credentialId: Uint8Array; prfSalt: Uint8Array; prfOutput: Uint8Array; sessionMarker: string }) {
+      open();
+      return quick.enrol({ ...args, password: secretFrom(args.password) });
+    },
+
+    async 'quickUnlock.unlock'(args: { prfOutput: Uint8Array; sessionMarker?: string }) {
+      const result = await quick.unlock({ prfOutput: args.prfOutput, sessionMarker: args.sessionMarker });
       if (result.ok) await applySettings();
       return result.ok ? { ok: true, value: { accountId: result.value.accountId, email: result.value.email, server: result.value.server } } : result;
+    },
+
+    async 'quickUnlock.disable'() {
+      open();
+      await quick.disable();
+      return true;
     },
 
     async 'settings.get'() {

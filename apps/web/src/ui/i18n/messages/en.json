@@ -125,5 +125,15 @@
   "settings.kit.done": "Hide Emergency Kit",
   "kit.reminder.label": "Reminder",
   "kit.reminder.text": "Keep your Emergency Kit somewhere safe, away from your password. Find it in",
-  "kit.reminder.dismiss": "Dismiss"
+  "kit.reminder.dismiss": "Dismiss",
+  "quick.title": "Quick unlock",
+  "quick.lede": "Unlock with your fingerprint, face or device PIN instead of typing your password. You will still need the password after restarting the browser, after a long time away, or after a few failed tries.",
+  "quick.unavailable": "This device does not offer fingerprint, face or PIN unlock for web apps.",
+  "quick.turnOn": "Turn on quick unlock",
+  "quick.turnOff": "Turn off quick unlock",
+  "quick.on": "Quick unlock is on.",
+  "quick.error.cancelled": "The device prompt was cancelled. Nothing was changed.",
+  "quick.error.unsupported": "This device or browser cannot do quick unlock.",
+  "quick.button": "Unlock with this device",
+  "quick.failed": "Quick unlock did not work. Use your password."
 }

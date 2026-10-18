@@ -1,6 +1,9 @@
 import { defineConfig, devices } from '@playwright/test';
 
-const baseURL = process.env['E2E_BASE_URL'] ?? 'http://localhost:3000';
+// The e2e server is built and served by this config on its own port, so a `next dev` on :3000 (no service worker, hot reload)
+// can never be mistaken for the production build under test.
+const port = Number(process.env['E2E_PORT'] ?? 3100);
+const baseURL = process.env['E2E_BASE_URL'] ?? `http://localhost:${port}`;
 
 export default defineConfig({
   testDir: '.',
@@ -19,9 +22,10 @@ export default defineConfig({
   ],
   // E2E_NO_SERVER=1 runs specs that serve their own pages (the leak-scan self-test) without building the app.
   webServer: process.env['E2E_NO_SERVER'] ? undefined : {
-    command: 'pnpm --filter @cashfold/web build && pnpm exec serve -l 3000 apps/web/out',
+    command: `pnpm --filter @cashfold/web build && pnpm exec serve -l ${port} apps/web/out`,
     url: baseURL,
-    reuseExistingServer: !process.env['CI'],
+    // Reusing a running server is opt-in (E2E_REUSE=1): it must be a production build served from apps/web/out.
+    reuseExistingServer: process.env['E2E_REUSE'] === '1',
     timeout: 180_000,
   },
 });

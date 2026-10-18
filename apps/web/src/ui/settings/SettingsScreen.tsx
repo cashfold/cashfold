@@ -6,6 +6,7 @@ import { useCore, withPasswordBytes } from '../core/CoreProvider';
 import { downloadKit, printKit, type KitSource } from '../emergency-kit/actions';
 import { TextField, buttonClass, secondaryButtonClass } from '../forms/TextField';
 import { useI18n } from '../i18n/I18nProvider';
+import { QuickUnlockSection } from './QuickUnlockSection';
 
 const IDLE_MINUTES = [1, 2, 5, 10, 15, 30, 60];
 const HIDDEN_SECONDS = [0, 15, 30, 60, 120, 300];
@@ -21,7 +22,8 @@ export function SettingsScreen() {
   const [kit, setKit] = useState<KitSource | undefined>();
   const [kitError, setKitError] = useState<string | undefined>();
 
-  useEffect(() => void core.call<DeviceSettings>('settings.get').then(setSettings), [core]);
+  const reload = () => void core.call<DeviceSettings>('settings.get').then(setSettings);
+  useEffect(reload, [core]);
 
   async function change(patch: Partial<DeviceSettings>) {
     setSettings(await core.call<DeviceSettings>('settings.set', patch));
@@ -63,6 +65,8 @@ export function SettingsScreen() {
           </div>
         ) : null}
       </section>
+
+      {settings ? <QuickUnlockSection enabled={settings.quickUnlock.enabled} onChange={reload} /> : null}
 
       <section aria-labelledby="account-heading" className="mt-8">
         <h2 id="account-heading" className="text-lg font-semibold">{t('settings.account.title')}</h2>

@@ -68,7 +68,7 @@ test.describe('@us1 account', () => {
     await page.getByRole('button', { name: 'Continue' }).click();
     await expect(page.getByTestId('fold-name')).toHaveText('Personal');
 
-    await page.getByRole('button', { name: 'Lock' }).click();
+    await page.getByRole('button', { name: 'Lock', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'Unlock Cashfold' })).toBeVisible();
     await expect(page.getByText('Personal')).toHaveCount(0);
     await expectNoA11yViolations();
@@ -148,7 +148,7 @@ test.describe('@us1 account', () => {
     await second.goto('/folds/');
     await expect(second.getByTestId('fold-name')).toHaveText('Personal', { timeout: 30_000 });
 
-    await page.getByRole('button', { name: 'Lock' }).click();
+    await page.getByRole('button', { name: 'Lock', exact: true }).click();
     await expect(second.getByRole('heading', { name: 'Unlock Cashfold' })).toBeVisible({ timeout: 15_000 });
   });
 

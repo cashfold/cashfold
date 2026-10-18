@@ -2,13 +2,14 @@
 const DB_NAME = 'cashfold-credentials';
 export const CREDENTIALS = 'device';
 export const SETTINGS = 'settings';
+export const QUICK = 'quick';
 
 export function openDb(factory: IDBFactory): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
-    const request = factory.open(DB_NAME, 2);
+    const request = factory.open(DB_NAME, 3);
     request.onupgradeneeded = () => {
       const db = request.result;
-      for (const store of [CREDENTIALS, SETTINGS]) if (!db.objectStoreNames.contains(store)) db.createObjectStore(store);
+      for (const store of [CREDENTIALS, SETTINGS, QUICK]) if (!db.objectStoreNames.contains(store)) db.createObjectStore(store);
     };
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error);

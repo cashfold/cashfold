@@ -2,6 +2,7 @@
 import { createAccountCrypto } from '../adapters/account-crypto';
 import { createIdbCredentialStore } from '../adapters/keystore-idb/credential-store';
 import { createIdbDeviceSettings } from '../adapters/keystore-idb/device-settings';
+import { createIdbQuickUnlockStore } from '../adapters/keystore-idb/quick-unlock-store';
 import { loadRuntime } from '../adapters/sqlite-opfs/runtime';
 import { createAppHandlers } from './app-handlers';
 import { serveRpc, type Endpoint } from './rpc';
@@ -26,12 +27,16 @@ const pageEndpoint: Endpoint = {
 // onLocked fires from inside handlers that are created before the runtime exists, so it reaches it through this holder.
 const holder: { core?: CoreRuntime } = {};
 
+const accountCrypto = createAccountCrypto({ rng });
+
 const app = createAppHandlers({
   runtime: () => loadRuntime(),
   rng,
   credentials: createIdbCredentialStore(),
   settings: createIdbDeviceSettings(),
-  accountCrypto: createAccountCrypto({ rng }),
+  accountCrypto,
+  quickStore: createIdbQuickUnlockStore(),
+  quickCrypto: { enroll: (a) => accountCrypto.enrollQuick(a), unlock: (a) => accountCrypto.unlockQuick(a) },
   nowMs: Date.now,
   // The session locked itself (idle timeout, hidden too long, page going away): tell every tab, then end.
   onLocked: () => {

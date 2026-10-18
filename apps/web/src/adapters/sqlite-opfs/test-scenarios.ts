@@ -88,6 +88,8 @@ export const scenarios = {
       runtime: async () => rt, rng, credentials, nowMs: Date.now, onLocked: () => void lockedAnnounced++,
       accountCrypto: createAccountCrypto({ rng, kdf: { kdf: 'argon2id', mKib: 32768, t: 2, p: 1 } }),
       settings: { load: async () => parseSettings(savedSettings), save: async (s) => void (savedSettings = s) },
+      quickStore: { load: async () => undefined, save: async () => undefined, clear: async () => undefined },
+      quickCrypto: { enroll: async () => 'wrong_password', unlock: async () => 'failed' },
     });
     const server = createRpcServer(app.handlers);
     const call = (method: string, args?: unknown) => server.invoke(method, args);

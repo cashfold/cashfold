@@ -17,6 +17,8 @@ export interface Core {
   readonly account: AccountInfo | undefined;
   /** True while the window is hidden or out of focus: financial content must not show (FR-007). A locked app shows its own screen. */
   readonly covered: boolean;
+  /** Increments each time the Core Worker finishes locking and is replaced. Screens that ask the worker questions re-ask when it changes. */
+  readonly epoch: number;
   call<R = unknown>(method: string, args?: unknown): Promise<R>;
   refresh(): Promise<void>;
   lock(): void;
@@ -44,6 +46,7 @@ export function CoreProvider({ children, makeWorker }: { children: ReactNode; ma
   const [account, setAccount] = useState<AccountInfo | undefined>();
   const [hidden, setHidden] = useState(false);
   const [blurred, setBlurred] = useState(false);
+  const [epoch, setEpoch] = useState(0);
 
   const client = useCallback((): CoreClient => {
     clientRef.current ??= createCoreClient(makeWorker ?? (() => new Worker(new URL('../../worker/core-worker.ts', import.meta.url), { type: 'module', name: 'cashfold-core' })), { timeoutMs: 60_000 });
@@ -64,7 +67,10 @@ export function CoreProvider({ children, makeWorker }: { children: ReactNode; ma
     const c = client();
     void refresh();
     const off = c.onEvent((event) => {
-      if (event.type === 'Locked') setPhase((p) => (p === 'no_account' ? p : 'locked'));
+      if (event.type === 'Locked') {
+        setPhase((p) => (p === 'no_account' ? p : 'locked'));
+        setEpoch((n) => n + 1);
+      }
     });
     return () => {
       off();
@@ -111,6 +117,7 @@ export function CoreProvider({ children, makeWorker }: { children: ReactNode; ma
       phase,
       account,
       covered: hidden || blurred,
+      epoch,
       call: (method, args) => client().call(method, args),
       refresh,
       lock() {
@@ -121,7 +128,7 @@ export function CoreProvider({ children, makeWorker }: { children: ReactNode; ma
         await refresh();
       },
     }),
-    [phase, account, hidden, blurred, client, refresh],
+    [phase, account, hidden, blurred, epoch, client, refresh],
   );
 
   return <Context.Provider value={value}>{children}</Context.Provider>;
