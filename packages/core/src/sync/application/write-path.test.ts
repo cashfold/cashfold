@@ -233,3 +233,47 @@ describe('rebuild (replay the op log into empty projections)', () => {
     expect((await records(a, OTHER_FOLD)).get(REC)?.fields.get(1)?.value).toBe('other');
   });
 });
+
+describe('hostile and unusual input', () => {
+  const wire = (a: Replica, over: Partial<import('../ports/index').WireOp> = {}): import('../ports/index').WireOp => ({
+    fold: FOLD, op: testId(0x7001), rec: REC, dev: a.device, seq: 1n, hlc: { wallMs: 1_700_000_000_000, ctr: 0 }, epoch: 1, schema: 1, table: 6,
+    fields: fields([1, 'x']), sets: noSets, ...over,
+  });
+
+  it('quarantines an op from a newer schema than this build understands', async () => {
+    const { a, b } = await pair();
+    const sealed = await a.seal(wire(a, { schema: 2 }));
+    expect(await b.writePath.applyRemote(sealed)).toMatchObject({ ok: true, value: { kind: 'quarantined', reason: 'schema_unsupported' } });
+    expect((await records(b)).size).toBe(0);
+  });
+
+  it('quarantines a validly signed op that breaks a field-group rule', async () => {
+    const groups: GroupRegistry = new Map([[7, [[1, 2]]]]);
+    const { a, b } = await pair({ groups });
+    const sealed = await a.seal(wire(a, { table: 7, fields: fields([1, 'only half']) }));
+    expect(await b.writePath.applyRemote(sealed)).toMatchObject({ ok: true, value: { kind: 'quarantined', reason: 'invalid_op' } });
+  });
+
+  it('refuses to stamp an op once the clock has run out of range', async () => {
+    const { a } = await pair();
+    a.setNow(2 ** 48);
+    expect(await a.writePath.submit(draft())).toEqual({ ok: false, error: expect.objectContaining({ code: 'clock_overflow' }) });
+  });
+
+  it('counts an op with an unsupported schema as failed during a rebuild instead of aborting it', async () => {
+    const { a } = await pair();
+    await a.writePath.submit(draft());
+    const future = await a.seal(wire(a, { op: testId(0x7002), seq: 2n, schema: 2, hlc: { wallMs: 1_700_000_000_001, ctr: 0 } }));
+    await a.oplog.append({ sealed: future, origin: 'remote', pushed: true });
+    expect(await a.writePath.rebuild(FOLD)).toMatchObject({ ok: true, value: { opsReplayed: 1, failed: 1 } });
+  });
+
+  it('rethrows unexpected errors from the sealer instead of quarantining them', async () => {
+    const { a, b } = await pair();
+    await a.writePath.submit(draft());
+    const [stored] = await a.oplog.list(FOLD);
+    b.failNextProjectionWrite();
+    await expect(b.writePath.applyRemote(stored!.sealed)).rejects.toThrow('disk full');
+    expect(await b.oplog.list(FOLD)).toHaveLength(0);
+  });
+});

@@ -181,6 +181,29 @@ describe('createAccount (US1: sign up offline, get a Secret Key and a first Fold
   });
 });
 
+describe('other refusals', () => {
+  it('rolls back when the service rejects the registration for another reason', async () => {
+    const s = await setup({ registration: { ok: false, reason: 'rejected' } });
+    expect(await s.run()).toEqual({ ok: false, error: expect.objectContaining({ code: 'registration_rejected' }) });
+    expect(s.getStored()).toBeUndefined();
+    expect(s.folds.size).toBe(0);
+    expect(s.sessionKey.isWiped).toBe(true);
+  });
+
+  it('reports an invalid Fold name or base currency and rolls back', async () => {
+    const s = await setup();
+    expect(await s.runWith({ email: 'a@example.com', password: passwordOf(GOOD_PASSWORD), server: 'https://relay.example.com', discoverable: true, foldName: '   ' })).toEqual({ ok: false, error: expect.objectContaining({ code: 'invalid_fold_name' }) });
+    expect(await s.runWith({ email: 'a@example.com', password: passwordOf(GOOD_PASSWORD), server: 'https://relay.example.com', discoverable: true, baseCurrency: 'XXX' })).toEqual({ ok: false, error: expect.objectContaining({ code: 'unknown_currency' }) });
+    expect(s.getStored()).toBeUndefined();
+    expect(s.folds.size).toBe(0);
+  });
+
+  it('works without a logger', async () => {
+    const s = await setup();
+    expect((await s.runWith({ email: 'a@example.com', password: passwordOf(GOOD_PASSWORD), server: 'https://relay.example.com', discoverable: false })).ok).toBe(true);
+  });
+});
+
 // Helpers that pass richer input than the shorthand `run`.
 type Setup = Awaited<ReturnType<typeof setup>>;
 async function createAccountWith(s: Setup, extra: { baseCurrency?: string; foldName?: string }) {

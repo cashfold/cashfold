@@ -121,3 +121,27 @@ describe('buildNeedsAttention', () => {
     expect(buildNeedsAttention(createRepair([]).run(emptyFold()), [])).toEqual([]);
   });
 });
+
+describe('ordering of findings', () => {
+  it('sorts by kind, then reference, then message key, and puts findings without a reference first within a kind', () => {
+    const rule: RepairRule = {
+      id: 'mixed',
+      check: () => [
+        { kind: 'k', ref: id(2), messageKey: 'b' },
+        { kind: 'k', messageKey: 'z' },
+        { kind: 'k', ref: id(1), messageKey: 'b' },
+        { kind: 'k', ref: id(1), messageKey: 'a' },
+        { kind: 'a', messageKey: 'm' },
+      ],
+    };
+    const items = buildNeedsAttention(createRepair([rule]).run(emptyFold()), []);
+    expect(items.map((i) => [i.kind, i.ref, i.messageKey])).toEqual([
+      ['a', undefined, 'm'], ['k', undefined, 'z'], ['k', id(1), 'a'], ['k', id(1), 'b'], ['k', id(2), 'b'],
+    ]);
+  });
+
+  it('ignores effects on findings that point at nothing', () => {
+    const rule: RepairRule = { id: 'x', check: () => [{ kind: 'k', messageKey: 'm', effect: 'hide' }] };
+    expect(createRepair([rule]).run(emptyFold()).hidden.size).toBe(0);
+  });
+});

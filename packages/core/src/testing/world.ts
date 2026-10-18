@@ -72,6 +72,8 @@ export interface Replica {
   setNow(ms: number): void;
   /** A second replica with the same device identity and signing key but an empty log: a restored backup or a clone. */
   fork(): Promise<Replica>;
+  /** Seals an arbitrary op with this device's key and its Fold keys: for building hostile or invalid input. */
+  seal(op: import('../sync/ports/index').WireOp): Promise<import('../sync/ports/index').SealedOp>;
   failNextProjectionWrite(): void;
   corruptStoredOp(index: number): void;
 }
@@ -112,6 +114,7 @@ export async function createReplica(world: World, opts: { device: Id; groups?: G
       now = ms;
     },
     fork: () => createReplica(world, { ...opts, nowMs: now, signingKey: deviceKey }),
+    seal: (op) => sealer.seal(op),
     failNextProjectionWrite: stores.failNextProjectionWrite,
     corruptStoredOp: stores.corruptStoredOp,
   };

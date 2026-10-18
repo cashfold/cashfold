@@ -158,3 +158,31 @@ describe('roleResolver', () => {
     expect(await roleOf(id(0x99))).toBeUndefined();
   });
 });
+
+describe('failure paths', () => {
+  it('returns the error and cleans up when the settings op is refused (no key for the Fold)', async () => {
+    const world = await createWorld();
+    const replica = await createReplica(world, { device: id(0xa) });
+    const directory = memoryDirectory();
+    const dropped: Id[] = [];
+    const foldKeys: FoldKeyPort = { createFoldKey: async () => 1, dropFoldKeys: async (f) => void dropped.push(f) }; // claims a key but the device holds none
+    const bus = createCommandBus({ writePath: replica.writePath, projections: replica.projections, events: createEventBus(), roleOf: roleResolver(directory), isUnlocked: () => true });
+    const result = await bus.execute(createFoldCommands({ directory, foldKeys }).createFold, { fold: FOLD, name: 'A', baseCurrency: 'USD' });
+    expect(result).toEqual({ ok: false, error: expect.objectContaining({ code: 'no_key' }) });
+    expect(await directory.list()).toEqual([]);
+    expect(dropped).toEqual([FOLD]);
+  });
+
+  it('deleting or describing a Fold that is not on this device says so', async () => {
+    const { directory } = await setup();
+    expect(await describeFoldDeletion(directory, id(0x99))).toBeUndefined();
+  });
+
+  it('deleteFold reports not_found for an unknown Fold the user owns no record of', async () => {
+    const { bus, commands, directory } = await setup();
+    await directory.add({ id: id(0x55), name: 'Ghost', baseCurrency: 'USD', epoch: 1, role: 'owner' });
+    await directory.remove(id(0x55));
+    // roleOf now says nobody, so the bus denies before the handler runs
+    expect(await bus.execute(commands.deleteFold, { fold: id(0x55), confirmName: 'Ghost' })).toEqual({ ok: false, error: expect.objectContaining({ code: 'permission_denied' }) });
+  });
+});
