@@ -6,16 +6,22 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test:browser": "vitest run -c vitest.browser.config.ts"
   },
   "dependencies": {
+    "@aztec/sqlite3mc-wasm": "5.2.1",
+    "@sqlite.org/sqlite-wasm": "3.53.4-build2",
     "@tailwindcss/postcss": "4.3.3",
     "next": "16.4.2",
     "postcss": "8.5.30",
     "react": "19.3.1",
     "react-dom": "19.3.1",
     "tailwindcss": "4.3.3",
-    "zod": "4.6.7"
+    "zod": "4.6.7",
+    "@cashfold/core": "workspace:*",
+    "@cashfold/crypto": "workspace:*",
+    "@cashfold/protocol": "workspace:*"
   },
   "devDependencies": {
     "@types/react": "19.3.0",

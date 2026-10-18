@@ -16,7 +16,9 @@
     "check:licenses": "node scripts/check-licenses.mjs",
     "check:no-float": "node scripts/check-no-float.mjs",
     "prepare": "git config core.hooksPath .githooks",
-    "verify": "pnpm typecheck && pnpm lint && vitest run"
+    "verify": "pnpm typecheck && pnpm lint && vitest run",
+    "check:sqlite3mc": "node scripts/verify-sqlite3mc.mjs",
+    "gen:migrations": "node scripts/gen-migrations.mjs"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.14.0",
@@ -25,6 +27,7 @@
     "@playwright/test": "1.64.1",
     "@types/node": "26.6.5",
     "@typescript-eslint/parser": "8.71.2",
+    "@vitest/browser-playwright": "5.0.5",
     "@vitest/coverage-v8": "5.0.5",
     "eslint": "10.13.0",
     "eslint-import-resolver-typescript": "4.4.5",

@@ -1,0 +1,10 @@
+# SQLite3 Multiple Ciphers 2.3.5 / SQLite 3.53.2, WASM build.
+# Upstream release asset (https://github.com/utelle/SQLite3MultipleCiphers/releases/tag/v2.3.5):
+#   sqlite3mc-2.3.5-sqlite-3.53.2-wasm.zip
+#   sha256 3d0d5ebe4c54a9a22012410726ecef711e4e3e15ec11dffddf09488c72a10670
+# The files below are the upstream jswasm/ artifacts. The npm package @aztec/sqlite3mc-wasm@5.2.1 repackages
+# them byte for byte; scripts/verify-sqlite3mc.mjs fails the build if the installed bytes differ from this list.
+e7600bc6d59b1459362c8c2d4686f733e26d58041b3cdc599929661ecfeb21ae  sqlite3.wasm
+802291c5578f935da7138689fc73deddd1a0880c7082595d7498eeaa5f8126c3  sqlite3.mjs
+df462b605bf855e3415aace4e5db413fcde2234a7bf80a388b641405bdd45668  sqlite3.js
+4ea2bcbd715b0d56089fc871ea241f8c5985d8669d1ddecaab4d56a8da806ce9  sqlite3-opfs-async-proxy.js

@@ -23,6 +23,8 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
       - run: pnpm lint
+      - name: Generated migrations are up to date
+        run: node scripts/gen-migrations.mjs && git diff --exit-code apps/web/src/adapters/sqlite-opfs/migrations/generated.ts
       - name: Protocol docs are up to date
         run: node scripts/gen-protocol-docs.mjs && git diff --exit-code docs/protocol.md
       - run: pnpm vitest run --coverage   # unit + property tests, coverage floors
@@ -30,6 +32,7 @@ jobs:
       - run: pnpm check:bundle
       - run: pnpm check:licenses
       - run: pnpm check:no-float
+      - run: pnpm check:sqlite3mc
       - run: pnpm audit --audit-level=high
       - name: Playwright (includes blocking axe WCAG 2.2 AA assertions)
         run: |
