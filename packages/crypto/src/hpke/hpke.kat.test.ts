@@ -85,3 +85,10 @@ describe('HPKE with AES-256-GCM (production suite, interop vector from an indepe
     await expect(hpke.open({ recipientSecretKey: kp.secretKey, enc: new Uint8Array(32), info: hex(''), aad: hex(''), ct: new Uint8Array(20) })).rejects.toThrow();
   });
 });
+
+describe('HPKE seal input validation', () => {
+  it('rejects a recipient public key of the wrong length', async () => {
+    const hpke = createHpke({ aead: createAesGcm(), aeadId: 2 });
+    await expect(hpke.seal({ recipientPublicKey: new Uint8Array(31), info: hex(''), aad: hex(''), plaintext: hex('00'), rng: osRng })).rejects.toThrow(RangeError);
+  });
+});

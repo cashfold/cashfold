@@ -7,7 +7,7 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       include: ['packages/*/src/**/*.ts'],
-      exclude: ['**/*.test.ts', '**/testing/**', '**/index.ts', '**/ports/**'],
+      exclude: ['**/*.test.ts', '**/testing/**', '**/index.ts', '**/ports/**', '**/test-support.ts'],
       thresholds: {
         'packages/crypto/src/**': { lines: 95, branches: 95 },
         'packages/core/src/*/domain/**': { lines: 95, branches: 95 },

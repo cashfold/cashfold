@@ -66,3 +66,27 @@ describe('WebCrypto Ed25519 detection', () => {
     expect(typeof (await webCryptoEd25519Available())).toBe('boolean');
   });
 });
+
+describe('WebCrypto Ed25519 detection when unsupported', () => {
+  it('reports false if the runtime rejects Ed25519', async () => {
+    const { vi } = await import('vitest');
+    const spy = vi.spyOn(crypto.subtle, 'generateKey').mockRejectedValue(new Error('NotSupportedError'));
+    try {
+      expect(await webCryptoEd25519Available()).toBe(false);
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it('derives a public key from a secret key via the port', async () => {
+    const signer = createEd25519Signer();
+    const v = ed.cases[0]!;
+    expect(toHex(await signer.publicKey(SecretBuf.from(hex(v.secret))))).toBe(v.public);
+  });
+
+  it('verify returns false when the library throws on malformed points', async () => {
+    const signer = createEd25519Signer();
+    const v = ed.cases[0]!;
+    expect(await signer.verify(new Uint8Array(32).fill(0xff), hex(v.message), hex(v.signature))).toBe(false);
+  });
+});

@@ -107,6 +107,12 @@ describe('table discovery (the table code is inside the payload, so a receiver m
 });
 
 describe('input validation', () => {
+  it('discovery surfaces programming errors instead of swallowing them', async () => {
+    const blob = await crypt.seal(fk(), ctx, payload);
+    await expect(crypt.openDiscoveringTable(fk(), { foldId: new Uint8Array(3), recordId: ctx.recordId, epoch: 1, schema: 1 }, blob)).rejects.toThrow(RangeError);
+  });
+
+
   it('rejects malformed identifiers and out-of-range numbers', async () => {
     await expect(crypt.seal(fk(), { ...ctx, foldId: new Uint8Array(15) }, payload)).rejects.toThrow(RangeError);
     await expect(crypt.seal(fk(), { ...ctx, recordId: new Uint8Array(17) }, payload)).rejects.toThrow(RangeError);
