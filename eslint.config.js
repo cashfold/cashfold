@@ -44,6 +44,8 @@ export default tseslint.config(
       ],
       'import/resolver': { typescript: { noWarnOnMultipleProjects: true, project: [join(root, 'packages/*/tsconfig.json'), join(root, 'apps/*/tsconfig.json')] } },
       'boundaries/include': ['packages/**', 'apps/**'],
+      // Tests may use real crypto and the test world; production code is held to the boundaries.
+      'boundaries/ignore': ['**/*.test.ts', '**/testing/**'],
     },
     rules: {
       'boundaries/dependencies': [
