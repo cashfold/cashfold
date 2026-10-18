@@ -81,7 +81,7 @@ describe('unlocking with the device', () => {
     ['from another browser session', { sessionMarker: 'marker-2' }, 'browser_restarted'],
   ])('is refused %s', async (_name, over, reason) => {
     const s = await enrolled();
-    expect(await s.quick.unlock({ prfOutput: PRF.slice(), sessionMarker: 'marker-1', ...over })).toEqual({ ok: false, error: expect.objectContaining({ code: 'not_allowed', reason }) });
+    expect(await s.quick.unlock({ prfOutput: PRF.slice(), ...{ sessionMarker: 'marker-1' }, ...over })).toEqual({ ok: false, error: expect.objectContaining({ code: 'not_allowed', reason }) });
     expect(s.crypto.unlock).not.toHaveBeenCalled();
   });
 

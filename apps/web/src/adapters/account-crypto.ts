@@ -26,7 +26,12 @@ export interface AccountCryptoOptions {
 
 const aadFor = (deviceId: Id): Uint8Array => encode([LABEL, idToBytes(deviceId)]);
 
-export function createAccountCrypto(options: AccountCryptoOptions): AccountCryptoPort & UnlockCryptoPort {
+export type WebAccountCrypto = AccountCryptoPort & UnlockCryptoPort & {
+  enrollQuick(args: { password: Secret; credentials: DeviceCredentials; prfOutput: Uint8Array }): Promise<Uint8Array | 'wrong_password'>;
+  unlockQuick(args: { blob: Uint8Array; prfOutput: Uint8Array; credentials: DeviceCredentials }): Promise<UnlockedMaterial | 'failed'>;
+};
+
+export function createAccountCrypto(options: AccountCryptoOptions): WebAccountCrypto {
   const { rng } = options;
   const params = options.kdf ?? DEFAULT_KDF;
   const hkdf = createHkdf();
@@ -38,6 +43,47 @@ export function createAccountCrypto(options: AccountCryptoOptions): AccountCrypt
   const copyOf = (s: Secret): SecretBuf => SecretBuf.from(s.use((b) => b));
 
   const databaseKey = (lvk: SecretBuf, deviceId: Id) => hkdf.derive(lvk, idToBytes(deviceId), text('cashfold.db.v1'), 32);
+
+  const isBenign = (e: unknown): boolean =>
+    e instanceof KdfBelowFloor || (e as Error).name === 'AeadError' || e instanceof RangeError || e instanceof TypeError || (e as Error).name === 'CborError';
+
+  const quickAad = (deviceId: Id, role: 'duk' | 'lvk') => encode(['cashfold.quick.v1', idToBytes(deviceId), role]);
+  const quickKek = (prfOutput: Uint8Array, deviceId: Id) => hkdf.derive(SecretBuf.from(prfOutput), idToBytes(deviceId), text('cashfold.quick.kek.v1'), 32);
+
+  /** Derives the Local Vault Key from the password and the parameters stored beside the sealed blob. Undefined if the stored header is unusable. */
+  async function lvkFromPassword(password: Secret, credentials: DeviceCredentials, wipe: Wipeable[]): Promise<SecretBuf | undefined> {
+    const header = decode(credentials.sealed);
+    if (!(header instanceof Map) || header.get('v') !== 1n) return undefined;
+    const deviceSalt = header.get('device_salt');
+    const kdfRecord = header.get('kdf');
+    if (!(deviceSalt instanceof Uint8Array) || deviceSalt.length !== 16 || !(kdfRecord instanceof Map) || kdfRecord.get('kdf') !== 'argon2id') return undefined;
+    const [m, t, p] = [kdfRecord.get('m_kib'), kdfRecord.get('t'), kdfRecord.get('p')];
+    if (typeof m !== 'bigint' || typeof t !== 'bigint' || typeof p !== 'bigint') return undefined;
+    const normalised = normalisePassword(copyOf(password));
+    wipe.push(normalised);
+    const lvk = await kdf.derive(normalised, deviceSalt, { kdf: 'argon2id', mKib: Number(m), t: Number(t), p: Number(p) });
+    wipe.push(lvk);
+    return lvk;
+  }
+
+  /** Opens the sealed blob with the Local Vault Key and derives the database key. */
+  async function openWithLvk(lvk: SecretBuf, credentials: DeviceCredentials): Promise<UnlockedMaterial> {
+    const header = decode(credentials.sealed) as Map<string, CborValue>;
+    const blob = header.get('blob');
+    if (!(blob instanceof Uint8Array) || blob.length < 28) throw new TypeError('bad blob');
+    const plaintext = await aead.open(lvk, blob.slice(0, 12), blob.slice(12), aadFor(credentials.deviceId));
+    const fields = decode(plaintext) as Map<string, CborValue>;
+    const [secretKeyText, deviceSk] = [fields.get('secret_key'), fields.get('device_sk')];
+    if (typeof secretKeyText !== 'string' || !(deviceSk instanceof Uint8Array)) throw new TypeError('bad contents');
+    const out: UnlockedMaterial = {
+      sessionKey: await databaseKey(lvk, credentials.deviceId),
+      deviceSigningKey: SecretBuf.from(deviceSk),
+      secretKey: SecretBuf.from(text(secretKeyText)),
+    };
+    plaintext.fill(0);
+    deviceSk.fill(0);
+    return out;
+  }
 
   return {
     async createAccount({ email, password }) {
@@ -95,38 +141,64 @@ export function createAccountCrypto(options: AccountCryptoOptions): AccountCrypt
     },
 
     async unlock({ password, credentials }): Promise<UnlockedMaterial | 'wrong_password'> {
-      const pwBuf = copyOf(password);
-      const wipe: Wipeable[] = [password, pwBuf];
+      const wipe: Wipeable[] = [password];
       try {
-        const header = decode(credentials.sealed);
-        if (!(header instanceof Map) || header.get('v') !== 1n) return 'wrong_password';
-        const deviceSalt = header.get('device_salt');
-        const kdfRecord = header.get('kdf');
-        const blob = header.get('blob');
-        if (!(deviceSalt instanceof Uint8Array) || deviceSalt.length !== 16 || !(blob instanceof Uint8Array) || blob.length < 28 || !(kdfRecord instanceof Map) || kdfRecord.get('kdf') !== 'argon2id') return 'wrong_password';
-        const [m, t, p] = [kdfRecord.get('m_kib'), kdfRecord.get('t'), kdfRecord.get('p')];
-        if (typeof m !== 'bigint' || typeof t !== 'bigint' || typeof p !== 'bigint') return 'wrong_password';
-
-        const normalised = normalisePassword(pwBuf);
-        wipe.push(normalised);
-        const lvk = await kdf.derive(normalised, deviceSalt, { kdf: 'argon2id', mKib: Number(m), t: Number(t), p: Number(p) });
-        wipe.push(lvk);
-
-        const plaintext = await aead.open(lvk, blob.slice(0, 12), blob.slice(12), aadFor(credentials.deviceId));
-        const fields = decode(plaintext) as Map<string, CborValue>;
-        const [secretKeyText, deviceSk] = [fields.get('secret_key'), fields.get('device_sk')];
-        if (typeof secretKeyText !== 'string' || !(deviceSk instanceof Uint8Array)) return 'wrong_password';
-        const out: UnlockedMaterial = {
-          sessionKey: await databaseKey(lvk, credentials.deviceId),
-          deviceSigningKey: SecretBuf.from(deviceSk),
-          secretKey: SecretBuf.from(text(secretKeyText)),
-        };
-        plaintext.fill(0);
-        deviceSk.fill(0);
-        return out;
+        const lvk = await lvkFromPassword(password, credentials, wipe);
+        return lvk === undefined ? 'wrong_password' : await openWithLvk(lvk, credentials);
       } catch (e) {
         // A wrong password, a damaged blob, tampered parameters or a different device all look the same on purpose.
-        if (e instanceof KdfBelowFloor || (e as Error).name === 'AeadError' || e instanceof RangeError || e instanceof TypeError || (e as Error).name === 'CborError') return 'wrong_password';
+        if (isBenign(e)) return 'wrong_password';
+        throw e;
+      } finally {
+        wipe.forEach((s) => s.wipe());
+      }
+    },
+
+    /** Wraps the Local Vault Key under the authenticator's PRF output for quick unlock. Checks the password first. */
+    async enrollQuick({ password, credentials, prfOutput }) {
+      if (prfOutput.length !== 32) throw new RangeError('a PRF output is 32 bytes');
+      const wipe: Wipeable[] = [password];
+      try {
+        const lvk = await lvkFromPassword(password, credentials, wipe);
+        if (lvk === undefined) return 'wrong_password';
+        const material = await openWithLvk(lvk, credentials).catch((e: unknown) => (isBenign(e) ? undefined : Promise.reject(e)));
+        if (material === undefined) return 'wrong_password';
+        for (const secret of [material.sessionKey, material.deviceSigningKey, material.secretKey]) secret.wipe();
+
+        const duk = SecretBuf.take(Uint8Array.from(rng.bytes(32)));
+        wipe.push(duk);
+        const kek = await quickKek(prfOutput, credentials.deviceId);
+        wipe.push(kek);
+        const sealUnder = async (key: SecretBuf, plaintext: Uint8Array, role: 'duk' | 'lvk') => {
+          const nonce = Uint8Array.from(rng.bytes(12));
+          return Uint8Array.from([...nonce, ...(await aead.seal(key, nonce, plaintext, quickAad(credentials.deviceId, role)))]);
+        };
+        const wrappedDuk = await sealUnder(kek, duk.use((b) => b), 'duk');
+        const wrappedLvk = await sealUnder(duk, lvk.use((b) => b), 'lvk');
+        return encode({ v: 1, wrapped_duk: wrappedDuk, wrapped_lvk: wrappedLvk });
+      } finally {
+        wipe.forEach((s) => s.wipe());
+      }
+    },
+
+    /** Opens the session secrets from the PRF output alone. Any mismatch is just `failed`. */
+    async unlockQuick({ blob, prfOutput, credentials }): Promise<UnlockedMaterial | 'failed'> {
+      const wipe: Wipeable[] = [];
+      try {
+        if (prfOutput.length !== 32) return 'failed';
+        const record = decode(blob);
+        if (!(record instanceof Map) || record.get('v') !== 1n) return 'failed';
+        const [wrappedDuk, wrappedLvk] = [record.get('wrapped_duk'), record.get('wrapped_lvk')];
+        if (!(wrappedDuk instanceof Uint8Array) || !(wrappedLvk instanceof Uint8Array) || wrappedDuk.length < 28 || wrappedLvk.length < 28) return 'failed';
+        const kek = await quickKek(prfOutput, credentials.deviceId);
+        wipe.push(kek);
+        const duk = SecretBuf.take(await aead.open(kek, wrappedDuk.slice(0, 12), wrappedDuk.slice(12), quickAad(credentials.deviceId, 'duk')));
+        wipe.push(duk);
+        const lvk = SecretBuf.take(await aead.open(duk, wrappedLvk.slice(0, 12), wrappedLvk.slice(12), quickAad(credentials.deviceId, 'lvk')));
+        wipe.push(lvk);
+        return await openWithLvk(lvk, credentials);
+      } catch (e) {
+        if (isBenign(e)) return 'failed';
         throw e;
       } finally {
         wipe.forEach((s) => s.wipe());

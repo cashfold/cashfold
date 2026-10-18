@@ -87,7 +87,10 @@ export function createQuickUnlock(deps: QuickUnlockDeps) {
           return ok({ accountId: stored.accountId, email: stored.email, server: stored.server, services });
         } catch (e) {
           await sessionPort.stop().catch(() => undefined);
-          for (const secret of [material.sessionKey, material.deviceSigningKey, material.secretKey]) (session.release(secret), secret.wipe());
+          for (const secret of [material.sessionKey, material.deviceSigningKey, material.secretKey]) {
+            session.release(secret);
+            secret.wipe();
+          }
           throw e;
         }
       } finally {
