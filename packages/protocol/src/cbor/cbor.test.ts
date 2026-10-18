@@ -120,7 +120,11 @@ const cborValue: fc.Arbitrary<CborValue> = fc.letrec<{ v: CborValue; key: bigint
 
 describe('properties', () => {
   it('decode(encode(v)) equals v', () => {
-    fc.assert(fc.property(cborValue, (v) => expect(decode(encode(v))).toEqual(v)));
+    fc.assert(
+      fc.property(cborValue, (v) => {
+        expect(decode(encode(v))).toEqual(v);
+      }),
+    );
   });
 
   it('encoding is canonical: encode(decode(bytes)) reproduces accepted bytes exactly', () => {
