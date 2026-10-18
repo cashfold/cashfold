@@ -8,6 +8,9 @@ import { migrate, MigrationError } from './migrate';
 import type { Migration } from './migrations/generated';
 import { loadRuntime, type SqliteRuntime } from './runtime';
 import { createSqliteOpLog, createSqliteProjections } from './sqlite-stores';
+import { createAccount, createSession, unlock, type CredentialStorePort, type DeviceCredentials, type RegistrationResult } from '@cashfold/core';
+import { createAccountCrypto } from '../account-crypto';
+import { createWebSession } from './web-session';
 
 const key = (fill: number) => SecretBuf.from(new Uint8Array(32).fill(fill));
 const latin1 = (b: Uint8Array) => new TextDecoder('latin1').decode(b);
@@ -68,7 +71,70 @@ async function rawEdit(rt: SqliteRuntime, dir: string, file: string, edit: (sah:
   }
 }
 
+const rng = { bytes: (n: number) => crypto.getRandomValues(new Uint8Array(n)) };
+const pwBuf = (text: string) => SecretBuf.from(new TextEncoder().encode(text));
+
 export const scenarios = {
+  /** The whole of user story 1 against the real encrypted database: sign up, lock, unlock. */
+  async signUpAndUnlock(ctx: ScenarioContext) {
+    const rt = await runtimeFor(ctx);
+    const PASSWORD = 'correct horse battery staple';
+    const accountCrypto = createAccountCrypto({ rng, kdf: { kdf: 'argon2id', mKib: 32768, t: 2, p: 1 } });
+    let stored: DeviceCredentials | undefined;
+    const credentials: CredentialStorePort = { save: async (c) => void (stored = c), load: async () => stored, clear: async () => void (stored = undefined) };
+    const offline: RegistrationResult = { ok: false, reason: 'offline' };
+
+    // --- sign up (offline) ---
+    const s1 = createSession({ closeDatabase: async () => void webSession1.stop(), terminateWorker: () => undefined, nowMs: Date.now });
+    const webSession1 = createWebSession({ runtime: rt, rng, isUnlocked: () => s1.state() === 'unlocked' });
+    const created = await createAccount({ crypto: accountCrypto, registration: { register: async () => offline }, credentials, sessionPort: webSession1, session: s1, random: rng })({
+      email: 'Alice@Example.com', password: pwBuf(PASSWORD), server: 'https://relay.example.com', discoverable: true,
+    });
+    if (!created.ok) throw new Error(`sign-up failed: ${created.error.code}`);
+    const open = webSession1.current()!;
+    const folds = await open.directory.list();
+    const settings = await open.projections.getRecord(folds[0]!.id, (await import('@cashfold/core')).settingsRecordId(folds[0]!.id));
+    const opCount = open.db.value('SELECT count(*) FROM op_log');
+    const keyRows = open.db.value('SELECT count(*) FROM fold_key');
+    const wrappedKey = open.db.value('SELECT fk_wrapped FROM fold_key') as Uint8Array;
+
+    // what is on disk in OPFS (everything the database holds is encrypted)
+    const marker = 'Personal';
+    const leaks: string[] = [];
+    for (const name of rt.pool.getFileNames()) {
+      const text = latin1(await rt.pool.exportFile(name));
+      if (text.includes(marker) || text.includes('SQLite format 3') || text.includes('alice@example.com')) leaks.push(name);
+    }
+    const afterSignUp = {
+      secretKeyText: created.value.secretKeyText, registration: created.value.registration, accountState: created.value.account.state,
+      fold: created.value.fold, folds: folds.map((f) => f.name), settingsName: settings?.fields.get(1)?.value, opCount, keyRows, wrappedKeyLength: wrappedKey.length, leaks,
+      storedRegistration: stored?.registration, storedEmail: stored?.email,
+    };
+
+    // --- lock ---
+    await s1.lock();
+    const afterLock = { state: s1.state(), covered: s1.covered(), sessionOpen: webSession1.current() !== undefined };
+
+    // --- unlock in a fresh session, as after a restart ---
+    const s2 = createSession({ closeDatabase: async () => void webSession2.stop(), terminateWorker: () => undefined, nowMs: Date.now });
+    const webSession2 = createWebSession({ runtime: rt, rng, isUnlocked: () => s2.state() === 'unlocked' });
+    const attempt = unlock({ unlockCrypto: accountCrypto, credentials, sessionPort: webSession2, session: s2 });
+    const wrong = await attempt({ password: pwBuf('this is not the password') });
+    const good = await attempt({ password: pwBuf(`  ${PASSWORD}\n`) }); // stray whitespace must not matter
+    const reopenedFolds = good.ok ? (await good.value.services.directory.list()).map((f) => f.name) : [];
+    const reopened = webSession2.current();
+    const reopenedSettings = good.ok && reopened ? (await reopened.projections.getRecord(folds[0]!.id, (await import('@cashfold/core')).settingsRecordId(folds[0]!.id)))?.fields.get(1)?.value : undefined;
+    // the write path still works after a restart: a new op continues the device's sequence
+    const more = reopened ? await reopened.writePath.rebuild(folds[0]!.id) : undefined;
+    await s2.lock();
+    return {
+      afterSignUp, afterLock,
+      wrongPassword: wrong.ok ? 'unlocked' : wrong.error.code,
+      unlocked: good.ok, accountId: good.ok ? good.value.accountId : undefined, reopenedFolds, reopenedSettings,
+      rebuild: more && more.ok ? more.value : undefined, lockedAgain: s2.state(),
+    };
+  },
+
   /** Runs one case of the shared OpLogStore/ProjectionStore contract against the SQLite stores. */
   async contractCase(ctx: ScenarioContext) {
     const c = storeContract[ctx.arg ?? -1];
