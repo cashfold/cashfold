@@ -27,6 +27,7 @@ export function createMemoryStores(): MemoryStores {
     },
     async append(op) {
       if (ops.some((o) => key(o.sealed.fold, o.sealed.op) === key(op.sealed.fold, op.sealed.op))) return 'duplicate';
+      if (ops.some((o) => o.sealed.fold === op.sealed.fold && o.sealed.dev === op.sealed.dev && o.sealed.seq === op.sealed.seq)) return 'seq_conflict';
       ops = [...ops, op];
       return 'inserted';
     },

@@ -139,6 +139,22 @@ describe('applyRemote (same pipeline for ops from other devices)', () => {
     expect(await b.writePath.applyRemote(stored!.sealed)).toMatchObject({ ok: true, value: { kind: 'applied' } });
   });
 
+  it('quarantines a second, different op that reuses a device sequence number (equivocation)', async () => {
+    const { a, b } = await pair();
+    await a.writePath.submit(draft({ fields: fields([1, 'honest']) }));
+    const [stored] = await a.oplog.list(FOLD);
+    expect(await b.writePath.applyRemote(stored!.sealed)).toMatchObject({ ok: true, value: { kind: 'applied' } });
+    // A clone of the device (restored backup, copied profile, or an attacker holding its key) signs a different op under the same (device, seq).
+    const clone = await a.fork();
+    await clone.writePath.submit(draft({ fields: fields([1, 'conflicting']) }));
+    const second = (await clone.oplog.list(FOLD))[0]!;
+    expect(second.sealed.op).not.toBe(stored!.sealed.op);
+    expect(second.sealed.seq).toBe(stored!.sealed.seq);
+    expect(await b.writePath.applyRemote(second.sealed)).toMatchObject({ ok: true, value: { kind: 'quarantined', reason: 'seq_conflict' } });
+    expect((await records(b)).get(REC)?.fields.get(1)?.value).toBe('honest');
+    expect(await b.oplog.list(FOLD)).toHaveLength(1);
+  });
+
   it('quarantines ops from unknown devices and ops for epochs it has no key for', async () => {
     const { world, a, b } = await pair();
     await a.writePath.submit(draft());

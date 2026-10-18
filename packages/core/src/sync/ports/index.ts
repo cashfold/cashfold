@@ -49,7 +49,7 @@ export interface StoredOp {
   readonly pushed: boolean;
 }
 
-export type QuarantineReason = SealFailureKind | 'clock_ahead' | 'invalid_op' | 'schema_unsupported';
+export type QuarantineReason = SealFailureKind | 'clock_ahead' | 'invalid_op' | 'schema_unsupported' | 'seq_conflict';
 
 export interface QuarantinedOp {
   readonly sealed: SealedOp;
@@ -60,8 +60,11 @@ export interface QuarantinedOp {
 /** Append-only log of sealed ops: the source of truth the projections are rebuilt from. */
 export interface OpLogStore {
   has(fold: Id, op: Id): Promise<boolean>;
-  /** `duplicate` leaves the log unchanged (idempotent on `(fold, op)`). */
-  append(op: StoredOp): Promise<'inserted' | 'duplicate'>;
+  /**
+   * `duplicate` leaves the log unchanged (idempotent on `(fold, op)`). `seq_conflict` means a *different* op already
+   * uses this `(fold, dev, seq)`: the device equivocated, and the new op must not be stored or applied.
+   */
+  append(op: StoredOp): Promise<'inserted' | 'duplicate' | 'seq_conflict'>;
   /** Highest `seq` this device has used in the Fold, or 0n. */
   lastSeq(fold: Id, dev: Id): Promise<bigint>;
   maxHlc(fold: Id): Promise<Hlc | undefined>;

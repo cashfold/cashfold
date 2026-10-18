@@ -22,7 +22,7 @@ export interface World {
   /** @internal */ readonly internals: {
     foldKey(fold: Id, epoch: number): SecretBuf | undefined;
     currentEpoch(fold: Id): number | undefined;
-    registerDevice(dev: Id): Promise<SecretBuf>;
+    registerDevice(dev: Id, existing?: SecretBuf): Promise<SecretBuf>;
     publicKey(dev: Id): Uint8Array | undefined;
   };
 }
@@ -52,7 +52,8 @@ export async function createWorld(): Promise<World> {
     internals: {
       foldKey: (fold, epoch) => foldKeys.get(`${fold}:${epoch}`),
       currentEpoch: (fold) => epochs.get(fold),
-      async registerDevice(dev) {
+      async registerDevice(dev, existing) {
+        if (existing !== undefined) return existing;
         const pair = await signer.generate(osRng);
         devices.set(dev, pair);
         return pair.secretKey;
@@ -69,13 +70,15 @@ export interface Replica {
   readonly projections: ProjectionStore;
   readonly writePath: WritePath;
   setNow(ms: number): void;
+  /** A second replica with the same device identity and signing key but an empty log: a restored backup or a clone. */
+  fork(): Promise<Replica>;
   failNextProjectionWrite(): void;
   corruptStoredOp(index: number): void;
 }
 
-export async function createReplica(world: World, opts: { device: Id; groups?: GroupRegistry; nowMs?: number }): Promise<Replica> {
+export async function createReplica(world: World, opts: { device: Id; groups?: GroupRegistry; nowMs?: number; signingKey?: SecretBuf }): Promise<Replica> {
   const { internals } = world;
-  const deviceKey = await internals.registerDevice(opts.device);
+  const deviceKey = await internals.registerDevice(opts.device, opts.signingKey);
   const stores = createMemoryStores();
   let now = opts.nowMs ?? 1_700_000_000_000;
 
@@ -108,6 +111,7 @@ export async function createReplica(world: World, opts: { device: Id; groups?: G
     setNow: (ms) => {
       now = ms;
     },
+    fork: () => createReplica(world, { ...opts, nowMs: now, signingKey: deviceKey }),
     failNextProjectionWrite: stores.failNextProjectionWrite,
     corruptStoredOp: stores.corruptStoredOp,
   };

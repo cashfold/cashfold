@@ -127,7 +127,7 @@ export function createWritePath(deps: WritePathDeps): WritePath {
             if (!valid.ok) return valid;
 
             const sealed = await sealer.seal(wire);
-            await oplog.append({ sealed, origin: 'local', pushed: false });
+            if ((await oplog.append({ sealed, origin: 'local', pushed: false })) !== 'inserted') throw new Error('local op was not inserted: sequence bookkeeping is corrupt');
             const { before, after } = await project(op, draft.fold);
             applied.push({ op, sealed, before, after });
             next.set(draft.fold, stamped.value);
@@ -172,7 +172,9 @@ export function createWritePath(deps: WritePathDeps): WritePath {
           const op = toMergeOp(wire);
           if (!validateOp(op, groups).ok) return quarantine('invalid_op');
 
-          await oplog.append({ sealed, origin: 'remote', pushed: true });
+          const stored = await oplog.append({ sealed, origin: 'remote', pushed: true });
+          if (stored === 'duplicate') return { result: { kind: 'duplicate' } };
+          if (stored === 'seq_conflict') return quarantine('seq_conflict');
           const { before, after } = await project(op, sealed.fold);
           return { result: { kind: 'applied', op, sealed, before, after }, hlc: merged.value };
         });
