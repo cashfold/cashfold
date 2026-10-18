@@ -135,4 +135,35 @@ describe('OpSealer', () => {
     const { sealer } = await setup();
     await expect(sealer.seal({ ...op, rec: 'not-a-uuid' })).rejects.toThrow(RangeError);
   });
+
+  describe('validly signed and encrypted, but the payload is wrong', () => {
+    async function forge(plaintext: Uint8Array, table: number) {
+      const { keys, device } = await setup();
+      const { createRecordCrypto } = await import('../record/record-crypto');
+      const { opSigningBytes } = await import('@cashfold/protocol');
+      const fk = (await keys.foldKey(FOLD, 1))!;
+      const blob = await createRecordCrypto({ aead: createAesGcm(), hkdf: createHkdf(), rng: osRng }).seal(
+        fk, { foldId: Uint8Array.from(Buffer.from(FOLD.replaceAll('-', ''), 'hex')), recordId: Uint8Array.from(Buffer.from(op.rec.replaceAll('-', ''), 'hex')), table, epoch: 1, schema: 1 }, plaintext);
+      const unsigned: SealedOp = { fold: FOLD, op: op.op, rec: op.rec, dev: DEV, seq: 1n, hlc: { wallMs: 1, ctr: 0 }, epoch: 1, schema: 1, blob, sig: new Uint8Array(64) };
+      const sig = await signer.sign(device.secretKey, opSigningBytes(sealedToEnvelope(unsigned)));
+      return { sealer: createOpSealer({ aead: createAesGcm(), hkdf: createHkdf(), signer, rng: osRng, keys }), sealed: { ...unsigned, sig } };
+    }
+
+    it('rejects a payload that is not a valid op payload', async () => {
+      const { sealer, sealed } = await forge(Uint8Array.of(0xff, 0x00), 6);
+      await expect(sealer.open(sealed)).rejects.toMatchObject({ kind: 'malformed' });
+    });
+
+    it('rejects a payload whose table code disagrees with the one it authenticated under', async () => {
+      const { encodeOpPayload } = await import('@cashfold/protocol');
+      const { sealer, sealed } = await forge(encodeOpPayload({ t: 7 }), 6);
+      await expect(sealer.open(sealed)).rejects.toMatchObject({ kind: 'malformed' });
+    });
+
+    it('does not swallow unexpected errors from the key store', async () => {
+      const { keys } = await setup();
+      const sealer = createOpSealer({ aead: createAesGcm(), hkdf: createHkdf(), signer, rng: osRng, keys: { ...keys, foldKey: async () => { throw new Error('keystore offline'); } } });
+      await expect(sealer.seal(op)).rejects.toThrow('keystore offline');
+    });
+  });
 });
