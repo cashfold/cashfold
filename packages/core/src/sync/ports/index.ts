@@ -49,7 +49,7 @@ export interface StoredOp {
   readonly pushed: boolean;
 }
 
-export type QuarantineReason = SealFailureKind | 'clock_ahead' | 'invalid_op' | 'schema_unsupported' | 'seq_conflict';
+export type QuarantineReason = SealFailureKind | 'clock_ahead' | 'invalid_op' | 'schema_unsupported' | 'seq_conflict' | 'purged_record';
 
 export interface QuarantinedOp {
   readonly sealed: SealedOp;
@@ -75,6 +75,12 @@ export interface OpLogStore {
   markPushed(fold: Id, ops: readonly Id[]): Promise<void>;
   quarantine(entry: QuarantinedOp): Promise<void>;
   listQuarantined(fold: Id): Promise<readonly QuarantinedOp[]>;
+  /**
+   * Erases the payload of every op about a record that has been purged (FR-052). The header stays: it keeps the
+   * `(fold, op)` identity, so a re-delivered op is still a duplicate, and the device sequence number stays reserved.
+   * Returns how many ops were scrubbed.
+   */
+  scrub(fold: Id, rec: Id): Promise<number>;
 }
 
 /**
@@ -86,8 +92,11 @@ export interface ProjectionStore {
   getRecord(fold: Id, rec: Id): Promise<RecordState | undefined>;
   putRecord(fold: Id, rec: Id, state: RecordState): Promise<void>;
   listRecords(fold: Id): Promise<ReadonlyMap<Id, RecordState>>;
-  /** Drops every projected row for the Fold (used by rebuild). */
+  /** Drops every projected row for the Fold (used by rebuild). Purge markers survive it. */
   clear(fold: Id): Promise<void>;
+  /** Removes the record from every projection and remembers that it was purged, so late ops for it can be refused. */
+  purgeRecord(fold: Id, rec: Id, atMs: number): Promise<void>;
+  isPurged(fold: Id, rec: Id): Promise<boolean>;
 }
 
 export interface ClockPort {

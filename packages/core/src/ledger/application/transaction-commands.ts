@@ -1,6 +1,6 @@
 import type { Id } from '../../shared-kernel/id';
 import { err, ok, type DomainError, type Result } from '../../shared-kernel/result';
-import { money } from '../../shared-kernel/money';
+import type { Money } from '../../shared-kernel/money';
 import { parseCurrency } from '../../shared-kernel/currency';
 import { SETTINGS_TABLE, FOLD_SETTINGS_FIELDS, settingsRecordId } from '../../sharing/domain/fold';
 import type { CommandContext, CommandDef } from '../../sync/application/buses';
@@ -105,13 +105,12 @@ async function checkReferences(
 /** The base-currency equivalent for an amount, or the reason there is none. */
 export async function snapshotFor(ctx: Reading, fold: Id, account: Account, amountMinor: bigint, occurredUtcMs: number) {
   const base = await baseCurrencyOf(ctx, fold);
-  const amount = money(amountMinor, account.currency);
-  if (!amount.ok) return amount;
+  const amount: Money = { minor: amountMinor, currency: account.currency }; // already range-checked by the entry rules
   if (base === undefined || !base.ok || base.value === account.currency) {
     return ok({ baseAmountMinor: amountMinor, baseCurrency: account.currency, fxRateId: null, fxBaseRateId: null });
   }
   const ledger = await loadLedger(ctx, fold);
-  return snapshotBase({ amount: amount.value, baseCurrency: base.value, rates: ledger.rates, asOfUtcS: secondsOf(occurredUtcMs) });
+  return snapshotBase({ amount, baseCurrency: base.value, rates: ledger.rates, asOfUtcS: secondsOf(occurredUtcMs) });
 }
 
 export function createTransactionCommands({ clock }: { clock: ClockPort }) {
@@ -147,9 +146,7 @@ export function createTransactionCommands({ clock }: { clock: ClockPort }) {
       const sets = entry.value.tagIds.length === 0 ? noSets : new Map<number, SetDelta>([[TXN_FIELD.tagIds, addMembers(entry.value.tagIds)]]);
       const written = await ctx.submit([{ fold: c.fold, rec: c.id, table: TABLE.transaction, fields, sets }]);
       if (!written.ok) return written as never;
-      const saved = decodeTransaction(c.id, written.value[0]!.after);
-      if (saved === undefined) throw new Error('a transaction that was just written must decode');
-      return ok(saved);
+      return ok(decodeTransaction(c.id, written.value[0]!.after)!);
     },
   };
 
@@ -229,8 +226,7 @@ export function createTransactionCommands({ clock }: { clock: ClockPort }) {
       if (patch.size > 0 || sets.size > 0) {
         const written = await ctx.submit([{ fold: c.fold, rec: c.id, table: TABLE.transaction, fields: patch, sets }]);
         if (!written.ok) return written as never;
-        const saved = decodeTransaction(c.id, written.value[0]!.after);
-        if (saved !== undefined) return ok(saved);
+        return ok(decodeTransaction(c.id, written.value[0]!.after)!);
       }
       return ok(current);
     },

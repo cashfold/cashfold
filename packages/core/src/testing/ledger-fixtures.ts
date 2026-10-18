@@ -1,12 +1,13 @@
 import type { Id } from '../shared-kernel/id';
 import type { LocalDate } from '../shared-kernel/local-date';
 import { localDate } from '../shared-kernel/local-date';
-import { accountFieldPatch, type NewAccount } from '../ledger/domain/account';
+import { accountFieldPatch, type AccountFields } from '../ledger/domain/account';
 import { categoryFieldPatch, type NewCategory } from '../ledger/domain/category';
 import { exchangeRateFieldPatch, type NewExchangeRate } from '../ledger/domain/exchange-rate';
 import { TABLE, TXN_FIELD } from '../ledger/domain/tables';
 import { transactionFieldPatch, type TransactionFields } from '../ledger/domain/transaction';
 import { DELETED_FIELD, applyOp, emptyFold, type FieldValue, type FoldState, type Op, type SetDelta } from '../sync/domain/merge';
+import { foldSettingsPatch, settingsRecordId } from '../sharing/domain/fold';
 import { id } from './world';
 
 // Builds merged fold state directly from ops, without sealing or storage: for fast domain and property tests.
@@ -25,6 +26,12 @@ export class LedgerFixture {
   private clock = 1;
   private next = 1000;
 
+  /** Every Fold has a settings record carrying its base currency. */
+  constructor(baseCurrency = 'USD') {
+    const settings = foldSettingsPatch({ name: 'Home', baseCurrency });
+    this.apply(settingsRecordId(id(0xf0)), settings.table, settings.fields);
+  }
+
   nextId(): Id {
     return id(++this.next);
   }
@@ -39,9 +46,9 @@ export class LedgerFixture {
     return op;
   }
 
-  account(over: Partial<NewAccount> = {}, rec: Id = this.nextId()): Id {
-    const full: NewAccount = {
-      kind: 'checking', name: 'Main', currency: 'USD' as NewAccount['currency'], openingBalanceMinor: 0n, openingDate: date(2020, 1, 1),
+  account(over: Partial<AccountFields> = {}, rec: Id = this.nextId()): Id {
+    const full: AccountFields = {
+      kind: 'checking', name: 'Main', currency: 'USD' as AccountFields['currency'], openingBalanceMinor: 0n, openingDate: date(2020, 1, 1),
       includeInNetWorth: true, creditLimitMinor: null, icon: null, color: 0, sortOrder: 0, archived: false, ...over,
     };
     this.apply(rec, TABLE.account, accountFieldPatch(full));

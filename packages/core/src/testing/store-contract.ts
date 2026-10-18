@@ -184,6 +184,66 @@ export const storeContract: readonly ContractCase[] = [
     expected: { a: 0, b: plain({ table: 3, tableConflict: false, fields: new Map([[1, entry(21, 'in B')]]), sets: new Map() }) },
   },
   {
+    name: 'scrub erases the payload of one record\'s ops but keeps their identity, order and sequence numbers',
+    async run({ oplog, prepareFold }) {
+      await prepareFold(FOLD_A);
+      const [a, b, c] = [sealed(1, { rec: id(0x100) }), sealed(2, { rec: id(0x200) }), sealed(3, { rec: id(0x100) })];
+      for (const o of [a, b, c]) await oplog.append(local(o));
+      const count = await oplog.scrub(FOLD_A, id(0x100));
+      const listed = await oplog.list(FOLD_A);
+      return {
+        count, again: await oplog.scrub(FOLD_A, id(0x100)),
+        blobLengths: listed.map((s) => s.sealed.blob.length), ops: listed.map((s) => s.sealed.op),
+        seq: await oplog.lastSeq(FOLD_A, DEV_1), has: await oplog.has(FOLD_A, a.op), dup: await oplog.append(remote(a)),
+        sig: listed.map((s) => s.sealed.sig.length),
+      };
+    },
+    expected: { count: 2, again: 2, blobLengths: [0, 300, 0], ops: [id(0x1001), id(0x1002), id(0x1003)], seq: 3n, has: true, dup: 'duplicate', sig: [64, 64, 64] },
+  },
+  {
+    name: 'purgeRecord removes the record and remembers it; the marker survives clear() and stays inside its Fold',
+    async run({ projections, prepareFold }) {
+      await prepareFold(FOLD_A);
+      await prepareFold(FOLD_B);
+      await projections.putRecord(FOLD_A, id(0x100), richRecord());
+      await projections.putRecord(FOLD_A, id(0x101), richRecord());
+      await projections.putRecord(FOLD_B, id(0x100), richRecord());
+      const before = { purged: await projections.isPurged(FOLD_A, id(0x100)) };
+      await projections.purgeRecord(FOLD_A, id(0x100), 123);
+      await projections.purgeRecord(FOLD_A, id(0x100), 456); // idempotent
+      const after = {
+        gone: await projections.getRecord(FOLD_A, id(0x100)), kept: (await projections.getRecord(FOLD_A, id(0x101))) !== undefined,
+        otherFold: (await projections.getRecord(FOLD_B, id(0x100))) !== undefined,
+        purged: await projections.isPurged(FOLD_A, id(0x100)), otherRecord: await projections.isPurged(FOLD_A, id(0x101)), otherFoldPurged: await projections.isPurged(FOLD_B, id(0x100)),
+      };
+      await projections.clear(FOLD_A);
+      return { before, after, afterClear: await projections.isPurged(FOLD_A, id(0x100)) };
+    },
+    expected: {
+      before: { purged: false },
+      after: { gone: undefined, kept: true, otherFold: true, purged: true, otherRecord: false, otherFoldPurged: false },
+      afterClear: true,
+    },
+  },
+  {
+    name: 'purgeRecord also removes the record\'s sets, and a rolled-back transaction leaves no purge marker',
+    async run({ projections, prepareFold }) {
+      await prepareFold(FOLD_A);
+      await projections.putRecord(FOLD_A, id(0x100), richRecord());
+      await projections.putRecord(FOLD_A, id(0x100), richRecord()); // rewrite keeps one copy of the sets
+      await projections
+        .transaction(async () => {
+          await projections.purgeRecord(FOLD_A, id(0x100), 1);
+          throw new Error('rollback');
+        })
+        .catch(() => undefined);
+      const rolledBack = { purged: await projections.isPurged(FOLD_A, id(0x100)), present: (await projections.getRecord(FOLD_A, id(0x100))) !== undefined };
+      await projections.transaction(() => projections.purgeRecord(FOLD_A, id(0x100), 1));
+      return { rolledBack, committed: { purged: await projections.isPurged(FOLD_A, id(0x100)), present: (await projections.getRecord(FOLD_A, id(0x100))) !== undefined, list: (await projections.listRecords(FOLD_A)).size } };
+    },
+    expected: { rolledBack: { purged: false, present: true }, committed: { purged: true, present: false, list: 0 } },
+  },
+  {
     name: 'transaction: a thrown error undoes op-log appends and projection writes together; success keeps both',
     async run({ oplog, projections, prepareFold }) {
       await prepareFold(FOLD_A);

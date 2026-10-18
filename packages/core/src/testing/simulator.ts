@@ -9,6 +9,8 @@ import { createReplica, createWorld, id, type Replica, type World } from './worl
 export interface ClusterOptions {
   readonly replicas: number;
   readonly fold?: Id;
+  /** Field groups every replica enforces (the ledger's amount group, for example). */
+  readonly groups?: import('../sync/domain/merge').GroupRegistry;
 }
 
 export interface Cluster {
@@ -26,12 +28,12 @@ export interface Cluster {
   states(): Promise<FoldState[]>;
 }
 
-export async function createCluster({ replicas, fold = id(0xf0) }: ClusterOptions): Promise<Cluster> {
+export async function createCluster({ replicas, fold = id(0xf0), groups }: ClusterOptions): Promise<Cluster> {
   const world = await createWorld();
   world.addFold(fold);
   const relay = new MemoryRelay();
   const nodes: Replica[] = [];
-  for (let i = 0; i < replicas; i++) nodes.push(await createReplica(world, { device: id(0xd0 + i), nowMs: 1_700_000_000_000 + i * 7 }));
+  for (let i = 0; i < replicas; i++) nodes.push(await createReplica(world, { device: id(0xd0 + i), nowMs: 1_700_000_000_000 + i * 7, ...(groups !== undefined && { groups }) }));
   const cursors = nodes.map(() => 0n);
   const offline = nodes.map(() => false);
 

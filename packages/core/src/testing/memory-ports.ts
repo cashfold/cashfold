@@ -19,6 +19,7 @@ export function createMemoryStores(): MemoryStores {
   let ops: StoredOp[] = [];
   let quarantined: QuarantinedOp[] = [];
   let records = new Map<Id, Map<Id, RecordState>>();
+  let purged = new Set<string>();
   let failNext = false;
 
   const oplog: OpLogStore = {
@@ -56,15 +57,24 @@ export function createMemoryStores(): MemoryStores {
     async listQuarantined(fold) {
       return quarantined.filter((q) => q.sealed.fold === fold);
     },
+    async scrub(fold, rec) {
+      let count = 0;
+      ops = ops.map((o) => {
+        if (o.sealed.fold !== fold || o.sealed.rec !== rec) return o;
+        count++;
+        return { ...o, sealed: { ...o.sealed, blob: new Uint8Array(0) } };
+      });
+      return count;
+    },
   };
 
   const projections: ProjectionStore = {
     async transaction(fn) {
-      const saved = { ops, quarantined, records: new Map([...records].map(([f, m]) => [f, new Map(m)])) };
+      const saved = { ops, quarantined, purged: new Set(purged), records: new Map([...records].map(([f, m]) => [f, new Map(m)])) };
       try {
         return await fn();
       } catch (e) {
-        ({ ops, quarantined, records } = saved);
+        ({ ops, quarantined, records, purged } = saved);
         throw e;
       }
     },
@@ -85,6 +95,13 @@ export function createMemoryStores(): MemoryStores {
     },
     async clear(fold) {
       records.delete(fold);
+    },
+    async purgeRecord(fold, rec) {
+      records.get(fold)?.delete(rec);
+      purged.add(key(fold, rec));
+    },
+    async isPurged(fold, rec) {
+      return purged.has(key(fold, rec));
     },
   };
 

@@ -132,3 +132,25 @@ describe('Transaction: record fields', () => {
     expect(p.get(TXN_FIELD.status)).toBe(2n);
   });
 });
+
+describe('Transaction: remaining rules', () => {
+  it('rejects an unknown currency, an unknown direction and an unknown status', () => {
+    expect(validateTransactionEntry(entry({ currency: 'ZZZ' }), account())).toMatchObject({ ok: false, error: { code: 'unknown_currency' } });
+    expect(validateTransactionEntry(entry({ direction: 'transfer' as never }), account())).toMatchObject({ ok: false, error: { code: 'invalid_amount_sign' } });
+    expect(validateTransactionEntry(entry({ status: 'lost' as never }), account())).toMatchObject({ ok: false, error: { code: 'invalid_status' } });
+  });
+
+  it('writes an origin and clears it', () => {
+    const set = transactionFieldPatch({ origin: { scheduleId: id(5), n: 3 } });
+    expect(set.get(TXN_FIELD.originScheduleId)).toBe(id(5));
+    expect(set.get(TXN_FIELD.originN)).toBe(3n);
+    const cleared = transactionFieldPatch({ origin: null });
+    expect(cleared.get(TXN_FIELD.originScheduleId)).toBeNull();
+    expect(cleared.get(TXN_FIELD.originN)).toBeNull();
+  });
+
+  it('writes a place and clears it', () => {
+    expect(transactionFieldPatch({ place: null }).get(TXN_FIELD.latE7)).toBeNull();
+    expect(transactionFieldPatch({ place: { name: 'x', latE7: 1, lonE7: 2 } }).get(TXN_FIELD.lonE7)).toBe(2n);
+  });
+});

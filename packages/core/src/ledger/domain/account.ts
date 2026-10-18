@@ -19,7 +19,7 @@ export function kindOfCode(code: unknown): AccountKind | undefined {
 
 const HAS_CREDIT_LIMIT: ReadonlySet<AccountKind> = new Set(['credit_card', 'loan']);
 
-export interface NewAccount {
+export interface AccountFields {
   readonly kind: AccountKind;
   readonly name: string;
   readonly currency: CurrencyCode;
@@ -33,7 +33,7 @@ export interface NewAccount {
   readonly archived: boolean;
 }
 
-export interface Account extends NewAccount {
+export interface Account extends AccountFields {
   readonly id: Id;
   /** Groups the account belongs to (an add-wins set on the record). */
   readonly groupIds: readonly Id[];
@@ -65,7 +65,7 @@ export function cleanName(text: string, max: number): string | undefined {
 
 const inRange = (v: bigint): boolean => v >= MIN_MINOR && v <= MAX_MINOR;
 
-function validate(input: NewAccountInput & { archived?: boolean }): Result<NewAccount, AccountError> {
+function validate(input: NewAccountInput & { archived?: boolean }): Result<AccountFields, AccountError> {
   if (!ACCOUNT_KINDS.includes(input.kind)) return err('invalid_kind', 'Unknown account kind');
   const name = cleanName(input.name, MAX_ACCOUNT_NAME);
   if (name === undefined) return err('invalid_account_name', `An account name has 1 to ${MAX_ACCOUNT_NAME} characters and no line breaks`);
@@ -84,12 +84,12 @@ function validate(input: NewAccountInput & { archived?: boolean }): Result<NewAc
   });
 }
 
-export const validateNewAccount = (input: NewAccountInput): Result<NewAccount, AccountError> => validate(input);
+export const validateNewAccount = (input: NewAccountInput): Result<AccountFields, AccountError> => validate(input);
 
 export type AccountChanges = Partial<Omit<NewAccountInput, 'currency'> & { currency: string; archived: boolean }>;
 
 /** Applies edits and re-checks every rule. The currency is locked once any entry (transaction or transfer leg) exists. */
-export function validateAccountUpdate(current: NewAccount, changes: AccountChanges, state: { hasEntries: boolean }): Result<NewAccount, AccountError> {
+export function validateAccountUpdate(current: AccountFields, changes: AccountChanges, state: { hasEntries: boolean }): Result<AccountFields, AccountError> {
   if (changes.currency !== undefined && changes.currency !== current.currency && state.hasEntries) {
     return err('currency_locked', 'The currency cannot change once the account has entries');
   }
@@ -109,7 +109,7 @@ export function checkEntryAllowed(account: Pick<Account, 'kind' | 'archived' | '
   return ok(true as const);
 }
 
-export function accountFieldPatch(changes: Partial<NewAccount>): Map<number, FieldValue> {
+export function accountFieldPatch(changes: Partial<AccountFields>): Map<number, FieldValue> {
   const f = new Map<number, FieldValue>();
   if (changes.kind !== undefined) f.set(ACCOUNT_FIELD.kind, kindCode(changes.kind));
   if (changes.name !== undefined) f.set(ACCOUNT_FIELD.name, changes.name);

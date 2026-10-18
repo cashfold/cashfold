@@ -73,3 +73,30 @@ export function categoryFieldPatch(changes: Partial<NewCategory> & { archived?: 
   if (changes.archived !== undefined) f.set(CATEGORY_FIELD.archived, changes.archived);
   return f;
 }
+
+export type TreeViolation = 'category_orphan' | 'category_direction_mismatch' | 'category_cycle' | 'category_depth';
+
+/**
+ * Categories whose parent link breaks a tree rule after a merge (ARCH 9.5). Concurrent moves on different devices
+ * can create a cycle, a third level, or a parent that was deleted, so this runs on merged state. A violating
+ * category is read as a top-level one, which every replica does identically.
+ */
+export function categoryTreeViolations(categories: ReadonlyMap<Id, CategoryNode>): ReadonlyMap<Id, TreeViolation> {
+  const out = new Map<Id, TreeViolation>();
+  const reachesItself = (start: CategoryNode): boolean => {
+    let at: CategoryNode | undefined = start;
+    for (let steps = 0; steps <= categories.size && at?.parentId != null; steps++) {
+      at = categories.get(at.parentId);
+      if (at?.id === start.id) return true;
+    }
+    return false;
+  };
+  for (const c of categories.values()) {
+    if (c.parentId === null) continue;
+    const parent = categories.get(c.parentId);
+    if (parent === undefined) out.set(c.id, 'category_orphan');
+    else if (parent.direction !== c.direction) out.set(c.id, 'category_direction_mismatch');
+    else if (parent.parentId !== null) out.set(c.id, reachesItself(c) ? 'category_cycle' : 'category_depth');
+  }
+  return out;
+}

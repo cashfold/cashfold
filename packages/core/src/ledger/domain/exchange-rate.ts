@@ -4,6 +4,7 @@ import { rate, type Rate } from '../../shared-kernel/rate';
 import { err, ok, type DomainError, type Result } from '../../shared-kernel/result';
 import type { FieldValue } from '../../sync/domain/merge';
 import { RATE_FIELD } from './tables';
+import { compareText } from './util';
 
 /** All rates are units of the quote currency per one USD (the pivot), scaled by 10^12 (FR-040, FR-042). */
 export const PIVOT_CURRENCY = 'USD';
@@ -68,7 +69,7 @@ export function resolveRates(all: readonly ExchangeRate[]): ResolvedRates {
       winners.set(key, r);
     } else duplicates.push(r);
   }
-  return { rates: [...winners.values()].sort((a, b) => a.asOfUtcS - b.asOfUtcS || (a.quote < b.quote ? -1 : 1)), duplicates };
+  return { rates: [...winners.values()].sort((a, b) => a.asOfUtcS - b.asOfUtcS || compareText(a.quote, b.quote)), duplicates };
 }
 
 export function exchangeRateFieldPatch(r: NewExchangeRate): Map<number, FieldValue> {

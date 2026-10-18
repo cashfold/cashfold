@@ -4,6 +4,7 @@ import type { LocalDate } from '../../../shared-kernel/local-date';
 import { labelKey } from '../../domain/label';
 import type { Transaction } from '../../domain/records';
 import type { TxnStatus } from '../../domain/transaction';
+import { compareText, signOf } from '../../domain/util';
 import type { Ledger } from '../projections/ledger';
 
 // Filter, search and sort over the local ledger. Nothing here leaves the device (FR-036).
@@ -63,15 +64,14 @@ function haystack(ledger: Ledger, t: Transaction): string {
 }
 
 function compare(sort: SearchSort): (a: Transaction, b: Transaction) => number {
-  const tie = (a: Transaction, b: Transaction): number => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
+  const tie = (a: Transaction, b: Transaction): number => compareText(a.id, b.id);
   const chrono = (a: Transaction, b: Transaction): number => a.localDate - b.localDate || a.occurredUtcMs - b.occurredUtcMs;
   const magnitude = (a: Transaction, b: Transaction): bigint => size(a.baseAmountMinor) - size(b.baseAmountMinor);
-  const sign = (n: bigint): number => (n < 0n ? -1 : n > 0n ? 1 : 0);
   switch (sort) {
     case 'date_asc': return (a, b) => chrono(a, b) || tie(a, b);
     case 'date_desc': return (a, b) => chrono(b, a) || tie(b, a);
-    case 'amount_asc': return (a, b) => sign(magnitude(a, b)) || chrono(a, b) || tie(a, b);
-    case 'amount_desc': return (a, b) => sign(magnitude(b, a)) || chrono(b, a) || tie(b, a);
+    case 'amount_asc': return (a, b) => signOf(magnitude(a, b)) || chrono(a, b) || tie(a, b);
+    case 'amount_desc': return (a, b) => signOf(magnitude(b, a)) || chrono(b, a) || tie(b, a);
   }
 }
 

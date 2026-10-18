@@ -5,6 +5,7 @@ import { FOLD_SETTINGS_FIELDS, SETTINGS_TABLE } from '../../../sharing/domain/fo
 import { isVisible, type FoldState } from '../../../sync/domain/merge';
 import type { RepairReport } from '../../../sync/application/repair';
 import type { Account } from '../../domain/account';
+import { categoryTreeViolations } from '../../domain/category';
 import { resolveRates, type ExchangeRate } from '../../domain/exchange-rate';
 import type { Label } from '../../domain/label';
 import {
@@ -13,6 +14,7 @@ import {
 } from '../../domain/records';
 import { TABLE } from '../../domain/tables';
 import type { TxnStatus } from '../../domain/transaction';
+import { compareText } from '../../domain/util';
 
 /** One signed movement on one account: the derived `ledger_entry` read model (data-model.md). */
 export interface LedgerEntry {
@@ -45,7 +47,7 @@ export interface Ledger {
   readonly entriesByAccount: ReadonlyMap<Id, readonly LedgerEntry[]>;
 }
 
-const byDateThenRef = (a: LedgerEntry, b: LedgerEntry): number => a.localDate - b.localDate || (a.refId < b.refId ? -1 : a.refId > b.refId ? 1 : 0);
+const byDateThenRef = (a: LedgerEntry, b: LedgerEntry): number => a.localDate - b.localDate || compareText(a.refId, b.refId);
 
 /**
  * Projects merged record state into typed ledger read models. A pure function of the records and the repair
@@ -111,6 +113,11 @@ export function buildLedger(records: FoldState, report?: Pick<RepairReport, 'hid
       default:
         break;
     }
+  }
+
+  // A category whose parent link breaks a tree rule is read as a top-level one (ARCH 9.5); repair reports it.
+  for (const rec of categoryTreeViolations(categories).keys()) {
+    categories.set(rec, { ...categories.get(rec)!, parentId: null });
   }
 
   // A group that was deleted or never arrived is not a group the account is in.

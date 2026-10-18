@@ -168,9 +168,9 @@ export function decodeTransaction(rec: Id, state: RecordState): Transaction | un
   const direction = txnDirectionOfCode(f.raw(TXN_FIELD.direction));
   const amountMinor = f.big(TXN_FIELD.amountMinor);
   const currency = parseCurrency(f.text(TXN_FIELD.currency) ?? '');
-  const baseCurrencyText = f.text(TXN_FIELD.baseCurrency);
-  const baseCurrency = baseCurrencyText === undefined ? currency : parseCurrency(baseCurrencyText);
-  const baseAmountMinor = f.big(TXN_FIELD.baseAmountMinor) ?? amountMinor;
+  // A missing snapshot means "same as the amount"; a snapshot of the wrong type is a malformed record, not a missing one.
+  const baseCurrency = f.has(TXN_FIELD.baseCurrency) ? parseCurrency(f.text(TXN_FIELD.baseCurrency) ?? '') : currency;
+  const baseAmountMinor = f.has(TXN_FIELD.baseAmountMinor) ? f.big(TXN_FIELD.baseAmountMinor) : amountMinor;
   const status = txnStatusOfCode(f.raw(TXN_FIELD.status) ?? 1n);
   const localDate = f.int(TXN_FIELD.localDate, 0);
   if (

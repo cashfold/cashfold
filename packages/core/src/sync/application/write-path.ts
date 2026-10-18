@@ -155,6 +155,10 @@ export function createWritePath(deps: WritePathDeps): WritePath {
             return { result: { kind: 'quarantined', reason } };
           };
 
+          // A record that was purged (30 days after deletion) is gone for good. An op that arrives late for it cannot be
+          // applied; it is kept for the user to see rather than silently dropped (FR-052).
+          if (await projections.isPurged(sealed.fold, sealed.rec)) return quarantine('purged_record');
+
           let opened: WireOp;
           try {
             opened = await sealer.open(sealed);
@@ -190,6 +194,7 @@ export function createWritePath(deps: WritePathDeps): WritePath {
           let replayed = 0;
           let failed = 0;
           for (const stored of await oplog.list(fold)) {
+            if (await projections.isPurged(fold, stored.sealed.rec)) continue; // payload scrubbed; nothing to replay
             try {
               const upcast = upcasters.upcast(await sealer.open(stored.sealed));
               if (!upcast.ok) throw Object.assign(new Error('unsupported schema'), { kind: 'malformed' });

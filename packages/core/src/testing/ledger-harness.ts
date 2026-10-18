@@ -7,12 +7,13 @@ import {
   createCommandBus, createEventBus, createQueryBus, type CommandDef, type DomainEvent, type QueryDef,
 } from '../sync/application/buses';
 import type { DomainError, Result } from '../shared-kernel/result';
-import { createReplica, createWorld, id, type Replica } from './world';
+import { createReplica, createWorld, id, type Replica, type World } from './world';
 
 export const FOLD = id(0xf0);
 
 export interface LedgerHarness {
   readonly fold: Id;
+  readonly world: World;
   readonly replica: Replica;
   readonly events: DomainEvent[];
   /** The clock the commands read (ms). Move it with `setNow`, which moves the write path's clock too. */
@@ -25,7 +26,7 @@ export interface LedgerHarness {
 }
 
 /** One device, one Fold with a base currency, real sealing and storage in memory, and the command and query buses. */
-export async function ledgerHarness(opts: { role?: Role; baseCurrency?: string } = {}): Promise<LedgerHarness> {
+export async function ledgerHarness(opts: { role?: Role; baseCurrency?: string; noSettings?: boolean } = {}): Promise<LedgerHarness> {
   const world = await createWorld();
   world.addFold(FOLD);
   const replica = await createReplica(world, { device: id(0xa), groups: LEDGER_GROUPS, nowMs: 1_800_000_000_000 });
@@ -38,11 +39,14 @@ export async function ledgerHarness(opts: { role?: Role; baseCurrency?: string }
   const queries = createQueryBus(deps);
   const clock = { now: 1_800_000_000_000 };
 
-  const base = foldSettingsPatch({ name: 'Home', baseCurrency: opts.baseCurrency ?? 'USD' });
-  await replica.writePath.submit({ fold: FOLD, rec: settingsRecordId(FOLD), table: base.table, fields: base.fields, sets: new Map() });
+  if (opts.noSettings !== true) {
+    const base = foldSettingsPatch({ name: 'Home', baseCurrency: opts.baseCurrency ?? 'USD' });
+    await replica.writePath.submit({ fold: FOLD, rec: settingsRecordId(FOLD), table: base.table, fields: base.fields, sets: new Map() });
+  }
 
   return {
     fold: FOLD,
+    world,
     replica,
     events: seen,
     clock,

@@ -90,3 +90,17 @@ describe('ExchangeRate: record fields', () => {
     expect(p.get(RATE_FIELD.asOfUtcS)).toBe(10n);
   });
 });
+
+describe('ExchangeRate: ties', () => {
+  it('prefers a custom rate when two rates share the same instant', () => {
+    const service = rate(1, 'EUR', 100, 900n, 'service');
+    const custom = rate(2, 'EUR', 100, 910n, 'custom');
+    expect(nearestPrior([service, custom], 'EUR', 150)?.id).toBe(custom.id);
+    expect(nearestPrior([custom, service], 'EUR', 150)?.id).toBe(custom.id);
+  });
+
+  it('lists resolved rates by time and then by currency', () => {
+    const rows = [rate(1, 'GBP', 100, 1n), rate(2, 'EUR', 100, 1n), rate(3, 'EUR', 50, 1n)];
+    expect(resolveRates(rows).rates.map((r) => r.id)).toEqual([id(3), id(2), id(1)]);
+  });
+});

@@ -26,6 +26,8 @@ function sealedFrom(fold: Id, r: SqlValue[], at = 0): SealedOp {
 /** Domain-table projection for one table code. Runs inside the same transaction as the merge-state write. */
 export interface Projector {
   apply(db: EncryptedDatabase, fold: Id, rec: Id, state: RecordState): void;
+  /** Deletes the record's domain rows when it is purged. */
+  remove?(db: EncryptedDatabase, fold: Id, rec: Id): void;
 }
 
 export interface SqliteStoreOptions {
@@ -89,6 +91,11 @@ export function createSqliteOpLog(db: EncryptedDatabase): OpLogStore {
       return db.rows(`SELECT ${OP_COLUMNS}, reason, seen_at FROM sync_quarantine WHERE fold_id = ? ORDER BY rowid`, [bytesOf(fold)]).map(
         (r): QuarantinedOp => ({ sealed: sealedFrom(fold, r), reason: r[10] as QuarantineReason, atMs: num(r[11]) }),
       );
+    },
+
+    async scrub(fold, rec) {
+      // Overwritten in place; secure_delete zeroes the old pages, so the ciphertext does not linger in free space.
+      return db.run('UPDATE op_log SET blob = ? WHERE fold_id = ? AND rec_id = ?', [new Uint8Array(0), bytesOf(fold), bytesOf(rec)]);
     },
   };
 }
@@ -190,6 +197,18 @@ export function createSqliteProjections(db: EncryptedDatabase, options: SqliteSt
     async clear(fold) {
       const f = bytesOf(fold);
       for (const table of ['set_removed', 'set_add', 'field_clock', 'record_meta', ...domainTables]) db.run(`DELETE FROM ${table} WHERE fold_id = ?`, [f]);
+    },
+
+    async purgeRecord(fold, rec, atMs) {
+      const [f, r] = [bytesOf(fold), bytesOf(rec)];
+      const table = db.value('SELECT table_code FROM record_meta WHERE fold_id = ? AND rec_id = ?', [f, r]);
+      if (table !== undefined) projectors.get(Number(table))?.remove?.(db, fold, rec);
+      for (const name of ['set_removed', 'set_add', 'field_clock', 'record_meta']) db.run(`DELETE FROM ${name} WHERE fold_id = ? AND rec_id = ?`, [f, r]);
+      db.run('INSERT OR IGNORE INTO purged_record(fold_id, rec_id, purged_at) VALUES (?,?,?)', [f, r, BigInt(atMs)]);
+    },
+
+    async isPurged(fold, rec) {
+      return db.rows('SELECT 1 FROM purged_record WHERE fold_id = ? AND rec_id = ?', [bytesOf(fold), bytesOf(rec)]).length > 0;
     },
   };
 }

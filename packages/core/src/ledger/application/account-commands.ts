@@ -4,11 +4,11 @@ import type { CommandDef, QueryDef } from '../../sync/application/buses';
 import { DELETED_FIELD, isVisible, type FieldValue } from '../../sync/domain/merge';
 import {
   accountFieldPatch, cleanName, validateAccountUpdate, validateNewAccount,
-  type Account, type AccountChanges, type AccountError, type NewAccount, type NewAccountInput,
+  type Account, type AccountChanges, type AccountError, type AccountFields, type NewAccountInput,
 } from '../domain/account';
 import { GROUP_FIELD, ACCOUNT_FIELD, TABLE, TRANSFER_FIELD, TXN_FIELD } from '../domain/tables';
 import { addMembers, removeMembers } from '../domain/sets';
-import { maxOf } from '../domain/util';
+import { compareText, maxOf } from '../domain/util';
 import { loadAccount, loadLedger, noSets, type NotFound } from './context';
 
 export type AccountExists = DomainError<'account_exists'>;
@@ -19,12 +19,12 @@ export type ConfirmationRequired = DomainError<'confirmation_required'>;
 const MAX_GROUP_NAME = 80;
 
 /** The fields of `next` that differ from `current`: only changes are written, so concurrent edits to other fields survive. */
-function changedOnly(current: NewAccount, next: NewAccount): Partial<NewAccount> {
+function changedOnly(current: AccountFields, next: AccountFields): Partial<AccountFields> {
   const out: Record<string, unknown> = {};
-  for (const key of Object.keys(next) as Array<keyof NewAccount>) {
+  for (const key of Object.keys(next) as Array<keyof AccountFields>) {
     if (current[key] !== next[key]) out[key] = next[key];
   }
-  return out as Partial<NewAccount>;
+  return out as Partial<AccountFields>;
 }
 
 export function createAccountCommands() {
@@ -226,7 +226,7 @@ async function dependantsOf(ctx: Parameters<typeof loadLedger>[0], fold: Id, acc
       out.push({ rec, table: state.table });
     }
   }
-  return out.sort((a, b) => (a.rec < b.rec ? -1 : 1));
+  return out.sort((a, b) => compareText(a.rec, b.rec));
 }
 
 const summarise = (accountName: string, dependants: readonly Dependant[]): DeletionSummary => ({
