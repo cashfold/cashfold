@@ -170,3 +170,22 @@ describe('wrong-password back-off (FR-006)', () => {
     expect(session.unlockDelayMs()).toBeLessThanOrEqual(15 * 60_000);
   });
 });
+
+describe('changing the policy on a running session', () => {
+  it('applies the new idle timeout straight away', async () => {
+    const { session, advance } = setup();
+    session.setPolicy({ idleMs: 60_000, hiddenGraceMs: 60_000 });
+    advance(61_000);
+    await Promise.resolve();
+    expect(session.state()).toBe('locked');
+  });
+
+  it('counts the idle time from the last activity, not from the change', async () => {
+    const { session, advance } = setup();
+    advance(4 * 60_000);
+    session.setPolicy({ idleMs: 3 * 60_000, hiddenGraceMs: 60_000 });
+    advance(1);
+    await Promise.resolve();
+    expect(session.state()).toBe('locked');
+  });
+});
