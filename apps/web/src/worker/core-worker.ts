@@ -22,7 +22,8 @@ const pageEndpoint: Endpoint = {
   },
 };
 
-let core: CoreRuntime | undefined;
+// onLocked fires from inside handlers that are created before the runtime exists, so it reaches it through this holder.
+const holder: { core?: CoreRuntime } = {};
 
 const app = createAppHandlers({
   runtime: () => loadRuntime(),
@@ -32,13 +33,13 @@ const app = createAppHandlers({
   nowMs: Date.now,
   // The session locked itself (idle timeout, hidden too long, page going away): tell every tab, then end.
   onLocked: () => {
-    core?.publish({ type: 'Locked' });
+    holder.core?.publish({ type: 'Locked' });
     self.postMessage({ rpc: 'event', event: { type: 'Locked' } });
     self.close();
   },
 });
 
-core = createCoreRuntime({
+const core = (holder.core = createCoreRuntime({
   locks: navigator.locks as never,
   channel: new BroadcastChannel('cashfold-core'),
   tabId: crypto.randomUUID(),
@@ -46,7 +47,7 @@ core = createCoreRuntime({
   onLock: () => app.session.lock(),
   terminate: () => self.close(),
   rpcTimeoutMs: 30_000,
-});
+}));
 
 await core.start();
 core.onEvent((event) => self.postMessage({ rpc: 'event', event }));
@@ -54,6 +55,6 @@ setInterval(() => app.session.tick(), 5_000);
 
 // Page -> worker: one pass-through method, so every call (leader or follower) takes the same path.
 serveRpc(pageEndpoint, {
-  invoke: ((args: { method: string; args?: unknown }, ctx: { signal: AbortSignal }) => core!.call(args.method, args.args, ctx.signal)) as never,
-  role: (async () => core!.role()) as never,
+  invoke: ((args: { method: string; args?: unknown }, ctx: { signal: AbortSignal }) => core.call(args.method, args.args, ctx.signal)) as never,
+  role: (async () => core.role()) as never,
 });
