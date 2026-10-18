@@ -3,7 +3,7 @@ import ed from '../../../../../vectors/kat/ed25519.json' with { type: 'json' };
 import x from '../../../../../vectors/kat/x25519.json' with { type: 'json' };
 import { SecretBuf } from '../../secret-buf.js';
 import { hex, toHex } from '../../test-support.js';
-import { createEd25519Signer } from './ed25519.js';
+import { createEd25519Signer, webCryptoEd25519Available } from './ed25519.js';
 import { x25519, x25519PublicKey } from './x25519.js';
 
 describe('X25519 (RFC 7748 section 6.1)', () => {
@@ -58,5 +58,11 @@ describe('Ed25519 (RFC 8032 section 7.1)', () => {
     const kp = await signer.generate(rng);
     const msg = new TextEncoder().encode('hello');
     expect(await signer.verify(kp.publicKey, msg, await signer.sign(kp.secretKey, msg))).toBe(true);
+  });
+});
+
+describe('WebCrypto Ed25519 detection', () => {
+  it('returns a boolean without throwing', async () => {
+    expect(typeof (await webCryptoEd25519Available())).toBe('boolean');
   });
 });
