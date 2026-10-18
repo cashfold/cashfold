@@ -1,4 +1,6 @@
 import type { Id } from '../../shared-kernel/id';
+import type { DeviceSettings } from '../domain/device-settings';
+import type { QuickUnlockRecord } from '../domain/quick-unlock';
 import type { FoldDirectory, FoldKeyPort } from '../../sharing/ports/index';
 import type { CommandBus } from '../../sync/application/buses';
 
@@ -76,8 +78,8 @@ export interface AccountCryptoPort {
 
 /** Per-device settings kept outside the encrypted database so they apply before and after unlocking. */
 export interface DeviceSettingsPort {
-  load(): Promise<import('../domain/device-settings').DeviceSettings>;
-  save(settings: import('../domain/device-settings').DeviceSettings): Promise<void>;
+  load(): Promise<DeviceSettings>;
+  save(settings: DeviceSettings): Promise<void>;
 }
 
 /** What unlocking a device yields. The caller tracks every Secret so locking wipes it. */
@@ -95,7 +97,7 @@ export interface UnlockCryptoPort {
 }
 
 /** A quick-unlock enrolment: the sealed key material plus the state that decides when it may be used. */
-export interface StoredQuickUnlock extends import('../domain/quick-unlock').QuickUnlockRecord {
+export interface StoredQuickUnlock extends QuickUnlockRecord {
   /** Opaque CBOR: the Local Vault Key wrapped under a device unlock key, itself wrapped under the authenticator's PRF output. */
   readonly blob: Uint8Array;
   /** Salt fed to the authenticator's PRF so it returns this enrolment's secret. */

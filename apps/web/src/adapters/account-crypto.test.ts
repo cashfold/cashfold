@@ -122,3 +122,52 @@ describe('unlock', () => {
     await expect(crypto.unlock({ password: pw(PASSWORD), credentials: { ...credentials, sealed: tampered } })).resolves.toBe('wrong_password');
   }, 60_000);
 });
+
+describe('quick unlock (device key wrapped under a WebAuthn PRF output)', () => {
+  const prf = (fill: number) => new Uint8Array(32).fill(fill);
+
+  async function enrolled() {
+    const crypto = make();
+    const m = await crypto.createAccount({ email: 'alice@example.com', password: pw(PASSWORD) });
+    const credentials = { ...m.credentials, email: 'alice@example.com', server: 'https://relay.example.com', registration: 'done' as const };
+    const blob = await crypto.enrollQuick({ password: pw(PASSWORD), credentials, prfOutput: prf(7) });
+    if (blob === 'wrong_password') throw new Error('enrolment failed');
+    return { crypto, m, credentials, blob };
+  }
+
+  it('opens the same session secrets from the PRF output alone', async () => {
+    const { crypto, m, credentials, blob } = await enrolled();
+    const result = await crypto.unlockQuick({ blob, prfOutput: prf(7), credentials });
+    if (result === 'failed') throw new Error('should have unlocked');
+    expect(hex(result.sessionKey.use((b) => Uint8Array.from(b)))).toBe(hex(m.sessionKey.use((b) => Uint8Array.from(b))));
+    expect(new TextDecoder().decode(result.secretKey.use((b) => Uint8Array.from(b)))).toBe(m.secretKeyText);
+    expect(hex(await createEd25519Signer().publicKey(result.deviceSigningKey as SecretBuf))).toBe(hex(m.registration.deviceSigPk));
+  }, 60_000);
+
+  it('refuses a wrong password at enrolment', async () => {
+    const { crypto, credentials } = await enrolled();
+    expect(await crypto.enrollQuick({ password: pw('some other long password'), credentials, prfOutput: prf(7) })).toBe('wrong_password');
+  }, 60_000);
+
+  it('says only "failed" for a different PRF output, a damaged blob or another device', async () => {
+    const { crypto, credentials, blob } = await enrolled();
+    expect(await crypto.unlockQuick({ blob, prfOutput: prf(8), credentials })).toBe('failed');
+    const damaged = Uint8Array.from(blob);
+    damaged[damaged.length - 3] = damaged[damaged.length - 3]! ^ 1;
+    expect(await crypto.unlockQuick({ blob: damaged, prfOutput: prf(7), credentials })).toBe('failed');
+    expect(await crypto.unlockQuick({ blob, prfOutput: prf(7), credentials: { ...credentials, deviceId: '00000000-0000-4000-8000-000000000002' as never } })).toBe('failed');
+    expect(await crypto.unlockQuick({ blob: new Uint8Array([1, 2, 3]), prfOutput: prf(7), credentials })).toBe('failed');
+  }, 90_000);
+
+  it('does not put the Local Vault Key or the PRF output into the stored blob', async () => {
+    const { blob } = await enrolled();
+    expect(contains(blob, prf(7))).toBe(false);
+    expect(blob.length).toBeLessThan(400);
+  }, 60_000);
+
+  it('rejects a PRF output of the wrong length', async () => {
+    const { crypto, credentials, blob } = await enrolled();
+    expect(await crypto.unlockQuick({ blob, prfOutput: new Uint8Array(16), credentials })).toBe('failed');
+    await expect(crypto.enrollQuick({ password: pw(PASSWORD), credentials, prfOutput: new Uint8Array(31) })).rejects.toThrow(RangeError);
+  }, 60_000);
+});
