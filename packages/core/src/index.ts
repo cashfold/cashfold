@@ -27,3 +27,4 @@ export * from './identity/application/create-account';
 export * from './identity/application/unlock';
 export * from './shared-kernel/currency-table';
 export * from './identity/domain/device-settings';
+export * from './identity/domain/quick-unlock';

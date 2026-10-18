@@ -94,6 +94,27 @@ export interface UnlockCryptoPort {
   unlock(args: { password: Secret; credentials: DeviceCredentials }): Promise<UnlockedMaterial | 'wrong_password'>;
 }
 
+/** A quick-unlock enrolment: the sealed key material plus the state that decides when it may be used. */
+export interface StoredQuickUnlock extends import('../domain/quick-unlock').QuickUnlockRecord {
+  /** Opaque CBOR: the Local Vault Key wrapped under a device unlock key, itself wrapped under the authenticator's PRF output. */
+  readonly blob: Uint8Array;
+  /** Salt fed to the authenticator's PRF so it returns this enrolment's secret. */
+  readonly prfSalt: Uint8Array;
+}
+
+export interface QuickUnlockStorePort {
+  load(): Promise<StoredQuickUnlock | undefined>;
+  save(record: StoredQuickUnlock): Promise<void>;
+  clear(): Promise<void>;
+}
+
+export interface QuickUnlockCryptoPort {
+  /** Checks the password, then wraps the Local Vault Key under the PRF output. Consumes `password`. */
+  enroll(args: { password: Secret; credentials: DeviceCredentials; prfOutput: Uint8Array }): Promise<Uint8Array | 'wrong_password'>;
+  /** Opens the session secrets from the PRF output alone. Resolves `failed` for any mismatch, with no detail. */
+  unlock(args: { blob: Uint8Array; prfOutput: Uint8Array; credentials: DeviceCredentials }): Promise<UnlockedMaterial | 'failed'>;
+}
+
 /** What a started session offers: an open database with its command bus, Fold directory and Fold keys. */
 export interface SessionServices {
   readonly commandBus: CommandBus;
