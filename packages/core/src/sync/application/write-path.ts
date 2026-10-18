@@ -34,6 +34,8 @@ export interface Applied {
 export type RemoteOutcome =
   | ({ readonly kind: 'applied' } & Applied)
   | { readonly kind: 'duplicate' }
+  /** For a Fold this device holds no key for: dropped, not stored (a hostile relay could otherwise fill the quarantine). */
+  | { readonly kind: 'ignored'; readonly reason: 'unknown_fold' }
   | { readonly kind: 'quarantined'; readonly reason: QuarantineReason };
 
 export interface RebuildReport {
@@ -145,6 +147,7 @@ export function createWritePath(deps: WritePathDeps): WritePath {
     applyRemote: (sealed) =>
       serial(async () => {
         const outcome = await projections.transaction(async (): Promise<{ result: RemoteOutcome; hlc?: Hlc }> => {
+          if (await keys.currentEpoch(sealed.fold) === undefined) return { result: { kind: 'ignored', reason: 'unknown_fold' } };
           if (await oplog.has(sealed.fold, sealed.op)) return { result: { kind: 'duplicate' } };
 
           const quarantine = async (reason: QuarantineReason): Promise<{ result: RemoteOutcome }> => {

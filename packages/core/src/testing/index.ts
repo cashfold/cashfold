@@ -3,3 +3,7 @@
 export * from './memory-ports.js';
 export * from './world.js';
 export * from './fixtures.js';
+export * from './rng.js';
+export * from './relay.js';
+export * from './hostile.js';
+export * from './simulator.js';
