@@ -19,6 +19,8 @@ export interface RegistrationPayload {
   readonly deviceId: Id;
   /** CBOR key set (encrypted private keys + public keys + KDF parameters). Opaque to core. */
   readonly keySet: Uint8Array;
+  /** The device's Ed25519 public key, registered so the service can check the ops this device signs. */
+  readonly deviceSigPk: Uint8Array;
   /** SRP verifier; absent until sign-in with the relay exists (US4). */
   readonly srpVerifier?: Uint8Array;
 }
@@ -61,6 +63,20 @@ export interface NewAccountMaterial {
 export interface AccountCryptoPort {
   /** Consumes `password`: it is wiped whether this succeeds or fails. */
   createAccount(args: { email: string; password: Secret }): Promise<NewAccountMaterial>;
+}
+
+/** What unlocking a device yields. The caller tracks every Secret so locking wipes it. */
+export interface UnlockedMaterial {
+  readonly sessionKey: Secret;
+  /** This device's Ed25519 signing key. */
+  readonly deviceSigningKey: Secret;
+  /** The Secret Key in display form, as bytes: for the Emergency Kit and for adding devices. */
+  readonly secretKey: Secret;
+}
+
+export interface UnlockCryptoPort {
+  /** Consumes `password`. Resolves `wrong_password` when the credentials do not open: no detail beyond that. */
+  unlock(args: { password: Secret; credentials: DeviceCredentials }): Promise<UnlockedMaterial | 'wrong_password'>;
 }
 
 /** What a started session offers: an open database with its command bus, Fold directory and Fold keys. */
