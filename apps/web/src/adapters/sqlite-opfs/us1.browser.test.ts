@@ -68,6 +68,11 @@ describe('the Core Worker handlers the interface calls', () => {
     expect(r['lastFold']).toEqual({ ok: false, error: expect.objectContaining({ code: 'last_fold' }) });
     expect(r['listAfterDelete']).toEqual(['Personal']);
 
+    expect(r['settingsDefault']).toEqual({ autoLockMinutes: 5, hiddenGraceSeconds: 60, quickUnlock: { enabled: false, maxIdleMinutes: 30 }, kitReminderDismissed: false });
+    expect(r['settingsSet']).toMatchObject({ autoLockMinutes: 1, hiddenGraceSeconds: 5 });
+    expect(Object.keys(r['settingsSet'] as object)).not.toContain('evil');
+    expect(r['kitWrong']).toEqual({ ok: false, error: { code: 'wrong_password' } });
+    expect(r['kitRight']).toEqual({ ok: true, sameKey: true, accountId: true });
     expect(r['coveredWhenHidden']).toBe(true);
     expect(r['coveredWhenVisible']).toBe(false);
     expect(r['afterPageHide']).toEqual({ announced: 1, calls: 'locked', statusAfter: expect.objectContaining({ phase: 'locked' }) });

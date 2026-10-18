@@ -74,6 +74,12 @@ export interface AccountCryptoPort {
   createAccount(args: { email: string; password: Secret }): Promise<NewAccountMaterial>;
 }
 
+/** Per-device settings kept outside the encrypted database so they apply before and after unlocking. */
+export interface DeviceSettingsPort {
+  load(): Promise<import('../domain/device-settings').DeviceSettings>;
+  save(settings: import('../domain/device-settings').DeviceSettings): Promise<void>;
+}
+
 /** What unlocking a device yields. The caller tracks every Secret so locking wipes it. */
 export interface UnlockedMaterial {
   readonly sessionKey: Secret;

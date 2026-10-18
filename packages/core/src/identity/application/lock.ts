@@ -1,16 +1,10 @@
+import { DEFAULT_LOCK_POLICY, type LockPolicy } from '../domain/lock-policy';
 import type { Secret } from '../ports/index';
+
+export { DEFAULT_LOCK_POLICY, type LockPolicy };
 
 // The unlocked session. It owns the lifetime of every secret held in memory and decides when to lock (FR-006, FR-007, FR-017).
 // Locking wipes every tracked secret first, then closes the database, then ends the worker, which discards its heap.
-
-export interface LockPolicy {
-  /** Lock after this long without activity. Default 5 minutes. */
-  readonly idleMs: number;
-  /** Lock after the page has been hidden this long. Default 1 minute. */
-  readonly hiddenGraceMs: number;
-}
-
-export const DEFAULT_LOCK_POLICY: LockPolicy = { idleMs: 5 * 60_000, hiddenGraceMs: 60_000 };
 
 export type SessionState = 'unlocked' | 'locked';
 
@@ -27,6 +21,8 @@ export interface Session {
   focus(focused: boolean): void;
   /** The page is going away (pagehide / freeze): lock immediately. */
   pageHide(): void;
+  /** Replaces the auto-lock policy; takes effect immediately. */
+  setPolicy(policy: LockPolicy): void;
   /** Checks the timers; call periodically and after clock changes. */
   tick(): void;
   unlockDelayMs(): number;
@@ -46,7 +42,7 @@ const BASE_DELAY_MS = 30_000;
 const MAX_DELAY_MS = 15 * 60_000;
 
 export function createSession(deps: SessionDeps): Session {
-  const policy = deps.policy ?? DEFAULT_LOCK_POLICY;
+  let policy = deps.policy ?? DEFAULT_LOCK_POLICY;
   const tracked = new Set<Secret>();
   let state: SessionState = 'unlocked';
   let teardown: Promise<void> | undefined;
@@ -108,6 +104,9 @@ export function createSession(deps: SessionDeps): Session {
     },
     pageHide() {
       void lock();
+    },
+    setPolicy(next) {
+      policy = next;
     },
     tick() {
       if (state !== 'unlocked') return;

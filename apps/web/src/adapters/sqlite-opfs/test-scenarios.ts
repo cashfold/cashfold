@@ -8,7 +8,7 @@ import { migrate, MigrationError } from './migrate';
 import type { Migration } from './migrations/generated';
 import { loadRuntime, type SqliteRuntime } from './runtime';
 import { createSqliteOpLog, createSqliteProjections } from './sqlite-stores';
-import { createAccount, createSession, unlock, type CredentialStorePort, type DeviceCredentials, type RegistrationResult } from '@cashfold/core';
+import { createAccount, createSession, parseSettings, unlock, type CredentialStorePort, type DeviceCredentials, type RegistrationResult } from '@cashfold/core';
 import { createAccountCrypto } from '../account-crypto';
 import { createWebSession } from './web-session';
 import { createAppHandlers } from '../../worker/app-handlers';
@@ -83,9 +83,11 @@ export const scenarios = {
     let stored: DeviceCredentials | undefined;
     const credentials: CredentialStorePort = { save: async (c) => void (stored = c), load: async () => stored, clear: async () => void (stored = undefined) };
     let lockedAnnounced = 0;
+    let savedSettings: unknown;
     const app = createAppHandlers({
       runtime: async () => rt, rng, credentials, nowMs: Date.now, onLocked: () => void lockedAnnounced++,
       accountCrypto: createAccountCrypto({ rng, kdf: { kdf: 'argon2id', mKib: 32768, t: 2, p: 1 } }),
+      settings: { load: async () => parseSettings(savedSettings), save: async (s) => void (savedSettings = s) },
     });
     const server = createRpcServer(app.handlers);
     const call = (method: string, args?: unknown) => server.invoke(method, args);
@@ -95,7 +97,7 @@ export const scenarios = {
     out['statusFresh'] = await call('status');
     out['foldsBeforeSignUp'] = await call('folds.list').catch((e: Error) => `${e.name}:${(e as { code?: string }).code}`);
     out['weak'] = await call('createAccount', { email: 'a@example.com', password: bytes('password1234'), server: 'https://relay.example.com', discoverable: true });
-    const created = (await call('createAccount', { email: 'a@example.com', password: bytes('correct horse battery staple'), server: 'https://relay.example.com', discoverable: true })) as { ok: boolean; value: { secretKeyText: string; fold: { id: string; name: string } } };
+    const created = (await call('createAccount', { email: 'a@example.com', password: bytes('correct horse battery staple'), server: 'https://relay.example.com', discoverable: true })) as { ok: boolean; value: { secretKeyText: string; accountId: string; fold: { id: string; name: string } } };
     out['created'] = { ok: created.ok, keyShape: /^C1-/.test(created.value.secretKeyText), fold: created.value.fold.name, leaksOtherSecrets: Object.keys(created.value).sort() };
     out['statusUnlocked'] = await call('status');
 
@@ -109,6 +111,13 @@ export const scenarios = {
     out['deleted'] = await call('folds.delete', { fold: work.value.id, confirmName: 'Day job' });
     out['lastFold'] = await call('folds.delete', { fold: personal, confirmName: 'Personal' });
     out['listAfterDelete'] = ((await call('folds.list')) as { name: string }[]).map((f) => f.name);
+
+    out['settingsDefault'] = await call('settings.get');
+    out['settingsSet'] = await call('settings.set', { autoLockMinutes: 1, hiddenGraceSeconds: 5, evil: 'x' });
+    await call('settings.set', { autoLockMinutes: 5, hiddenGraceSeconds: 60 }); // back to defaults for the rest of the run
+    out['kitWrong'] = await call('emergencyKit.export', { password: bytes('not the password at all') });
+    const kit = (await call('emergencyKit.export', { password: bytes('correct horse battery staple') })) as { ok: boolean; value: { secretKeyText: string; accountId: string } };
+    out['kitRight'] = { ok: kit.ok, sameKey: kit.value.secretKeyText === created.value.secretKeyText, accountId: kit.value.accountId === created.value.accountId };
 
     out['coveredWhenHidden'] = await call('session.visibility', { state: 'hidden' });
     out['coveredWhenVisible'] = await call('session.visibility', { state: 'visible' });

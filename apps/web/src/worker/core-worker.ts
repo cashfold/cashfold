@@ -1,6 +1,7 @@
 /// <reference lib="webworker" />
 import { createAccountCrypto } from '../adapters/account-crypto';
 import { createIdbCredentialStore } from '../adapters/keystore-idb/credential-store';
+import { createIdbDeviceSettings } from '../adapters/keystore-idb/device-settings';
 import { loadRuntime } from '../adapters/sqlite-opfs/runtime';
 import { createAppHandlers } from './app-handlers';
 import { serveRpc, type Endpoint } from './rpc';
@@ -29,6 +30,7 @@ const app = createAppHandlers({
   runtime: () => loadRuntime(),
   rng,
   credentials: createIdbCredentialStore(),
+  settings: createIdbDeviceSettings(),
   accountCrypto: createAccountCrypto({ rng }),
   nowMs: Date.now,
   // The session locked itself (idle timeout, hidden too long, page going away): tell every tab, then end.

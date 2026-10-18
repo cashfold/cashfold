@@ -1,6 +1,6 @@
 import {
   createAccount, createFoldCommands, createSession, describeFoldDeletion, DEFAULT_LOCK_POLICY, newIdV4, unlock,
-  type AccountCryptoPort, type CredentialStorePort, type Id, type LockPolicy, type Session, type UnlockCryptoPort,
+  parseSettings, toLockPolicy, type AccountCryptoPort, type CredentialStorePort, type DeviceSettings, type DeviceSettingsPort, type Id, type LockPolicy, type Session, type UnlockCryptoPort,
 } from '@cashfold/core';
 import { SecretBuf } from '@cashfold/crypto';
 import { createWebSession } from '../adapters/sqlite-opfs/web-session';
@@ -16,6 +16,7 @@ export interface AppHandlerDeps {
   readonly rng: { bytes(n: number): Uint8Array };
   readonly credentials: CredentialStorePort;
   readonly accountCrypto: AccountCryptoPort & UnlockCryptoPort;
+  readonly settings: DeviceSettingsPort;
   readonly nowMs: () => number;
   /** Called after the session locks itself (idle, hidden, page gone): announce and end the worker. */
   readonly onLocked: () => void;
@@ -50,6 +51,9 @@ export function createAppHandlers(deps: AppHandlerDeps): AppRuntime {
     return webSession;
   }
 
+  /** Applies the saved lock preferences to the running session. */
+  const applySettings = async () => session.setPolicy(toLockPolicy(await deps.settings.load()));
+
   const open = () => {
     const current = webSession?.current();
     if (current === undefined || session.state() !== 'unlocked') throw new RpcError('RpcError', 'locked');
@@ -70,13 +74,47 @@ export function createAppHandlers(deps: AppHandlerDeps): AppRuntime {
       const sessionPort = await newWebSession();
       const input = { email: args.email, password: secretFrom(args.password), server: args.server, discoverable: args.discoverable, ...(args.foldName === undefined ? {} : { foldName: args.foldName }), ...(args.baseCurrency === undefined ? {} : { baseCurrency: args.baseCurrency }) };
       const result = await createAccount({ crypto: deps.accountCrypto, registration: { register: async () => ({ ok: false, reason: 'offline' }) }, credentials: deps.credentials, sessionPort, session, random: deps.rng })(input);
+      if (result.ok) await applySettings();
       return result.ok ? { ok: true, value: { secretKeyText: result.value.secretKeyText, accountId: result.value.accountId, fold: result.value.fold, registration: result.value.registration } } : result;
     },
 
     async unlock(args: { password: Uint8Array }) {
       const sessionPort = await newWebSession();
       const result = await unlock({ unlockCrypto: deps.accountCrypto, credentials: deps.credentials, sessionPort, session })({ password: secretFrom(args.password) });
+      if (result.ok) await applySettings();
       return result.ok ? { ok: true, value: { accountId: result.value.accountId, email: result.value.email, server: result.value.server } } : result;
+    },
+
+    async 'settings.get'() {
+      return deps.settings.load();
+    },
+
+    async 'settings.set'(args: Partial<DeviceSettings>) {
+      const merged = parseSettings({ ...(await deps.settings.load()), ...args });
+      await deps.settings.save(merged);
+      await applySettings();
+      return merged;
+    },
+
+    /** Re-checks the password, then returns the Secret Key for the Emergency Kit (it is never kept in the page). */
+    async 'emergencyKit.export'(args: { password: Uint8Array }) {
+      open();
+      const wait = session.unlockDelayMs();
+      if (wait > 0) {
+        args.password.fill(0);
+        return { ok: false, error: { code: 'too_many_attempts', retryAfterMs: wait } };
+      }
+      const stored = await deps.credentials.load();
+      if (stored === undefined) return { ok: false, error: { code: 'no_account' } };
+      const material = await deps.accountCrypto.unlock({ password: secretFrom(args.password), credentials: stored });
+      if (material === 'wrong_password') {
+        session.recordFailedUnlock();
+        return { ok: false, error: { code: 'wrong_password' } };
+      }
+      const secretKeyText = material.secretKey.use((b) => new TextDecoder().decode(b));
+      for (const secret of [material.sessionKey, material.deviceSigningKey, material.secretKey]) secret.wipe();
+      session.recordSuccessfulUnlock();
+      return { ok: true, value: { accountId: stored.accountId, email: stored.email, server: stored.server, secretKeyText } };
     },
 
     async 'session.activity'() {
