@@ -9,7 +9,7 @@ import { categoryTreeViolations } from '../../domain/category';
 import { resolveRates, type ExchangeRate } from '../../domain/exchange-rate';
 import type { Label } from '../../domain/label';
 import {
-  decodeAccount, decodeCategory, decodeExchangeRate, decodeGroup, decodeLabel, decodeTransaction, deletedAtMs,
+  decodeAccount, decodeCategory, decodeExchangeRate, decodeGroup, decodeLabel, decodeTransaction, deletedAtMs, lastChanged,
   type AccountGroup, type Category, type Transaction,
 } from '../../domain/records';
 import { TABLE } from '../../domain/tables';
@@ -41,6 +41,8 @@ export interface Ledger {
   /** Visible, not hidden by repair. */
   readonly transactions: ReadonlyMap<Id, Transaction>;
   readonly deleted: ReadonlyMap<Id, DeletedTransaction>;
+  /** When and on which device each transaction was last changed (FR-053), from the clocks of its fields. */
+  readonly lastChanged: ReadonlyMap<Id, { readonly dev: Id; readonly atMs: number }>;
   readonly rates: readonly ExchangeRate[];
   /** Entries that count towards balances: orphaned and repair-excluded records are left out. */
   readonly entries: readonly LedgerEntry[];
@@ -61,6 +63,7 @@ export function buildLedger(records: FoldState, report?: Pick<RepairReport, 'hid
   const tags = new Map<Id, Label>();
   const transactions = new Map<Id, Transaction>();
   const deleted = new Map<Id, DeletedTransaction>();
+  const changed = new Map<Id, { dev: Id; atMs: number }>();
   const allRates: ExchangeRate[] = [];
   let baseCurrency: CurrencyCode | undefined;
 
@@ -95,6 +98,8 @@ export function buildLedger(records: FoldState, report?: Pick<RepairReport, 'hid
       case TABLE.transaction: {
         const t = decodeTransaction(rec, state);
         if (t === undefined) break;
+        const last = lastChanged(state);
+        if (last !== undefined) changed.set(rec, last);
         if (isVisible(state)) transactions.set(rec, t);
         else deleted.set(rec, { transaction: t, deletedAtMs: deletedAtMs(state) ?? 0 });
         break;
@@ -141,7 +146,7 @@ export function buildLedger(records: FoldState, report?: Pick<RepairReport, 'hid
   }
 
   return {
-    baseCurrency, accounts, groups, categories, payees, tags, transactions, deleted,
+    baseCurrency, accounts, groups, categories, payees, tags, transactions, deleted, lastChanged: changed,
     rates: resolveRates(allRates).rates, entries, entriesByAccount,
   };
 }

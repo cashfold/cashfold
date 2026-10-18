@@ -1,4 +1,4 @@
-// Small integer helpers for ledger code, where `Math.*` is off limits so that no float can sneak into a money path.
+// Small integer helpers for ledger code. The standard maths library is kept out of money paths so that no float can sneak in.
 
 /** The largest of `values`, or `fallback` when there are none. */
 export const maxOf = (values: readonly number[], fallback: number): number => values.reduce((m, v) => (v > m ? v : m), fallback);

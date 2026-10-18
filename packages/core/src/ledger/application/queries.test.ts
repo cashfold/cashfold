@@ -36,6 +36,8 @@ describe('ledger queries', () => {
     expect(basics.ok && basics.value.baseCurrency).toBe('USD');
     const list = await s.bus.execute(s.queries.listTransactions, { fold: FOLD, page: { limit: 10, offset: 0 } });
     expect(list.ok && [list.value.count, list.value.items.map((t) => t.amountMinor)]).toEqual([1, [-1_250n]]);
+    // when and on which device it last changed (FR-053)
+    expect(list.ok && list.value.items[0]!.lastChanged).toEqual({ dev: id(0xa), atMs: 1_800_000_000_000 });
   });
 
   it('serves everything on the dashboard from one snapshot that agrees with itself', async () => {

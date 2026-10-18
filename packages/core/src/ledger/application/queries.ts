@@ -22,6 +22,11 @@ export interface AccountRow extends Account {
   readonly balanceMinor: bigint | null;
 }
 
+/** A transaction as listed, with when and on which device it last changed (FR-053). */
+export interface TransactionRow extends Transaction {
+  readonly lastChanged: { readonly dev: Id; readonly atMs: number } | undefined;
+}
+
 export interface LedgerBasics {
   readonly baseCurrency: string | undefined;
   readonly accounts: readonly AccountRow[];
@@ -73,12 +78,13 @@ export function createLedgerQueries({ views, clock, quarantined }: LedgerQueryDe
     return r.ok ? r.value : undefined;
   });
 
-  const listTransactions = q<{ fold: Id; filter?: SearchFilter; sort?: SearchSort; page?: Page }, { items: Transaction[]; count: number }>(
+  const listTransactions = q<{ fold: Id; filter?: SearchFilter; sort?: SearchSort; page?: Page }, { items: TransactionRow[]; count: number }>(
     'listTransactions',
-    ({ filter, sort, page }, { ledger }) => ({
-      items: searchTransactions(ledger, filter ?? {}, sort ?? 'date_desc', page),
-      count: searchTransactions(ledger, filter ?? {}, sort ?? 'date_desc').length,
-    }),
+    ({ filter, sort, page }, { ledger }) => {
+      const all = searchTransactions(ledger, filter ?? {}, sort ?? 'date_desc');
+      const shown = page === undefined ? all : all.slice(page.offset, page.offset + page.limit);
+      return { items: shown.map((t) => ({ ...t, lastChanged: ledger.lastChanged.get(t.id) })), count: all.length };
+    },
   );
 
   const netWorthQuery = q<{ fold: Id; asOf: LocalDate }, NetWorth>('netWorth', ({ asOf }, { ledger }) => netWorth(ledger, asOf));
