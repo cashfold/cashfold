@@ -58,6 +58,8 @@ export interface WritePathDeps {
 export interface WritePath {
   /** Local command -> op: stamp, validate, seal, append and project in one transaction. */
   submit(draft: OpDraft): Promise<Result<Applied, WriteError>>;
+  /** Several drafts in one atomic transaction: all are written or none. Stamped in order. */
+  submitMany(drafts: readonly OpDraft[]): Promise<Result<readonly Applied[], WriteError>>;
   /** Remote op -> verify, decrypt, validate, append and project, through the same code as `submit`. */
   applyRemote(sealed: SealedOp): Promise<Result<RemoteOutcome, never>>;
   /** Replays the op log into empty projections. */
@@ -101,33 +103,44 @@ export function createWritePath(deps: WritePathDeps): WritePath {
   }
 
   return {
-    submit: (draft) =>
+    submitMany: (drafts) =>
       serial(async () => {
-        const result = await projections.transaction(async (): Promise<Result<{ applied: Applied; hlc: Hlc }, WriteError>> => {
-          const epoch = await keys.currentEpoch(draft.fold);
-          if (epoch === undefined) return err('no_key', 'This device holds no key for the Fold');
-          const stamped = tick(await clockFor(draft.fold), clock.nowMs());
-          if (!stamped.ok) return err(stamped.error.code, stamped.error.message);
+        const result = await projections.transaction(async (): Promise<Result<{ applied: Applied[]; clocks: Map<Id, Hlc> }, WriteError>> => {
+          const next = new Map<Id, Hlc>();
+          const applied: Applied[] = [];
+          for (const draft of drafts) {
+            const epoch = await keys.currentEpoch(draft.fold);
+            if (epoch === undefined) return err('no_key', 'This device holds no key for the Fold');
+            const stamped = tick(next.get(draft.fold) ?? (await clockFor(draft.fold)), clock.nowMs());
+            if (!stamped.ok) return err(stamped.error.code, stamped.error.message);
 
-          const dev = keys.deviceId();
-          const wire: WireOp = {
-            fold: draft.fold, op: newIdV7(clock.nowMs(), (n) => random.bytes(n)), rec: draft.rec, dev,
-            seq: (await oplog.lastSeq(draft.fold, dev)) + 1n, hlc: stamped.value, epoch, schema: SCHEMA_VERSION,
-            table: draft.table, fields: draft.fields, sets: draft.sets,
-          };
-          const op = toMergeOp(wire);
-          const valid = validateOp(op, groups);
-          if (!valid.ok) return valid;
+            const dev = keys.deviceId();
+            const wire: WireOp = {
+              fold: draft.fold, op: newIdV7(clock.nowMs(), (n) => random.bytes(n)), rec: draft.rec, dev,
+              seq: (await oplog.lastSeq(draft.fold, dev)) + 1n, hlc: stamped.value, epoch, schema: SCHEMA_VERSION,
+              table: draft.table, fields: draft.fields, sets: draft.sets,
+            };
+            const op = toMergeOp(wire);
+            const valid = validateOp(op, groups);
+            if (!valid.ok) return valid;
 
-          const sealed = await sealer.seal(wire);
-          await oplog.append({ sealed, origin: 'local', pushed: false });
-          const { before, after } = await project(op, draft.fold);
-          return ok({ applied: { op, sealed, before, after }, hlc: stamped.value });
+            const sealed = await sealer.seal(wire);
+            await oplog.append({ sealed, origin: 'local', pushed: false });
+            const { before, after } = await project(op, draft.fold);
+            applied.push({ op, sealed, before, after });
+            next.set(draft.fold, stamped.value);
+          }
+          return ok({ applied, clocks: next });
         });
         if (!result.ok) return result;
-        clocks.set(draft.fold, result.value.hlc);
+        for (const [fold, hlc] of result.value.clocks) clocks.set(fold, hlc);
         return ok(result.value.applied);
       }),
+
+    async submit(draft) {
+      const result = await this.submitMany([draft]);
+      return result.ok ? ok(result.value[0]!) : result;
+    },
 
     applyRemote: (sealed) =>
       serial(async () => {

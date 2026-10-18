@@ -13,3 +13,4 @@ export * from './sync/application/write-path.js';
 export * from './sync/application/upcasters.js';
 export * from './sync/application/repair.js';
 export * from './shared-kernel/role.js';
+export * from './sync/application/buses.js';

@@ -11,14 +11,14 @@ const REC = id(0x10);
 const fields = (...e: Array<[number, FieldValue]>) => new Map<number, FieldValue>(e);
 const draft = (over: Partial<OpDraft> = {}): OpDraft => ({ fold: FOLD, rec: REC, table: 6, fields: fields([1, 'x']), sets: new Map(), ...over });
 
-async function setup(role: Role | undefined = 'editor', unlocked = true) {
+async function setup(role: Role | null = 'editor', unlocked = true) {
   const world = await createWorld();
   world.addFold(FOLD);
   const replica = await createReplica(world, { device: id(0xa) });
   const events = createEventBus();
   const seen: DomainEvent[] = [];
   events.subscribe((e) => seen.push(e));
-  const deps = { writePath: replica.writePath, projections: replica.projections, events, roleOf: async () => role, isUnlocked: () => unlocked };
+  const deps = { writePath: replica.writePath, projections: replica.projections, events, roleOf: async () => role ?? undefined, isUnlocked: () => unlocked };
   return { replica, events, seen, commands: createCommandBus(deps), queries: createQueryBus(deps) };
 }
 
@@ -37,7 +37,7 @@ describe('command bus: authorisation', () => {
     ['viewer', false],
     ['editor', true],
     ['owner', true],
-    [undefined, false],
+    [null, false],
   ] as const)('role %s may run an editor command: %s', async (role, allowed) => {
     const { commands, replica } = await setup(role);
     const handled = vi.fn();
@@ -108,7 +108,7 @@ describe('query bus', () => {
     const viewer = await setup('viewer');
     await viewer.replica.writePath.submit(draft());
     expect(await viewer.queries.execute(read, { fold: FOLD })).toEqual({ ok: true, value: 1 });
-    const stranger = await setup(undefined);
+    const stranger = await setup(null);
     expect(await stranger.queries.execute(read, { fold: FOLD })).toEqual({ ok: false, error: expect.objectContaining({ code: 'permission_denied', roleRequired: 'viewer' }) });
   });
 
@@ -138,7 +138,7 @@ describe('deriveEvents (projection diff)', () => {
     const [create, edit, del, edit2, restore] = await applied(
       { f: [[1, 'a']] }, { f: [[1, 'b'], [2, 5n]] }, { f: [[DELETED_FIELD, true]] }, { f: [[1, 'c']] }, { f: [[DELETED_FIELD, false]] },
     );
-    const types = [create, edit, del, edit2, restore].map((a) => deriveEvents(FOLD, a).map((e) => e.type));
+    const types = [create, edit, del, edit2, restore].map((a) => deriveEvents(FOLD, a!).map((e) => e.type));
     expect(types).toEqual([['RecordCreated'], ['RecordChanged'], ['RecordDeleted'], [], ['RecordRestored']]);
     expect(deriveEvents(FOLD, edit!)[0]).toMatchObject({ changedFields: [1, 2] });
   });
@@ -176,5 +176,29 @@ describe('event bus', () => {
     off();
     bus.publish([event]);
     expect(got).toEqual(['RecordCreated']);
+  });
+});
+
+describe('command bus: whole-command atomicity', () => {
+  it('rolls back earlier submits when the handler later returns an error', async () => {
+    const { commands, replica, seen } = await setup('owner');
+    const twoStep: CommandDef<{ fold: typeof FOLD }, never, { code: 'invariant_violation'; message: string }> = {
+      name: 'twoStep', requires: 'editor', foldOf: (c) => c.fold,
+      async handle(_c, ctx) {
+        await ctx.submit([draft({ rec: id(1) })]);
+        await ctx.submit([draft({ rec: id(2) })]);
+        return err('invariant_violation', 'changed my mind');
+      },
+    };
+    expect(await commands.execute(twoStep, { fold: FOLD })).toEqual({ ok: false, error: { code: 'invariant_violation', message: 'changed my mind' } });
+    expect(await replica.oplog.list(FOLD)).toHaveLength(0);
+    expect((await replica.projections.listRecords(FOLD)).size).toBe(0);
+    expect(seen).toEqual([]);
+  });
+
+  it('rethrows unexpected errors from handlers', async () => {
+    const { commands } = await setup('owner');
+    const boom: CommandDef<{ fold: typeof FOLD }, never, never> = { name: 'boom', requires: 'editor', foldOf: (c) => c.fold, handle: async () => { throw new Error('bug'); } };
+    await expect(commands.execute(boom, { fold: FOLD })).rejects.toThrow('bug');
   });
 });
