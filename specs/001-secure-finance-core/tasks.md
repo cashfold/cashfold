@@ -106,7 +106,7 @@ The spec covers the whole v1 product, so this list is large. Recommended first r
 - [X] T053 [P] Write failing property tests for Fold isolation: a record encrypted for Fold A cannot be decrypted with any key of Fold B, and no projection query without `fold_id` returns cross-Fold rows (FR-021) in `packages/core/src/sync/application/fold-isolation.test.ts` — Refs: FR-021
 - [X] T212 [P] Write failing tests for the error catalogue (no amounts, names, notes or key material in any message) in `apps/web/src/ui/errors/catalogue.test.ts` — Refs: FR-098
 - [X] T054 [P] Create the user-facing error catalogue (plain-language message keys for every error in contracts/core-api.md, no amounts, names, notes or key material) in `apps/web/src/ui/errors/catalogue.ts` (depends on T212) — Refs: FR-098
-- [ ] T055 [P] Create the Playwright plaintext-leak scan fixture (seeded names, notes and amounts searched in OPFS files, IndexedDB, console and network captures) in `e2e/fixtures/leak-scan.ts` — Refs: SC-002, SC-015
+- [X] T055 [P] Create the Playwright plaintext-leak scan fixture (seeded names, notes and amounts searched in OPFS files, IndexedDB, console and network captures) in `e2e/fixtures/leak-scan.ts` — Refs: SC-002, SC-015
 
 **Checkpoint**: Foundation ready; user story implementation can begin.
 
