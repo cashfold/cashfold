@@ -6,3 +6,7 @@ export * from './shared-kernel/fx.js';
 export * from './shared-kernel/amount-text.js';
 export * from './shared-kernel/local-date.js';
 export * from './shared-kernel/id.js';
+export * from './sync/domain/hlc.js';
+export * from './sync/domain/merge.js';
+export * from './sync/ports/index.js';
+export * from './sync/application/write-path.js';

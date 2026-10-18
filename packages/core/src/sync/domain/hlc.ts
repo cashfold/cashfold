@@ -31,14 +31,14 @@ export function compareStamp(a: Stamp, b: Stamp): number {
 }
 
 /** Counter overflow (65,535 events in one millisecond) advances wall time by 1 ms. */
-function normalise(wallMs: number, ctr: number): Result<Hlc, HlcError> {
+function normalise(wallMs: number, ctr: number): Result<Hlc, DomainError<'clock_overflow'>> {
   if (ctr > MAX_CTR) return normalise(wallMs + 1, 0);
   if (wallMs > MAX_WALL_MS) return err('clock_overflow', 'Hybrid logical clock wall time exceeded 48 bits');
   return ok({ wallMs, ctr });
 }
 
 /** Local or send event. */
-export function tick(local: Hlc, nowMs: number): Result<Hlc, HlcError> {
+export function tick(local: Hlc, nowMs: number): Result<Hlc, DomainError<'clock_overflow'>> {
   const wall = Math.max(local.wallMs, nowMs);
   return normalise(wall, wall === local.wallMs ? local.ctr + 1 : 0);
 }
