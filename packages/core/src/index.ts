@@ -18,3 +18,5 @@ export * from './shared-kernel/logger';
 export * from './identity/domain/password-policy';
 export * from './identity/domain/user-account';
 export * from './sharing/domain/fold';
+export * from './sharing/ports/index';
+export * from './sharing/application/fold-commands';

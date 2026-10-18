@@ -26,7 +26,8 @@ export interface QueryContext {
 
 export interface CommandDef<C, R, E extends DomainError> {
   readonly name: string;
-  readonly requires: Role;
+  /** The least role allowed, or null for commands that create the thing the role belongs to (a new Fold). */
+  readonly requires: Role | null;
   foldOf(command: C): Id;
   handle(command: C, ctx: CommandContext): Promise<Result<R, E>>;
 }
@@ -124,8 +125,9 @@ export interface BusDeps {
   isUnlocked(): boolean;
 }
 
-async function authorise(deps: BusDeps, fold: Id, required: Role): Promise<BusError | undefined> {
+async function authorise(deps: BusDeps, fold: Id, required: Role | null): Promise<BusError | undefined> {
   if (!deps.isUnlocked()) return { code: 'locked', message: 'The app is locked' };
+  if (required === null) return undefined;
   const role = await deps.roleOf(fold);
   if (role === undefined || !roleAtLeast(role, required)) {
     return { code: 'permission_denied', message: 'Your role does not allow this action', roleRequired: required };
