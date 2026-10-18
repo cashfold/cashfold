@@ -5,6 +5,7 @@ import {
   applyOpInto, mergeRecords, recordFromOp, validateOp,
   type FieldValue, type GroupRegistry, type MergeError, type Op, type RecordState, type SetDelta,
 } from '../domain/merge.js';
+import { createUpcasters, type Upcasters } from './upcasters.js';
 import type {
   ClockPort, KeyStorePort, OpLogStore, OpSealerPort, ProjectionStore, QuarantineReason, RandomPort, SealedOp, SealFailureKind, WireOp,
 } from '../ports/index.js';
@@ -51,7 +52,7 @@ export interface WritePathDeps {
   readonly keys: KeyStorePort;
   readonly groups: GroupRegistry;
   /** Brings an op written under an older schema up to the current one before it is merged. */
-  readonly upcast?: (op: WireOp) => WireOp;
+  readonly upcasters?: Upcasters;
 }
 
 export interface WritePath {
@@ -76,7 +77,7 @@ export function toMergeOp(w: WireOp): Op {
 
 export function createWritePath(deps: WritePathDeps): WritePath {
   const { oplog, projections, sealer, clock, random, keys, groups } = deps;
-  const upcast = deps.upcast ?? ((op: WireOp) => op);
+  const upcasters = deps.upcasters ?? createUpcasters(SCHEMA_VERSION, new Map());
   const clocks = new Map<Id, Hlc>();
 
   // One command at a time: the Core Worker is the single writer, and commands must not interleave across awaits.
@@ -138,14 +139,17 @@ export function createWritePath(deps: WritePathDeps): WritePath {
             return { result: { kind: 'quarantined', reason } };
           };
 
-          let wire: WireOp;
+          let opened: WireOp;
           try {
-            wire = upcast(await sealer.open(sealed));
+            opened = await sealer.open(sealed);
           } catch (e) {
             const kind = sealFailureKind(e);
             if (kind === undefined) throw e;
             return quarantine(kind);
           }
+          const upcast = upcasters.upcast(opened);
+          if (!upcast.ok) return quarantine('schema_unsupported');
+          const wire = upcast.value;
 
           const merged = receive(await clockFor(sealed.fold), wire.hlc, clock.nowMs());
           if (!merged.ok) return quarantine('clock_ahead');
@@ -169,7 +173,9 @@ export function createWritePath(deps: WritePathDeps): WritePath {
           let failed = 0;
           for (const stored of await oplog.list(fold)) {
             try {
-              const op = toMergeOp(upcast(await sealer.open(stored.sealed)));
+              const upcast = upcasters.upcast(await sealer.open(stored.sealed));
+              if (!upcast.ok) throw Object.assign(new Error('unsupported schema'), { kind: 'malformed' });
+              const op = toMergeOp(upcast.value);
               if (!validateOp(op, groups).ok) throw Object.assign(new Error('invalid op'), { kind: 'malformed' });
               applyOpInto(state, op);
               replayed++;

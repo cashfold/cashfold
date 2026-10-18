@@ -49,7 +49,7 @@ export interface StoredOp {
   readonly pushed: boolean;
 }
 
-export type QuarantineReason = SealFailureKind | 'clock_ahead' | 'invalid_op';
+export type QuarantineReason = SealFailureKind | 'clock_ahead' | 'invalid_op' | 'schema_unsupported';
 
 export interface QuarantinedOp {
   readonly sealed: SealedOp;
