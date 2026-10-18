@@ -4,6 +4,7 @@ import { useEffect, type ReactNode } from 'react';
 import { registerServiceWorker } from '../sw/register';
 import { ErrorBoundary } from '../ui/errors/ErrorBoundary';
 import { I18nProvider, useI18n } from '../ui/i18n/I18nProvider';
+import { CoreProvider } from '../ui/core/CoreProvider';
 import { AppShell } from '../ui/shell/AppShell';
 import { SupportGate } from '../ui/support/SupportGate';
 
@@ -24,7 +25,9 @@ export function AppProviders({ children }: { children: ReactNode }) {
   }, []);
   return (
     <I18nProvider>
-      <Inner>{children}</Inner>
+      <CoreProvider>
+        <Inner>{children}</Inner>
+      </CoreProvider>
     </I18nProvider>
   );
 }

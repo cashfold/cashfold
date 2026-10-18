@@ -7,7 +7,10 @@
     "dev": "next dev",
     "build": "next build && node scripts/build-sw.mjs",
     "typecheck": "tsc --noEmit",
-    "test:browser": "vitest run -c vitest.browser.config.ts"
+    "test:browser": "vitest run -c vitest.browser.config.ts",
+    "predev": "node scripts/copy-sqlite3mc.mjs",
+    "prebuild": "node scripts/copy-sqlite3mc.mjs",
+    "pretest:browser": "node scripts/copy-sqlite3mc.mjs"
   },
   "dependencies": {
     "@aztec/sqlite3mc-wasm": "5.2.1",

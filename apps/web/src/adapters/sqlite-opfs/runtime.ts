@@ -1,4 +1,4 @@
-import sqlite3InitModule, { type SAHPoolUtil, type Sqlite3Static } from '@aztec/sqlite3mc-wasm';
+import type { SAHPoolUtil, Sqlite3Static } from '@aztec/sqlite3mc-wasm';
 
 // SQLite3 Multiple Ciphers (WASM) over the OPFS "SyncAccessHandle pool" VFS, used from the Core Worker.
 // The pool VFS needs no cross-origin isolation headers. Encryption is added by wrapping the pool VFS in the
@@ -22,6 +22,17 @@ export interface SqliteRuntime {
   readonly cipherVfs: string;
 }
 
+/** Where the verified SQLite3 Multiple Ciphers module is served from (copied there at build time, never bundled). */
+export const SQLITE_MODULE_URL = '/sqlite3mc/sqlite3.mjs';
+
+type InitModule = (options?: Record<string, unknown>) => Promise<Sqlite3Static>;
+
+async function loadModule(): Promise<Sqlite3Static> {
+  const url = new URL(SQLITE_MODULE_URL, self.location.origin).href;
+  const module = (await import(/* webpackIgnore: true */ /* @vite-ignore */ url)) as { default: InitModule };
+  return module.default();
+}
+
 const runtimes = new Map<string, Promise<SqliteRuntime>>();
 
 export const DEFAULT_RUNTIME: RuntimeOptions = { vfsName: 'cashfold', directory: '/cashfold', initialCapacity: 6 };
@@ -31,7 +42,7 @@ export function loadRuntime(options: RuntimeOptions = DEFAULT_RUNTIME): Promise<
   const existing = runtimes.get(options.vfsName);
   if (existing !== undefined) return existing;
   const created = (async (): Promise<SqliteRuntime> => {
-    const sqlite3 = await sqlite3InitModule();
+    const sqlite3 = await loadModule();
     const pool = await sqlite3.installOpfsSAHPoolVfs({
       name: options.vfsName,
       directory: options.directory,
