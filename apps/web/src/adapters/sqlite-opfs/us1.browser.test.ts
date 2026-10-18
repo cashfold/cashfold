@@ -49,3 +49,27 @@ describe('user story 1 on the real encrypted database', () => {
     expect(r.lockedAgain).toBe('locked');
   });
 });
+
+describe('the Core Worker handlers the interface calls', () => {
+  it('drives sign-up, Folds and auto-lock through plain RPC-shaped data', async () => {
+    const r = await run('appHandlers');
+    expect(r['statusFresh']).toEqual({ phase: 'no_account' });
+    expect(r['foldsBeforeSignUp']).toBe('RpcError:locked');
+    expect(r['weak']).toEqual({ ok: false, error: expect.objectContaining({ code: 'weak_password', violations: ['too_common'] }) });
+    expect(r['created']).toEqual({ ok: true, keyShape: true, fold: 'Personal', leaksOtherSecrets: ['accountId', 'fold', 'registration', 'secretKeyText'] });
+    expect(r['statusUnlocked']).toMatchObject({ phase: 'unlocked', email: 'a@example.com', registration: 'pending' });
+
+    expect(r['createdWork']).toBe(true);
+    expect(r['renamed']).toEqual({ ok: true, value: 'Day job' });
+    expect(r['described']).toEqual({ name: 'Day job', memberCount: 1, isLastFold: false });
+    expect(r['badConfirm']).toEqual({ ok: false, error: expect.objectContaining({ code: 'confirmation_mismatch' }) });
+    expect(r['listBeforeDelete']).toEqual(['Personal', 'Day job']);
+    expect(r['deleted']).toEqual({ ok: true, value: true });
+    expect(r['lastFold']).toEqual({ ok: false, error: expect.objectContaining({ code: 'last_fold' }) });
+    expect(r['listAfterDelete']).toEqual(['Personal']);
+
+    expect(r['coveredWhenHidden']).toBe(true);
+    expect(r['coveredWhenVisible']).toBe(false);
+    expect(r['afterPageHide']).toEqual({ announced: 1, calls: 'locked', statusAfter: expect.objectContaining({ phase: 'locked' }) });
+  });
+});

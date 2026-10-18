@@ -11,6 +11,8 @@ import { createSqliteOpLog, createSqliteProjections } from './sqlite-stores';
 import { createAccount, createSession, unlock, type CredentialStorePort, type DeviceCredentials, type RegistrationResult } from '@cashfold/core';
 import { createAccountCrypto } from '../account-crypto';
 import { createWebSession } from './web-session';
+import { createAppHandlers } from '../../worker/app-handlers';
+import { createRpcServer } from '../../worker/rpc';
 
 const key = (fill: number) => SecretBuf.from(new Uint8Array(32).fill(fill));
 const latin1 = (b: Uint8Array) => new TextDecoder('latin1').decode(b);
@@ -75,6 +77,47 @@ const rng = { bytes: (n: number) => crypto.getRandomValues(new Uint8Array(n)) };
 const pwBuf = (text: string) => SecretBuf.from(new TextEncoder().encode(text));
 
 export const scenarios = {
+  /** The Core Worker's application handlers, driven the way the page drives them. */
+  async appHandlers(ctx: ScenarioContext) {
+    const rt = await runtimeFor(ctx);
+    let stored: DeviceCredentials | undefined;
+    const credentials: CredentialStorePort = { save: async (c) => void (stored = c), load: async () => stored, clear: async () => void (stored = undefined) };
+    let lockedAnnounced = 0;
+    const app = createAppHandlers({
+      runtime: async () => rt, rng, credentials, nowMs: Date.now, onLocked: () => void lockedAnnounced++,
+      accountCrypto: createAccountCrypto({ rng, kdf: { kdf: 'argon2id', mKib: 32768, t: 2, p: 1 } }),
+    });
+    const server = createRpcServer(app.handlers);
+    const call = (method: string, args?: unknown) => server.invoke(method, args);
+    const bytes = (text: string) => new TextEncoder().encode(text);
+    const out: Record<string, unknown> = {};
+
+    out['statusFresh'] = await call('status');
+    out['foldsBeforeSignUp'] = await call('folds.list').catch((e: Error) => `${e.name}:${(e as { code?: string }).code}`);
+    out['weak'] = await call('createAccount', { email: 'a@example.com', password: bytes('password1234'), server: 'https://relay.example.com', discoverable: true });
+    const created = (await call('createAccount', { email: 'a@example.com', password: bytes('correct horse battery staple'), server: 'https://relay.example.com', discoverable: true })) as { ok: boolean; value: { secretKeyText: string; fold: { id: string; name: string } } };
+    out['created'] = { ok: created.ok, keyShape: /^C1-/.test(created.value.secretKeyText), fold: created.value.fold.name, leaksOtherSecrets: Object.keys(created.value).sort() };
+    out['statusUnlocked'] = await call('status');
+
+    const personal = created.value.fold.id;
+    const work = (await call('folds.create', { name: 'Work', baseCurrency: 'EUR' })) as { ok: boolean; value: { id: string } };
+    out['createdWork'] = work.ok;
+    out['renamed'] = await call('folds.rename', { fold: work.value.id, name: 'Day job' });
+    out['described'] = await call('folds.describeDeletion', { fold: work.value.id });
+    out['badConfirm'] = await call('folds.delete', { fold: work.value.id, confirmName: 'work' });
+    out['listBeforeDelete'] = ((await call('folds.list')) as { name: string }[]).map((f) => f.name);
+    out['deleted'] = await call('folds.delete', { fold: work.value.id, confirmName: 'Day job' });
+    out['lastFold'] = await call('folds.delete', { fold: personal, confirmName: 'Personal' });
+    out['listAfterDelete'] = ((await call('folds.list')) as { name: string }[]).map((f) => f.name);
+
+    out['coveredWhenHidden'] = await call('session.visibility', { state: 'hidden' });
+    out['coveredWhenVisible'] = await call('session.visibility', { state: 'visible' });
+    await call('session.pageHide');
+    await new Promise((r) => setTimeout(r, 50));
+    out['afterPageHide'] = { announced: lockedAnnounced, calls: await call('folds.list').catch((e: Error) => (e as { code?: string }).code), statusAfter: await call('status') };
+    return out;
+  },
+
   /** The whole of user story 1 against the real encrypted database: sign up, lock, unlock. */
   async signUpAndUnlock(ctx: ScenarioContext) {
     const rt = await runtimeFor(ctx);
