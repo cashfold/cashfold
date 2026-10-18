@@ -1,0 +1,10 @@
+# Third-party app artifacts must never be committed
+*.ipa
+extracted_*/
+Payload/
+
+# macOS
+.DS_Store
+
+# Local Claude Code settings
+.claude/settings.local.json
