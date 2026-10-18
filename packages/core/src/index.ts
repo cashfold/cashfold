@@ -20,3 +20,5 @@ export * from './identity/domain/user-account';
 export * from './sharing/domain/fold';
 export * from './sharing/ports/index';
 export * from './sharing/application/fold-commands';
+export * from './identity/ports/index';
+export * from './identity/application/lock';
