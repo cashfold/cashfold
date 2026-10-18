@@ -1,5 +1,5 @@
-import { AeadError, type Aead } from '../../ports/index.js';
-import type { SecretBuf } from '../../secret-buf.js';
+import { AeadError, type Aead } from '../../ports/index';
+import type { SecretBuf } from '../../secret-buf';
 
 const KEY_BYTES = 32;
 const NONCE_BYTES = 12;

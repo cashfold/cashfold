@@ -2,12 +2,12 @@ import { describe, expect, it } from 'vitest';
 import aes from '../../../../../vectors/kat/aes-256-gcm.json' with { type: 'json' };
 import hkdfVectors from '../../../../../vectors/kat/hkdf-sha256.json' with { type: 'json' };
 import pbkdf2Vectors from '../../../../../vectors/kat/pbkdf2-sha256.json' with { type: 'json' };
-import { AeadError } from '../../ports/index.js';
-import { SecretBuf } from '../../secret-buf.js';
-import { hex, toHex } from '../../test-support.js';
-import { createAesGcm } from './aes-gcm.js';
-import { createHkdf } from './hkdf.js';
-import { createPbkdf2 } from './pbkdf2.js';
+import { AeadError } from '../../ports/index';
+import { SecretBuf } from '../../secret-buf';
+import { hex, toHex } from '../../test-support';
+import { createAesGcm } from './aes-gcm';
+import { createHkdf } from './hkdf';
+import { createPbkdf2 } from './pbkdf2';
 
 describe('AES-256-GCM (NIST SP 800-38D / GCM spec vectors)', () => {
   const aead = createAesGcm();

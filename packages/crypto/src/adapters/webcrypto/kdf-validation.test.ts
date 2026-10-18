@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { KdfBelowFloor } from '../../ports/index.js';
-import { SecretBuf } from '../../secret-buf.js';
-import { toHex } from '../../test-support.js';
-import { createHkdf } from './hkdf.js';
-import { createPbkdf2, PBKDF2_MIN_ITERATIONS } from './pbkdf2.js';
+import { KdfBelowFloor } from '../../ports/index';
+import { SecretBuf } from '../../secret-buf';
+import { toHex } from '../../test-support';
+import { createHkdf } from './hkdf';
+import { createPbkdf2, PBKDF2_MIN_ITERATIONS } from './pbkdf2';
 
 const pw = () => SecretBuf.from(new TextEncoder().encode('correct horse battery staple'));
 const salt = new Uint8Array(16).fill(3);

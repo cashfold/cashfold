@@ -1,6 +1,6 @@
-import type { Id } from '../../shared-kernel/id.js';
-import type { Hlc } from '../domain/hlc.js';
-import type { FieldValue, RecordState, SetDelta } from '../domain/merge.js';
+import type { Id } from '../../shared-kernel/id';
+import type { Hlc } from '../domain/hlc';
+import type { FieldValue, RecordState, SetDelta } from '../domain/merge';
 
 /** An operation in the clear, as it passes through the sealer (signing and encryption happen behind `OpSealerPort`). */
 export interface WireOp {

@@ -1,4 +1,4 @@
-import { scenarios, type ScenarioContext, type ScenarioName } from './test-scenarios.js';
+import { scenarios, type ScenarioContext, type ScenarioName } from './test-scenarios';
 
 // Hosts scenarios in a dedicated worker, which is where OPFS access handles are available.
 self.onmessage = async (ev: MessageEvent<{ scenario: ScenarioName; ctx: ScenarioContext }>) => {

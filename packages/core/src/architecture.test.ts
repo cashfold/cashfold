@@ -2,9 +2,9 @@ import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
 import { ESLint } from 'eslint';
 import { describe, expect, it } from 'vitest';
-import type { FieldValue } from './sync/domain/merge.js';
-import { createCluster, createRng } from './testing/index.js';
-import { id } from './testing/world.js';
+import type { FieldValue } from './sync/domain/merge';
+import { createCluster, createRng } from './testing/index';
+import { id } from './testing/world';
 
 // Architecture fitness functions (Constitution III): the dependency rules are checked by tests, not by habit.
 

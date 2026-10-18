@@ -1,1 +1,6 @@
 @import 'tailwindcss';
+@import './tokens.css';
+
+html { background: var(--bg); color: var(--text); font-size: 100%; }
+body { min-block-size: 100vh; margin: 0; font-family: system-ui, sans-serif; line-height: 1.5; }
+:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }

@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import ed from '../../../../../vectors/kat/ed25519.json' with { type: 'json' };
 import x from '../../../../../vectors/kat/x25519.json' with { type: 'json' };
-import { SecretBuf } from '../../secret-buf.js';
-import { hex, toHex } from '../../test-support.js';
-import { createEd25519Signer, webCryptoEd25519Available } from './ed25519.js';
-import { x25519, x25519PublicKey } from './x25519.js';
+import { SecretBuf } from '../../secret-buf';
+import { hex, toHex } from '../../test-support';
+import { createEd25519Signer, webCryptoEd25519Available } from './ed25519';
+import { x25519, x25519PublicKey } from './x25519';
 
 describe('X25519 (RFC 7748 section 6.1)', () => {
   it('derives public keys', () => {

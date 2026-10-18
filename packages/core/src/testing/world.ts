@@ -1,9 +1,9 @@
 import { createAesGcm, createEd25519Signer, createHkdf, createOpSealer, SecretBuf, type Rng } from '@cashfold/crypto';
-import type { Id } from '../shared-kernel/id.js';
-import { createWritePath, type WritePath } from '../sync/application/write-path.js';
-import type { GroupRegistry } from '../sync/domain/merge.js';
-import type { OpLogStore, OpSealerPort, ProjectionStore } from '../sync/ports/index.js';
-import { createMemoryStores } from './memory-ports.js';
+import type { Id } from '../shared-kernel/id';
+import { createWritePath, type WritePath } from '../sync/application/write-path';
+import type { GroupRegistry } from '../sync/domain/merge';
+import type { OpLogStore, OpSealerPort, ProjectionStore } from '../sync/ports/index';
+import { createMemoryStores } from './memory-ports';
 
 /** Deterministic test identifier: `id(1)` is always the same UUID. */
 export const id = (n: number): Id => `00000000-0000-4000-8000-${n.toString(16).padStart(12, '0')}` as Id;

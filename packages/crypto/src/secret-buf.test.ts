@@ -1,6 +1,6 @@
 import { inspect } from 'node:util';
 import { describe, expect, it } from 'vitest';
-import { SecretBuf } from './secret-buf.js';
+import { SecretBuf } from './secret-buf';
 
 describe('SecretBuf', () => {
   it('exposes bytes only through use()', () => {

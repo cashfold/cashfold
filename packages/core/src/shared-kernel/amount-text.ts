@@ -1,6 +1,6 @@
-import { exponentOf, type CurrencyCode } from './currency.js';
-import { money, type Money, type MoneyError } from './money.js';
-import { err, type DomainError, type Result } from './result.js';
+import { exponentOf, type CurrencyCode } from './currency';
+import { money, type Money, type MoneyError } from './money';
+import { err, type DomainError, type Result } from './result';
 
 export interface Separators {
   readonly decimal: string;

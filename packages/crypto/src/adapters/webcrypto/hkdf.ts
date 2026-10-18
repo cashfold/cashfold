@@ -1,5 +1,5 @@
-import type { Hkdf } from '../../ports/index.js';
-import { SecretBuf } from '../../secret-buf.js';
+import type { Hkdf } from '../../ports/index';
+import { SecretBuf } from '../../secret-buf';
 
 const MAX_LENGTH = 255 * 32; // RFC 5869: L <= 255 * HashLen
 

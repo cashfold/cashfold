@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import a1 from '../../../../vectors/kat/hpke-rfc9180-a1.json' with { type: 'json' };
 import interop from '../../../../vectors/kat/hpke-aes256-interop.json' with { type: 'json' };
-import { createAesGcm } from '../adapters/webcrypto/aes-gcm.js';
-import { AeadError, type Aead, type Rng } from '../ports/index.js';
-import { SecretBuf } from '../secret-buf.js';
-import { hex, toHex } from '../test-support.js';
-import { createHpke } from './hpke.js';
+import { createAesGcm } from '../adapters/webcrypto/aes-gcm';
+import { AeadError, type Aead, type Rng } from '../ports/index';
+import { SecretBuf } from '../secret-buf';
+import { hex, toHex } from '../test-support';
+import { createHpke } from './hpke';
 
 /** RFC 9180 A.1 uses AES-128-GCM; the production adapter is AES-256 only, so the test supplies its own. */
 const aes128: Aead = {

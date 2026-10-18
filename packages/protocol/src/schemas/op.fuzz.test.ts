@@ -1,11 +1,11 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { ZodError } from 'zod';
-import { CborError } from '../cbor/cbor.js';
+import { CborError } from '../cbor/cbor';
 import {
   decodeFoldKeyGrant, decodeFrame, decodeKeySet, decodeLogEntry, decodeOpEnvelope, decodeOpPayload, decodeSnapshot,
   encodeOpEnvelope, encodeOpPayload, type FieldValue, type OpEnvelope, type OpPayload,
-} from './index.js';
+} from './index';
 
 const NUM_RUNS = process.env['CI'] ? 5000 : 1000;
 

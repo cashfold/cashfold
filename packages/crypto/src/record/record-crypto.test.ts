@@ -1,12 +1,12 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import vector from '../../../../vectors/kat/record-v1.json' with { type: 'json' };
-import { createAesGcm } from '../adapters/webcrypto/aes-gcm.js';
-import { createHkdf } from '../adapters/webcrypto/hkdf.js';
-import { AeadError, type Rng } from '../ports/index.js';
-import { SecretBuf } from '../secret-buf.js';
-import { hex, toHex } from '../test-support.js';
-import { createRecordCrypto, pad, unpad, type RecordContext } from './record-crypto.js';
+import { createAesGcm } from '../adapters/webcrypto/aes-gcm';
+import { createHkdf } from '../adapters/webcrypto/hkdf';
+import { AeadError, type Rng } from '../ports/index';
+import { SecretBuf } from '../secret-buf';
+import { hex, toHex } from '../test-support';
+import { createRecordCrypto, pad, unpad, type RecordContext } from './record-crypto';
 
 const osRng: Rng = { bytes: (n) => crypto.getRandomValues(new Uint8Array(n)) };
 const crypt = createRecordCrypto({ aead: createAesGcm(), hkdf: createHkdf(), rng: osRng });

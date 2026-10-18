@@ -1,6 +1,6 @@
 import { ed25519 } from '@noble/curves/ed25519.js';
-import type { Signer } from '../../ports/index.js';
-import { SecretBuf } from '../../secret-buf.js';
+import type { Signer } from '../../ports/index';
+import { SecretBuf } from '../../secret-buf';
 
 /** Ed25519 over @noble/curves. Verification follows RFC 8032 (strict: canonical S, no ZIP-215 leniency). */
 export function createEd25519Signer(): Signer {

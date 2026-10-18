@@ -1,5 +1,5 @@
-import { KdfBelowFloor, type Kdf } from '../../ports/index.js';
-import { SecretBuf } from '../../secret-buf.js';
+import { KdfBelowFloor, type Kdf } from '../../ports/index';
+import { SecretBuf } from '../../secret-buf';
 
 export const PBKDF2_MIN_ITERATIONS = 600_000;
 const OUTPUT_BYTES = 32;

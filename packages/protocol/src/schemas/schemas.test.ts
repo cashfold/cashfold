@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { ZodError } from 'zod';
-import { decode, encode } from '../cbor/cbor.js';
+import { decode, encode } from '../cbor/cbor';
 import {
   decodeFoldKeyGrant, decodeFrame, decodeKeySet, decodeLogEntry, decodeOpEnvelope, decodeOpPayload, decodeSnapshot,
   encodeFoldKeyGrant, encodeFrame, encodeKeySet, encodeLogEntry, encodeOpEnvelope, encodeOpPayload, encodeSnapshot,
   opSigningBytes, type FieldValue, type FoldKeyGrant, type Frame, type KeySet, type LogEntry, type OpEnvelope, type OpPayload, type Snapshot,
-} from './index.js';
+} from './index';
 
 const b = (n: number, fill = 1) => new Uint8Array(n).fill(fill);
 

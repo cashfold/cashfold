@@ -1,14 +1,14 @@
-import { newIdV7, type Id } from '../../shared-kernel/id.js';
-import { err, ok, type DomainError, type Result } from '../../shared-kernel/result.js';
-import { receive, tick, ZERO_HLC, type Hlc } from '../domain/hlc.js';
+import { newIdV7, type Id } from '../../shared-kernel/id';
+import { err, ok, type DomainError, type Result } from '../../shared-kernel/result';
+import { receive, tick, ZERO_HLC, type Hlc } from '../domain/hlc';
 import {
   applyOpInto, mergeRecords, recordFromOp, validateOp,
   type FieldValue, type GroupRegistry, type MergeError, type Op, type RecordState, type SetDelta,
-} from '../domain/merge.js';
-import { createUpcasters, type Upcasters } from './upcasters.js';
+} from '../domain/merge';
+import { createUpcasters, type Upcasters } from './upcasters';
 import type {
   ClockPort, KeyStorePort, OpLogStore, OpSealerPort, ProjectionStore, QuarantineReason, RandomPort, SealedOp, SealFailureKind, WireOp,
-} from '../ports/index.js';
+} from '../ports/index';
 
 /** Schema version stamped on new ops. Older versions are upcast on read (see upcasters.ts). */
 export const SCHEMA_VERSION = 1;

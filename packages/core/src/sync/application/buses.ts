@@ -1,9 +1,9 @@
-import type { Id } from '../../shared-kernel/id.js';
-import { ok, type DomainError, type Result } from '../../shared-kernel/result.js';
-import { roleAtLeast, type Role } from '../../shared-kernel/role.js';
-import { DELETED_FIELD, isVisible, visibleMembers, type RecordState } from '../domain/merge.js';
-import type { ProjectionStore } from '../ports/index.js';
-import type { Applied, OpDraft, WriteError, WritePath } from './write-path.js';
+import type { Id } from '../../shared-kernel/id';
+import { ok, type DomainError, type Result } from '../../shared-kernel/result';
+import { roleAtLeast, type Role } from '../../shared-kernel/role';
+import { DELETED_FIELD, isVisible, visibleMembers, type RecordState } from '../domain/merge';
+import type { ProjectionStore } from '../ports/index';
+import type { Applied, OpDraft, WriteError, WritePath } from './write-path';
 
 // CQRS plumbing. Commands go through the write path and append ops; queries read projections and never mutate.
 // Every command runs in one transaction and publishes its domain events only after it commits (core-api.md).

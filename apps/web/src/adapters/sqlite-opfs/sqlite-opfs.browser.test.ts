@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { storeContract } from '@cashfold/core/testing';
-import type { ScenarioName, scenarios } from './test-scenarios.js';
+import type { ScenarioName, scenarios } from './test-scenarios';
 
 type Result<K extends ScenarioName> = Awaited<ReturnType<(typeof scenarios)[K]>>;
 

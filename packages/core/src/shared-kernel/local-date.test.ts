@@ -2,7 +2,7 @@ import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import {
   addDays, addMonths, compare, dayOf, daysBetween, daysInMonth, fromEpochMs, isLeapYear, localDate, monthOf, yearOf,
-} from './local-date.js';
+} from './local-date';
 
 const D = (y: number, m: number, d: number) => {
   const r = localDate(y, m, d);

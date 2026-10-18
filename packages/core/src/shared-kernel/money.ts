@@ -1,5 +1,5 @@
-import type { CurrencyCode } from './currency.js';
-import { err, ok, type DomainError, type Result } from './result.js';
+import type { CurrencyCode } from './currency';
+import { err, ok, type DomainError, type Result } from './result';
 
 export const MAX_MINOR = 2n ** 63n - 1n;
 export const MIN_MINOR = -(2n ** 63n);

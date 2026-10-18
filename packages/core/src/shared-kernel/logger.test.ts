@@ -1,7 +1,7 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { createLogger, lit, redacted, type LogEntry } from './logger.js';
-import type { Id } from './id.js';
+import { createLogger, lit, redacted, type LogEntry } from './logger';
+import type { Id } from './id';
 
 const collect = () => {
   const entries: LogEntry[] = [];

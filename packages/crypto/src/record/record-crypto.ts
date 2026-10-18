@@ -1,6 +1,6 @@
 import { encode } from '@cashfold/protocol';
-import { AeadError, type Aead, type Hkdf, type Rng } from '../ports/index.js';
-import type { SecretBuf } from '../secret-buf.js';
+import { AeadError, type Aead, type Hkdf, type Rng } from '../ports/index';
+import type { SecretBuf } from '../secret-buf';
 
 // ARCH 5.6:
 //   RK    = HKDF-SHA256(salt = record_id, IKM = FK[epoch], info = "cashfold.rec.v1", L = 32)

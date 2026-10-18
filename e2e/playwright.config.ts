@@ -19,7 +19,7 @@ export default defineConfig({
   ],
   // E2E_NO_SERVER=1 runs specs that serve their own pages (the leak-scan self-test) without building the app.
   webServer: process.env['E2E_NO_SERVER'] ? undefined : {
-    command: 'pnpm --filter @cashfold/web build && pnpm dlx serve -l 3000 apps/web/out',
+    command: 'pnpm --filter @cashfold/web build && pnpm exec serve -l 3000 apps/web/out',
     url: baseURL,
     reuseExistingServer: !process.env['CI'],
     timeout: 180_000,

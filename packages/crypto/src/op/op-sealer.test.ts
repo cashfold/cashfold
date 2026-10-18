@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { createAesGcm } from '../adapters/webcrypto/aes-gcm.js';
-import { createHkdf } from '../adapters/webcrypto/hkdf.js';
-import { createEd25519Signer } from '../adapters/noble/ed25519.js';
-import type { Rng } from '../ports/index.js';
-import { SecretBuf } from '../secret-buf.js';
-import { createOpSealer, envelopeToSealed, sealedToEnvelope, SealError, type FieldValue, type OpKeys, type SealableOp, type SealedOp } from './op-sealer.js';
+import { createAesGcm } from '../adapters/webcrypto/aes-gcm';
+import { createHkdf } from '../adapters/webcrypto/hkdf';
+import { createEd25519Signer } from '../adapters/noble/ed25519';
+import type { Rng } from '../ports/index';
+import { SecretBuf } from '../secret-buf';
+import { createOpSealer, envelopeToSealed, sealedToEnvelope, SealError, type FieldValue, type OpKeys, type SealableOp, type SealedOp } from './op-sealer';
 
 const osRng: Rng = { bytes: (n) => crypto.getRandomValues(new Uint8Array(n)) };
 const signer = createEd25519Signer();

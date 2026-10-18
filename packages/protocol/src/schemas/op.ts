@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import { decode, encode } from '../cbor/cbor.js';
-import { anyBytes, i64, intMapToObject, intRange, sig64, stripUndefined, textRecord, u16, u32, u48, u64, uuid16, bytesMin } from './primitives.js';
+import { decode, encode } from '../cbor/cbor';
+import { anyBytes, i64, intMapToObject, intRange, sig64, stripUndefined, textRecord, u16, u32, u48, u64, uuid16, bytesMin } from './primitives';
 
 // ---------------------------------------------------------------- op-envelope (integer keys 1..11)
 

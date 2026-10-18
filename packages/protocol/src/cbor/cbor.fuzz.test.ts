@@ -1,6 +1,6 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { CborError, decode, encode } from './cbor.js';
+import { CborError, decode, encode } from './cbor';
 
 const NUM_RUNS = process.env['CI'] ? 5000 : 1000;
 

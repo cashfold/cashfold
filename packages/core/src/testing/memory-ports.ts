@@ -1,7 +1,7 @@
-import type { Id } from '../shared-kernel/id.js';
-import { compareHlc, type Hlc } from '../sync/domain/hlc.js';
-import type { RecordState } from '../sync/domain/merge.js';
-import type { OpLogStore, ProjectionStore, QuarantinedOp, StoredOp } from '../sync/ports/index.js';
+import type { Id } from '../shared-kernel/id';
+import { compareHlc, type Hlc } from '../sync/domain/hlc';
+import type { RecordState } from '../sync/domain/merge';
+import type { OpLogStore, ProjectionStore, QuarantinedOp, StoredOp } from '../sync/ports/index';
 
 /** In-memory op log and projection store with snapshot-and-rollback transactions. For tests only. */
 export interface MemoryStores {

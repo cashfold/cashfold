@@ -1,8 +1,8 @@
 import { expand, extract } from '@noble/hashes/hkdf.js';
 import { sha256 } from '@noble/hashes/sha2.js';
-import { x25519, x25519PublicKey } from '../adapters/noble/x25519.js';
-import type { Aead, Hpke, KeyPair, Rng } from '../ports/index.js';
-import { SecretBuf } from '../secret-buf.js';
+import { x25519, x25519PublicKey } from '../adapters/noble/x25519';
+import type { Aead, Hpke, KeyPair, Rng } from '../ports/index';
+import { SecretBuf } from '../secret-buf';
 
 // RFC 9180, base mode: DHKEM(X25519, HKDF-SHA256) [0x0020], HKDF-SHA256 [0x0001], AEAD [0x0001 AES-128 | 0x0002 AES-256].
 const KEM_ID = 0x0020;

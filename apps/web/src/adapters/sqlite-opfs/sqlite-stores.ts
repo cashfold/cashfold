@@ -2,8 +2,8 @@ import {
   idFromBytes, idToBytes,
   type FieldEntry, type Id, type OpLogStore, type ProjectionStore, type QuarantinedOp, type QuarantineReason, type RecordState, type SealedOp, type SetState, type StoredOp,
 } from '@cashfold/core';
-import type { Bind, EncryptedDatabase, SqlValue } from './database.js';
-import { decodeValue, encodeValue } from './value-codec.js';
+import type { Bind, EncryptedDatabase, SqlValue } from './database';
+import { decodeValue, encodeValue } from './value-codec';
 
 const OP_PENDING = 0n;
 const OP_ACKED = 1n;

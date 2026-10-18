@@ -1,9 +1,9 @@
 import { createAesGcm, createHkdf, createRecordCrypto, SecretBuf } from '@cashfold/crypto';
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import type { Id } from '../../shared-kernel/id.js';
-import { createReplica, createWorld, id } from '../../testing/index.js';
-import type { FieldValue } from '../domain/merge.js';
+import type { Id } from '../../shared-kernel/id';
+import { createReplica, createWorld, id } from '../../testing/index';
+import type { FieldValue } from '../domain/merge';
 
 // FR-021: Folds are fully isolated. Different keys per Fold, and every read path takes the Fold id.
 

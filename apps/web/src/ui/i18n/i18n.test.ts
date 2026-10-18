@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createTranslator, directionOf, resolveLocale, separatorsFor, SUPPORTED_LOCALES } from './i18n.js';
+import { createTranslator, directionOf, resolveLocale, separatorsFor, SUPPORTED_LOCALES } from './i18n';
 
 describe('resolveLocale', () => {
   it('picks the first preferred language we support, matching on language', () => {
@@ -62,7 +62,7 @@ describe('separatorsFor (decimal and grouping symbols that amount parsing and fo
     ['en', '.', ','],
     ['de', ',', '.'],
     ['fr', ',', ' '],
-    ['ar', '٫', '٬'],
+    ['ar', '.', ','], // with Latin digits (-u-nu-latn) Arabic uses the same symbols as English
   ] as const)('%s', (locale, decimal, group) => {
     expect(separatorsFor(locale)).toEqual({ decimal, group });
   });

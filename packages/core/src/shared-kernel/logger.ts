@@ -1,4 +1,4 @@
-import type { Id } from './id.js';
+import type { Id } from './id';
 
 // Structured logging that cannot leak content (FR-016, FR-098). Three layers:
 //  1. Types: field values are numbers, booleans, ids, literals and `Redacted`; a free `string` does not compile.
@@ -33,7 +33,7 @@ export class Redacted<T = unknown> {
 
 export const redacted = <T>(value: T): Redacted<T> => new Redacted(value);
 
-export type LogValue = number | boolean | null | undefined | Id | Literal | Redacted | readonly LogValue[] | { readonly [key: string]: LogValue };
+export type LogValue = number | boolean | null | undefined | Id | Literal | Redacted | Error | readonly LogValue[] | { readonly [key: string]: LogValue };
 export type LogFields = { readonly [key: string]: LogValue };
 
 export interface LogEntry {

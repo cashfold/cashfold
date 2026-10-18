@@ -1,5 +1,5 @@
-import type { EncryptedDatabase } from './database.js';
-import { MIGRATIONS, type Migration } from './migrations/generated.js';
+import type { EncryptedDatabase } from './database';
+import { MIGRATIONS, type Migration } from './migrations/generated';
 
 export class MigrationError extends Error {
   constructor(message: string) {

@@ -1,5 +1,5 @@
-import type { Id } from '../../shared-kernel/id.js';
-import { err, ok, type DomainError, type Result } from '../../shared-kernel/result.js';
+import type { Id } from '../../shared-kernel/id';
+import { err, ok, type DomainError, type Result } from '../../shared-kernel/result';
 
 /** Hybrid logical clock `(wall_ms: u48, ctr: u16)` (ARCH 9.2). Both fields are plain counters, never money. */
 export interface Hlc {

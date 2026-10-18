@@ -1,10 +1,10 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import type { Id } from '../../shared-kernel/id.js';
+import type { Id } from '../../shared-kernel/id';
 import {
   DELETED_FIELD, applyOp, emptyFold, isVisible, mergeFolds, mergeRecords, recordFromOp, validateOp, visibleMembers,
   type FieldValue, type FoldState, type GroupRegistry, type Op, type SetDelta,
-} from './merge.js';
+} from './merge';
 
 const id = (n: number): Id => `00000000-0000-4000-8000-${n.toString(16).padStart(12, '0')}` as Id;
 const DEV_A = id(0xa);

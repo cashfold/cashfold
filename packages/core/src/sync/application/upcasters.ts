@@ -1,5 +1,5 @@
-import { err, ok, type DomainError, type Result } from '../../shared-kernel/result.js';
-import type { WireOp } from '../ports/index.js';
+import { err, ok, type DomainError, type Result } from '../../shared-kernel/result';
+import type { WireOp } from '../ports/index';
 
 /** Brings an op from schema `n` to schema `n + 1`. Pure. */
 export type UpcastStep = (op: WireOp) => WireOp;

@@ -1,5 +1,5 @@
 import { x25519 as curve } from '@noble/curves/ed25519.js';
-import { SecretBuf } from '../../secret-buf.js';
+import { SecretBuf } from '../../secret-buf';
 
 export function x25519PublicKey(secretKey: SecretBuf): Uint8Array {
   return secretKey.use((sk) => curve.getPublicKey(sk));

@@ -1,6 +1,6 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { idFromBytes, idToBytes, newIdV4, newIdV7, parseId, timestampOfV7, uuidV5 } from './id.js';
+import { idFromBytes, idToBytes, newIdV4, newIdV7, parseId, timestampOfV7, uuidV5 } from './id';
 
 const DNS_NS = '6ba7b810-9dad-11d1-80b4-00c04fd430c8';
 const unwrap = <T>(r: { ok: true; value: T } | { ok: false; error: unknown }): T => {

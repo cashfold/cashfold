@@ -1,4 +1,4 @@
-import { err, ok, type DomainError, type Result } from './result.js';
+import { err, ok, type DomainError, type Result } from './result';
 
 declare const rateBrand: unique symbol;
 /** `rate_e12`: units of the quote currency per 1 USD, scaled by 10^12. Always in (0, 2^63-1]. */

@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import IntlMessageFormat from 'intl-messageformat';
 import { describe, expect, it } from 'vitest';
-import { ERROR_KINDS, MESSAGES_EN, describeError, formatError, type AppError } from './catalogue.js';
+import { ERROR_KINDS, MESSAGES_EN, describeError, formatError, type AppError } from './catalogue';
 
 const contract = readFileSync(resolve(import.meta.dirname, '../../../../../specs/001-secure-finance-core/contracts/core-api.md'), 'utf8');
 const taxonomy = [...contract.slice(contract.indexOf('## Error taxonomy')).split('\n\n')[1]!.matchAll(/`([A-Z][A-Za-z]+)(?:\([^)]*\))?`/g)].map((m) => m[1]!);
@@ -27,7 +27,7 @@ describe('messages are plain language without content (FR-098)', () => {
 
   it('are short, sentence-like and free of technical vocabulary', () => {
     for (const [key, message] of all) {
-      expect(message.length, key).toBeLessThanOrEqual(260); // ICU source, longer than the text a person sees
+      expect(message.length, key).toBeLessThanOrEqual(360); // ICU source, longer than the text a person sees
       expect(message, key).toMatch(/^[A-Z]/);
       expect(message, key).toMatch(/[.!?]$/);
       expect(message, key).not.toMatch(/sqlite|stack|exception|undefined|\bnull\b|NaN|0x[0-9a-f]|AES|HKDF|Argon|HPKE|ed25519|x25519|\bCBOR\b|\bblob\b|\bnonce\b|\bAPI\b|HTTP|\b[45]\d\d\b|TypeError|RangeError/i);

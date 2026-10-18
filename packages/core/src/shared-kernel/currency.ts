@@ -1,5 +1,5 @@
-import { CURRENCY_EXPONENTS } from './currency-table.js';
-import { err, ok, type DomainError, type Result } from './result.js';
+import { CURRENCY_EXPONENTS } from './currency-table';
+import { err, ok, type DomainError, type Result } from './result';
 
 declare const currencyBrand: unique symbol;
 /** A currency code that is present in the exponent table. */

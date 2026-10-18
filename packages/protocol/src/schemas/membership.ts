@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import { decode, encode } from '../cbor/cbor.js';
-import { anyBytes, bytes, hash32, intRange, pk32, sig64, stripUndefined, textRecord, u32, u64, uuid16 } from './primitives.js';
+import { decode, encode } from '../cbor/cbor';
+import { anyBytes, bytes, hash32, intRange, pk32, sig64, stripUndefined, textRecord, u32, u64, uuid16 } from './primitives';
 
 export const LOG_ENTRY_TYPES = ['add_member', 'remove_member', 'leave', 'change_role', 'add_device', 'revoke_device', 'rotate_epoch', 'set_server'] as const;
 
@@ -41,7 +41,7 @@ export const decodeSnapshot = (b: Uint8Array): Snapshot => SnapshotSchema.parse(
 
 // ---------------------------------------------------------------- transport frame (integer keys 1..4)
 
-import { intMapToObject } from './primitives.js';
+import { intMapToObject } from './primitives';
 
 export const FrameSchema = z
   .preprocess(

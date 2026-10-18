@@ -1,6 +1,6 @@
 import type { SecretBuf } from '@cashfold/crypto';
 import type { Database as OoDatabase, PreparedStatement } from '@sqlite.org/sqlite-wasm';
-import type { SqliteRuntime } from './runtime.js';
+import type { SqliteRuntime } from './runtime';
 
 /** Values read from SQLite. Every INTEGER is a bigint: money and 64-bit ids must never pass through a double. */
 export type SqlValue = bigint | string | Uint8Array | null | number;

@@ -1,7 +1,7 @@
-import { exponentOf, type CurrencyCode } from './currency.js';
-import { divRoundHalfEven, money, type Money, type MoneyError } from './money.js';
-import type { Rate } from './rate.js';
-import type { Result } from './result.js';
+import { exponentOf, type CurrencyCode } from './currency';
+import { divRoundHalfEven, money, type Money, type MoneyError } from './money';
+import type { Rate } from './rate';
+import type { Result } from './result';
 
 /**
  * Converts through the USD pivot with one bigint division and one half-even rounding (FR-040):

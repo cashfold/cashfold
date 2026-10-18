@@ -1,7 +1,7 @@
 import { decodeOpPayload, encodeOpPayload, opSigningBytes, type FieldValue, type OpEnvelope, type OpPayload } from '@cashfold/protocol';
-import { AeadError, type Aead, type Hkdf, type Rng, type Signer } from '../ports/index.js';
-import { createRecordCrypto } from '../record/record-crypto.js';
-import type { SecretBuf } from '../secret-buf.js';
+import { AeadError, type Aead, type Hkdf, type Rng, type Signer } from '../ports/index';
+import { createRecordCrypto } from '../record/record-crypto';
+import type { SecretBuf } from '../secret-buf';
 
 // Seals a domain operation into a signed, encrypted envelope and opens it again.
 // Ids travel as canonical UUID text so core can use these types without importing this package.

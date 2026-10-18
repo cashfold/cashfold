@@ -2,10 +2,10 @@ import { argon2id as nobleArgon2id } from '@noble/hashes/argon2.js';
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import vector from '../../../../../vectors/kat/argon2id.json' with { type: 'json' };
-import { KdfBelowFloor } from '../../ports/index.js';
-import { SecretBuf } from '../../secret-buf.js';
-import { hex, toHex } from '../../test-support.js';
-import { argon2idRaw, createArgon2Kdf } from './argon2id.js';
+import { KdfBelowFloor } from '../../ports/index';
+import { SecretBuf } from '../../secret-buf';
+import { hex, toHex } from '../../test-support';
+import { argon2idRaw, createArgon2Kdf } from './argon2id';
 
 describe('Argon2id (RFC 9106 section 5.3)', () => {
   it('reference implementation (noble, pure JS) reproduces the RFC tag including secret and associated data', () => {

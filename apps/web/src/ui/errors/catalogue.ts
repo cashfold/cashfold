@@ -16,7 +16,7 @@ export type ErrorKind = (typeof ERROR_KINDS)[number];
 export type Severity = 'info' | 'warning' | 'error';
 export type Role = 'owner' | 'editor' | 'viewer';
 
-const FEATURES = ['opfs', 'webcrypto', 'workers', 'wasm'] as const;
+const FEATURES = ['secure_context', 'opfs', 'webcrypto', 'workers', 'wasm', 'locks', 'broadcast'] as const;
 const ROLES: readonly Role[] = ['owner', 'editor', 'viewer'];
 
 /** What callers may pass in. Extra properties are accepted at runtime but never read. */
@@ -58,7 +58,7 @@ export const MESSAGES_EN: Readonly<Record<string, string>> = {
   'error.Offline': "You're offline. Changes are saved on this device and will sync when you're back online.",
   'error.Conflict': 'This was changed somewhere else at the same time. Review it and try again.',
   'error.Storage': "This device couldn't save your data. Free up space or check your browser settings.",
-  'error.UnsupportedBrowser': "This browser doesn't support {feature, select, opfs {private storage} webcrypto {secure encryption} workers {background tasks} wasm {WebAssembly} other {a required feature}}. Try a current version of Chrome, Edge, Firefox or Safari.",
+  'error.UnsupportedBrowser': "This browser doesn't support {feature, select, secure_context {a secure connection} opfs {private storage} webcrypto {secure encryption} workers {background tasks} wasm {WebAssembly} locks {tab coordination} broadcast {tab coordination} other {a required feature}}. Try a current version of Chrome, Edge, Firefox or Safari.",
   'error.OwnsSharedFold': 'You own {count, plural, one {# shared Fold} other {# shared Folds}}. Transfer or delete {count, plural, one {it} other {them}} first.',
   'error.AccountDeleted': 'This account was deleted, and its data has been removed from this device.',
   'error.EmailNotVerified': 'Verify your email address to continue.',

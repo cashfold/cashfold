@@ -6,6 +6,7 @@ const config: NextConfig = {
   images: { unoptimized: true },
   trailingSlash: true,
   reactStrictMode: true,
+  transpilePackages: ['@cashfold/core', '@cashfold/crypto', '@cashfold/protocol'],
 };
 
 export default config;

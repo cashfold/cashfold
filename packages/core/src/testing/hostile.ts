@@ -1,6 +1,6 @@
-import type { Id } from '../shared-kernel/id.js';
-import type { PullResult, SealedOp, TransportPort } from '../sync/ports/index.js';
-import type { Rng } from './rng.js';
+import type { Id } from '../shared-kernel/id';
+import type { PullResult, SealedOp, TransportPort } from '../sync/ports/index';
+import type { Rng } from './rng';
 
 export type PulledOp = PullResult['ops'][number];
 

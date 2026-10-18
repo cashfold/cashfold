@@ -3,11 +3,11 @@
 import { idToBytes, type Id } from '@cashfold/core';
 import { storeContract } from '@cashfold/core/testing';
 import { SecretBuf } from '@cashfold/crypto';
-import { EncryptedDatabase } from './database.js';
-import { migrate, MigrationError } from './migrate.js';
-import type { Migration } from './migrations/generated.js';
-import { loadRuntime, type SqliteRuntime } from './runtime.js';
-import { createSqliteOpLog, createSqliteProjections } from './sqlite-stores.js';
+import { EncryptedDatabase } from './database';
+import { migrate, MigrationError } from './migrate';
+import type { Migration } from './migrations/generated';
+import { loadRuntime, type SqliteRuntime } from './runtime';
+import { createSqliteOpLog, createSqliteProjections } from './sqlite-stores';
 
 const key = (fill: number) => SecretBuf.from(new Uint8Array(32).fill(fill));
 const latin1 = (b: Uint8Array) => new TextDecoder('latin1').decode(b);

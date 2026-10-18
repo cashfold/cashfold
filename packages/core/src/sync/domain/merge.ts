@@ -1,9 +1,9 @@
-import type { Id } from '../../shared-kernel/id.js';
-import { err, ok, type DomainError, type Result } from '../../shared-kernel/result.js';
-import { winner, type FieldEntry, type FieldValue } from './field-clock.js';
-import type { Hlc } from './hlc.js';
+import type { Id } from '../../shared-kernel/id';
+import { err, ok, type DomainError, type Result } from '../../shared-kernel/result';
+import { winner, type FieldEntry, type FieldValue } from './field-clock';
+import type { Hlc } from './hlc';
 
-export type { FieldEntry, FieldValue } from './field-clock.js';
+export type { FieldEntry, FieldValue } from './field-clock';
 
 /**
  * Convergent merge of operations (ARCH 9.4). Every operation is lifted to a one-op record state and

@@ -1,5 +1,5 @@
-import type { Id } from '../../shared-kernel/id.js';
-import { compareStamp, type Hlc } from './hlc.js';
+import type { Id } from '../../shared-kernel/id';
+import { compareStamp, type Hlc } from './hlc';
 
 export type FieldValue = bigint | string | Uint8Array | boolean | null | readonly FieldValue[] | { readonly [key: string]: FieldValue };
 

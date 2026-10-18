@@ -1,6 +1,6 @@
-export * from './runtime.js';
-export * from './database.js';
-export * from './migrate.js';
-export { MIGRATIONS } from './migrations/generated.js';
-export * from './sqlite-stores.js';
-export * from './value-codec.js';
+export * from './runtime';
+export * from './database';
+export * from './migrate';
+export { MIGRATIONS } from './migrations/generated';
+export * from './sqlite-stores';
+export * from './value-codec';

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { attack, createCluster, createRng, hostileTransport, id, MemoryRelay, runMergeTrial, runScenario, TAMPERING, type Attack, type PulledOp } from './index.js';
-import type { FieldValue } from '../sync/domain/merge.js';
-import { createReplica, createWorld } from './world.js';
+import { attack, createCluster, createRng, hostileTransport, id, MemoryRelay, runMergeTrial, runScenario, TAMPERING, type Attack, type PulledOp } from './index';
+import type { FieldValue } from '../sync/domain/merge';
+import { createReplica, createWorld } from './world';
 
 describe('replica simulator (SC-004: arbitrary offline edits converge in any delivery order, with duplicates)', () => {
   it('merge layer: 1,000 randomised trials all converge', () => {

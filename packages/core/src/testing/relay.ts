@@ -1,5 +1,5 @@
-import type { Id } from '../shared-kernel/id.js';
-import type { PullResult, PushOutcome, SealedOp, TransportPort } from '../sync/ports/index.js';
+import type { Id } from '../shared-kernel/id';
+import type { PullResult, PushOutcome, SealedOp, TransportPort } from '../sync/ports/index';
 
 /** An honest in-memory relay: an ordered, idempotent log of sealed ops per Fold. It never inspects content. */
 export class MemoryRelay {

@@ -1,6 +1,6 @@
-import type { Id } from '../shared-kernel/id.js';
-import type { FieldEntry, FieldValue, RecordState, SetDelta, SetState } from '../sync/domain/merge.js';
-import type { WireOp } from '../sync/ports/index.js';
+import type { Id } from '../shared-kernel/id';
+import type { FieldEntry, FieldValue, RecordState, SetDelta, SetState } from '../sync/domain/merge';
+import type { WireOp } from '../sync/ports/index';
 
 // JSON form of ops and projected state for frozen replay fixtures in vectors/ops/.
 // bigint -> {"$bigint": "123"}, bytes -> {"$hex": "ab12"}; maps -> arrays of pairs.

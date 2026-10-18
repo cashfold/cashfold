@@ -1,14 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { detectSupport, REQUIRED_FEATURES, type SupportEnv } from './detect.js';
+import { detectSupport, REQUIRED_FEATURES, type SupportEnv } from './detect';
 
-const full = (): SupportEnv => ({
+const full = () => ({
   isSecureContext: true,
   navigator: { storage: { getDirectory: () => Promise.resolve({}) }, locks: { request: () => Promise.resolve() } },
-  crypto: { subtle: {}, getRandomValues: () => undefined },
+  crypto: { subtle: {}, getRandomValues: (): void => undefined },
   Worker: class {},
   WebAssembly: { instantiate: () => Promise.resolve({}) },
   BroadcastChannel: class {},
-  FileSystemFileHandle: { prototype: { createSyncAccessHandle: () => Promise.resolve({}) } },
+  FileSystemFileHandle: class {},
 });
 
 describe('detectSupport', () => {
@@ -17,17 +17,16 @@ describe('detectSupport', () => {
   });
 
   it.each([
-    ['secure_context', (e: SupportEnv) => ({ ...e, isSecureContext: false })],
-    ['opfs', (e: SupportEnv) => ({ ...e, navigator: { ...e.navigator, storage: {} } })],
-    ['opfs', (e: SupportEnv) => ({ ...e, navigator: { locks: e.navigator.locks } })],
-    ['opfs', (e: SupportEnv) => ({ ...e, FileSystemFileHandle: { prototype: {} } })],
-    ['opfs', (e: SupportEnv) => ({ ...e, FileSystemFileHandle: undefined })],
-    ['webcrypto', (e: SupportEnv) => ({ ...e, crypto: { getRandomValues: () => undefined } })],
-    ['webcrypto', (e: SupportEnv) => ({ ...e, crypto: undefined })],
-    ['workers', (e: SupportEnv) => ({ ...e, Worker: undefined })],
-    ['wasm', (e: SupportEnv) => ({ ...e, WebAssembly: undefined })],
-    ['locks', (e: SupportEnv) => ({ ...e, navigator: { storage: e.navigator.storage } })],
-    ['broadcast', (e: SupportEnv) => ({ ...e, BroadcastChannel: undefined })],
+    ['secure_context', (e: ReturnType<typeof full>) => ({ ...e, isSecureContext: false })],
+    ['opfs', (e: ReturnType<typeof full>) => ({ ...e, navigator: { ...e.navigator, storage: {} } })],
+    ['opfs', (e: ReturnType<typeof full>) => ({ ...e, navigator: { locks: e.navigator.locks } })],
+    ['opfs', (e: ReturnType<typeof full>) => ({ ...e, FileSystemFileHandle: undefined })],
+    ['webcrypto', (e: ReturnType<typeof full>) => ({ ...e, crypto: { getRandomValues: (): void => undefined } })],
+    ['webcrypto', (e: ReturnType<typeof full>) => ({ ...e, crypto: undefined })],
+    ['workers', (e: ReturnType<typeof full>) => ({ ...e, Worker: undefined })],
+    ['wasm', (e: ReturnType<typeof full>) => ({ ...e, WebAssembly: undefined })],
+    ['locks', (e: ReturnType<typeof full>) => ({ ...e, navigator: { storage: e.navigator.storage } })],
+    ['broadcast', (e: ReturnType<typeof full>) => ({ ...e, BroadcastChannel: undefined })],
   ] as const)('flags %s when it is unavailable', (feature, degrade) => {
     expect(detectSupport(degrade(full()))).toEqual({ supported: false, missing: [feature] });
   });

@@ -1,7 +1,7 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import type { Id } from '../../shared-kernel/id.js';
-import { compareHlc, compareStamp, MAX_CTR, MAX_FUTURE_MS, MAX_WALL_MS, receive, tick, ZERO_HLC, type Hlc } from './hlc.js';
+import type { Id } from '../../shared-kernel/id';
+import { compareHlc, compareStamp, MAX_CTR, MAX_FUTURE_MS, MAX_WALL_MS, receive, tick, ZERO_HLC, type Hlc } from './hlc';
 
 const H = (wallMs: number, ctr: number): Hlc => ({ wallMs, ctr });
 const dev = (s: string) => s as Id;

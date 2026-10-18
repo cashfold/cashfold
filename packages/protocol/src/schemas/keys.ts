@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import { decode, encode } from '../cbor/cbor.js';
-import { aeadCt, anyBytes, bytes, intRange, pk32, sig64, stripUndefined, textRecord, uuid16 } from './primitives.js';
+import { decode, encode } from '../cbor/cbor';
+import { aeadCt, anyBytes, bytes, intRange, pk32, sig64, stripUndefined, textRecord, uuid16 } from './primitives';
 
 const ALG_HPKE = 'HPKE-X25519-HKDF-SHA256-AES256GCM';
 

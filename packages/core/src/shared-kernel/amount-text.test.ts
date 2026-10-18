@@ -1,8 +1,8 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { formatAmount, parseAmountText, type Separators } from './amount-text.js';
-import { parseCurrency } from './currency.js';
-import { MAX_MINOR, MIN_MINOR, money } from './money.js';
+import { formatAmount, parseAmountText, type Separators } from './amount-text';
+import { parseCurrency } from './currency';
+import { MAX_MINOR, MIN_MINOR, money } from './money';
 
 const cur = (code: string) => {
   const r = parseCurrency(code);

@@ -1,10 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
-import { err, ok } from '../../shared-kernel/result.js';
-import type { Role } from '../../shared-kernel/role.js';
-import { createReplica, createWorld, id, type Replica } from '../../testing/index.js';
-import { DELETED_FIELD, type FieldValue } from '../domain/merge.js';
-import { createCommandBus, createEventBus, createQueryBus, deriveEvents, type CommandDef, type DomainEvent, type QueryDef } from './buses.js';
-import { type OpDraft } from './write-path.js';
+import { err, ok } from '../../shared-kernel/result';
+import type { Role } from '../../shared-kernel/role';
+import { createReplica, createWorld, id, type Replica } from '../../testing/index';
+import { DELETED_FIELD, type FieldValue } from '../domain/merge';
+import { createCommandBus, createEventBus, createQueryBus, deriveEvents, type CommandDef, type DomainEvent, type QueryDef } from './buses';
+import { type OpDraft } from './write-path';
 
 const FOLD = id(0xf1);
 const REC = id(0x10);

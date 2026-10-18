@@ -1,10 +1,10 @@
-import type { Id } from '../shared-kernel/id.js';
-import { applyOpInto, DELETED_FIELD, type FieldValue, type FoldState, type Op, type RecordState, type SetDelta } from '../sync/domain/merge.js';
-import { compareHlc, receive, tick, ZERO_HLC, type Hlc } from '../sync/domain/hlc.js';
-import type { OpDraft } from '../sync/application/write-path.js';
-import { MemoryRelay } from './relay.js';
-import { createRng, type Rng } from './rng.js';
-import { createReplica, createWorld, id, type Replica, type World } from './world.js';
+import type { Id } from '../shared-kernel/id';
+import { applyOpInto, DELETED_FIELD, type FieldValue, type FoldState, type Op, type RecordState, type SetDelta } from '../sync/domain/merge';
+import { compareHlc, receive, tick, ZERO_HLC, type Hlc } from '../sync/domain/hlc';
+import type { OpDraft } from '../sync/application/write-path';
+import { MemoryRelay } from './relay';
+import { createRng, type Rng } from './rng';
+import { createReplica, createWorld, id, type Replica, type World } from './world';
 
 export interface ClusterOptions {
   readonly replicas: number;

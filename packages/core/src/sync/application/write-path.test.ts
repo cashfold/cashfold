@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import type { Id } from '../../shared-kernel/id.js';
-import { createReplica, createWorld, id as testId, type Replica, type World } from '../../testing/index.js';
-import { DELETED_FIELD, isVisible, type FieldValue, type GroupRegistry, type SetDelta } from '../domain/merge.js';
-import type { OpDraft } from './write-path.js';
+import type { Id } from '../../shared-kernel/id';
+import { createReplica, createWorld, id as testId, type Replica, type World } from '../../testing/index';
+import { DELETED_FIELD, isVisible, type FieldValue, type GroupRegistry, type SetDelta } from '../domain/merge';
+import type { OpDraft } from './write-path';
 
 const FOLD = testId(0xf1);
 const OTHER_FOLD = testId(0xf2);

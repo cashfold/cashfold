@@ -1,12 +1,12 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import type { Id } from '../../shared-kernel/id.js';
-import { foldToJson, wireOpFromJson, type Json } from '../../testing/fixtures.js';
-import { applyOpInto, validateOp, type RecordState } from '../domain/merge.js';
-import type { WireOp } from '../ports/index.js';
-import { createUpcasters } from './upcasters.js';
-import { SCHEMA_VERSION, toMergeOp } from './write-path.js';
+import type { Id } from '../../shared-kernel/id';
+import { foldToJson, wireOpFromJson, type Json } from '../../testing/fixtures';
+import { applyOpInto, validateOp, type RecordState } from '../domain/merge';
+import type { WireOp } from '../ports/index';
+import { createUpcasters } from './upcasters';
+import { SCHEMA_VERSION, toMergeOp } from './write-path';
 
 const dir = resolve(import.meta.dirname, '../../../../../vectors/ops');
 const load = (name: string) => JSON.parse(readFileSync(resolve(dir, name), 'utf8')) as { schema: number; ops: Json[]; expected?: Json };

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createMemoryStores, storeContract } from './index.js';
+import { createMemoryStores, storeContract } from './index';
 
 describe('in-memory stores satisfy the store contract', () => {
   for (const c of storeContract) {

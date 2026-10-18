@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { CURRENCY_EXPONENTS } from './currency-table.js';
-import { exponentOf, parseCurrency } from './currency.js';
+import { CURRENCY_EXPONENTS } from './currency-table';
+import { exponentOf, parseCurrency } from './currency';
 
 describe('currency exponent table', () => {
   it('gives every code an integer exponent in 0..8', () => {

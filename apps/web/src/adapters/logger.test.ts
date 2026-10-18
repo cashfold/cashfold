@@ -1,6 +1,6 @@
 import { lit } from '@cashfold/core';
 import { describe, expect, it, vi } from 'vitest';
-import { createAppLogger, createConsoleSink, createRingSink } from './logger.js';
+import { createAppLogger, createConsoleSink, createRingSink } from './logger';
 
 describe('ring sink', () => {
   it('keeps the most recent entries only', () => {

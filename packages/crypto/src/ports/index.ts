@@ -1,4 +1,4 @@
-import type { SecretBuf } from '../secret-buf.js';
+import type { SecretBuf } from '../secret-buf';
 
 export type { SecretBuf };
 

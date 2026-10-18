@@ -1,6 +1,6 @@
-import type { Id } from '../../shared-kernel/id.js';
-import type { FoldState } from '../domain/merge.js';
-import type { QuarantinedOp } from '../ports/index.js';
+import type { Id } from '../../shared-kernel/id';
+import type { FoldState } from '../domain/merge';
+import type { QuarantinedOp } from '../ports/index';
 
 // Deterministic post-merge repair (ARCH 9.5). CRDTs guarantee convergence, not application invariants, so
 // each context registers rules that look at the merged state and report violations. A rule is a pure

@@ -1,6 +1,6 @@
 import { argon2id } from 'hash-wasm';
-import { KdfBelowFloor, type Kdf } from '../../ports/index.js';
-import { SecretBuf } from '../../secret-buf.js';
+import { KdfBelowFloor, type Kdf } from '../../ports/index';
+import { SecretBuf } from '../../secret-buf';
 
 export const ARGON2_MIN_MEMORY_KIB = 32_768;
 export const ARGON2_MIN_PASSES = 2;

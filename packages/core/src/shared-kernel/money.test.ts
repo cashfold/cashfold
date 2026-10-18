@@ -1,7 +1,7 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { parseCurrency } from './currency.js';
-import { MAX_MINOR, MIN_MINOR, add, divRoundHalfEven, money, negate, subtract } from './money.js';
+import { parseCurrency } from './currency';
+import { MAX_MINOR, MIN_MINOR, add, divRoundHalfEven, money, negate, subtract } from './money';
 
 const cur = (code: string) => {
   const r = parseCurrency(code);

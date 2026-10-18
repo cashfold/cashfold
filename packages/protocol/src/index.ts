@@ -1,2 +1,2 @@
-export * from './cbor/cbor.js';
-export * from './schemas/index.js';
+export * from './cbor/cbor';
+export * from './schemas/index';

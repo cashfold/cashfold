@@ -1,4 +1,4 @@
-import { err, ok, type DomainError, type Result } from './result.js';
+import { err, ok, type DomainError, type Result } from './result';
 
 declare const localDateBrand: unique symbol;
 /** Civil calendar date stored as the integer yyyymmdd. No time zone, no time of day. */

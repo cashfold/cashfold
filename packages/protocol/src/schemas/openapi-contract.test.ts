@@ -3,7 +3,7 @@ import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { parse } from 'yaml';
 import type { z } from 'zod';
-import { KdfParamsSchema, KeySetSchema, LOG_ENTRY_TYPES, LogEntrySchema, PUSH_ERROR_CODES } from './index.js';
+import { KdfParamsSchema, KeySetSchema, LOG_ENTRY_TYPES, LogEntrySchema, PUSH_ERROR_CODES } from './index';
 
 // The contracts are normative; the zod schemas must not drift from them. These tests read the contract
 // files and compare the facts that both sides state: KDF floors, enumerations, id sizes, ranges.

@@ -1,10 +1,10 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import type { Id } from '../../shared-kernel/id.js';
-import { createReplica, createWorld, id } from '../../testing/index.js';
-import { applyOp, emptyFold, type FieldValue, type FoldState, type Op } from '../domain/merge.js';
-import type { QuarantinedOp } from '../ports/index.js';
-import { buildNeedsAttention, createRepair, type Finding, type RepairRule } from './repair.js';
+import type { Id } from '../../shared-kernel/id';
+import { createReplica, createWorld, id } from '../../testing/index';
+import { applyOp, emptyFold, type FieldValue, type FoldState, type Op } from '../domain/merge';
+import type { QuarantinedOp } from '../ports/index';
+import { buildNeedsAttention, createRepair, type Finding, type RepairRule } from './repair';
 
 const op = (n: number, rec: Id, fields: [number, FieldValue][], table = 6): Op => ({
   id: id(0x900 + n), rec, dev: id(0xa), hlc: { wallMs: n, ctr: 0 }, table, fields: new Map(fields), sets: new Map(),

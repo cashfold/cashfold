@@ -1,10 +1,10 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { parseCurrency } from './currency.js';
-import { exponentOf } from './currency.js';
-import { convert } from './fx.js';
-import { MAX_MINOR, MIN_MINOR, money } from './money.js';
-import { PIVOT_RATE, rate } from './rate.js';
+import { parseCurrency } from './currency';
+import { exponentOf } from './currency';
+import { convert } from './fx';
+import { MAX_MINOR, MIN_MINOR, money } from './money';
+import { PIVOT_RATE, rate } from './rate';
 
 const cur = (code: string) => {
   const r = parseCurrency(code);

@@ -1,7 +1,7 @@
-import type { Id } from '../shared-kernel/id.js';
-import type { FieldEntry, RecordState } from '../sync/domain/merge.js';
-import type { OpLogStore, ProjectionStore, QuarantinedOp, SealedOp, StoredOp } from '../sync/ports/index.js';
-import { id } from './world.js';
+import type { Id } from '../shared-kernel/id';
+import type { FieldEntry, RecordState } from '../sync/domain/merge';
+import type { OpLogStore, ProjectionStore, QuarantinedOp, SealedOp, StoredOp } from '../sync/ports/index';
+import { id } from './world';
 
 // A behavioural contract that every OpLogStore + ProjectionStore implementation must satisfy. Each case runs
 // against the stores and returns a plain observation; the caller compares it with `expected`. Cases return data
