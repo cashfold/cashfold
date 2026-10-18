@@ -129,6 +129,9 @@ importers:
 
   packages/crypto:
     dependencies:
+      '@cashfold/protocol':
+        specifier: workspace:*
+        version: link:../protocol
       '@noble/curves':
         specifier: 2.4.0
         version: 2.4.0
