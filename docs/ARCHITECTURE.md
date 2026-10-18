@@ -1,6 +1,6 @@
 # Cashfold — Architectural Blueprint & Technical Specification
 
-**Status:** Draft 0.2 (aligned with constitution v1.0.0) · **Date:** 2026-10-18 · **Audience:** engineers implementing the Cashfold TypeScript core, the web client (Phase 1), the NestJS relay server, and later the Tauri desktop/mobile shells.
+**Status:** Draft 0.2 (aligned with constitution v1.0.1) · **Date:** 2026-10-18 · **Audience:** engineers implementing the Cashfold TypeScript core, the web client (Phase 1), the NestJS relay server, and later the Tauri desktop/mobile shells.
 
 Cashfold is a local-first, end-to-end encrypted (E2EE) personal-finance engine: an exact-arithmetic ledger, envelope budgeting, recurring transactions and multi-currency support, synchronised across devices and users through an untrusted relay server.
 
@@ -74,10 +74,11 @@ UI thread (React/Next client components)  ⇄ typed RPC ⇄  Core Worker (dedica
 ```
 
 - The UI thread holds no key material, only opaque session handles and read-model results.
+- **Offline app shell.** A service worker precaches the hashed static export (HTML, JS, CSS, WASM, fonts) and serves it cache-first, so the app opens and runs after a reload or browser restart with no network. The service worker handles only same-origin static assets: it never sees API traffic bodies, keys or user data. Cache updates are atomic (new version activates only after full precache) and every asset is checked against the published hash manifest (§10.9). Offline reload is covered by an end-to-end test.
 - One Core Worker owns the database. Multiple tabs coordinate with the Web Locks API (single writer) and are notified of changes through a `BroadcastChannel`; non-leader tabs proxy through the leader worker (a `SharedWorker` is used where available).
 - Next.js is used as a build tool and router. The application routes are statically exported and contain no server components, server actions or API routes touching user data. Marketing and documentation routes MAY be server-rendered.
 
-**Server (NestJS) shape**: modules `auth`, `devices`, `folds`, `membership`, `ops`, `snapshots`, `attachments`, `rates`. Each module is controller → application service → repository (PostgreSQL). Request/response schemas come from `protocol`. The server verifies signatures and structural rules only (§9.6); it has no domain entities.
+**Server (NestJS) shape**: modules `auth`, `devices`, `folds`, `membership`, `ops`, `snapshots`, `attachments`, `rates`, `mail`. Each module is controller → application service → repository (PostgreSQL). Request/response schemas come from `protocol`. The server verifies signatures and structural rules only (§9.6); it has no domain entities.
 
 **Later platforms**: Tauri 2 desktop and mobile shells load the same static export. They MAY supply hardware-backed key storage through Tauri plugins behind `KeyStorePort`. They MUST NOT require changes to `core`, `crypto` or `protocol`.
 
@@ -432,7 +433,7 @@ The server stores the KeySet and `kdf`/salts. It never sees the AUK or the priva
 
 ### 5.5 Fold = Vault
 - A **Fold** is the isolation unit for a budget context (*Personal*, *Family*, *Business*). Each Fold has its own random **Fold Key** `FK` = 32 bytes from the CSPRNG and a monotone `epoch: u32` starting at 1.
-- `FK` is stored **only** as per-member HPKE envelopes (§7.2). A Fold's owner has an envelope for their own `enc.pk`.
+- `FK` is stored **only** as per-member HPKE grants (§7.2). A Fold's owner has a grant for their own `enc.pk`.
 - Folds share no key material. Compromise or revocation of one Fold does not affect the others.
 - Records of different Folds MUST NOT be co-mingled in one DB table without `fold_id` in every primary key (§8).
 
@@ -562,10 +563,10 @@ frame = AES-256-GCM( K_dir, nonce, aad = CBOR["cashfold.frame.v1", session_id, d
 2. The new device asks for the password, fetches `{auth_salt16, enc_salt16, kdf_params}`, and derives `SRP-x` and `AUK`.
 3. SRP login (§6.3). The client fetches the KeySet and decrypts the private keys with `AUK`.
 4. The client generates a device Ed25519 key, registers it, and the owner (or the user's other device) signs the registration in the membership log (§7.3).
-5. Fold envelopes are fetched and opened (§7.2). The device then begins sync.
+5. Fold grants are fetched and opened (§7.2). The device then begins sync.
 
 ### 6.7 Password / Secret Key change
-Both change `AUK` (and `SRP-x`). The client re-wraps the KeySet's private keys under the new AUK, re-computes `v`, and uploads atomically `{v, auth_salt16', KeySet', kdf'}` in a single authenticated request. Fold envelopes are unaffected because they are HPKE-wrapped to the unchanged X25519 public key.
+Both change `AUK` (and `SRP-x`). The client re-wraps the KeySet's private keys under the new AUK, re-computes `v`, and uploads atomically `{v, auth_salt16', KeySet', kdf'}` in a single authenticated request. Fold grants are unaffected because they are HPKE-wrapped to the unchanged X25519 public key.
 
 ### 6.8 Account recovery
 There is **no server-side recovery**. Offered mechanisms:
@@ -587,7 +588,7 @@ SRP uses secret exponents (`a` on the client, `b` on the server) and the long-te
 ### 7.1 Principals and keys
 Each user has the KeySet from §5.4: an X25519 key (`enc`) and an Ed25519 key (`sig`). Each device additionally has its own Ed25519 *device signing key* (non-extractable where the platform allows, otherwise encrypted at rest per §5.2; never exported). Device keys are certified by the user's `sig` key in the membership log.
 
-### 7.2 Fold Key envelope (HPKE, RFC 9180 base mode)
+### 7.2 Fold Key grant (HPKE, RFC 9180 base mode)
 To grant member `m` access to Fold `F` at epoch `e`:
 
 ```
@@ -595,9 +596,9 @@ To grant member `m` access to Fold `F` at epoch `e`:
                        info = CBOR["cashfold.foldkey.v1", fold_id, e, m.account_id],
                        aad  = CBOR["cashfold.foldkey.v1", fold_id, e, role],
                        pt   = FK[e] (32 B) )
-envelope  = { fold_id, epoch: e, member: m.account_id, role, enc: bytes32, ct: bytes48, granted_by, sig: Ed25519(granter.sig, canonical(envelope_without_sig)) }
+grant     = { fold_id, epoch: e, member: m.account_id, role, enc: bytes32, ct: bytes48, granted_by, sig: Ed25519(granter.sig, canonical(grant_without_sig)) }
 ```
-Only the member's X25519 secret key opens the envelope. The server stores envelopes opaquely. Envelopes are individually signed, so a server cannot swap one in or out unnoticed.
+Only the member's X25519 secret key opens the grant. The server stores grants opaquely. Grants are individually signed, so a server cannot swap one in or out unnoticed.
 
 ### 7.3 Membership log
 Each Fold has an append-only, hash-chained, signed **membership log**. Entry types:
@@ -612,16 +613,19 @@ hash = SHA-256(canonical(entry))
 - Clients verify the full chain from the genesis entry (signed by the Fold creator, whose public key was pinned when the Fold was created locally or when first invited).
 
 ### 7.4 Inviting a user
-1. Inviter obtains the invitee's *public key bundle* `{account_id, enc.pk, sig.pk, self_signature}` from the server.
-2. **Fingerprint check (mandatory for Family/Business Folds).** Both sides compute `fp = SHA-256("cashfold.fp.v1" ‖ enc.pk ‖ sig.pk)` truncated to 20 bytes, shown as 8 groups of 5 digits, compared out-of-band or by QR. Without it the server could substitute its own key (adversary A4).
+1. Inviter obtains the invitee's *public key bundle* `{account_id, enc.pk, sig.pk, self_signature}` in one of two ways:
+   - **Email lookup** (`POST /v1/accounts/lookup`, FR-106): available only to signed-in, email-verified callers, rate-limited per account (default 20 lookups per day, configurable). It returns a bundle only for a verified, *discoverable* account. Unknown and non-discoverable addresses return the same `404`, so a lookup reveals only accounts that opted in. Accounts are discoverable by default, shown at sign-up, and changeable at any time (`PUT /v1/accounts/me/discoverable`).
+   - **Invitation code.** The invitee exports a code (or link/QR) that contains their public key bundle and gives it to the inviter out-of-band. This needs no lookup and works for non-discoverable accounts and for services with verification disabled.
+2. **Fingerprint check (mandatory for every shared Fold).** Both sides compute `fp = SHA-256("cashfold.fp.v1" ‖ enc.pk ‖ sig.pk)` truncated to 20 bytes, shown as 8 groups of 5 digits, compared out-of-band or by QR. Without it the server could substitute its own key (adversary A4).
 3. The inviter chooses a **history scope** (`full` or `from_join`) and the invitee is shown it before accepting (FR-102).
-4. The inviter signs an `add_member` entry carrying `scope` and `from_epoch`, and uploads the envelope(s) (§7.2); see §7.6 for which epochs are sealed.
-5. The invitee verifies the log chain and envelope signatures, opens the envelope(s), and starts syncing.
+4. The inviter signs an `add_member` entry carrying `scope` and `from_epoch`, and uploads the grant(s) (§7.2); see §7.6 for which epochs are sealed.
+5. The inviter's client posts the invitation (`POST /v1/folds/{fold}/invitations`, FR-107). The service sends the invitee an email that names the sender only: no Fold name, member list or financial content.
+6. The invitee verifies the log chain and grant signatures, opens the grant(s), and starts syncing.
 
 ### 7.5 Revocation and key rotation
 Cryptographic revocation requires a new key:
 1. An owner appends `remove_member` and `rotate_epoch(e+1)`.
-2. Generate `FK[e+1]` (CSPRNG) and seal it to every remaining member (new envelopes at epoch e+1).
+2. Generate `FK[e+1]` (CSPRNG) and seal it to every remaining member (new grants at epoch e+1).
 3. All *new* ops are encrypted under epoch `e+1`. Old records remain readable via `FK[e]`, which remaining members retain.
 4. Optional background re-encryption of old records to `e+1` (a pure re-key op carrying the same field timestamps), after which `FK[e]` can be discarded.
 
@@ -631,7 +635,7 @@ The removed member may already have copied data from epoch ≤ e. This cannot be
 
 | Scope | Epochs sealed to the new member | Effect |
 |---|---|---|
-| `full` | Envelopes for **every** epoch `1..e` (the inviter holds them all) | Member can decrypt all existing records |
+| `full` | Grants for **every** epoch `1..e` (the inviter holds them all) | Member can decrypt all existing records |
 | `from_join` | Owner first appends `rotate_epoch(e+1)`; only `FK[e+1]` is sealed to the new member (`from_epoch = e+1`) | Member can never decrypt records written under epochs ≤ e |
 
 `from_join` mechanics:
@@ -890,7 +894,7 @@ Payload (inside blob, CBOR) {
 | Scalar field (name, amount, date, FKs…) | LWW register. Winner = max `(wall, ctr, dev_id)`. Equal full stamps are impossible (device id is part of the stamp). |
 | **Record as a unit** (transfer, transaction amount+currency+base snapshot) | Fields that must change together are written in **one op** with the same stamp, so concurrent edits resolve to *one* whole version per field group. For `transfer`, the fields `{from_account_id, to_account_id, from_amount_minor, to_amount_minor, fx_rate_id}` form a **field group** `G_amounts`. The group has a single register, so partial application of a transfer is impossible. For `txn`, `{amount_minor, currency, base_amount_minor, base_currency, fx_rate_id, direction}` form a group. |
 | Set (tag ids, group membership, budget scope) | **Add-wins OR-Set.** Adds carry the op id as a unique tag. A remove names the add-tags it observed. A concurrent add survives. |
-| Delete | `deleted` register (LWW). A later-stamped `deleted=false` is an explicit undelete. Field writes arriving after a delete are stored but the record stays invisible. A delete does not cascade in the CRDT; cascades are derived (§4.2-8). |
+| Delete | `deleted` register (LWW); retention: a record deleted for more than 30 days is purged (rows, field clocks, history) on every device by a deterministic local job keyed on the tombstone's HLC wall time, and the service may drop its history once every active device has acknowledged a snapshot taken after the purge point (FR-052). A restore inside the window clears the register on every device, including devices that were offline during the delete. A later-stamped `deleted=false` is an explicit undelete. Field writes arriving after a delete are stored but the record stays invisible. A delete does not cascade in the CRDT; cascades are derived (§4.2-8). |
 | Ordering fields (`sort_order`) | LWW integer. Collisions are tolerated and resolved by `(sort_order, name, id)` at read time. |
 | Derived data (balances, counts, envelope availability, tag/payee usage) | **Never stored in ops.** |
 
@@ -921,14 +925,16 @@ PULL   GET  /v1/folds/{fold}/ops?after={server_seq}&limit=500
          resp:  { ops: [{server_seq, OpEnvelope}…], head: u64, more: bool }
 STREAM WS   /v1/folds/{fold}/stream           -- server pushes {head}; client PULLs
 MEMBERSHIP  GET/POST /v1/folds/{fold}/log?after={idx}
-ENVELOPES   GET /v1/folds/{fold}/envelopes?member=me
+GRANTS      GET /v1/folds/{fold}/grants?member=me
 SNAPSHOT    PUT/GET /v1/folds/{fold}/snapshot  -- client-encrypted state snapshot at server_seq N (§9.7)
 RATES       GET /v1/rates                       -- shared non-personalised rate table (§3.8); no authentication needed
+EMAIL       POST /v1/accounts/verify-email      -- one-time token; PUT /v1/accounts/me/discoverable; POST /v1/accounts/lookup (§7.4)
+INVITE      POST /v1/folds/{fold}/invitations   -- records an invitation and sends the notification (FR-107)
 ACCOUNT     DELETE /v1/accounts/me              -- account deletion (§9.9), requires fresh SRP proof
 ```
 - Client loop: apply local ops to `op_log` immediately (offline), PUSH pending ops in `dev_seq` order, PULL from `pull_cursor`, apply remote ops in `server_seq` order, advance the cursor in the same transaction.
 - Idempotency: `(fold_id, op_id)` is unique. A re-delivered op is a no-op.
-- Per-op failure policy: bad signature / unauthorised signer / tag failure / unknown `v` ⇒ quarantine, continue. An unknown `epoch` ⇒ wait for the envelope and retry.
+- Per-op failure policy: bad signature / unauthorised signer / tag failure / unknown `v` ⇒ quarantine, continue. An unknown `epoch` ⇒ wait for the grant and retry.
 
 ### 9.7 Server schema (PostgreSQL; ciphertext and routing metadata only)
 
@@ -946,7 +952,7 @@ CREATE TABLE account (
 CREATE TABLE device (dev_id bytea PRIMARY KEY, account_id bytea REFERENCES account, sig_pk bytea NOT NULL, label_ct bytea, created_at timestamptz, revoked_at timestamptz);
 CREATE TABLE fold (fold_id bytea PRIMARY KEY, created_at timestamptz, head_seq bigint NOT NULL DEFAULT 0);
 CREATE TABLE fold_log (fold_id bytea REFERENCES fold, idx bigint, entry bytea NOT NULL, hash bytea NOT NULL, PRIMARY KEY (fold_id, idx));
-CREATE TABLE fold_envelope (fold_id bytea REFERENCES fold, epoch int, member bytea REFERENCES account, envelope bytea NOT NULL, PRIMARY KEY (fold_id, epoch, member));
+CREATE TABLE fold_grant (fold_id bytea REFERENCES fold, epoch int, member bytea REFERENCES account, grant bytea NOT NULL, PRIMARY KEY (fold_id, epoch, member));
 CREATE TABLE op (
   fold_id bytea NOT NULL REFERENCES fold, server_seq bigint NOT NULL, op_id bytea NOT NULL,
   rec_id bytea NOT NULL, dev_id bytea NOT NULL, dev_seq bigint NOT NULL,
@@ -957,6 +963,8 @@ CREATE TABLE op (
 CREATE TABLE snapshot (fold_id bytea PRIMARY KEY REFERENCES fold, at_seq bigint NOT NULL, blob bytea NOT NULL, sig bytea NOT NULL);
 CREATE TABLE fold_member (fold_id bytea REFERENCES fold, member bytea REFERENCES account, role smallint NOT NULL, from_epoch int NOT NULL DEFAULT 1, removed_at timestamptz, PRIMARY KEY (fold_id, member));
 CREATE TABLE rate_table (as_of timestamptz PRIMARY KEY, base text NOT NULL DEFAULT 'USD', rates jsonb NOT NULL, source text NOT NULL);   -- rates as decimal strings; one shared table, no per-user data
+ALTER TABLE account ADD COLUMN email_verified_at timestamptz, ADD COLUMN discoverable boolean NOT NULL DEFAULT true;
+CREATE TABLE email_verification (account_id bytea REFERENCES account, token_hash bytea NOT NULL, expires_at timestamptz NOT NULL, used_at timestamptz, PRIMARY KEY (account_id, token_hash));
 CREATE TABLE tombstone_account (account_id bytea PRIMARY KEY, deleted_at timestamptz NOT NULL);   -- lets devices learn of deletion (410) without storing content
 ```
 The server holds no key material that can decrypt `blob`, `keyset`, or `snapshot.blob`. Compaction: after a signed snapshot at `at_seq = N` exists and every registered, non-revoked device has acknowledged ≥ N, ops ≤ N MAY be deleted.
@@ -974,21 +982,23 @@ The server sees: account/fold/device ids, record ids, op counts and timing, HLC 
 **Deletion.**
 1. Client verifies a fresh unlock and explicit confirmation.
 2. Client checks the membership logs of all Folds. If the account is `owner` of any Fold with other active members, the client blocks and offers *transfer ownership* (§7.3 `change_role`) or *delete Fold*.
-3. Client sends `DELETE /v1/accounts/me` with a fresh SRP proof. The server deletes the account, devices, key sets, recovery blob, sessions, envelopes, and every Fold in which the account was the only member; for other Folds it appends a `remove_member` for this account (signed by the account's last device key, supplied in the request) and removes its envelopes. It records a `tombstone_account` row.
+3. Client sends `DELETE /v1/accounts/me` with a fresh SRP proof. The server deletes the account, devices, key sets, recovery blob, sessions, grants, and every Fold in which the account was the only member; for other Folds it appends a `remove_member` for this account (signed by the account's last device key, supplied in the request) and removes its grants. It records a `tombstone_account` row.
 4. Other devices of the account receive `410 Gone` and wipe local data (§7.7).
 
 **Migration between services.** The Secret Key, password and key sets are service-independent, so migration is client-driven:
 1. On the new service the client registers using the same credentials (new `auth_salt` and verifier).
-2. For each Fold the client re-creates the Fold, replays the membership log (entries are self-verifying), uploads envelopes, and pushes its full local `op_log` (preserving `dev`, `seq`, HLC). The new service assigns fresh `server_seq`.
+2. For each Fold the client re-creates the Fold, replays the membership log (entries are self-verifying), uploads grants, and pushes its full local `op_log` (preserving `dev`, `seq`, HLC). The new service assigns fresh `server_seq`.
 3. Other members and devices are re-pointed via a signed `set_server` settings record in each Fold; they then perform the same registration on the new service. Until then they remain on the old one (the old service stays read-write; devices reconcile through the op log).
 4. After success the client calls `DELETE /v1/accounts/me` on the old service.
 
 
 ### 9.10 Server implementation notes (NestJS)
-- Modules map to the endpoint groups in §9.6: `auth` (SRP handshake, sessions, frames), `devices`, `folds`, `membership` (log, envelopes), `ops` (push/pull/stream), `snapshots`, `attachments`, `rates`.
+- Modules map to the endpoint groups in §9.6: `auth` (SRP handshake, sessions, frames), `devices`, `folds`, `membership` (log, grants), `ops` (push/pull/stream), `snapshots`, `attachments`, `rates`.
 - Pipeline: a global guard verifies the transport frame (counter, AEAD) and resolves the session; a per-route guard checks membership role and device authorisation from the signed log; DTOs are validated with schemas imported from `packages/protocol` (the same schemas the client uses).
 - Persistence: PostgreSQL through a repository layer; the per-Fold `server_seq` is assigned inside the push transaction (a locked counter row, revisited after load tests).
 - Storage of attachments and snapshots: S3-compatible object storage behind a port; the server stores ciphertext only.
+- `mail` module: a port with SMTP and log-only adapters. Sends verification and invitation notices only, with no financial or Fold information. If no mail transport is configured, verification is disabled by configuration and the app tells users that invitations then depend on out-of-band checks (FR-105).
+- Lookup abuse control: the lookup endpoint requires a verified session, is rate-limited per account and per IP, and returns uniform `404` for unknown and non-discoverable addresses (FR-106).
 - Rate source: a scheduled job fetches the configured upstream table, parses decimal strings (no floats), stores one row in `rate_table`, and serves it at `GET /v1/rates` (§3.8).
 - Rate limiting and lockout counters are server-side (Redis or PostgreSQL). The "fake salt" for unknown emails is a keyed MAC (§6.3).
 - Observability: structured logs with type-based redaction; metrics and traces carry ids and counts only.
@@ -1009,12 +1019,13 @@ JavaScript cannot guarantee that secrets are erased from memory: the garbage col
    - `AUK` is wiped after the KeySet is opened. The opened private keys live only while unlocked.
    - `FK` is held only while the Fold is open; the stored copy is wrapped (§8.2).
 5. **Auto-lock.** Timeout (default 5 min), `visibilitychange` to hidden for more than a configurable grace period (default 1 min), explicit lock, and `pagehide`. Locking wipes all secrets, closes the database and **terminates the Core Worker** so its heap is released.
-6. **UI leakage.** `autocomplete="off"`/`new-password` on the right fields; password and Secret Key fields use `type="password"` with a reveal control; balances use a "hide amounts" toggle; no sensitive data in URLs, titles, history state or `localStorage`; the add-device fragment is removed after reading (§6.6); screenshots cannot be prevented in a browser, and the product says so.
-7. **Clipboard.** The Secret Key and Recovery Key are copied only on explicit user action, and the app attempts to overwrite the clipboard after 60 seconds (best-effort; browsers may refuse).
-8. **Delivery integrity.** Strict CSP (`default-src 'none'`; `script-src 'self' 'wasm-unsafe-eval'`; `connect-src` limited to the configured service; `frame-ancestors 'none'`; `require-trusted-types-for 'script'`), Subresource Integrity for every script, no third-party scripts, no inline scripts, HSTS, `Referrer-Policy: no-referrer`, `Permissions-Policy` denying unused features, a service worker that serves only the pinned, hashed asset set, published build hashes, an SBOM, and reproducible builds. Self-hosters can serve the static export from their own origin.
-9. **Logging.** A structured logger with a redaction type; amounts, names, notes and keys MUST NOT be logged at any level. Error reporting, if present, is self-hosted, opt-in and strips payloads.
-10. **Constant-time.** Comparisons of MACs, proofs and tags use constant-time helpers. Secret-dependent big-integer arithmetic follows §6.9.
-11. **Supply chain.** Pinned dependencies with lockfile enforcement, provenance verification, automated vulnerability scanning, a minimal dependency set, and review of any dependency that touches key material.
+6. **Hiding content.** On `visibilitychange` to hidden, `blur`, `pagehide` and `freeze`, the UI immediately replaces financial content with a neutral cover (FR-007). Browsers expose no app-switcher or screenshot control, so these cannot be prevented and the product states this; native shells later add platform privacy screens.
+7. **UI leakage.** `autocomplete="off"`/`new-password` on the right fields; password and Secret Key fields use `type="password"` with a reveal control; balances use a "hide amounts" toggle; no sensitive data in URLs, titles, history state or `localStorage`; the add-device fragment is removed after reading (§6.6); screenshots cannot be prevented in a browser, and the product says so.
+8. **Clipboard.** The Secret Key and Recovery Key are copied only on explicit user action, and the app attempts to overwrite the clipboard after 60 seconds (best-effort; browsers may refuse).
+9. **Delivery integrity.** Strict CSP (`default-src 'none'`; `script-src 'self' 'wasm-unsafe-eval'`; `connect-src` limited to the configured service; `frame-ancestors 'none'`; `require-trusted-types-for 'script'`), Subresource Integrity for every script, no third-party scripts, no inline scripts, HSTS, `Referrer-Policy: no-referrer`, `Permissions-Policy` denying unused features, a service worker that serves only the pinned, hashed asset set, published build hashes, an SBOM, and reproducible builds. Self-hosters can serve the static export from their own origin.
+10. **Logging.** A structured logger with a redaction type; amounts, names, notes and keys MUST NOT be logged at any level. Error reporting, if present, is self-hosted, opt-in and strips payloads.
+11. **Constant-time.** Comparisons of MACs, proofs and tags use constant-time helpers. Secret-dependent big-integer arithmetic follows §6.9.
+12. **Supply chain.** Pinned dependencies with lockfile enforcement, provenance verification, automated vulnerability scanning, a minimal dependency set, and review of any dependency that touches key material.
 
 ---
 
@@ -1033,7 +1044,13 @@ An implementation is conformant only if it ships with:
 9. **Architecture fitness:** dependency-boundary lint passes (`core` imports nothing from React, Next, Nest, DOM or Node-only modules; `apps/server` does not import `core` domain); a test replays the op log into empty projections and compares them to the live projections.
 10. **Cross-implementation SRP:** client WASM, server OpenSSL path and an independent reference produce identical `A`, `B`, `S`, `K`, `M1`, `M2` for 100 random exchanges.
 11. **End-to-end:** Playwright scenarios for each P1/P2 story, including offline operation and two-browser sync.
-12. **Accessibility:** axe checks and keyboard-only flows meet WCAG 2.2 AA.
+12. **Accessibility:** axe checks and keyboard-only flows meet WCAG 2.2 AA; axe runs as a blocking CI check on every pull request from the first UI task onward.
+13. **Offline reload:** with the network disabled after one successful load, reloading or reopening the app works and all offline functions run.
+14. **Secret lifetime:** tests assert that password buffers are wiped after key derivation (including error paths), derived keys are wiped after use, and lock wipes all secrets and terminates the worker.
+15. **Fold isolation:** a record encrypted for Fold A cannot be decrypted with any key of Fold B, and no table query without `fold_id` returns cross-Fold rows.
+16. **User-facing errors:** every error message in the catalogue is plain language and a leak test proves no amount, name, note or key material appears in error text, logs or telemetry.
+17. **Invitation lookup:** unknown and non-discoverable addresses return identical responses and timing within measurement noise; lookups are rate-limited; notification emails contain no Fold information.
+18. **Retention:** deleted records are restorable for 30 days on every device (including one offline during the delete) and are purged afterwards.
 
 ---
 
@@ -1052,3 +1069,6 @@ An implementation is conformant only if it ships with:
 | 9 | TypeScript deterministic-CBOR library choice (§5.1). | Byte-stable signatures and AAD. | Evaluate against frozen vectors; fall back to a small in-house encoder with a fuzzed test suite. |
 | 10 | Browser storage eviction and quota policy differences (§8.1a). | Local-first durability. | Test on target browsers; refine the backup prompts. |
 | 11 | Upstream source for the rate table and its redistribution terms (§3.8). | Legal and availability. | Choose a source; document in the self-hosting guide. |
+| 12 | Lookup rate limits and the discoverable-by-default choice (§7.4). | Account-enumeration exposure versus convenience. | Review after the first hosted pilot; the default is configurable per service. |
+| 13 | Mail transport for hosted and self-hosted services (§9.10). | Verification and invitation delivery. | Choose a provider for the hosted instance; document SMTP setup for self-hosters. |
+| 14 | Service-worker update strategy (§0.3). | Stale-code risk versus offline guarantee. | Define cache versioning and update prompt; test upgrade while offline. |
