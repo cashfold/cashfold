@@ -34,10 +34,12 @@ jobs:
       - run: pnpm check:no-float
       - run: pnpm check:sqlite3mc
       - run: pnpm audit --audit-level=high
+      - name: Install browsers
+        run: pnpm exec playwright install --with-deps
+      - name: Browser adapter tests (OPFS, workers, WASM)
+        run: pnpm --filter @cashfold/web test:browser
       - name: Playwright (includes blocking axe WCAG 2.2 AA assertions)
-        run: |
-          pnpm exec playwright install --with-deps
-          pnpm test:e2e
+        run: pnpm test:e2e
       - name: Testcontainers (PostgreSQL)
         run: pnpm --filter @cashfold/server test
       - name: SBOM

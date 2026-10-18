@@ -4,6 +4,8 @@ import { defineConfig } from 'vitest/config';
 // (lines and branches), application >= 85%.
 export default defineConfig({
   test: {
+    // Browser tests need a real browser: run them with `pnpm --filter @cashfold/web test:browser`.
+    exclude: ['**/node_modules/**', '**/dist/**', '**/*.browser.test.ts'],
     coverage: {
       provider: 'v8',
       include: ['packages/*/src/**/*.ts'],
