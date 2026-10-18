@@ -16,6 +16,8 @@ export interface World {
   addFold(fold: Id): void;
   addFoldKey(fold: Id, epoch: number): Promise<void>;
   forgetFoldKey(fold: Id, epoch: number): void;
+  /** Removes every key for the Fold, as if this group of devices had been removed from it. */
+  dropFold(fold: Id): void;
   setCurrentEpoch(fold: Id, epoch: number): void;
   /** @internal */ readonly internals: {
     foldKey(fold: Id, epoch: number): SecretBuf | undefined;
@@ -39,6 +41,10 @@ export async function createWorld(): Promise<World> {
     },
     forgetFoldKey(fold, epoch) {
       foldKeys.delete(`${fold}:${epoch}`);
+    },
+    dropFold(fold) {
+      for (const k of [...foldKeys.keys()]) if (k.startsWith(`${fold}:`)) foldKeys.delete(k);
+      epochs.delete(fold);
     },
     setCurrentEpoch(fold, epoch) {
       epochs.set(fold, epoch);
