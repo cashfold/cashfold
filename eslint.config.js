@@ -24,7 +24,7 @@ const dis = (from, to, message) => ({
 });
 
 export default tseslint.config(
-  { ignores: ['**/dist/**', '**/.next/**', '**/out/**', '**/node_modules/**', '**/coverage/**', 'vectors/**'] },
+  { ignores: ['**/dist/**', '**/.next/**', '**/out/**', '**/node_modules/**', '**/coverage/**', 'vectors/**', 'apps/web/public/sqlite3mc/**'] },
   ...tseslint.configs.recommended,
   {
     files: ['**/*.ts', '**/*.tsx'],
