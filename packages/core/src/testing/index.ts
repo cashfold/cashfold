@@ -7,3 +7,4 @@ export * from './rng.js';
 export * from './relay.js';
 export * from './hostile.js';
 export * from './simulator.js';
+export * from './store-contract.js';

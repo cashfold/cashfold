@@ -50,7 +50,8 @@ export function createMemoryStores(): MemoryStores {
       ops = ops.map((o) => (o.sealed.fold === fold && set.has(o.sealed.op) ? { ...o, pushed: true } : o));
     },
     async quarantine(entry) {
-      quarantined = [...quarantined, entry];
+      // One entry per op; a later verdict replaces the earlier one.
+      quarantined = [...quarantined.filter((q) => key(q.sealed.fold, q.sealed.op) !== key(entry.sealed.fold, entry.sealed.op)), entry];
     },
     async listQuarantined(fold) {
       return quarantined.filter((q) => q.sealed.fold === fold);
