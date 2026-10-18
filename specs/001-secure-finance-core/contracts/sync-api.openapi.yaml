@@ -1,0 +1,615 @@
+openapi: 3.1.0
+info:
+  title: Cashfold Relay API
+  version: 0.1.0
+  description: |
+    Untrusted relay for end-to-end encrypted finance data. Every request body after sign-in
+    is wrapped in the authenticated transport frame (see auth-srp.md); the schemas below
+    describe the *inner* body. The server never receives plaintext financial content,
+    passwords, Secret Keys or decryption keys. All binary fields are base64url in JSON
+    or raw CBOR (application/cbor) on the wire; CBOR is preferred.
+servers:
+  - url: https://api.cashfold.example/v1
+security:
+  - frameSession: []
+tags:
+  - name: auth
+  - name: devices
+  - name: folds
+  - name: ops
+  - name: membership
+  - name: attachments
+paths:
+  /auth/hello:
+    post:
+      tags: [auth]
+      security: []
+      summary: Start sign-in; returns salts and KDF parameters
+      description: Unknown emails MUST receive a deterministic fake response indistinguishable from a real one.
+      requestBody:
+        required: true
+        content:
+          application/cbor:
+            schema: { $ref: '#/components/schemas/Hello' }
+      responses:
+        '200':
+          description: Salt and parameters
+          content:
+            application/cbor:
+              schema: { $ref: '#/components/schemas/HelloReply' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+  /auth/proof-a:
+    post:
+      tags: [auth]
+      security: []
+      summary: Send client public value A, receive B
+      requestBody:
+        required: true
+        content:
+          application/cbor:
+            schema:
+              type: object
+              required: [session_id, A]
+              properties:
+                session_id: { $ref: '#/components/schemas/Bytes16' }
+                A: { type: string, contentEncoding: base64url, description: 512-byte big-endian }
+      responses:
+        '200':
+          description: B
+          content:
+            application/cbor:
+              schema:
+                type: object
+                required: [B]
+                properties:
+                  B: { type: string, contentEncoding: base64url }
+        '400': { $ref: '#/components/responses/Rejected' }
+  /auth/proof-m1:
+    post:
+      tags: [auth]
+      security: []
+      summary: Send client proof M1, receive server proof M2
+      requestBody:
+        required: true
+        content:
+          application/cbor:
+            schema:
+              type: object
+              required: [session_id, M1]
+              properties:
+                session_id: { $ref: '#/components/schemas/Bytes16' }
+                M1: { type: string, contentEncoding: base64url, description: 32 bytes }
+      responses:
+        '200':
+          description: M2; subsequent traffic uses frames
+          content:
+            application/cbor:
+              schema:
+                type: object
+                required: [M2]
+                properties:
+                  M2: { type: string, contentEncoding: base64url }
+        '401': { $ref: '#/components/responses/Rejected' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+  /accounts:
+    post:
+      tags: [auth]
+      security: []
+      summary: Register an account (verifier + encrypted key set)
+      requestBody:
+        required: true
+        content:
+          application/cbor:
+            schema: { $ref: '#/components/schemas/Registration' }
+      responses:
+        '201': { description: Created }
+        '409': { description: Email already registered (reported only after email control is proven) }
+  /accounts/me/keyset:
+    get:
+      tags: [auth]
+      summary: Fetch own encrypted key set
+      responses:
+        '200':
+          description: Key set
+          content:
+            application/cbor:
+              schema: { $ref: '#/components/schemas/KeySetBlob' }
+    put:
+      tags: [auth]
+      summary: Replace verifier, salts, KDF params and key set atomically (password or Secret Key change)
+      requestBody:
+        required: true
+        content:
+          application/cbor:
+            schema: { $ref: '#/components/schemas/CredentialRotation' }
+      responses:
+        '204': { description: Rotated; all other sessions are invalidated }
+  /accounts/me:
+    delete:
+      tags: [auth]
+      summary: Delete the caller's account (FR-101)
+      description: |
+        Requires a fresh SRP proof in the body. The server deletes the account, devices,
+        key sets, sessions and grants, deletes Folds where the caller is the only member,
+        appends the signed `remove_member` entry for other Folds, and records a tombstone.
+        Afterwards every request for the account returns 410 Gone, which tells devices to wipe local data.
+      requestBody:
+        required: true
+        content:
+          application/cbor:
+            schema:
+              type: object
+              required: [fresh_proof, removal_entries]
+              properties:
+                fresh_proof: { type: string, contentEncoding: base64url, description: M1 from a new SRP exchange }
+                removal_entries:
+                  type: array
+                  items: { $ref: '#/components/schemas/LogEntry' }
+      responses:
+        '204': { description: Deleted }
+        '409': { description: Caller still owns a Fold with other members }
+        '410': { description: Already deleted }
+  /rates:
+    get:
+      tags: [folds]
+      security: []
+      summary: Shared exchange-rate table (FR-103)
+      description: |
+        Identical for every caller; no account or query parameters, so it reveals nothing about holdings.
+        Rates are decimal strings. 404 if the operator disabled publication.
+      responses:
+        '200':
+          description: Rate table
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RateTable' }
+        '404': { description: Publication disabled }
+  /accounts/verify-email:
+    post:
+      tags: [auth]
+      security: []
+      summary: Confirm control of an email address (FR-105)
+      description: The message sent to the address contains a one-time token and no financial content. Self-hosted services may disable verification by configuration.
+      requestBody:
+        required: true
+        content:
+          application/cbor:
+            schema:
+              type: object
+              required: [token]
+              properties:
+                token: { type: string, contentEncoding: base64url }
+      responses:
+        '204': { description: Verified }
+        '400': { $ref: '#/components/responses/Rejected' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+  /accounts/me/discoverable:
+    put:
+      tags: [auth]
+      summary: Set whether other users can find this account by email (FR-106)
+      requestBody:
+        required: true
+        content:
+          application/cbor:
+            schema:
+              type: object
+              required: [discoverable]
+              properties:
+                discoverable: { type: boolean }
+      responses:
+        '204': { description: Updated }
+  /accounts/lookup:
+    post:
+      tags: [membership]
+      summary: Resolve an email address to a public key bundle for an invitation (FR-106)
+      description: |
+        Only for signed-in, email-verified callers and rate-limited per account.
+        Returns the public key bundle only if the address belongs to a verified, discoverable
+        account. Unknown and non-discoverable addresses return the same 404.
+      requestBody:
+        required: true
+        content:
+          application/cbor:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email: { type: string, format: email }
+      responses:
+        '200':
+          description: Public key bundle
+          content:
+            application/cbor:
+              schema: { $ref: '#/components/schemas/PublicKeyBundle' }
+        '404': { description: Not found (unknown or not discoverable) }
+        '429': { $ref: '#/components/responses/RateLimited' }
+  /folds/{foldId}/invitations:
+    post:
+      tags: [membership]
+      summary: Record an invitation and notify the invitee (FR-107)
+      description: |
+        Accompanies the signed `add_member` log entry and the grants. The notification
+        email names the sender only and contains no Fold name, member list or financial content.
+        An invitation made with an invitation code skips lookup.
+      parameters: [ { $ref: '#/components/parameters/FoldId' } ]
+      requestBody:
+        required: true
+        content:
+          application/cbor:
+            schema:
+              type: object
+              required: [entry, grants]
+              properties:
+                entry: { $ref: '#/components/schemas/LogEntry' }
+                grants:
+                  type: array
+                  items: { $ref: '#/components/schemas/FoldKeyGrant' }
+                notify_email: { type: string, format: email }
+      responses:
+        '201': { description: Recorded }
+        '409': { description: Chain mismatch or unauthorised signer }
+  /accounts/{accountId}/public-keys:
+    get:
+      tags: [membership]
+      summary: Public key bundle used for invitations
+      parameters:
+        - { name: accountId, in: path, required: true, schema: { $ref: '#/components/schemas/Bytes16' } }
+      responses:
+        '200':
+          description: Self-signed public key bundle
+          content:
+            application/cbor:
+              schema: { $ref: '#/components/schemas/PublicKeyBundle' }
+        '404': { description: Not found }
+  /devices:
+    get:
+      tags: [devices]
+      summary: List own devices
+      responses:
+        '200':
+          description: Devices
+          content:
+            application/cbor:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Device' }
+    post:
+      tags: [devices]
+      summary: Register a device signing key
+      requestBody:
+        required: true
+        content:
+          application/cbor:
+            schema: { $ref: '#/components/schemas/Device' }
+      responses:
+        '201': { description: Registered }
+  /devices/{devId}:
+    delete:
+      tags: [devices]
+      summary: Revoke a device; server refuses its subsequent traffic
+      parameters:
+        - { name: devId, in: path, required: true, schema: { $ref: '#/components/schemas/Bytes16' } }
+      responses:
+        '204': { description: Revoked }
+  /folds:
+    post:
+      tags: [folds]
+      summary: Create a Fold (genesis log entry and owner grant)
+      requestBody:
+        required: true
+        content:
+          application/cbor:
+            schema: { $ref: '#/components/schemas/CreateFold' }
+      responses:
+        '201': { description: Created }
+    get:
+      tags: [folds]
+      summary: List Folds the caller belongs to (ids and heads only)
+      responses:
+        '200':
+          description: Folds
+          content:
+            application/cbor:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    fold: { $ref: '#/components/schemas/Bytes16' }
+                    head_seq: { type: integer, format: int64 }
+  /folds/{foldId}:
+    delete:
+      tags: [folds]
+      summary: Delete a Fold (owner only; signed request)
+      parameters: [ { $ref: '#/components/parameters/FoldId' } ]
+      responses:
+        '204': { description: Deleted }
+  /folds/{foldId}/ops:
+    post:
+      tags: [ops]
+      summary: Push operations
+      description: |
+        Idempotent on (fold, op). The server verifies the signature against the current
+        membership, device sequence monotonicity and size limits, then assigns server_seq.
+        It cannot verify content. Maximum 256 ops and 4 MiB per request.
+      parameters: [ { $ref: '#/components/parameters/FoldId' } ]
+      requestBody:
+        required: true
+        content:
+          application/cbor:
+            schema:
+              type: array
+              maxItems: 256
+              items: { $ref: '#/components/schemas/OpEnvelope' }
+      responses:
+        '200':
+          description: Per-op results
+          content:
+            application/cbor:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/PushResult' }
+        '413': { description: Too large }
+    get:
+      tags: [ops]
+      summary: Pull operations after a cursor
+      parameters:
+        - $ref: '#/components/parameters/FoldId'
+        - { name: after, in: query, required: true, schema: { type: integer, format: int64, minimum: 0 } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 500, default: 500 } }
+      responses:
+        '200':
+          description: Ordered ops
+          content:
+            application/cbor:
+              schema:
+                type: object
+                required: [ops, head, more]
+                properties:
+                  ops:
+                    type: array
+                    items:
+                      type: object
+                      required: [server_seq, op]
+                      properties:
+                        server_seq: { type: integer, format: int64 }
+                        op: { $ref: '#/components/schemas/OpEnvelope' }
+                  head: { type: integer, format: int64 }
+                  more: { type: boolean }
+  /folds/{foldId}/stream:
+    get:
+      tags: [ops]
+      summary: WebSocket delivering {head} change notifications
+      parameters: [ { $ref: '#/components/parameters/FoldId' } ]
+      responses:
+        '101': { description: Switching protocols }
+  /folds/{foldId}/log:
+    get:
+      tags: [membership]
+      summary: Read the membership log
+      parameters:
+        - $ref: '#/components/parameters/FoldId'
+        - { name: after, in: query, schema: { type: integer, format: int64, minimum: -1, default: -1 } }
+      responses:
+        '200':
+          description: Log entries
+          content:
+            application/cbor:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/LogEntry' }
+    post:
+      tags: [membership]
+      summary: Append a signed log entry (and, where applicable, new grants)
+      parameters: [ { $ref: '#/components/parameters/FoldId' } ]
+      requestBody:
+        required: true
+        content:
+          application/cbor:
+            schema:
+              type: object
+              required: [entry]
+              properties:
+                entry: { $ref: '#/components/schemas/LogEntry' }
+                grants:
+                  type: array
+                  items: { $ref: '#/components/schemas/FoldKeyGrant' }
+      responses:
+        '201': { description: Appended }
+        '409': { description: Chain mismatch or unauthorised signer }
+  /folds/{foldId}/grants:
+    get:
+      tags: [membership]
+      summary: Grants addressed to the caller (one per epoch the caller may read)
+      parameters:
+        - $ref: '#/components/parameters/FoldId'
+        - { name: member, in: query, schema: { type: string, enum: [me] } }
+      responses:
+        '200':
+          description: Grants
+          content:
+            application/cbor:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/FoldKeyGrant' }
+  /folds/{foldId}/snapshot:
+    get:
+      tags: [ops]
+      summary: Latest snapshot
+      parameters: [ { $ref: '#/components/parameters/FoldId' } ]
+      responses:
+        '200':
+          description: Snapshot
+          content:
+            application/cbor:
+              schema: { $ref: '#/components/schemas/Snapshot' }
+        '404': { description: None }
+    put:
+      tags: [ops]
+      summary: Upload a snapshot
+      parameters: [ { $ref: '#/components/parameters/FoldId' } ]
+      requestBody:
+        required: true
+        content:
+          application/cbor:
+            schema: { $ref: '#/components/schemas/Snapshot' }
+      responses:
+        '204': { description: Stored }
+  /folds/{foldId}/attachments/{attId}/chunks/{index}:
+    put:
+      tags: [attachments]
+      summary: Upload one encrypted chunk (≤ 64 KiB plaintext, padded)
+      parameters:
+        - $ref: '#/components/parameters/FoldId'
+        - { name: attId, in: path, required: true, schema: { $ref: '#/components/schemas/Bytes16' } }
+        - { name: index, in: path, required: true, schema: { type: integer, minimum: 0 } }
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema: { type: string, format: binary }
+      responses:
+        '204': { description: Stored }
+    get:
+      tags: [attachments]
+      summary: Download one encrypted chunk
+      parameters:
+        - $ref: '#/components/parameters/FoldId'
+        - { name: attId, in: path, required: true, schema: { $ref: '#/components/schemas/Bytes16' } }
+        - { name: index, in: path, required: true, schema: { type: integer, minimum: 0 } }
+      responses:
+        '200':
+          description: Chunk
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
+components:
+  securitySchemes:
+    frameSession:
+      type: apiKey
+      in: header
+      name: X-Cashfold-Session
+      description: Session id from sign-in. Bodies are additionally protected by counter-bound AEAD frames; this header only routes.
+  parameters:
+    FoldId:
+      name: foldId
+      in: path
+      required: true
+      schema: { $ref: '#/components/schemas/Bytes16' }
+  responses:
+    RateLimited:
+      description: Too many attempts
+      headers:
+        Retry-After: { schema: { type: integer } }
+    Rejected:
+      description: Generic rejection that reveals nothing about account existence or password correctness
+  schemas:
+    RateTable:
+      type: object
+      required: [base, as_of, source, rates]
+      properties:
+        base: { type: string, example: USD }
+        as_of: { type: string, format: date-time }
+        source: { type: string }
+        rates:
+          type: object
+          description: Currency code to decimal string (units per 1 base). Parsed as decimal text, never as a float.
+          additionalProperties: { type: string, pattern: '^[0-9]+(\\.[0-9]+)?$' }
+    Bytes16:
+      type: string
+      contentEncoding: base64url
+      description: 16 bytes
+    Hello:
+      type: object
+      required: [email, device_id]
+      properties:
+        email: { type: string, format: email }
+        device_id: { $ref: '#/components/schemas/Bytes16' }
+    HelloReply:
+      type: object
+      required: [account_id, auth_salt, kdf, session_id]
+      properties:
+        account_id: { type: string }
+        auth_salt: { $ref: '#/components/schemas/Bytes16' }
+        kdf: { $ref: '#/components/schemas/KdfParams' }
+        session_id: { $ref: '#/components/schemas/Bytes16' }
+    KdfParams:
+      type: object
+      description: Clients MUST reject parameters below the floors in ARCHITECTURE §5.3.
+      properties:
+        kdf: { type: string, enum: [argon2id, pbkdf2-hmac-sha256] }
+        m_kib: { type: integer, minimum: 32768 }
+        t: { type: integer, minimum: 2 }
+        p: { type: integer, minimum: 1 }
+        iter: { type: integer, minimum: 600000 }
+        enc_salt: { $ref: '#/components/schemas/Bytes16' }
+    Registration:
+      type: object
+      required: [account_id, email, auth_salt, kdf, srp_verifier, keyset, device]
+      properties:
+        account_id: { type: string }
+        email: { type: string, format: email }
+        auth_salt: { $ref: '#/components/schemas/Bytes16' }
+        kdf: { $ref: '#/components/schemas/KdfParams' }
+        srp_verifier: { type: string, contentEncoding: base64url, description: 512 bytes }
+        keyset: { $ref: '#/components/schemas/KeySetBlob' }
+        device: { $ref: '#/components/schemas/Device' }
+    CredentialRotation:
+      type: object
+      required: [auth_salt, kdf, srp_verifier, keyset]
+      properties:
+        auth_salt: { $ref: '#/components/schemas/Bytes16' }
+        kdf: { $ref: '#/components/schemas/KdfParams' }
+        srp_verifier: { type: string, contentEncoding: base64url }
+        keyset: { $ref: '#/components/schemas/KeySetBlob' }
+    KeySetBlob:
+      type: string
+      contentEncoding: base64url
+      description: CBOR keyset object (op-envelope.cddl); opaque to the server
+    PublicKeyBundle:
+      type: object
+      required: [account_id, enc_pk, sig_pk, self_sig]
+      properties:
+        account_id: { type: string }
+        enc_pk: { type: string, contentEncoding: base64url, description: 32 bytes }
+        sig_pk: { type: string, contentEncoding: base64url, description: 32 bytes }
+        self_sig: { type: string, contentEncoding: base64url, description: 64 bytes }
+    Device:
+      type: object
+      required: [dev_id, sig_pk]
+      properties:
+        dev_id: { $ref: '#/components/schemas/Bytes16' }
+        sig_pk: { type: string, contentEncoding: base64url }
+        label_ct: { type: string, contentEncoding: base64url }
+        created_at: { type: string, format: date-time }
+        revoked_at: { type: string, format: date-time }
+    CreateFold:
+      type: object
+      required: [fold, genesis, grant]
+      properties:
+        fold: { $ref: '#/components/schemas/Bytes16' }
+        genesis: { $ref: '#/components/schemas/LogEntry' }
+        grant: { $ref: '#/components/schemas/FoldKeyGrant' }
+    OpEnvelope:
+      type: string
+      contentEncoding: base64url
+      description: CBOR op-envelope (see op-envelope.cddl). Opaque ciphertext blob inside.
+    PushResult:
+      type: object
+      required: [op]
+      properties:
+        op: { $ref: '#/components/schemas/Bytes16' }
+        server_seq: { type: integer, format: int64 }
+        error: { type: string, enum: [bad_signature, unauthorised, seq_gap, too_large, unknown_epoch, duplicate] }
+    LogEntry:
+      type: string
+      contentEncoding: base64url
+      description: CBOR log-entry
+    FoldKeyGrant:
+      type: string
+      contentEncoding: base64url
+      description: CBOR fold-key-grant
+    Snapshot:
+      type: string
+      contentEncoding: base64url
+      description: CBOR snapshot
