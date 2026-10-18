@@ -67,7 +67,7 @@ async function setup(opts: { registration?: RegistrationResult; cryptoFails?: bo
     },
     stop: async () => void stopped(),
   };
-  let now = 1_000;
+  const now = 1_000;
   const session = createSession({ closeDatabase: async () => undefined, terminateWorker: () => undefined, nowMs: () => now });
   const entries: LogEntry[] = [];
   const logger = createLogger({ sink: (e) => void entries.push(e) });
