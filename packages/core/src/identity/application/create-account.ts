@@ -71,6 +71,7 @@ export function createAccount(deps: CreateAccountDeps) {
     const material = await crypto.createAccount({ email: email.value, password: input.password });
     input.password.wipe();
     session.track(material.sessionKey);
+    session.track(material.deviceSigningKey);
 
     let foldId: Id | undefined;
     let services: Awaited<ReturnType<SessionPort['start']>> | undefined;
@@ -82,11 +83,13 @@ export function createAccount(deps: CreateAccountDeps) {
       await credentials.clear().catch(() => undefined);
       await sessionPort.stop().catch(() => undefined);
       session.release(material.sessionKey);
+      session.release(material.deviceSigningKey);
       material.sessionKey.wipe();
+      material.deviceSigningKey.wipe();
     };
 
     try {
-      services = await sessionPort.start(material.sessionKey);
+      services = await sessionPort.start({ sessionKey: material.sessionKey, deviceSigningKey: material.deviceSigningKey });
       await credentials.save({ ...material.credentials, email: email.value, server: server.value, registration: 'pending' });
 
       foldId = newIdV4((n) => random.bytes(n));

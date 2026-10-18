@@ -58,6 +58,14 @@ export interface NewAccountMaterial {
   readonly credentials: Omit<DeviceCredentials, 'email' | 'server' | 'registration'>;
   /** Key that opens this device's database for the session (derived from the Local Vault Key). */
   readonly sessionKey: Secret;
+  /** This device's Ed25519 signing key, used to sign every op it authors. */
+  readonly deviceSigningKey: Secret;
+}
+
+/** The secrets a session is started with. The session takes ownership. */
+export interface SessionSecrets {
+  readonly sessionKey: Secret;
+  readonly deviceSigningKey: Secret;
 }
 
 export interface AccountCryptoPort {
@@ -87,8 +95,8 @@ export interface SessionServices {
 }
 
 export interface SessionPort {
-  /** Opens the encrypted database with `sessionKey` and wires the services. Takes ownership of the key. */
-  start(sessionKey: Secret): Promise<SessionServices>;
+  /** Opens the encrypted database with the session key and wires the services. */
+  start(secrets: SessionSecrets): Promise<SessionServices>;
   /** Closes the database and drops the services. */
   stop(): Promise<void>;
 }

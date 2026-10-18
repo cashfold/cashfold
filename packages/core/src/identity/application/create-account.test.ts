@@ -44,9 +44,9 @@ async function setup(opts: { registration?: RegistrationResult; cryptoFails?: bo
         if (opts.cryptoFails) throw new Error('argon2 failed');
         return {
           accountId: 'XRG88A', secretKeyText: SECRET_KEY_TEXT, deviceId: id(0xd1),
-          registration: { accountId: 'XRG88A', deviceId: id(0xd1), keySet: new Uint8Array([1, 2, 3]) },
+          registration: { accountId: 'XRG88A', deviceId: id(0xd1), keySet: new Uint8Array([1, 2, 3]), deviceSigPk: new Uint8Array(32) },
           credentials: { deviceId: id(0xd1), accountId: 'XRG88A', sealed: new Uint8Array([9, 9]) },
-          sessionKey,
+          sessionKey, deviceSigningKey: secret(5),
         };
       } finally {
         password.wipe();

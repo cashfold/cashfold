@@ -85,7 +85,7 @@ describe('unlock', () => {
     expect(hex(result.sessionKey.use((b) => Uint8Array.from(b)))).toBe(first);
     expect(new TextDecoder().decode(result.secretKey.use((b) => Uint8Array.from(b)))).toBe(m.secretKeyText);
     const signer = createEd25519Signer();
-    expect(hex(await signer.publicKey(result.deviceSigningKey))).toBe(hex(m.registration.deviceSigPk));
+    expect(hex(await signer.publicKey(result.deviceSigningKey as SecretBuf))).toBe(hex(m.registration.deviceSigPk));
   }, 60_000);
 
   it('treats equivalent spellings and stray spaces as the same password (FR-005)', async () => {
