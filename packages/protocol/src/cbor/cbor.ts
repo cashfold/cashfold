@@ -16,7 +16,7 @@ export type CborValue =
   | boolean
   | null
   | readonly CborValue[]
-  | ReadonlyMap<CborKey, CborValue>
+  | ReadonlyMap<CborKey | number, CborValue>
   | { readonly [key: string]: CborValue };
 
 export type CborErrorCode =

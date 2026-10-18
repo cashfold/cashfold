@@ -142,7 +142,11 @@ importers:
         specifier: 4.12.0
         version: 4.12.0
 
-  packages/protocol: {}
+  packages/protocol:
+    dependencies:
+      zod:
+        specifier: 4.6.7
+        version: 4.6.7
 
 packages:
 
