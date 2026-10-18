@@ -15,3 +15,4 @@ export * from './sync/application/repair';
 export * from './shared-kernel/role';
 export * from './sync/application/buses';
 export * from './shared-kernel/logger';
+export * from './identity/domain/password-policy';
