@@ -109,6 +109,25 @@ describe('transactions and constraints', () => {
   });
 });
 
+describe('the ledger over the encrypted database (user story 2)', () => {
+  it('records, reads, deletes, restores and purges exactly, and leaves nothing readable on disk', async () => {
+    const r = await run('ledger');
+    expect(r['seeded']).toEqual({ categories: 49, base: 'USD', accounts: 0 });
+    expect(r['needsRate']).toMatchObject({ code: 'rate_required', currency: 'EUR' });
+    expect(r['eurBase']).toBe(-1_000n);
+    expect(r['balances']).toEqual([['Zebra Savings', r['expectedMain']], ['Euro wallet', -900n]]);
+    expect(r['search']).toEqual({ count: 1, tags: 2, amount: -450n });
+    expect(r['dashboard']).toMatchObject({ expense: 1_450n, income: 2n ** 58n + 1n });
+    expect(r['recentlyDeleted']).toEqual([30]);
+    expect(r['purged']).toBe(1);
+    expect(r['afterPurge']).toMatchObject({ ok: false, error: { code: 'not_found' } });
+    expect(r['countAfterPurge']).toBe(2);
+    expect(r['unlockedAgain']).toBe(true);
+    expect(r['reopenedBalances']).toEqual([['Zebra Savings', 100_000n + 2n ** 58n + 1n], ['Euro wallet', -900n]]);
+    expect(r['leaks']).toEqual([]);
+  });
+});
+
 describe('persistence and cleanup', () => {
   it('survives a worker restart', async () => {
     const dir = unique();

@@ -129,6 +129,104 @@ export const scenarios = {
     return out;
   },
 
+  /** The ledger (user story 2) over the real encrypted database, driven through the worker handlers. */
+  async ledger(ctx: ScenarioContext) {
+    const rt = await runtimeFor(ctx);
+    const PASSWORD = 'correct horse battery staple';
+    let stored: DeviceCredentials | undefined;
+    const credentials: CredentialStorePort = { save: async (c) => void (stored = c), load: async () => stored, clear: async () => void (stored = undefined) };
+    let savedSettings: unknown;
+    const time = { now: Date.UTC(2026, 2, 1, 12) };
+    const build = () => createAppHandlers({
+      runtime: async () => rt, rng, credentials, nowMs: () => time.now, onLocked: () => undefined,
+      accountCrypto: createAccountCrypto({ rng, kdf: { kdf: 'argon2id', mKib: 32768, t: 2, p: 1 } }),
+      settings: { load: async () => parseSettings(savedSettings), save: async (s) => void (savedSettings = s) },
+      quickStore: { load: async () => undefined, save: async () => undefined, clear: async () => undefined },
+      quickCrypto: { enroll: async () => 'wrong_password', unlock: async () => 'failed' },
+    });
+    const bytes = (text: string) => new TextEncoder().encode(text);
+    const out: Record<string, unknown> = {};
+    type Ok<T> = { ok: true; value: T } | { ok: false; error: { code: string } };
+
+    let app = build();
+    let server = createRpcServer(app.handlers);
+    let call = <T = unknown>(method: string, args?: unknown) => server.invoke(method, args) as Promise<T>;
+    const created = await call<Ok<{ fold: { id: string } }>>('createAccount', { email: 'a@example.com', password: bytes(PASSWORD), server: 'https://relay.example.com', discoverable: true, baseCurrency: 'USD' });
+    if (!created.ok) throw new Error('sign-up failed');
+    const fold = created.value.fold.id;
+
+    const basics0 = await call<Ok<{ categories: unknown[]; baseCurrency: string; accounts: unknown[] }>>('ledger.basics', { fold });
+    out['seeded'] = basics0.ok ? { categories: basics0.value.categories.length, base: basics0.value.baseCurrency, accounts: basics0.value.accounts.length } : basics0;
+
+    const day = (y: number, m: number, d: number) => y * 10_000 + m * 100 + d;
+    const main = await call<Ok<{ id: string }>>('ledger.createAccount', { fold, kind: 'checking', name: 'Zebra Savings', currency: 'USD', openingBalanceMinor: 100_000n, openingDate: day(2026, 1, 1) });
+    const euro = await call<Ok<{ id: string }>>('ledger.createAccount', { fold, kind: 'cash', name: 'Euro wallet', currency: 'EUR', openingBalanceMinor: 0n, openingDate: day(2026, 1, 1) });
+    if (!main.ok || !euro.ok) throw new Error('account creation failed');
+    const payee = await call<Ok<string>>('ledger.createPayee', { fold, name: 'Quokka Cafe' });
+    const tagA = await call<Ok<string>>('ledger.createTag', { fold, name: 'fun' });
+    const tagB = await call<Ok<string>>('ledger.createTag', { fold, name: 'work' });
+    if (!payee.ok || !tagA.ok || !tagB.ok) throw new Error('labels failed');
+    const cats = basics0.ok ? (basics0.value.categories as Array<{ id: string; name: string; direction: string; parentId: string | null }>) : [];
+    const food = cats.find((c) => c.name === 'Groceries')!;
+
+    const big = 2n ** 58n + 1n;
+    const coffee = await call<Ok<{ id: string; baseAmountMinor: bigint }>>('ledger.addTransaction', {
+      fold, accountId: main.value.id, direction: 'expense', amountMinor: -450n, currency: 'USD', occurredUtcMs: time.now, tzOffsetMin: 0,
+      categoryId: food.id, payeeId: payee.value, tagIds: [tagA.value, tagB.value], note: 'flat white',
+    });
+    const windfall = await call<Ok<{ id: string }>>('ledger.addTransaction', { fold, accountId: main.value.id, direction: 'income', amountMinor: big, currency: 'USD', occurredUtcMs: time.now + 1000, tzOffsetMin: 0 });
+    const needsRate = await call<Ok<unknown>>('ledger.addTransaction', { fold, accountId: euro.value.id, direction: 'expense', amountMinor: -1_000n, currency: 'EUR', occurredUtcMs: time.now, tzOffsetMin: 0 });
+    out['needsRate'] = needsRate.ok ? 'added' : needsRate.error;
+    await call('ledger.setCustomRate', { fold, quote: 'EUR', asOfUtcS: Number(BigInt(time.now) / 1000n) - 10, rateE12: 900_000_000_000n });
+    const eur = await call<Ok<{ baseAmountMinor: bigint }>>('ledger.addTransaction', { fold, accountId: euro.value.id, direction: 'expense', amountMinor: -900n, currency: 'EUR', occurredUtcMs: time.now, tzOffsetMin: 0 });
+    out['eurBase'] = eur.ok ? eur.value.baseAmountMinor : eur.error;
+    if (!coffee.ok || !windfall.ok) throw new Error('transactions failed');
+
+    const basics = await call<Ok<{ accounts: Array<{ name: string; balanceMinor: bigint | null }> }>>('ledger.basics', { fold });
+    out['balances'] = basics.ok ? basics.value.accounts.map((a) => [a.name, a.balanceMinor]) : basics.error;
+    out['expectedMain'] = 100_000n - 450n + big;
+
+    const list = await call<Ok<{ items: Array<{ id: string; tagIds: string[]; amountMinor: bigint }>; count: number }>>('ledger.transactions', { fold, filter: { text: 'quokka' } });
+    out['search'] = list.ok ? { count: list.value.count, tags: list.value.items[0]?.tagIds.length, amount: list.value.items[0]?.amountMinor } : list.error;
+    const period = { from: day(2026, 3, 1), to: day(2026, 3, 31) };
+    const dash = await call<Ok<{ netWorth: { totalMinor: bigint | null }; incomeExpense: { expenseMinor: bigint; incomeMinor: bigint } }>>('ledger.dashboard', {
+      fold, period, asOf: day(2026, 3, 31), options: { adjustmentsAsIncomeExpense: false, transfersAsIncomeExpense: false },
+    });
+    out['dashboard'] = dash.ok ? { net: dash.value.netWorth.totalMinor, expense: dash.value.incomeExpense.expenseMinor, income: dash.value.incomeExpense.incomeMinor } : dash.error;
+
+    // delete, recently deleted, restore, delete again, and purge after 30 days
+    await call('ledger.deleteTransaction', { fold, id: coffee.value.id });
+    const deleted = await call<Ok<Array<{ daysLeft: number }>>>('ledger.recentlyDeleted', { fold });
+    out['recentlyDeleted'] = deleted.ok ? deleted.value.map((d) => d.daysLeft) : deleted.error;
+    await call('ledger.restoreTransaction', { fold, id: coffee.value.id });
+    await call('ledger.deleteTransaction', { fold, id: coffee.value.id });
+    time.now += 31 * 24 * 60 * 60 * 1000;
+    out['purged'] = ((await call<string[]>('ledger.purge', { fold })).length);
+    out['afterPurge'] = await call('ledger.restoreTransaction', { fold, id: coffee.value.id });
+    const after = await call<Ok<{ count: number }>>('ledger.transactions', { fold });
+    out['countAfterPurge'] = after.ok ? after.value.count : after.error;
+
+    // lock, then unlock a fresh session over the same file: everything is still there, exactly
+    await call('session.pageHide');
+    await new Promise((r) => setTimeout(r, 50));
+    app = build();
+    server = createRpcServer(app.handlers);
+    call = <T = unknown>(method: string, args?: unknown) => server.invoke(method, args) as Promise<T>;
+    out['unlockedAgain'] = ((await call<Ok<unknown>>('unlock', { password: bytes(PASSWORD) })).ok);
+    const reopened = await call<Ok<{ accounts: Array<{ name: string; balanceMinor: bigint | null }> }>>('ledger.basics', { fold });
+    out['reopenedBalances'] = reopened.ok ? reopened.value.accounts.map((a) => [a.name, a.balanceMinor]) : reopened.error;
+
+    // nothing readable on disk
+    const leaks: string[] = [];
+    for (const name of rt.pool.getFileNames()) {
+      const text = latin1(await rt.pool.exportFile(name));
+      for (const marker of ['Zebra Savings', 'Quokka', 'flat white', 'Euro wallet', 'Groceries']) if (text.includes(marker)) leaks.push(`${name}:${marker}`);
+    }
+    out['leaks'] = leaks;
+    await call('session.pageHide');
+    return out;
+  },
+
   /** The whole of user story 1 against the real encrypted database: sign up, lock, unlock. */
   async signUpAndUnlock(ctx: ScenarioContext) {
     const rt = await runtimeFor(ctx);

@@ -1,6 +1,6 @@
 import {
-  createCommandBus, createEventBus, createUpcasters, createWritePath, roleResolver, SCHEMA_VERSION,
-  type CommandBus, type EventBus, type FoldDirectory, type Id, type OpLogStore, type OpSealerPort, type ProjectionStore, type SessionPort, type SessionSecrets, type SessionServices, type WritePath,
+  createCommandBus, createEventBus, createLedgerQueries, createLedgerViews, createQueryBus, createUpcasters, createWritePath, LEDGER_GROUPS, purgeExpired, roleResolver, SCHEMA_VERSION,
+  type CommandBus, type EventBus, type FoldDirectory, type Id, type LedgerViews, type OpLogStore, type OpSealerPort, type ProjectionStore, type QueryBus, type SessionPort, type SessionSecrets, type SessionServices, type WritePath,
 } from '@cashfold/core';
 import { createAesGcm, createEd25519Signer, createHkdf, createOpSealer, SecretBuf, type Rng } from '@cashfold/crypto';
 import type { EncryptedDatabase } from './database';
@@ -28,7 +28,16 @@ export interface OpenSession extends SessionServices {
   readonly events: EventBus;
   readonly keyring: FoldKeyring;
   readonly commandBus: CommandBus;
+  readonly queryBus: QueryBus;
+  readonly queries: ReturnType<typeof createLedgerQueries>;
+  readonly views: LedgerViews;
   readonly directory: FoldDirectory;
+  /** This device's id, so the page can tell its own changes from other devices' (FR-053). */
+  readonly deviceId: Id;
+}
+
+async function purgeAllFolds(stores: { oplog: OpLogStore; projections: ProjectionStore }, directory: FoldDirectory, now: number): Promise<void> {
+  for (const fold of await directory.list()) await purgeExpired(stores, fold.id, now);
 }
 
 /** The SessionPort for the browser: opens the encrypted database, migrates it and wires the write path over it. */
@@ -62,11 +71,19 @@ export function createWebSession(options: WebSessionOptions): SessionPort & { cu
       const writePath = createWritePath({
         oplog, projections, sealer, clock: { nowMs }, random: rng,
         keys: { deviceId: () => secrets.deviceId, currentEpoch: (fold) => keyring.currentEpoch(fold) },
-        groups: new Map(), upcasters: createUpcasters(SCHEMA_VERSION, new Map()),
+        groups: LEDGER_GROUPS, upcasters: createUpcasters(SCHEMA_VERSION, new Map()),
       });
       const events = createEventBus();
-      const commandBus = createCommandBus({ writePath, projections, events, roleOf: roleResolver(directory), isUnlocked: options.isUnlocked });
-      open = { db, oplog, projections, writePath, events, keyring, commandBus, directory, foldKeys: keyring };
+      const buses = { writePath, projections, events, roleOf: roleResolver(directory), isUnlocked: options.isUnlocked };
+      const commandBus = createCommandBus(buses);
+      const queryBus = createQueryBus(buses);
+      const views = createLedgerViews(events);
+      const queries = createLedgerQueries({ views, clock: { nowMs }, quarantined: (fold) => oplog.listQuarantined(fold) });
+      open = { db, oplog, projections, writePath, events, keyring, commandBus, queryBus, queries, views, directory, foldKeys: keyring, deviceId: secrets.deviceId as Id };
+
+      // Deleted records older than 30 days are removed for good (FR-052). Done at every start, which is when a
+      // long-closed app catches up; a failure here must not stop the app from opening.
+      await purgeAllFolds({ oplog, projections }, directory, nowMs()).catch(() => undefined);
       return open;
     } catch (e) {
       db.close();

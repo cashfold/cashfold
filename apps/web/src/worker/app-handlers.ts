@@ -1,10 +1,11 @@
 import {
-  createAccount, createFoldCommands, createQuickUnlock, createSession, describeFoldDeletion, DEFAULT_LOCK_POLICY, newIdV4, unlock,
+  createAccount, createCategoryCommands, createFoldCommands, createQuickUnlock, createSession, describeFoldDeletion, DEFAULT_LOCK_POLICY, newIdV4, unlock,
   parseSettings, toLockPolicy, type AccountCryptoPort, type CredentialStorePort, type DeviceSettings, type DeviceSettingsPort, type Id, type LockPolicy, type QuickUnlockCryptoPort, type QuickUnlockStorePort, type Session, type SessionPort, type UnlockCryptoPort,
 } from '@cashfold/core';
 import { SecretBuf } from '@cashfold/crypto';
 import { createWebSession } from '../adapters/sqlite-opfs/web-session';
 import type { SqliteRuntime } from '../adapters/sqlite-opfs/runtime';
+import { createLedgerHandlers } from './ledger-handlers';
 import { RpcError, type Handlers } from './rpc';
 
 // The Core Worker's application surface (contracts/core-api.md). Everything crossing the RPC boundary is plain data:
@@ -75,7 +76,17 @@ export function createAppHandlers(deps: AppHandlerDeps): AppRuntime {
     return current;
   };
 
+  /** A new Fold gets the default categories as ordinary records (FR-048). Best effort: the Fold exists either way. */
+  const seedCategories = async (fold: Id): Promise<void> => {
+    const current = webSession?.current();
+    if (current === undefined) return;
+    await current.commandBus.execute(createCategoryCommands().seedDefaultCategories, { fold }).catch(() => undefined);
+  };
+
+  const ledger = createLedgerHandlers({ open, clock: { nowMs: deps.nowMs }, rng: deps.rng });
+
   const handlers: Handlers = {
+    ...ledger,
     async status() {
       const stored = await deps.credentials.load();
       const phase: Phase = stored === undefined ? 'no_account' : webSession?.current() !== undefined && session.state() === 'unlocked' ? 'unlocked' : 'locked';
@@ -88,7 +99,10 @@ export function createAppHandlers(deps: AppHandlerDeps): AppRuntime {
       const sessionPort = await newWebSession();
       const input = { email: args.email, password: secretFrom(args.password), server: args.server, discoverable: args.discoverable, ...(args.foldName === undefined ? {} : { foldName: args.foldName }), ...(args.baseCurrency === undefined ? {} : { baseCurrency: args.baseCurrency }) };
       const result = await createAccount({ crypto: deps.accountCrypto, registration: { register: async () => ({ ok: false, reason: 'offline' }) }, credentials: deps.credentials, sessionPort, session, random: deps.rng })(input);
-      if (result.ok) await applySettings();
+      if (result.ok) {
+        await applySettings();
+        await seedCategories(result.value.fold.id); // the first Fold starts with the default category set
+      }
       return result.ok ? { ok: true, value: { secretKeyText: result.value.secretKeyText, accountId: result.value.accountId, fold: result.value.fold, registration: result.value.registration } } : result;
     },
 
@@ -183,7 +197,9 @@ export function createAppHandlers(deps: AppHandlerDeps): AppRuntime {
     async 'folds.create'(args: { name: string; baseCurrency: string }) {
       const s = open();
       const commands = createFoldCommands({ directory: s.directory, foldKeys: s.keyring });
-      return s.commandBus.execute(commands.createFold, { fold: newIdV4((n) => deps.rng.bytes(n)), name: args.name, baseCurrency: args.baseCurrency });
+      const created = await s.commandBus.execute(commands.createFold, { fold: newIdV4((n) => deps.rng.bytes(n)), name: args.name, baseCurrency: args.baseCurrency });
+      if (created.ok) await seedCategories(created.value.id);
+      return created;
     },
 
     async 'folds.rename'(args: { fold: Id; name: string }) {

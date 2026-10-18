@@ -1,5 +1,15 @@
-import { Page } from '../../ui/shell/Page';
+'use client';
+
+import { RequireUnlocked } from '../../ui/core/RequireUnlocked';
+import { TransactionsScreen } from '../../ui/ledger/TransactionsScreen';
+import { LedgerProvider } from '../../ui/ledger/LedgerProvider';
 
 export default function Screen() {
-  return <Page titleKey="page.transactions.title" />;
+  return (
+    <RequireUnlocked titleKey="page.transactions.title">
+      <LedgerProvider>
+        <TransactionsScreen />
+      </LedgerProvider>
+    </RequireUnlocked>
+  );
 }
