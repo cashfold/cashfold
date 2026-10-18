@@ -114,7 +114,7 @@ describe('buildNeedsAttention', () => {
       { kind: 'quarantined_op', ref: id(0x701), messageKey: 'attention.quarantined.clock_ahead' },
       { kind: 'quarantined_op', ref: id(0x702), messageKey: 'attention.quarantined.bad_signature' },
     ]);
-    expect(JSON.stringify(items)).not.toMatch(/blob|sig|fields|amount/);
+    expect(JSON.stringify(items)).not.toMatch(/"blob"|"sig"|"fields"|"amount"|"note"/);
   });
 
   it('is empty when everything is healthy', () => {

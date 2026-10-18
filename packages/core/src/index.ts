@@ -10,3 +10,5 @@ export * from './sync/domain/hlc.js';
 export * from './sync/domain/merge.js';
 export * from './sync/ports/index.js';
 export * from './sync/application/write-path.js';
+export * from './sync/application/upcasters.js';
+export * from './sync/application/repair.js';
