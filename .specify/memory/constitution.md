@@ -49,8 +49,10 @@ MUST be an error, never wrapped or truncated. Rationale: rounding drift destroys
 finance product.
 
 ### VII. Local-First
-Every P1 and P2 feature MUST work fully offline. The network is an optimisation for
-synchronisation only, and no user-visible function may block on it. Rationale: availability
+Every local function of every P1 and P2 feature MUST work fully offline. Only operations that
+inherently contact the service (synchronisation, device enrolment, rate refresh, invitation
+lookup) need the network, and they MUST queue or fail gracefully without blocking any other
+function. No user-visible local function may block on the network. Rationale: availability
 and privacy both improve when the device is self-sufficient.
 
 ### VIII. Security Hygiene
@@ -140,4 +142,4 @@ principles or sections or materially expanded guidance, PATCH for clarifications
 `plan.md` Constitution Check MUST cite the principles above by number (I–IX) and justify any
 deviation in Complexity Tracking. Reviewers MUST verify compliance in every pull request.
 
-**Version**: 1.0.0 | **Ratified**: 2026-10-18 | **Last Amended**: 2026-10-18
+**Version**: 1.0.1 | **Ratified**: 2026-10-18 | **Last Amended**: 2026-10-18
