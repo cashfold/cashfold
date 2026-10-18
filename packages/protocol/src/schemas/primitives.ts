@@ -3,10 +3,13 @@ import { z } from 'zod';
 // Building blocks for contracts/op-envelope.cddl. Schemas validate *decoded CBOR*: integers arrive as
 // bigint, maps as Map. Small integers (u8..u48) are narrowed to number; u64 and i64 stay bigint.
 
+/** Any Uint8Array (typed over ArrayBufferLike so callers are not tied to a specific buffer kind). */
+const anyBuffer = z.custom<Uint8Array>((v) => v instanceof Uint8Array, { message: 'expected bytes' });
+
 export const bytes = (size: number) =>
-  z.instanceof(Uint8Array).refine((b) => b.length === size, { message: `expected ${size} bytes` });
-export const bytesMin = (min: number) => z.instanceof(Uint8Array).refine((b) => b.length >= min, { message: `expected at least ${min} bytes` });
-export const anyBytes = z.instanceof(Uint8Array);
+  anyBuffer.refine((b) => b.length === size, { message: `expected ${size} bytes` });
+export const bytesMin = (min: number) => anyBuffer.refine((b) => b.length >= min, { message: `expected at least ${min} bytes` });
+export const anyBytes = anyBuffer;
 
 export const uuid16 = bytes(16);
 export const hash32 = bytes(32);

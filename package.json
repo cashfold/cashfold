@@ -15,7 +15,8 @@
     "check:bundle": "node scripts/check-bundle-size.mjs",
     "check:licenses": "node scripts/check-licenses.mjs",
     "check:no-float": "node scripts/check-no-float.mjs",
-    "prepare": "git config core.hooksPath .githooks"
+    "prepare": "git config core.hooksPath .githooks",
+    "verify": "pnpm typecheck && pnpm lint && vitest run"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.14.0",

@@ -49,7 +49,8 @@ export default tseslint.config(
           policies: [
             dis('domain', ['application', 'ports', 'crypto', 'protocol', 'web', 'server'], 'domain may import only shared-kernel'),
             dis('shared-kernel', ['domain', 'application', 'ports', 'crypto', 'protocol', 'web', 'server'], 'shared-kernel is a leaf'),
-            dis('application', ['web', 'server'], 'core never imports apps/*'),
+            dis('application', ['web', 'server', 'crypto', 'protocol'], 'application depends on ports, not on crypto/protocol/apps'),
+            dis('ports', ['web', 'server', 'crypto', 'protocol'], 'ports are plain interfaces'),
             dis('crypto', ['core', 'domain', 'application', 'ports', 'shared-kernel', 'web', 'server'], 'crypto never imports core'),
             dis('protocol', ['core', 'domain', 'application', 'ports', 'shared-kernel', 'crypto', 'web', 'server'], 'protocol imports nothing in the workspace'),
             dis('server', ['core', 'domain', 'application', 'ports', 'shared-kernel'], 'apps/server never imports core'),
