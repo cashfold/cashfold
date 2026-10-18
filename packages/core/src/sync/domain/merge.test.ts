@@ -269,7 +269,7 @@ describe('convergence: the state is a function of the set of ops', () => {
         for (const rec of s.values()) {
           for (const m of visibleMembers(rec, 10)) {
             const tags = rec.sets.get(10)?.adds.get(m) ?? new Set();
-            const removed = rec.sets.get(10)?.removed ?? new Set();
+            const removed = rec.sets.get(10)?.removed.get(m) ?? new Set();
             expect([...tags].some((t) => !removed.has(t))).toBe(true);
           }
         }
