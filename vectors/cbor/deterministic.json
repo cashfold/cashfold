@@ -1,0 +1,581 @@
+{
+  "source": "RFC 8949 Appendix A and section 4.2.1 (core deterministic encoding); frozen bytes",
+  "valid": [
+    {
+      "name": "0",
+      "value": {
+        "int": "0"
+      },
+      "hex": "00"
+    },
+    {
+      "name": "23",
+      "value": {
+        "int": "23"
+      },
+      "hex": "17"
+    },
+    {
+      "name": "24",
+      "value": {
+        "int": "24"
+      },
+      "hex": "1818"
+    },
+    {
+      "name": "100",
+      "value": {
+        "int": "100"
+      },
+      "hex": "1864"
+    },
+    {
+      "name": "255",
+      "value": {
+        "int": "255"
+      },
+      "hex": "18ff"
+    },
+    {
+      "name": "256",
+      "value": {
+        "int": "256"
+      },
+      "hex": "190100"
+    },
+    {
+      "name": "1000",
+      "value": {
+        "int": "1000"
+      },
+      "hex": "1903e8"
+    },
+    {
+      "name": "65535",
+      "value": {
+        "int": "65535"
+      },
+      "hex": "19ffff"
+    },
+    {
+      "name": "65536",
+      "value": {
+        "int": "65536"
+      },
+      "hex": "1a00010000"
+    },
+    {
+      "name": "1000000",
+      "value": {
+        "int": "1000000"
+      },
+      "hex": "1a000f4240"
+    },
+    {
+      "name": "4294967295",
+      "value": {
+        "int": "4294967295"
+      },
+      "hex": "1affffffff"
+    },
+    {
+      "name": "4294967296",
+      "value": {
+        "int": "4294967296"
+      },
+      "hex": "1b0000000100000000"
+    },
+    {
+      "name": "1000000000000",
+      "value": {
+        "int": "1000000000000"
+      },
+      "hex": "1b000000e8d4a51000"
+    },
+    {
+      "name": "9007199254740993",
+      "value": {
+        "int": "9007199254740993"
+      },
+      "hex": "1b0020000000000001"
+    },
+    {
+      "name": "18446744073709551615",
+      "value": {
+        "int": "18446744073709551615"
+      },
+      "hex": "1bffffffffffffffff"
+    },
+    {
+      "name": "9223372036854775807",
+      "value": {
+        "int": "9223372036854775807"
+      },
+      "hex": "1b7fffffffffffffff"
+    },
+    {
+      "name": "-1",
+      "value": {
+        "int": "-1"
+      },
+      "hex": "20"
+    },
+    {
+      "name": "-10",
+      "value": {
+        "int": "-10"
+      },
+      "hex": "29"
+    },
+    {
+      "name": "-100",
+      "value": {
+        "int": "-100"
+      },
+      "hex": "3863"
+    },
+    {
+      "name": "-1000",
+      "value": {
+        "int": "-1000"
+      },
+      "hex": "3903e7"
+    },
+    {
+      "name": "-9223372036854775808",
+      "value": {
+        "int": "-9223372036854775808"
+      },
+      "hex": "3b7fffffffffffffff"
+    },
+    {
+      "name": "-18446744073709551616",
+      "value": {
+        "int": "-18446744073709551616"
+      },
+      "hex": "3bffffffffffffffff"
+    },
+    {
+      "name": "text ''",
+      "value": {
+        "text": ""
+      },
+      "hex": "60"
+    },
+    {
+      "name": "text 'a'",
+      "value": {
+        "text": "a"
+      },
+      "hex": "6161"
+    },
+    {
+      "name": "text 'IETF'",
+      "value": {
+        "text": "IETF"
+      },
+      "hex": "6449455446"
+    },
+    {
+      "name": "text '\u00fc'",
+      "value": {
+        "text": "\u00fc"
+      },
+      "hex": "62c3bc"
+    },
+    {
+      "name": "text '\u6c34'",
+      "value": {
+        "text": "\u6c34"
+      },
+      "hex": "63e6b0b4"
+    },
+    {
+      "name": "text '\ud800\udd51'",
+      "value": {
+        "text": "\ud800\udd51"
+      },
+      "hex": "64f0908591"
+    },
+    {
+      "name": "empty bytes",
+      "value": {
+        "bytes": ""
+      },
+      "hex": "40"
+    },
+    {
+      "name": "bytes 01020304",
+      "value": {
+        "bytes": "01020304"
+      },
+      "hex": "4401020304"
+    },
+    {
+      "name": "false",
+      "value": {
+        "bool": false
+      },
+      "hex": "f4"
+    },
+    {
+      "name": "true",
+      "value": {
+        "bool": true
+      },
+      "hex": "f5"
+    },
+    {
+      "name": "null",
+      "value": {
+        "null": true
+      },
+      "hex": "f6"
+    },
+    {
+      "name": "empty array",
+      "value": {
+        "array": []
+      },
+      "hex": "80"
+    },
+    {
+      "name": "[1,2,3]",
+      "value": {
+        "array": [
+          {
+            "int": "1"
+          },
+          {
+            "int": "2"
+          },
+          {
+            "int": "3"
+          }
+        ]
+      },
+      "hex": "83010203"
+    },
+    {
+      "name": "nested array",
+      "value": {
+        "array": [
+          {
+            "int": "1"
+          },
+          {
+            "array": [
+              {
+                "int": "2"
+              },
+              {
+                "int": "3"
+              }
+            ]
+          },
+          {
+            "array": [
+              {
+                "int": "4"
+              },
+              {
+                "int": "5"
+              }
+            ]
+          }
+        ]
+      },
+      "hex": "8301820203820405"
+    },
+    {
+      "name": "empty map",
+      "value": {
+        "map": []
+      },
+      "hex": "a0"
+    },
+    {
+      "name": "{1:2,3:4}",
+      "value": {
+        "map": [
+          [
+            {
+              "int": "1"
+            },
+            {
+              "int": "2"
+            }
+          ],
+          [
+            {
+              "int": "3"
+            },
+            {
+              "int": "4"
+            }
+          ]
+        ]
+      },
+      "hex": "a201020304"
+    },
+    {
+      "name": "{a:1,b:[2,3]}",
+      "value": {
+        "map": [
+          [
+            {
+              "text": "a"
+            },
+            {
+              "int": "1"
+            }
+          ],
+          [
+            {
+              "text": "b"
+            },
+            {
+              "array": [
+                {
+                  "int": "2"
+                },
+                {
+                  "int": "3"
+                }
+              ]
+            }
+          ]
+        ]
+      },
+      "hex": "a26161016162820203"
+    },
+    {
+      "name": "keys sorted bytewise (inserted b,a)",
+      "value": {
+        "map": [
+          [
+            {
+              "text": "b"
+            },
+            {
+              "int": "1"
+            }
+          ],
+          [
+            {
+              "text": "a"
+            },
+            {
+              "int": "2"
+            }
+          ]
+        ]
+      },
+      "hex": "a2616102616201",
+      "reordered": true
+    },
+    {
+      "name": "mixed key types sorted by encoded bytes (RFC 8949 4.2.1)",
+      "value": {
+        "map": [
+          [
+            {
+              "text": "aa"
+            },
+            {
+              "int": "0"
+            }
+          ],
+          [
+            {
+              "int": "-1"
+            },
+            {
+              "int": "0"
+            }
+          ],
+          [
+            {
+              "int": "100"
+            },
+            {
+              "int": "0"
+            }
+          ],
+          [
+            {
+              "text": "z"
+            },
+            {
+              "int": "0"
+            }
+          ],
+          [
+            {
+              "int": "10"
+            },
+            {
+              "int": "0"
+            }
+          ]
+        ]
+      },
+      "hex": "a50a001864002000617a0062616100",
+      "reordered": true
+    }
+  ],
+  "invalid": [
+    {
+      "name": "non-shortest 0 (1 byte)",
+      "hex": "1800"
+    },
+    {
+      "name": "non-shortest 23 (1 byte)",
+      "hex": "1817"
+    },
+    {
+      "name": "non-shortest 255 (2 bytes)",
+      "hex": "1900ff"
+    },
+    {
+      "name": "non-shortest 65535 (4 bytes)",
+      "hex": "1a0000ffff"
+    },
+    {
+      "name": "non-shortest u32 (8 bytes)",
+      "hex": "1b00000000ffffffff"
+    },
+    {
+      "name": "non-shortest negative",
+      "hex": "3800"
+    },
+    {
+      "name": "non-shortest text length",
+      "hex": "7800"
+    },
+    {
+      "name": "non-shortest array length",
+      "hex": "9800"
+    },
+    {
+      "name": "indefinite byte string",
+      "hex": "5f42010243030405ff"
+    },
+    {
+      "name": "indefinite text string",
+      "hex": "7f657374726561646d696e67ff"
+    },
+    {
+      "name": "indefinite array",
+      "hex": "9f018202039f0405ffff"
+    },
+    {
+      "name": "indefinite map",
+      "hex": "bf61610161629f0203ffff"
+    },
+    {
+      "name": "break outside indefinite",
+      "hex": "ff"
+    },
+    {
+      "name": "half float",
+      "hex": "f93c00"
+    },
+    {
+      "name": "single float",
+      "hex": "fa47c35000"
+    },
+    {
+      "name": "double float",
+      "hex": "fb3ff199999999999a"
+    },
+    {
+      "name": "undefined",
+      "hex": "f7"
+    },
+    {
+      "name": "unassigned simple value 16",
+      "hex": "f0"
+    },
+    {
+      "name": "simple value 255",
+      "hex": "f8ff"
+    },
+    {
+      "name": "tag 0",
+      "hex": "c074323031332d30332d32315432303a30343a30305a"
+    },
+    {
+      "name": "tag 2 bignum",
+      "hex": "c249010000000000000000"
+    },
+    {
+      "name": "duplicate map keys",
+      "hex": "a2616101616102"
+    },
+    {
+      "name": "unsorted map keys",
+      "hex": "a2616201616102"
+    },
+    {
+      "name": "unsorted mixed key types",
+      "hex": "a26161000a00"
+    },
+    {
+      "name": "byte-string map key",
+      "hex": "a1410100"
+    },
+    {
+      "name": "array map key",
+      "hex": "a1810000"
+    },
+    {
+      "name": "trailing bytes",
+      "hex": "0000"
+    },
+    {
+      "name": "truncated head",
+      "hex": "18"
+    },
+    {
+      "name": "truncated string",
+      "hex": "6261"
+    },
+    {
+      "name": "truncated array",
+      "hex": "8301"
+    },
+    {
+      "name": "empty input",
+      "hex": ""
+    },
+    {
+      "name": "invalid UTF-8",
+      "hex": "62c328"
+    },
+    {
+      "name": "overlong UTF-8",
+      "hex": "62c080"
+    },
+    {
+      "name": "lone surrogate in UTF-8",
+      "hex": "63eda080"
+    },
+    {
+      "name": "length far beyond input",
+      "hex": "9bffffffffffffffff"
+    },
+    {
+      "name": "byte length far beyond input",
+      "hex": "5bffffffffffffffff00"
+    },
+    {
+      "name": "reserved additional info 28",
+      "hex": "1c"
+    },
+    {
+      "name": "reserved additional info 30",
+      "hex": "1e"
+    }
+  ]
+}
