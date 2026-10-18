@@ -23,6 +23,8 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
       - run: pnpm lint
+      - name: Protocol docs are up to date
+        run: node scripts/gen-protocol-docs.mjs && git diff --exit-code docs/protocol.md
       - run: pnpm vitest run --coverage   # unit + property tests, coverage floors
       - run: pnpm build                   # static export and server
       - run: pnpm check:bundle
