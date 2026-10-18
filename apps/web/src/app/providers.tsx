@@ -1,6 +1,7 @@
 'use client';
 
-import type { ReactNode } from 'react';
+import { useEffect, type ReactNode } from 'react';
+import { registerServiceWorker } from '../sw/register';
 import { ErrorBoundary } from '../ui/errors/ErrorBoundary';
 import { I18nProvider, useI18n } from '../ui/i18n/I18nProvider';
 import { AppShell } from '../ui/shell/AppShell';
@@ -18,6 +19,9 @@ function Inner({ children }: { children: ReactNode }) {
 }
 
 export function AppProviders({ children }: { children: ReactNode }) {
+  useEffect(() => {
+    registerServiceWorker().catch(() => undefined);
+  }, []);
   return (
     <I18nProvider>
       <Inner>{children}</Inner>
