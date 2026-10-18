@@ -4,7 +4,7 @@ import { createHkdf } from '../adapters/webcrypto/hkdf.js';
 import { createEd25519Signer } from '../adapters/noble/ed25519.js';
 import type { Rng } from '../ports/index.js';
 import { SecretBuf } from '../secret-buf.js';
-import { createOpSealer, envelopeToSealed, sealedToEnvelope, SealError, type OpKeys, type SealableOp, type SealedOp } from './op-sealer.js';
+import { createOpSealer, envelopeToSealed, sealedToEnvelope, SealError, type FieldValue, type OpKeys, type SealableOp, type SealedOp } from './op-sealer.js';
 
 const osRng: Rng = { bytes: (n) => crypto.getRandomValues(new Uint8Array(n)) };
 const signer = createEd25519Signer();
@@ -31,7 +31,7 @@ async function setup() {
 
 const op: SealableOp = {
   fold: FOLD, op: uuid(0x100), rec: uuid(0x200), dev: DEV, seq: 7n, hlc: { wallMs: 1_700_000_000_000, ctr: 3 }, epoch: 1, schema: 1, table: 6,
-  fields: new Map([[1, -12345n], [2, 'Coffee'], [3, new Uint8Array([1, 2, 3])], [0xffff, false]]),
+  fields: new Map<number, FieldValue>([[1, -12345n], [2, 'Coffee'], [3, new Uint8Array([1, 2, 3])], [0xffff, false]]),
   sets: new Map([[10, { add: [uuid(0x51)], rem: [[uuid(0x52), uuid(0x300)] as const] }]]),
 };
 
@@ -108,13 +108,15 @@ describe('OpSealer', () => {
     await expect(sealer.open(forged)).rejects.toMatchObject({ kind: 'bad_signature' });
   });
 
-  it('reports a missing fold key for the epoch', async () => {
-    const { sealer } = await setup();
-    const future = await sealer.seal({ ...op, epoch: 2 });
-    const { keys } = await setup();
-    const noKey = createOpSealer({ aead: createAesGcm(), hkdf: createHkdf(), signer, rng: osRng, keys: { ...keys, foldKey: async () => undefined, signerPublicKey: async () => (await setup()).device.publicKey } });
-    await expect(noKey.seal(op)).rejects.toMatchObject({ kind: 'unknown_key' });
-    expect(future.epoch).toBe(2);
+  it('reports a missing fold key for the epoch, after the signature checks out', async () => {
+    const { sealer, keys } = await setup();
+    const epoch2 = await sealer.seal({ ...op, epoch: 2 });
+    const onlyEpoch1 = createOpSealer({
+      aead: createAesGcm(), hkdf: createHkdf(), signer, rng: osRng,
+      keys: { ...keys, foldKey: async (fold, epoch) => (epoch === 1 ? SecretBuf.from(new Uint8Array(32).fill(1)) : undefined) },
+    });
+    await expect(onlyEpoch1.open(epoch2)).rejects.toMatchObject({ kind: 'unknown_key' });
+    await expect(onlyEpoch1.seal({ ...op, epoch: 2 })).rejects.toMatchObject({ kind: 'unknown_key' });
   });
 
   it('uses a fresh nonce on every seal of the same op', async () => {

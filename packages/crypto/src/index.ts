@@ -1,3 +1,4 @@
 export * from './secret-buf.js';
 export * from './ports/index.js';
 export * from './record/record-crypto.js';
+export * from './op/op-sealer.js';
