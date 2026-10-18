@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { useCore } from '../core/CoreProvider';
 import { TextField, buttonClass, secondaryButtonClass } from '../forms/TextField';
 import { useI18n } from '../i18n/I18nProvider';
+import { KitReminder } from '../shell/KitReminder';
 
 type Outcome<T> = { ok: true; value: T } | { ok: false; error: { code: string } };
 interface DeletionSummary { name: string; memberCount: number; isLastFold: boolean }
@@ -75,6 +76,7 @@ export function FoldsScreen() {
 
   return (
     <main id="main" tabIndex={-1}>
+      <KitReminder />
       <h1 className="text-2xl font-semibold">{t('page.folds.title')}</h1>
       <p className="mt-3 text-muted">{t('folds.lede')}</p>
 

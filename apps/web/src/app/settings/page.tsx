@@ -1,5 +1,12 @@
-import { Page } from '../../ui/shell/Page';
+'use client';
 
-export default function Screen() {
-  return <Page titleKey="page.settings.title" />;
+import { RequireUnlocked } from '../../ui/core/RequireUnlocked';
+import { SettingsScreen } from '../../ui/settings/SettingsScreen';
+
+export default function SettingsPage() {
+  return (
+    <RequireUnlocked titleKey="page.settings.title">
+      <SettingsScreen />
+    </RequireUnlocked>
+  );
 }

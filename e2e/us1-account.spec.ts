@@ -164,4 +164,50 @@ test.describe('@us1 account', () => {
     const secretChars = secretKey.slice(10).replaceAll('-', '');
     await leakScan.expectNoLeaks({ strings: [PASSWORD, FOLD_NAME, secretChars, secretKey], amounts: [] }, capture);
   });
+
+  async function intoApp(page: import('@playwright/test').Page) {
+    const secretKey = await signUp(page);
+    await page.getByLabel('I have saved my Secret Key').check();
+    await page.getByRole('button', { name: 'Continue' }).click();
+    await expect(page.getByTestId('fold-name')).toHaveText('Personal');
+    return secretKey;
+  }
+
+  test('the Emergency Kit reminder can be dismissed and stays dismissed', async ({ page }) => {
+    await intoApp(page);
+    const reminder = page.getByRole('complementary', { name: 'Reminder' });
+    await expect(reminder).toBeVisible();
+    await reminder.getByRole('button', { name: 'Dismiss' }).click();
+    await expect(reminder).toHaveCount(0);
+    await page.getByRole('navigation').getByRole('link', { name: 'Settings' }).click();
+    await page.getByRole('navigation').getByRole('link', { name: 'Folds' }).click();
+    await expect(page.getByRole('complementary', { name: 'Reminder' })).toHaveCount(0);
+  });
+
+  test('settings: the auto-lock period is stored on the device, and the Emergency Kit needs the password again', async ({ page, expectNoA11yViolations }) => {
+    const secretKey = await intoApp(page);
+    await page.getByRole('navigation').getByRole('link', { name: 'Settings' }).click();
+    await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
+    await expectNoA11yViolations();
+
+    await page.getByLabel('Lock after no activity for').selectOption('15');
+    await expect(page.getByRole('status').filter({ hasText: 'Saved' })).toBeVisible();
+
+    await page.getByLabel('Password').fill('this is not my password');
+    await page.getByRole('button', { name: 'Show Emergency Kit' }).click();
+    await expect(page.locator('form [role=alert]')).toContainText('not right');
+
+    await page.getByLabel('Password').fill(PASSWORD);
+    await page.getByRole('button', { name: 'Show Emergency Kit' }).click();
+    const download = page.waitForEvent('download');
+    await page.getByRole('button', { name: 'Download Emergency Kit' }).click();
+    expect(readFileSync(await (await download).path(), 'utf8')).toContain(secretKey);
+
+    // the preference survives a full reload (unlock again first)
+    await page.reload();
+    await page.getByLabel('Password').fill(PASSWORD);
+    await page.getByRole('button', { name: 'Unlock' }).click();
+    await page.getByRole('navigation').getByRole('link', { name: 'Settings' }).click();
+    await expect(page.getByLabel('Lock after no activity for')).toHaveValue('15');
+  });
 });

@@ -6,6 +6,7 @@ import { useState, type FormEvent } from 'react';
 import { useCore, withPasswordBytes } from '../core/CoreProvider';
 import { TextField, buttonClass } from '../forms/TextField';
 import { useI18n } from '../i18n/I18nProvider';
+import { ServerAddress } from '../settings/ServerAddress';
 import { SecretKeyScreen, type CreatedAccount } from './SecretKeyScreen';
 
 const DEFAULT_SERVER = process.env['NEXT_PUBLIC_DEFAULT_SERVER'] ?? '';
@@ -90,10 +91,7 @@ export function SignUpForm() {
           </div>
         ) : null}
         <TextField label={t('signup.confirm.label')} type="password" autoComplete="new-password" required value={confirm} onChange={(e) => setConfirm(e.target.value)} error={errors.confirm} />
-        <TextField
-          label={t('signup.server.label')} type="url" inputMode="url" autoComplete="url" required placeholder="https://relay.example.com" value={server} onChange={(e) => setServer(e.target.value)}
-          hint={t('signup.server.hint')} error={errors.server}
-        />
+        <ServerAddress value={server} onChange={setServer} error={errors.server} />
         <div className="mt-4">
           <label className="flex items-start gap-2">
             <input type="checkbox" className="mt-1" checked={discoverable} onChange={(e) => setDiscoverable(e.target.checked)} />
