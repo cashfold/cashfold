@@ -8,3 +8,22 @@ Payload/
 
 # Local Claude Code settings
 .claude/settings.local.json
+
+# Node / build
+node_modules/
+dist/
+build/
+.next/
+out/
+.turbo/
+coverage/
+*.log
+.env
+.env.*
+!.env.example
+*.tsbuildinfo
+playwright-report/
+test-results/
+.vscode/
+.idea/
+*.swp

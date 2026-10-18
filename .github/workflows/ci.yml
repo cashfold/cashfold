@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  id-token: write
+  attestations: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm lint
+      - run: pnpm vitest run --coverage   # unit + property tests, coverage floors
+      - run: pnpm build                   # static export and server
+      - run: pnpm check:bundle
+      - run: pnpm check:licenses
+      - run: pnpm check:no-float
+      - run: pnpm audit --audit-level=high
+      - name: Playwright (includes blocking axe WCAG 2.2 AA assertions)
+        run: |
+          pnpm exec playwright install --with-deps
+          pnpm test:e2e
+      - name: Testcontainers (PostgreSQL)
+        run: pnpm --filter @cashfold/server test
+      - name: SBOM
+        run: pnpm dlx @cyclonedx/cdxgen -o sbom.cdx.json
+      - uses: actions/upload-artifact@v4
+        with: { name: sbom, path: sbom.cdx.json }
+      - uses: actions/attest-build-provenance@v2
+        if: github.ref == 'refs/heads/main'
+        with: { subject-path: 'apps/web/out/**' }

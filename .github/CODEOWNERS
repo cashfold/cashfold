@@ -1,0 +1,4 @@
+# Two reviewers are required on these paths (see docs/repo-settings.md).
+/packages/crypto/        @pogulailo
+/packages/core/src/sync/    @pogulailo
+/packages/core/src/sharing/ @pogulailo

@@ -1,0 +1,24 @@
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: cashfold
+      POSTGRES_PASSWORD: cashfold-dev-only
+      POSTGRES_DB: cashfold
+    ports: ['5432:5432']
+    volumes: ['pgdata:/var/lib/postgresql/data']
+
+  # Optional S3-compatible store for attachments and snapshots.
+  minio:
+    image: minio/minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: cashfold
+      MINIO_ROOT_PASSWORD: cashfold-dev-only
+    ports: ['9000:9000', '9001:9001']
+    volumes: ['miniodata:/data']
+    profiles: ['storage']
+
+volumes:
+  pgdata:
+  miniodata:
