@@ -12,9 +12,11 @@ const contracts = resolve(import.meta.dirname, '../../../../specs/001-secure-fin
 const openapi = parse(readFileSync(resolve(contracts, 'sync-api.openapi.yaml'), 'utf8')) as OpenApi;
 const cddl = readFileSync(resolve(contracts, 'op-envelope.cddl'), 'utf8');
 
+type Json = any; // eslint-disable-line @typescript-eslint/no-explicit-any -- parsed YAML is untyped
+
 interface OpenApi {
   paths: Record<string, unknown>;
-  components: { schemas: Record<string, any>; responses: Record<string, unknown> };
+  components: { schemas: Record<string, Json>; responses: Record<string, unknown> };
 }
 
 const b = (n: number, fill = 1) => new Uint8Array(n).fill(fill);
@@ -37,7 +39,7 @@ describe('OpenAPI document is internally consistent', () => {
     expect(refs.size).toBeGreaterThan(10);
     for (const ref of refs) {
       const path = ref.replace(/^#\//, '').split('/');
-      let node: any = openapi;
+      let node: Json = openapi;
       for (const seg of path) node = node?.[seg];
       expect(node, `unresolved ${ref}`).toBeDefined();
     }

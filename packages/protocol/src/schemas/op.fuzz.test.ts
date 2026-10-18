@@ -4,7 +4,7 @@ import { ZodError } from 'zod';
 import { CborError } from '../cbor/cbor.js';
 import {
   decodeFoldKeyGrant, decodeFrame, decodeKeySet, decodeLogEntry, decodeOpEnvelope, decodeOpPayload, decodeSnapshot,
-  encodeOpEnvelope, encodeOpPayload, type OpEnvelope, type OpPayload,
+  encodeOpEnvelope, encodeOpPayload, type FieldValue, type OpEnvelope, type OpPayload,
 } from './index.js';
 
 const NUM_RUNS = process.env['CI'] ? 5000 : 1000;
@@ -32,7 +32,7 @@ const envelope: OpEnvelope = {
   v: 1, fold: bytes(16, 1), op: bytes(16, 2), rec: bytes(16, 3), dev: bytes(16, 4), seq: 42n, hlc: { wallMs: 1_700_000_000_000, ctr: 1 },
   epoch: 1, schema: 1, blob: bytes(284, 9), sig: bytes(64, 5),
 };
-const payload: OpPayload = { t: 6, f: new Map([[1, 100n], [2, 'x'], [3, [1n, null, true]]]) };
+const payload: OpPayload = { t: 6, f: new Map<number, FieldValue>([[1, 100n], [2, 'x'], [3, [1n, null, true]]]) };
 
 describe('wire parsers never fail with anything but CborError or ZodError', () => {
   it.each(parsers)('%s: random bytes', (_name, parse) => {
