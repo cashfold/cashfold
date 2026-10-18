@@ -16,3 +16,5 @@ export * from './shared-kernel/role';
 export * from './sync/application/buses';
 export * from './shared-kernel/logger';
 export * from './identity/domain/password-policy';
+export * from './identity/domain/user-account';
+export * from './sharing/domain/fold';
