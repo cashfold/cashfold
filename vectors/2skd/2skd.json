@@ -1,0 +1,86 @@
+{
+  "source": "independent implementation: Python argon2-cffi, hashlib.pbkdf2_hmac, cryptography HKDF; ARCH 5.3",
+  "inputs": {
+    "email": "Alice.Example@Example.COM",
+    "account_id": "ABCDEF",
+    "secret26": "GHJKLMNPQRSTUVWXYZ23456789",
+    "secret_key_text": "C1-ABCDEF-GHJKLMNPQRS-TUVWX-YZ234-56789",
+    "salt16": "000102030405060708090a0b0c0d0e0f"
+  },
+  "cases": [
+    {
+      "name": "argon2id auk",
+      "password": "correct horse battery staple",
+      "purpose": "auk",
+      "kdf": {
+        "kdf": "argon2id",
+        "m_kib": 32768,
+        "t": 2,
+        "p": 1
+      },
+      "s_eff": "9c65ff7884aaeafdb2c8f3aab01c314adf66bc1fcb370ce03f29c1c7be13eb2a",
+      "k_pw": "293e440138951fabde40b1bc205381f9d0d55fdf084beb5e2010920322548944",
+      "k_sk": "913390c11b6b26ffceb93c226784a2e930eaf39c57f4fc0f5afec81497afd793",
+      "k_p": "b80dd4c023fe395410f98d9e47d72310e03fac435fbf17517aee5a17b5fb5ed7"
+    },
+    {
+      "name": "argon2id srp, different salt",
+      "password": "correct horse battery staple",
+      "purpose": "srp",
+      "kdf": {
+        "kdf": "argon2id",
+        "m_kib": 32768,
+        "t": 2,
+        "p": 1
+      },
+      "s_eff": "1600a36ee03d1809f183b2d77e5b73e43cb06300683d0fc7c7b6780cfe1081b8",
+      "k_pw": "1c351fa87411c7f8d0482cb96246310ebb3d54e8b97cf647d58153ad9a695ae1",
+      "k_sk": "239af6cbaf880c6918ef08990b9c486902a10e3dc8e09ddd2e9fae06b3d3f20e",
+      "k_p": "3fafe963db99cb91c8a7242069da7967b99c5ad5719c6b9afb1efdab29baa8ef"
+    },
+    {
+      "name": "pbkdf2 auk",
+      "password": "correct horse battery staple",
+      "purpose": "auk",
+      "kdf": {
+        "kdf": "pbkdf2-hmac-sha256",
+        "iter": 650000
+      },
+      "s_eff": "9c65ff7884aaeafdb2c8f3aab01c314adf66bc1fcb370ce03f29c1c7be13eb2a",
+      "k_pw": "bdcb21002890ab3f28079f75b9954a04ae3f01fe785dd0bd5a446f430a19872b",
+      "k_sk": "913390c11b6b26ffceb93c226784a2e930eaf39c57f4fc0f5afec81497afd793",
+      "k_p": "2cf8b1c133fb8dc0e6bea357de11e8ed9ed5f2622fa92cb200baa7579db650b8"
+    },
+    {
+      "name": "argon2id unicode password",
+      "password": "Ångström-pässwörd ①",
+      "purpose": "auk",
+      "kdf": {
+        "kdf": "argon2id",
+        "m_kib": 32768,
+        "t": 2,
+        "p": 1
+      },
+      "s_eff": "9c65ff7884aaeafdb2c8f3aab01c314adf66bc1fcb370ce03f29c1c7be13eb2a",
+      "k_pw": "c6ebe194b4680179ed73efa9f9009091bb940ef48e9d39b961aeab831953fb1b",
+      "k_sk": "913390c11b6b26ffceb93c226784a2e930eaf39c57f4fc0f5afec81497afd793",
+      "k_p": "57d87155af03278623cad38b9e8432788b7efd68d969c5b63b5063978efc2c88"
+    }
+  ],
+  "normalisation": {
+    "variants": [
+      "Å-pass-phrase-123",
+      "Å-pass-phrase-123",
+      "Å-pass-phrase-123",
+      "  Å-pass-phrase-123 \n"
+    ],
+    "purpose": "auk",
+    "kdf": {
+      "kdf": "argon2id",
+      "m_kib": 32768,
+      "t": 2,
+      "p": 1
+    },
+    "k_p": "9918254bdc00580a3b26bd1d6de5be9e27366491f8c279056d734ed38e19ff40"
+  }
+}
