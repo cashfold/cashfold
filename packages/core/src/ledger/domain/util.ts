@@ -3,6 +3,9 @@
 /** The largest of `values`, or `fallback` when there are none. */
 export const maxOf = (values: readonly number[], fallback: number): number => values.reduce((m, v) => (v > m ? v : m), fallback);
 
+/** The smallest of `values`, or `fallback` when there are none. */
+export const minOf = (values: readonly number[], fallback: number): number => values.reduce((m, v) => (v < m ? v : m), fallback);
+
 /** Whole seconds in a non-negative millisecond instant. */
 export const secondsOf = (ms: number): number => Number(BigInt(ms) / 1000n);
 

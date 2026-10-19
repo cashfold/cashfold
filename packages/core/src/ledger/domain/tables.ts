@@ -41,6 +41,12 @@ export const TRANSFER_FIELD = {
   note: 8, status: 9, fxRateId: 10,
 } as const;
 
+export const BUDGET_FIELD = {
+  name: 1, direction: 2, periodUnit: 3, periodInterval: 4, anchorLocalDate: 5, customEndLocalDate: 6, limitMinor: 7, currency: 8,
+  allocationMinor: 9, rollover: 10, includeTransfers: 11, fundedFromAccountId: 12, accountIds: 13, groupIds: 14, categoryIds: 15, tagIds: 16,
+  sortOrder: 17,
+} as const;
+
 export const RATE_FIELD = { quote: 1, asOfUtcS: 2, rateE12: 3, source: 4 } as const;
 
 /** Fields that must be written together (merged atomically, FR-032). */

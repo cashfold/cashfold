@@ -11,6 +11,7 @@ const messages: Record<string, string> = { ...MESSAGES_EN, ...en };
 const here = import.meta.dirname;
 const coreLedger = resolve(here, '../../../../../packages/core/src/ledger');
 const coreSync = resolve(here, '../../../../../packages/core/src/sync');
+const coreBudgeting = resolve(here, '../../../../../packages/core/src/budgeting');
 
 function* sources(dir: string): Generator<string> {
   for (const name of readdirSync(dir)) {
@@ -48,6 +49,9 @@ describe('the ledger screens only use words that exist', () => {
       ...Array.from({ length: COLOR_COUNT }, (_, i) => `ledger.color.${i}`),
       ...ICON_KEYS.map((k) => `ledger.icon.${k}`),
       ...['expense', 'income'].map((d) => `ledger.categories.${d}`),
+      ...['day', 'week', 'month', 'year', 'custom'].map((u) => `budgets.unit.${u}`),
+      ...['none', 'carry_positive', 'carry_all'].map((r) => `budgets.rollover.${r}`),
+      ...['spent', 'limit', 'available', 'ratio'].map((m) => `budgets.mode.${m}`),
       ...['payee', 'tag'].flatMap((x) => ['title', 'new', 'edit', 'empty'].map((s) => `ledger.${x}.${s}`)),
     ];
     expect(wanted.filter((k) => messages[k] === undefined)).toEqual([]);
@@ -55,7 +59,7 @@ describe('the ledger screens only use words that exist', () => {
 
   it('every error the ledger can report has a sentence', () => {
     const codes = new Set<string>();
-    const files = [...sources(coreLedger), join(coreSync, 'application/write-path.ts'), join(coreSync, 'application/buses.ts'), join(coreSync, 'domain/hlc.ts'), join(coreSync, 'domain/merge.ts')];
+    const files = [...sources(coreLedger), ...sources(coreBudgeting), join(coreSync, 'application/write-path.ts'), join(coreSync, 'application/buses.ts'), join(coreSync, 'domain/hlc.ts'), join(coreSync, 'domain/merge.ts')];
     for (const file of files) {
       const text = readFileSync(file, 'utf8');
       for (const m of text.matchAll(/\berr\(\s*'([a-z_]+)'/g)) codes.add(m[1]!);
@@ -67,7 +71,7 @@ describe('the ledger screens only use words that exist', () => {
   });
 
   it('every repair finding and every reason an op can be set aside has a message for Needs attention', () => {
-    const rules = readFileSync(join(coreLedger, 'application/repair-rules.ts'), 'utf8');
+    const rules = readFileSync(join(coreLedger, 'application/repair-rules.ts'), 'utf8') + readFileSync(join(coreBudgeting, 'application/repair-rules.ts'), 'utf8');
     const kinds = new Set([...rules.matchAll(/finding\('([a-z_]+)'/g)].map((m) => m[1]!));
     for (const k of ['category_orphan', 'category_depth', 'category_cycle', 'category_direction_mismatch']) kinds.add(k);
     const ports = readFileSync(join(coreSync, 'ports/index.ts'), 'utf8');

@@ -7,6 +7,8 @@ import { exchangeRateFieldPatch, type NewExchangeRate } from '../ledger/domain/e
 import { TABLE, TXN_FIELD } from '../ledger/domain/tables';
 import { transactionFieldPatch, type TransactionFields } from '../ledger/domain/transaction';
 import { transferFieldPatch, type TransferFields } from '../ledger/domain/transfer';
+import { budgetFieldPatch, validateNewBudget, type BudgetScope, type NewBudgetInput } from '../budgeting/domain/budget';
+import { BUDGET_FIELD } from '../ledger/domain/tables';
 import { DELETED_FIELD, applyOp, emptyFold, type FieldValue, type FoldState, type Op, type SetDelta } from '../sync/domain/merge';
 import { foldSettingsPatch, settingsRecordId } from '../sharing/domain/fold';
 import { id } from './world';
@@ -83,6 +85,24 @@ export class LedgerFixture {
       localDate: date(2026, 1, 15), occurredUtcMs: Date.UTC(2026, 0, 15, 12), tzOffsetMin: 0, status: 'posted', note: '', fxRateId: null,
       toAmountMinor: to ?? fromAmountMinor, ...rest, fromAccountId: fromAccount, toAccountId: toAccount, fromAmountMinor,
     }));
+    return rec;
+  }
+
+  /** A budget with sensible defaults: monthly expense, 100.00 USD, no rollover, watching everything. */
+  budget(over: Partial<NewBudgetInput> & { scope?: Partial<BudgetScope> } = {}, rec: Id = this.nextId()): Id {
+    const { scope = {}, ...rest } = over;
+    const valid = validateNewBudget({
+      name: 'Groceries', direction: 'expense', periodUnit: 'month', anchorLocalDate: date(2026, 1, 1), limitMinor: 10_000n, currency: 'USD', ...rest,
+    });
+    if (!valid.ok) throw new Error(valid.error.message);
+    const sets = new Map<number, SetDelta>();
+    const members: Array<[number, readonly Id[] | undefined]> = [
+      [BUDGET_FIELD.accountIds, scope.accountIds], [BUDGET_FIELD.groupIds, scope.groupIds], [BUDGET_FIELD.categoryIds, scope.categoryIds], [BUDGET_FIELD.tagIds, scope.tagIds],
+    ];
+    for (const [field, ids] of members) if (ids !== undefined && ids.length > 0) sets.set(field, { add: ids, rem: [] });
+    const fields = budgetFieldPatch(valid.value);
+    fields.set(BUDGET_FIELD.includeTransfers, scope.includeTransfers ?? false);
+    this.apply(rec, TABLE.budget, fields, sets);
     return rec;
   }
 

@@ -1,5 +1,5 @@
 import {
-  createAccountCommands, createAdjustBalance, createTransferCommands, createCategoryCommands, createLabelCommands, createRateCommands, createRevalue,
+  createAccountCommands, createAdjustBalance, createBudgetCommands, createBudgetQueries, createTransferCommands, createCategoryCommands, createLabelCommands, createRateCommands, createRevalue,
   createTransactionCommands, labelUsage, newIdV4, purgeExpired, type ClockPort, type CommandDef, type DomainError, type Id,
 } from '@cashfold/core';
 import type { OpenSession } from '../adapters/sqlite-opfs/web-session';
@@ -27,6 +27,7 @@ export function createLedgerHandlers({ open, clock, rng }: LedgerHandlerDeps): H
   const moves = createTransferCommands({ clock });
   const { adjustBalance } = createAdjustBalance({ clock });
   const { revalue } = createRevalue({ clock });
+  const budgets = createBudgetCommands();
 
   /** Commands whose record is new get an id from the worker unless the caller supplies one. */
   const mint = true;
@@ -64,6 +65,9 @@ export function createLedgerHandlers({ open, clock, rng }: LedgerHandlerDeps): H
     'ledger.setCustomRate': { def: rates.setCustomRate as unknown as AnyCommand, mint },
     'ledger.deleteCustomRate': { def: rates.deleteCustomRate as unknown as AnyCommand },
     'ledger.revalue': { def: revalue as unknown as AnyCommand },
+    'budgets.create': { def: budgets.createBudget as unknown as AnyCommand, mint },
+    'budgets.update': { def: budgets.updateBudget as unknown as AnyCommand },
+    'budgets.delete': { def: budgets.deleteBudget as unknown as AnyCommand },
   };
 
   const handlers: Record<string, Handlers[string]> = {};
@@ -98,6 +102,16 @@ export function createLedgerHandlers({ open, clock, rng }: LedgerHandlerDeps): H
   query('ledger.needsAttention', via((s) => s.queries.needsAttention));
   query('ledger.accountDeletion', via(() => accounts.describeAccountDeletion));
   query('ledger.usage', via(() => labelUsage));
+
+  // Budgets are derived from the ledger view and the Fold's records; the periods are never stored.
+  query('budgets.list', async (session, args: { fold: Id; on?: number }) => {
+    const queries = createBudgetQueries({ views: session.views, clock });
+    return session.queryBus.execute(queries.listBudgets as never, args as never);
+  });
+  query('budgets.detail', async (session, args: { fold: Id; id: Id; index?: number }) => {
+    const queries = createBudgetQueries({ views: session.views, clock });
+    return session.queryBus.execute(queries.budgetDetail as never, args as never);
+  });
 
   /** Re-snapshots every transaction that is not in the Fold's base currency, with the rates known now (FR-041). */
   query('ledger.revalueAll', async (session, args: { fold: Id; asOfUtcS?: number }) => {

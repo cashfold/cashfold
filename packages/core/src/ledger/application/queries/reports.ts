@@ -200,7 +200,7 @@ export interface NetWorth {
 }
 
 const EPOCH_DAY = 19_700_101 as LocalDate;
-const endOfDayUtcS = (d: LocalDate): number => (daysBetween(EPOCH_DAY, d) + 1) * 86_400 - 1;
+export const endOfDayUtcS = (d: LocalDate): number => (daysBetween(EPOCH_DAY, d) + 1) * 86_400 - 1;
 
 /** Balances of the accounts that count towards net worth on a date, converted with the rates in force that day. */
 export function netWorth(ledger: Ledger, asOf: LocalDate): NetWorth {

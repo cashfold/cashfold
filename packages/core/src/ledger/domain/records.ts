@@ -16,7 +16,7 @@ import { txnDirectionOfCode, txnStatusOfCode, type Place, type TxnDirection, typ
 // (a merge can produce combinations no single device could) and strict about *shape*: a record whose required
 // fields are missing or of the wrong type decodes to undefined and is reported by the repair rules instead.
 
-class Fields {
+export class Fields {
   constructor(private readonly state: RecordState) {}
   raw(field: number): unknown {
     return this.state.fields.get(field)?.value;
