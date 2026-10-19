@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "next dev",
-    "build": "next build && node scripts/build-sw.mjs",
+    "build": "next build && node scripts/harden-html.mjs && node scripts/build-sw.mjs",
     "typecheck": "tsc --noEmit",
     "test:browser": "vitest run -c vitest.browser.config.ts",
     "predev": "node scripts/copy-sqlite3mc.mjs && node scripts/copy-srp-wasm.mjs",

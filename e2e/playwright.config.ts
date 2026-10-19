@@ -32,6 +32,9 @@ export default defineConfig({
           // Reusing a running server is opt-in (E2E_REUSE=1): it must be a production build served from apps/web/out.
           reuseExistingServer: process.env['E2E_REUSE'] === '1',
           timeout: 180_000,
+          // The app only talks to the services it is told about (CSP connect-src). The specs reach a relay on localhost, directly and through
+          // throwaway TCP hops on random ports.
+          env: { CSP_CONNECT_SOURCES: 'http://localhost:* http://127.0.0.1:* ws://localhost:* ws://127.0.0.1:*' },
         },
         {
           command: `pnpm --filter @cashfold/server build && node ${new URL('../apps/server/dist/main.js', import.meta.url).pathname}`,
