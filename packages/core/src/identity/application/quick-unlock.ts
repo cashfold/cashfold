@@ -80,14 +80,18 @@ export function createQuickUnlock(deps: QuickUnlockDeps) {
           await store.save({ ...record, failures: record.failures + 1 });
           return err('failed', 'Quick unlock did not work');
         }
-        for (const secret of [material.sessionKey, material.deviceSigningKey, material.secretKey]) session.track(secret);
+        const extra = material.account === undefined ? [] : [material.account.encSk, material.account.sigSk, material.account.srpX];
+        for (const secret of [material.sessionKey, material.deviceSigningKey, material.secretKey, ...extra]) session.track(secret);
         try {
           const services = await sessionPort.start({ deviceId: stored.deviceId, sessionKey: material.sessionKey, deviceSigningKey: material.deviceSigningKey });
           await store.save({ ...record, failures: 0 });
-          return ok({ accountId: stored.accountId, email: stored.email, server: stored.server, services });
+          return ok({
+            accountId: stored.accountId, email: stored.email, server: stored.server, services, deviceId: stored.deviceId,
+            ...(material.account !== undefined && material.publicKeys !== undefined && { sync: { account: material.account, publicKeys: material.publicKeys } }),
+          });
         } catch (e) {
           await sessionPort.stop().catch(() => undefined);
-          for (const secret of [material.sessionKey, material.deviceSigningKey, material.secretKey]) {
+          for (const secret of [material.sessionKey, material.deviceSigningKey, material.secretKey, ...extra]) {
             session.release(secret);
             secret.wipe();
           }

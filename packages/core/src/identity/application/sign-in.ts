@@ -153,7 +153,7 @@ const secretsOf = (m: { sessionKey: Secret; deviceSigningKey: Secret; account: A
 
 const deviceIdBytes = (id: Id): Uint8Array => Uint8Array.from({ length: 16 }, (_, i) => parseInt(id.replaceAll('-', '').slice(i * 2, i * 2 + 2), 16));
 
-/** Fetches the Folds this account belongs to, opens their keys, and records them on this device. */
+/** Fetches the Folds this account belongs to that this device does not hold yet, opens their keys, and records them. */
 export async function receiveFolds(args: {
   link: RelayLink;
   grants: FoldGrantPort;
@@ -168,7 +168,7 @@ export async function receiveFolds(args: {
   const out: FoldSummary[] = [];
   for (const entry of list.body as unknown[]) {
     const fold = idOfBytes(asMap(entry).get('fold'));
-    if (fold === undefined) continue;
+    if (fold === undefined || (await services.directory.get(fold)) !== undefined) continue; // a Fold this device already holds
     const reply = await link.request('GET', `/folds/${foldRef(fold)}/grants?member=me`);
     if (!reply.ok) return { ok: false, error: mapRelayError(reply.kind) };
     const raw = (Array.isArray(reply.body) ? reply.body : []).filter((g): g is Uint8Array => g instanceof Uint8Array);

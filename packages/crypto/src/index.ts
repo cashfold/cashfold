@@ -19,3 +19,4 @@ export * from './adapters/srp-wasm/index';
 export * from './transport/relay-client';
 export * from './snapshot/snapshot-sealer';
 export * from './hpke/fold-key-grant';
+export * from './adapters/srp-wasm/pinned';

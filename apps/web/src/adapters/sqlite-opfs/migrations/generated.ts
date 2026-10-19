@@ -21,5 +21,10 @@ export const MIGRATIONS: readonly Migration[] = [
     "version": 3,
     "name": "purged_records",
     "sql": "-- 0003: records that were permanently removed 30 days after deletion (FR-052). The marker stops a late op for the\n-- record from bringing it back; the op_log keeps the headers of its ops (identity, sequence) with the payload erased.\nCREATE TABLE purged_record (\n  fold_id BLOB NOT NULL REFERENCES fold(fold_id) ON DELETE CASCADE,\n  rec_id BLOB NOT NULL,\n  purged_at INTEGER NOT NULL,\n  PRIMARY KEY (fold_id, rec_id)\n) STRICT, WITHOUT ROWID;\n"
+  },
+  {
+    "version": 4,
+    "name": "sync_state",
+    "sql": "-- 0004: what sync needs beyond the op log. `device` holds the signing keys of the account's devices (learned from the service),\n-- which is how ops signed by another device are verified. `fold.snapshot_base` records that the log below the pull cursor was\n-- replaced by a verified snapshot, and `last_synced_at` is when a sync last finished cleanly.\nCREATE TABLE device (\n  dev_id     BLOB PRIMARY KEY CHECK (length(dev_id)=16),\n  sig_pk     BLOB NOT NULL CHECK (length(sig_pk)=32),\n  revoked    INTEGER NOT NULL DEFAULT 0,\n  label      TEXT,\n  created_at INTEGER NOT NULL DEFAULT 0\n) STRICT, WITHOUT ROWID;\n\nALTER TABLE fold ADD COLUMN snapshot_base INTEGER NOT NULL DEFAULT 0;\nALTER TABLE fold ADD COLUMN last_synced_at INTEGER;\n"
   }
 ];

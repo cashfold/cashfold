@@ -65,6 +65,7 @@ export type PushOutcome =
 export interface SnapshotRow {
   readonly foldId: Bytes;
   readonly atSeq: bigint;
+  readonly epoch: number;
   readonly blob: Bytes;
   readonly sig: Bytes;
 }

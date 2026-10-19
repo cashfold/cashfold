@@ -17,7 +17,7 @@ describe('prune job', () => {
     await store.folds.create(fold, 'ABCDEF', 1);
     const row = (seq: bigint) => ({ opId: randomBytes(16), recId: randomBytes(16), devId: d1, devSeq: seq, hlcWall: 1, hlcCtr: 0, epoch: 1, schemaVer: 1, blob: randomBytes(40), sig: randomBytes(64) });
     await store.ops.push(fold, [row(1n), row(2n), row(3n)]);
-    await store.snapshots.put({ foldId: fold, atSeq: 2n, blob: randomBytes(40), sig: randomBytes(64) });
+    await store.snapshots.put({ foldId: fold, atSeq: 2n, epoch: 1, blob: randomBytes(40), sig: randomBytes(64) });
     const job = createPruneJob(store);
     expect(await job.sweep()).toBe(0);
     await store.snapshots.acknowledge(fold, d1, 2n);

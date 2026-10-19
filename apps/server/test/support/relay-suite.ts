@@ -416,6 +416,7 @@ export function describeRelay(label: string, makeStore: () => Promise<Store>): v
         expect((await session.request('PUT', `/folds/${foldPath}/snapshot`, snap)).status).toBe(204);
         const got = (await session.request('GET', `/folds/${foldPath}/snapshot`)).body as Map<string, unknown>;
         expect(got.get('at_seq')).toBe(2n);
+        expect(got.get('epoch')).toBe(1n);
         expect(Buffer.from(got.get('blob') as Uint8Array)).toEqual(snap.blob);
 
         await session.request('POST', `/folds/${foldPath}/ack`, { seq: 3n });

@@ -95,7 +95,7 @@ export class FoldsController {
     const id = foldIdOf(fold);
     if ((await this.store.folds.roleOf(id, caller.accountId)) === undefined) fail(403, 'forbidden');
     const s = await this.store.snapshots.get(id);
-    return s === undefined ? fail(404, 'not_found') : { fold: id, at_seq: s.atSeq, blob: s.blob, sig: s.sig };
+    return s === undefined ? fail(404, 'not_found') : { fold: id, at_seq: s.atSeq, epoch: BigInt(s.epoch), blob: s.blob, sig: s.sig };
   }
 
   @Put(':fold/snapshot') @HttpCode(204)
@@ -106,7 +106,7 @@ export class FoldsController {
     const b = parseValue(inner, SnapshotBody);
     if (Buffer.from(b.fold).compare(id) !== 0) fail(400, 'bad_request');
     if (b.at_seq > (await this.store.ops.head(id))) fail(400, 'bad_request'); // a snapshot cannot be ahead of the log
-    await this.store.snapshots.put({ foldId: id, atSeq: b.at_seq, blob: b.blob, sig: b.sig });
+    await this.store.snapshots.put({ foldId: id, atSeq: b.at_seq, epoch: b.epoch, blob: b.blob, sig: b.sig });
   }
 
   /** A device says it holds everything up to `seq` (and has verified the snapshot, if any). Pruning follows when all have. */

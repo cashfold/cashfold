@@ -1,5 +1,5 @@
 import { err, ok, type DomainError, type Result } from '../../shared-kernel/result';
-import type { CredentialStorePort, Secret, SessionPort, SessionServices, UnlockCryptoPort } from '../ports/index';
+import type { AccountSecrets, CredentialStorePort, Secret, SessionPort, SessionServices, UnlockCryptoPort } from '../ports/index';
 import type { Session } from './lock';
 
 export interface UnlockedSession {
@@ -7,6 +7,10 @@ export interface UnlockedSession {
   readonly email: string;
   readonly server: string;
   readonly services: SessionServices;
+  /** The keys sync needs, if this device holds them. */
+  readonly sync?: { readonly account: AccountSecrets; readonly publicKeys: { readonly enc: Uint8Array; readonly sig: Uint8Array } };
+  /** The device's own id, for sync. */
+  readonly deviceId: import('../../shared-kernel/id').Id;
 }
 
 export type UnlockError =
@@ -44,14 +48,18 @@ export function unlock({ unlockCrypto, credentials, sessionPort, session }: Unlo
       return err('wrong_password', 'That password is not right');
     }
 
-    for (const secret of [material.sessionKey, material.deviceSigningKey, material.secretKey]) session.track(secret);
+    const extra = material.account === undefined ? [] : [material.account.encSk, material.account.sigSk, material.account.srpX];
+    for (const secret of [material.sessionKey, material.deviceSigningKey, material.secretKey, ...extra]) session.track(secret);
     try {
       const services = await sessionPort.start({ deviceId: stored.deviceId, sessionKey: material.sessionKey, deviceSigningKey: material.deviceSigningKey });
       session.recordSuccessfulUnlock();
-      return ok({ accountId: stored.accountId, email: stored.email, server: stored.server, services });
+      return ok({
+        accountId: stored.accountId, email: stored.email, server: stored.server, services, deviceId: stored.deviceId,
+        ...(material.account !== undefined && material.publicKeys !== undefined && { sync: { account: material.account, publicKeys: material.publicKeys } }),
+      });
     } catch (e) {
       await sessionPort.stop().catch(() => undefined);
-      for (const secret of [material.sessionKey, material.deviceSigningKey, material.secretKey]) {
+      for (const secret of [material.sessionKey, material.deviceSigningKey, material.secretKey, ...extra]) {
         session.release(secret);
         secret.wipe();
       }

@@ -5,6 +5,7 @@ import { resolve } from 'node:path';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { G, N, N_HEX, padGroup, unpadGroup } from '../../pake/group';
 import { loadSrpBigint, SrpWasmError, type SrpBigint } from './index';
+import { SRP_BIGINT_SHA256 } from './pinned';
 
 const here = import.meta.dirname;
 const wasm = new Uint8Array(readFileSync(resolve(here, 'srp-bigint.wasm')));
@@ -135,5 +136,12 @@ describe('timing does not depend on the exponent', () => {
     // Square-and-multiply with branches would make `dense` roughly 1.5 times `sparse`; a fixed schedule makes them equal.
     expect(dense / sparse).toBeGreaterThan(0.7);
     expect(dense / sparse).toBeLessThan(1.3);
+  });
+});
+
+describe('pinned hash constant', () => {
+  it('is the hash of the committed module and of the .sha256 file beside it', () => {
+    expect(createHash('sha256').update(wasm).digest('hex')).toBe(SRP_BIGINT_SHA256);
+    expect(pinned).toBe(SRP_BIGINT_SHA256);
   });
 });

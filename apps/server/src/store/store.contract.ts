@@ -225,16 +225,17 @@ export function describeStoreContract(label: string, make: () => Promise<Store>)
       });
 
       it('keeps the newest snapshot only', async () => {
-        await store.snapshots.put({ foldId: b(1), atSeq: 2n, blob: b(1, 50), sig: b(1, 64) });
-        await store.snapshots.put({ foldId: b(1), atSeq: 1n, blob: b(2, 50), sig: b(2, 64) });
+        await store.snapshots.put({ foldId: b(1), atSeq: 2n, epoch: 1, blob: b(1, 50), sig: b(1, 64) });
+        await store.snapshots.put({ foldId: b(1), atSeq: 1n, epoch: 1, blob: b(2, 50), sig: b(2, 64) });
         expect(await store.snapshots.get(b(1))).toMatchObject({ atSeq: 2n });
-        await store.snapshots.put({ foldId: b(1), atSeq: 4n, blob: b(3, 50), sig: b(3, 64) });
+        await store.snapshots.put({ foldId: b(1), atSeq: 4n, epoch: 2, blob: b(3, 50), sig: b(3, 64) });
         expect(Buffer.from((await store.snapshots.get(b(1)))!.blob)).toEqual(b(3, 50));
+        expect((await store.snapshots.get(b(1)))!.epoch).toBe(2); // the epoch it was sealed under comes back with it
         expect(await store.snapshots.get(b(99))).toBeUndefined();
       });
 
       it('prunes only once every active device has acknowledged the snapshot', async () => {
-        await store.snapshots.put({ foldId: b(1), atSeq: 3n, blob: b(1, 50), sig: b(1, 64) });
+        await store.snapshots.put({ foldId: b(1), atSeq: 3n, epoch: 1, blob: b(1, 50), sig: b(1, 64) });
         expect(await store.snapshots.prune(b(1))).toBe(0);
         await store.snapshots.acknowledge(b(1), b(50), 3n);
         expect(await store.snapshots.prune(b(1))).toBe(0); // the second device has not
@@ -247,7 +248,7 @@ export function describeStoreContract(label: string, make: () => Promise<Store>)
       });
 
       it('ignores a revoked device when deciding', async () => {
-        await store.snapshots.put({ foldId: b(1), atSeq: 2n, blob: b(1, 50), sig: b(1, 64) });
+        await store.snapshots.put({ foldId: b(1), atSeq: 2n, epoch: 1, blob: b(1, 50), sig: b(1, 64) });
         await store.snapshots.acknowledge(b(1), b(50), 2n);
         await store.devices.revoke('ABCDEF', b(51), 99);
         expect(await store.snapshots.prune(b(1))).toBe(2);
@@ -255,7 +256,7 @@ export function describeStoreContract(label: string, make: () => Promise<Store>)
 
       it('lists the Folds that have a snapshot', async () => {
         expect(await store.snapshots.folds()).toEqual([]);
-        await store.snapshots.put({ foldId: b(1), atSeq: 2n, blob: b(1, 50), sig: b(1, 64) });
+        await store.snapshots.put({ foldId: b(1), atSeq: 2n, epoch: 1, blob: b(1, 50), sig: b(1, 64) });
         expect((await store.snapshots.folds()).map((f) => Buffer.from(f).toString('hex'))).toEqual([Buffer.from(b(1)).toString('hex')]);
       });
 

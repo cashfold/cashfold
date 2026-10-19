@@ -68,3 +68,4 @@ export * from './sync/application/status';
 export * from './sync/application/clock-guard';
 export * from './sync/application/remote-folds';
 export * from './ledger/application/refresh-rates';
+export * from './sharing/application/fold-settings';

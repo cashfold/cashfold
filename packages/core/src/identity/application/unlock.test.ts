@@ -26,7 +26,7 @@ describe('unlock', () => {
   it('opens the session with the right password and returns what the unlock screen may show', async () => {
     const s = setup();
     const r = await s.run();
-    expect(r).toEqual({ ok: true, value: { accountId: 'XRG88A', email: 'a@example.com', server: 'https://relay.example.com', services: s.services } });
+    expect(r).toEqual({ ok: true, value: { accountId: 'XRG88A', email: 'a@example.com', server: 'https://relay.example.com', services: s.services, deviceId: credentials.deviceId } });
     expect(s.sessionPort.start).toHaveBeenCalledWith({ deviceId: credentials.deviceId, sessionKey: s.material.sessionKey, deviceSigningKey: s.material.deviceSigningKey });
   });
 

@@ -1,4 +1,4 @@
-import { idFromBytes, idToBytes, type FoldDirectory, type FoldKeyPort, type FoldSummary, type Id, type Role } from '@cashfold/core';
+import { idFromBytes, idToBytes, type FoldDirectory, type FoldKeyImportPort, type FoldKeyPort, type FoldSummary, type Id, type Role } from '@cashfold/core';
 import { createAesGcm, createHkdf, SecretBuf, type Rng } from '@cashfold/crypto';
 import { encode } from '@cashfold/protocol/cbor';
 import type { EncryptedDatabase } from './database';
@@ -36,7 +36,7 @@ export function createSqliteFoldDirectory(db: EncryptedDatabase, nowMs: () => nu
   };
 }
 
-export interface FoldKeyring extends FoldKeyPort {
+export interface FoldKeyring extends FoldKeyPort, FoldKeyImportPort {
   /** The epoch new ops are encrypted under, or undefined if this device holds no key for the Fold. */
   currentEpoch(fold: Id): Promise<number | undefined>;
   /** The Fold key for an epoch (unwrapped on first use and kept until `wipe`). */
@@ -68,6 +68,22 @@ export function createFoldKeyring(db: EncryptedDatabase, { databaseKey, rng }: {
       db.run('INSERT INTO fold_key(fold_id, epoch, fk_wrapped) VALUES (?,?,?)', [idToBytes(fold), BigInt(epoch), Uint8Array.from([...nonce, ...sealed])]);
       cache.set(`${fold}:${epoch}`, fk);
       return epoch;
+    },
+
+    async importFoldKey(fold, epoch, key) {
+      // A key that arrived from the service. Any copy already stored for the epoch is kept: a Fold's key never changes within an epoch.
+      const existing = db.value('SELECT 1 FROM fold_key WHERE fold_id = ? AND epoch = ?', [idToBytes(fold), BigInt(epoch)]);
+      if (existing === null || existing === undefined) {
+        const nonce = Uint8Array.from(rng.bytes(12));
+        const sealed = await aead.seal(await wrapper(), nonce, key.use((b) => b), aadFor(fold, epoch));
+        db.run('INSERT INTO fold_key(fold_id, epoch, fk_wrapped) VALUES (?,?,?)', [idToBytes(fold), BigInt(epoch), Uint8Array.from([...nonce, ...sealed])]);
+        cache.set(`${fold}:${epoch}`, SecretBuf.from(key.use((b) => b)));
+      }
+      key.wipe();
+    },
+
+    async epochs(fold) {
+      return db.rows('SELECT epoch FROM fold_key WHERE fold_id = ? ORDER BY epoch', [idToBytes(fold)]).map((r) => Number(r[0]));
     },
 
     async dropFoldKeys(fold) {

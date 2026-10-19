@@ -7,7 +7,7 @@ import type { FoldSummary } from '../../sharing/ports/index';
 import { activate, markRegistered, newDraftAccount, normaliseEmail, type UserAccount } from '../domain/user-account';
 import { checkPassword, type PolicyViolation } from '../domain/password-policy';
 import { normaliseServerAddress } from '../domain/server-address';
-import type { AccountCryptoPort, CredentialStorePort, RegistrationPort, Secret, SessionPort } from '../ports/index';
+import type { AccountCryptoPort, AccountSecrets, CredentialStorePort, RegistrationPort, Secret, SessionPort } from '../ports/index';
 import type { Session } from './lock';
 
 export interface CreateAccountInput {
@@ -28,6 +28,8 @@ export interface NewAccount {
   readonly fold: FoldSummary;
   /** `pending` when the service could not be reached: sign-up still works offline and registers later. */
   readonly registration: 'done' | 'pending';
+  /** The keys sync needs, tracked by the session so locking wipes them. Absent in builds that cannot sync. */
+  readonly sync?: { readonly account: AccountSecrets; readonly publicKeys: { readonly enc: Uint8Array; readonly sig: Uint8Array } };
 }
 
 export type CreateAccountError =
@@ -72,6 +74,8 @@ export function createAccount(deps: CreateAccountDeps) {
     input.password.wipe();
     session.track(material.sessionKey);
     session.track(material.deviceSigningKey);
+    const accountSecrets = material.account === undefined ? [] : [material.account.encSk, material.account.sigSk, material.account.srpX];
+    for (const s of accountSecrets) session.track(s);
 
     let foldId: Id | undefined;
     let services: Awaited<ReturnType<SessionPort['start']>> | undefined;
@@ -82,10 +86,10 @@ export function createAccount(deps: CreateAccountDeps) {
       }
       await credentials.clear().catch(() => undefined);
       await sessionPort.stop().catch(() => undefined);
-      session.release(material.sessionKey);
-      session.release(material.deviceSigningKey);
-      material.sessionKey.wipe();
-      material.deviceSigningKey.wipe();
+      for (const s of [material.sessionKey, material.deviceSigningKey, ...accountSecrets]) {
+        session.release(s);
+        s.wipe();
+      }
     };
 
     try {
@@ -125,7 +129,10 @@ export function createAccount(deps: CreateAccountDeps) {
       }
 
       logger?.info('account.created', { registration: lit(outcome) });
-      return ok({ secretKeyText: material.secretKeyText, accountId: material.accountId, account, fold: created.value, registration: outcome });
+      return ok({
+        secretKeyText: material.secretKeyText, accountId: material.accountId, account, fold: created.value, registration: outcome,
+        ...(material.account !== undefined && material.publicKeys !== undefined && { sync: { account: material.account, publicKeys: material.publicKeys } }),
+      });
     } catch (e) {
       await rollback();
       throw e;

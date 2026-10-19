@@ -237,14 +237,14 @@ export async function createPgStore(databaseUrl: string, options: { migrations?:
     snapshots: {
       async put(s) {
         await q(
-          `INSERT INTO snapshot(fold_id, at_seq, blob, sig) VALUES ($1,$2,$3,$4)
-           ON CONFLICT (fold_id) DO UPDATE SET at_seq = EXCLUDED.at_seq, blob = EXCLUDED.blob, sig = EXCLUDED.sig WHERE snapshot.at_seq <= EXCLUDED.at_seq`,
-          [buf(s.foldId), s.atSeq.toString(), buf(s.blob), buf(s.sig)],
+          `INSERT INTO snapshot(fold_id, at_seq, epoch, blob, sig) VALUES ($1,$2,$3,$4,$5)
+           ON CONFLICT (fold_id) DO UPDATE SET at_seq = EXCLUDED.at_seq, epoch = EXCLUDED.epoch, blob = EXCLUDED.blob, sig = EXCLUDED.sig WHERE snapshot.at_seq <= EXCLUDED.at_seq`,
+          [buf(s.foldId), s.atSeq.toString(), s.epoch, buf(s.blob), buf(s.sig)],
         );
       },
       async get(foldId) {
         const r = await q('SELECT * FROM snapshot WHERE fold_id = $1', [buf(foldId)]);
-        return r[0] === undefined ? undefined : { foldId: r[0]['fold_id'] as Buffer, atSeq: big(r[0]['at_seq']), blob: r[0]['blob'] as Buffer, sig: r[0]['sig'] as Buffer };
+        return r[0] === undefined ? undefined : { foldId: r[0]['fold_id'] as Buffer, atSeq: big(r[0]['at_seq']), epoch: Number(r[0]['epoch']), blob: r[0]['blob'] as Buffer, sig: r[0]['sig'] as Buffer };
       },
       async folds() {
         return (await q('SELECT fold_id FROM snapshot')).map((r) => r['fold_id'] as Buffer);

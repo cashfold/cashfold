@@ -1,14 +1,16 @@
 import {
-  createCommandBus, createEventBus, createLedgerQueries, createLedgerViews, createQueryBus, createUpcasters, createWritePath, LEDGER_GROUPS, purgeExpired, roleResolver, SCHEMA_VERSION,
-  type CommandBus, type EventBus, type FoldDirectory, type Id, type LedgerViews, type OpLogStore, type OpSealerPort, type ProjectionStore, type QueryBus, type SessionPort, type SessionSecrets, type SessionServices, type WritePath,
+  createCommandBus, createEventBus, createLedgerQueries, createLedgerViews, createQueryBus, createUpcasters, createWritePath, LEDGER_GROUPS, purgeExpired, roleResolver, SCHEMA_VERSION, SETTINGS_TABLE, summaryFromSettings,
+  type CommandBus, type EventBus, type FoldDirectory, type Id, type LedgerViews, type OpLogStore, type OpSealerPort, type ProjectionStore, type QueryBus, type SealedSnapshotPort, type SessionPort, type SessionSecrets, type SessionServices,
+  type SyncCursorPort, type WritePath,
 } from '@cashfold/core';
-import { createAesGcm, createEd25519Signer, createHkdf, createOpSealer, SecretBuf, type Rng } from '@cashfold/crypto';
+import { createAesGcm, createEd25519Signer, createHkdf, createOpSealer, createSnapshotSealer, SecretBuf, type Rng } from '@cashfold/crypto';
 import type { EncryptedDatabase } from './database';
 import { EncryptedDatabase as Database } from './database';
 import { createFoldKeyring, createSqliteFoldDirectory, type FoldKeyring } from './fold-store';
 import { migrate } from './migrate';
 import type { SqliteRuntime } from './runtime';
 import { createSqliteOpLog, createSqliteProjections } from './sqlite-stores';
+import { createSqliteCursors, createSqliteDeviceKeys, createSqliteSyncMarks, type DeviceKeyStore } from './sync-stores';
 
 export interface WebSessionOptions {
   readonly runtime: SqliteRuntime;
@@ -34,6 +36,11 @@ export interface OpenSession extends SessionServices {
   readonly directory: FoldDirectory;
   /** This device's id, so the page can tell its own changes from other devices' (FR-053). */
   readonly deviceId: Id;
+  readonly cursors: SyncCursorPort;
+  /** Signing keys of the account's devices, which is how ops written elsewhere are verified. */
+  readonly deviceKeys: DeviceKeyStore;
+  readonly syncMarks: ReturnType<typeof createSqliteSyncMarks>;
+  readonly snapshotSealer: SealedSnapshotPort;
 }
 
 async function purgeAllFolds(stores: { oplog: OpLogStore; projections: ProjectionStore }, directory: FoldDirectory, now: number): Promise<void> {
@@ -58,15 +65,16 @@ export function createWebSession(options: WebSessionOptions): SessionPort & { cu
       const oplog = createSqliteOpLog(db);
       const projections = createSqliteProjections(db);
 
-      const sealer = createOpSealer({
-        aead: createAesGcm(), hkdf: createHkdf(), signer, rng,
-        keys: {
-          foldKey: (fold, epoch) => keyring.key(fold as Id, epoch),
-          deviceSigningKey: () => deviceKey,
-          // Other devices' keys come from the Fold's membership log (sharing story); until then only this device signs.
-          signerPublicKey: async (_fold, dev) => (dev === secrets.deviceId ? devicePk : undefined),
-        },
-      }) as unknown as OpSealerPort;
+      const deviceKeys = createSqliteDeviceKeys(db);
+      const sealKeys = {
+        foldKey: (fold: string, epoch: number) => keyring.key(fold as Id, epoch),
+        deviceSigningKey: () => deviceKey,
+        // This device's own key, and the account's other devices as the service listed them. Another account's devices
+        // (a shared Fold) will come from that Fold's membership log.
+        signerPublicKey: async (_fold: string, dev: string) => (dev === secrets.deviceId ? devicePk : deviceKeys.publicKey(dev as Id)),
+      };
+      const sealer = createOpSealer({ aead: createAesGcm(), hkdf: createHkdf(), signer, rng, keys: sealKeys }) as unknown as OpSealerPort;
+      const snapshotSealer = createSnapshotSealer({ aead: createAesGcm(), hkdf: createHkdf(), signer, rng, keys: sealKeys }) as unknown as SealedSnapshotPort;
 
       const writePath = createWritePath({
         oplog, projections, sealer, clock: { nowMs }, random: rng,
@@ -79,7 +87,21 @@ export function createWebSession(options: WebSessionOptions): SessionPort & { cu
       const queryBus = createQueryBus(buses);
       const views = createLedgerViews(events);
       const queries = createLedgerQueries({ views, clock: { nowMs }, quarantined: (fold) => oplog.listQuarantined(fold) });
-      open = { db, oplog, projections, writePath, events, keyring, commandBus, queryBus, queries, views, directory, foldKeys: keyring, deviceId: secrets.deviceId as Id };
+      open = {
+        db, oplog, projections, writePath, events, keyring, commandBus, queryBus, queries, views, directory, foldKeys: keyring, keyImport: keyring, deviceId: secrets.deviceId as Id,
+        cursors: createSqliteCursors(db), deviceKeys, syncMarks: createSqliteSyncMarks(db), snapshotSealer,
+      };
+
+      // A Fold's name and base currency arrive as an ordinary record; the directory is kept in line with it, on this device's
+      // own edits and on those that arrive from other devices alike.
+      events.subscribe((event) => {
+        if (event.table !== SETTINGS_TABLE) return;
+        void (async () => {
+          const [summary, record] = [await directory.get(event.fold), await projections.getRecord(event.fold, event.rec)];
+          const next = summary !== undefined && record !== undefined ? summaryFromSettings(summary, record) : undefined;
+          if (next !== undefined) await directory.add(next);
+        })().catch(() => undefined);
+      });
 
       // Deleted records older than 30 days are removed for good (FR-052). Done at every start, which is when a
       // long-closed app catches up; a failure here must not stop the app from opening.

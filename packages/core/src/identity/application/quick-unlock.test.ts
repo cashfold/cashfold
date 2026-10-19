@@ -70,7 +70,7 @@ describe('unlocking with the device', () => {
   it('opens the session without a password', async () => {
     const s = await enrolled();
     const r = await s.quick.unlock({ prfOutput: PRF.slice(), sessionMarker: 'marker-1' });
-    expect(r).toEqual({ ok: true, value: { accountId: 'XRG88A', email: 'a@example.com', server: 'https://relay.example.com', services: s.services } });
+    expect(r).toEqual({ ok: true, value: { accountId: 'XRG88A', email: 'a@example.com', server: 'https://relay.example.com', services: s.services, deviceId: credentials.deviceId } });
     expect(s.sessionPort.start).toHaveBeenCalledWith({ deviceId: credentials.deviceId, sessionKey: s.material.sessionKey, deviceSigningKey: s.material.deviceSigningKey });
     await s.session.lock();
     expect(s.material.sessionKey.isWiped).toBe(true);
