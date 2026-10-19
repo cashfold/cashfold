@@ -42,14 +42,46 @@ own in a few minutes.
    WebSocket upgrades must pass through (Caddy and nginx with `proxy_set_header Upgrade` do). Do not cache responses, and do not
    log request bodies.
 
-4. Build the web app with your relay's address as the default, serve `apps/web/out`, and allow it to talk to the relay with the
-   content security policy (`CSP_CONNECT_SOURCES=https://relay.example.com`, see `apps/web/headers.config.ts`).
+4. Build the web app with your relay's address as the default, and pin the content security policy to it. Without
+   `CSP_CONNECT_SOURCES` the app may talk to any `https://` or `wss://` service (people choose their own address at sign-up); set
+   it to your relay to allow only that one.
 
    ```sh
-   NEXT_PUBLIC_DEFAULT_SERVER=https://relay.example.com pnpm --filter @cashfold/web build
+   NEXT_PUBLIC_DEFAULT_SERVER=https://relay.example.com CSP_CONNECT_SOURCES=https://relay.example.com wss://relay.example.com \
+     pnpm --filter @cashfold/web build
    ```
 
-   People can still type another address when they sign up.
+   With that setting people can still type another address, but the browser will refuse to reach it.
+
+5. Serve `apps/web/out` with the headers in `apps/web/out/_headers` (written by the build; Netlify and Cloudflare Pages read it as it is).
+   Every page already carries its own Content-Security-Policy and a no-referrer policy as `<meta>` tags, and every script and
+   stylesheet is pinned by an integrity hash, so the app is protected even on a host that cannot set headers. Real headers add what a
+   `<meta>` cannot: `frame-ancestors`, `Permissions-Policy` and HSTS. For Caddy:
+
+   ```
+   cashfold.example.com {
+     root * /srv/cashfold
+     file_server
+     header {
+       Content-Security-Policy "frame-ancestors 'none'; base-uri 'none'; object-src 'none'"
+       Referrer-Policy "no-referrer"
+       Permissions-Policy "camera=(), microphone=(), payment=(), usb=(), bluetooth=(), geolocation=(self), publickey-credentials-create=(self), publickey-credentials-get=(self)"
+       X-Content-Type-Options "nosniff"
+       X-Frame-Options "DENY"
+       Cross-Origin-Opener-Policy "same-origin"
+       Cross-Origin-Resource-Policy "same-origin"
+       Strict-Transport-Security "max-age=63072000; includeSubDomains"
+     }
+     @sw path /sw.js /precache-manifest.json
+     header @sw Cache-Control "no-cache"
+     @static path /_next/static/*
+     header @static Cache-Control "public, max-age=31536000, immutable"
+   }
+   ```
+
+   Do not rewrite or minify the files after the build: the integrity hashes and the service worker's list of files would no longer
+   match, and the app would refuse to run them. Releases publish the hash of every file (`SHA256SUMS`); you can rebuild a tag with
+   `node scripts/build-verify.mjs` and compare.
 
 ## Settings
 
