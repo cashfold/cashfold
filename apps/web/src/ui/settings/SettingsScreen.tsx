@@ -6,7 +6,10 @@ import { useCore, withPasswordBytes } from '../core/CoreProvider';
 import { downloadKit, printKit, type KitSource } from '../emergency-kit/actions';
 import { TextField, buttonClass, secondaryButtonClass } from '../forms/TextField';
 import { useI18n } from '../i18n/I18nProvider';
+import { AccountSection } from './AccountSection';
+import { CredentialsSection } from './CredentialsSection';
 import { QuickUnlockSection } from './QuickUnlockSection';
+import { RecoverySection } from './RecoverySection';
 import { SyncSection } from './SyncSection';
 
 const IDLE_MINUTES = [1, 2, 5, 10, 15, 30, 60];
@@ -71,6 +74,10 @@ export function SettingsScreen() {
 
       <SyncSection />
 
+      <CredentialsSection />
+
+      <RecoverySection />
+
       <section aria-labelledby="account-heading" className="mt-8">
         <h2 id="account-heading" className="text-lg font-semibold">{t('settings.account.title')}</h2>
         {core.account ? (
@@ -98,6 +105,8 @@ export function SettingsScreen() {
           </form>
         )}
       </section>
+
+      <AccountSection />
     </main>
   );
 }

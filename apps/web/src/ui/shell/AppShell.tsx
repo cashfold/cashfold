@@ -18,6 +18,7 @@ const NAV = [
   ['/goals/', 'nav.goals'],
   ['/categories/', 'nav.categories'],
   ['/folds/', 'nav.folds'],
+  ['/data/', 'nav.data'],
   ['/devices/', 'nav.devices'],
   ['/settings/', 'nav.settings'],
 ] as const;

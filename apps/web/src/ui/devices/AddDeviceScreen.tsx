@@ -103,6 +103,7 @@ export function AddDeviceScreen() {
         {error ? <p role="alert" className="mt-4 text-danger">{error}</p> : null}
         <button type="submit" className={`${buttonClass} mt-6`} disabled={busy}>{busy ? t('adddevice.working') : t('adddevice.submit')}</button>
       </form>
+      <p className="mt-6"><Link className="underline" href="/recover/">{t('adddevice.lostAccess')}</Link></p>
     </main>
   );
 }
