@@ -44,6 +44,11 @@ export const TRANSFER_FIELD = {
 export const RATE_FIELD = { quote: 1, asOfUtcS: 2, rateE12: 3, source: 4 } as const;
 
 /** Fields that must be written together (merged atomically, FR-032). */
+/** A transfer is one record; these fields merge atomically (FR-045). */
+export const TRANSFER_GROUP: readonly number[] = [
+  TRANSFER_FIELD.fromAccountId, TRANSFER_FIELD.toAccountId, TRANSFER_FIELD.fromAmountMinor, TRANSFER_FIELD.toAmountMinor, TRANSFER_FIELD.fxRateId,
+];
+
 export const TXN_AMOUNT_GROUP: readonly number[] = [
   TXN_FIELD.amountMinor, TXN_FIELD.currency, TXN_FIELD.baseAmountMinor, TXN_FIELD.baseCurrency, TXN_FIELD.fxRateId, TXN_FIELD.fxBaseRateId, TXN_FIELD.direction,
 ];

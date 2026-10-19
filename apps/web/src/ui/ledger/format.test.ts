@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { decimalsOf, degreesFromDevice, formatDegrees, formatMoney, formatPlain, formatSigned, parseDegrees, parseMoney, parseRateText, percentOf, signOf } from './format';
+import { decimalsOf, degreesFromDevice, formatDegrees, formatRate, formatMoney, formatPlain, formatSigned, parseDegrees, parseMoney, parseRateText, percentOf, signOf } from './format';
 
 describe('formatMoney', () => {
   it('prints exact amounts with the currency\'s own decimals', () => {
@@ -124,5 +124,15 @@ describe('coordinates', () => {
     expect(degreesFromDevice(-122.4194)).toBe(-1_224_194_000);
     expect(degreesFromDevice(0)).toBe(0);
     expect(degreesFromDevice(180)).toBe(1_800_000_000);
+  });
+});
+
+describe('formatRate', () => {
+  it('prints a rate with only the decimals that matter', () => {
+    expect(formatRate(921_500_000_000n, 'en')).toBe('0.9215');
+    expect(formatRate(1_000_000_000_000n, 'en')).toBe('1');
+    expect(formatRate(1n, 'en')).toBe('0.000000000001');
+    expect(formatRate(150_250_000_000_000n, 'de')).toBe('150,25');
+    expect(parseRateText(formatRate(123_456_789_012n, 'en'), 'en')).toEqual({ ok: true, value: 123_456_789_012n });
   });
 });

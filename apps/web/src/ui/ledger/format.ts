@@ -96,3 +96,11 @@ export function degreesFromDevice(value: number): number {
   const fixed = new Intl.NumberFormat('en-US', { minimumFractionDigits: DEGREE_DECIMALS, maximumFractionDigits: DEGREE_DECIMALS, useGrouping: false }).format(value);
   return Number(fixed.replace('.', '').replace(/^(-?)0+(?=\d)/, '$1'));
 }
+
+/** A rate (10^-12 units) as text, with only the decimals that matter: 921500000000 -> "0.9215". */
+export function formatRate(e12: bigint, locale: string): string {
+  const { decimal } = separatorsFor(locale);
+  const digits = e12.toString().padStart(STORED_DECIMALS + 1, '0');
+  const frac = digits.slice(-STORED_DECIMALS).replace(/0+$/, '');
+  return `${digits.slice(0, -STORED_DECIMALS)}${frac === '' ? '' : decimal + frac}`;
+}

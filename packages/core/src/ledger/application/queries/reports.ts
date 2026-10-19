@@ -45,6 +45,35 @@ function effect(t: Transaction, options: ReportOptions): { income: bigint; spend
   }
 }
 
+/** What a posted transfer adds when "transfers as income and expenses" is on: the money leaving is spending, the money arriving is income. */
+function transferEffects(ledger: Ledger, period: Period, options: ReportOptions): { income: bigint; spend: bigint; missing: Set<CurrencyCode> } {
+  const out = { income: 0n, spend: 0n, missing: new Set<CurrencyCode>() };
+  const base = ledger.baseCurrency;
+  if (!options.transfersAsIncomeExpense || base === undefined) return out;
+  const toBase = (accountId: Id, minor: bigint, date: LocalDate): bigint | undefined => {
+    const account = ledger.accounts.get(accountId);
+    if (account === undefined) return undefined;
+    if (account.currency === base) return minor;
+    const at = endOfDayUtcS(date);
+    const from = account.currency === PIVOT_CURRENCY ? PIVOT_RATE : nearestPrior(ledger.rates, account.currency, at)?.rateE12;
+    const to = base === PIVOT_CURRENCY ? PIVOT_RATE : nearestPrior(ledger.rates, base, at)?.rateE12;
+    if (from === undefined || to === undefined) {
+      out.missing.add(from === undefined ? account.currency : base);
+      return undefined;
+    }
+    const converted = convert({ minor, currency: account.currency }, base, from, to);
+    return converted.ok ? converted.value.minor : undefined;
+  };
+  for (const x of ledger.transfers.values()) {
+    if (x.status !== 'posted' || !inPeriod(x, period)) continue;
+    const leaving = toBase(x.fromAccountId, x.fromAmountMinor, x.localDate);
+    const arriving = toBase(x.toAccountId, x.toAmountMinor, x.localDate);
+    if (leaving !== undefined) out.spend += leaving;
+    if (arriving !== undefined) out.income += arriving;
+  }
+  return out;
+}
+
 function postedIn(ledger: Ledger, period: Period): Transaction[] {
   return [...ledger.transactions.values()].filter((t) => t.status === 'posted' && inPeriod(t, period));
 }
@@ -65,9 +94,14 @@ const byAmountThenKey = <T extends { amountMinor: bigint }>(key: (row: T) => str
 
 export function spendingByCategory(
   ledger: Ledger, period: Period, options: ReportOptions, opts: { rollUp?: boolean } = {},
-): { currency: CurrencyCode | undefined; rows: CategorySpend[]; totalMinor: bigint } {
+): { currency: CurrencyCode | undefined; rows: CategorySpend[]; totalMinor: bigint; missingRates: CurrencyCode[] } {
   const sums = new Map<Id | null, bigint>();
   let totalMinor = 0n;
+  const moved = transferEffects(ledger, period, options);
+  if (moved.spend !== 0n) {
+    sums.set(null, moved.spend);
+    totalMinor += moved.spend;
+  }
   for (const t of postedIn(ledger, period)) {
     const { spend } = effect(t, options);
     if (spend === 0n) continue;
@@ -78,7 +112,7 @@ export function spendingByCategory(
   }
   const rows = [...sums].map(([categoryId, amountMinor]): CategorySpend => ({ categoryId, amountMinor }));
   rows.sort(byAmountThenKey((r) => r.categoryId ?? '￿'));
-  return { currency: ledger.baseCurrency, rows, totalMinor };
+  return { currency: ledger.baseCurrency, rows, totalMinor, missingRates: [...moved.missing].sort() };
 }
 
 /** A transaction counts in full towards each of its tags, so the tag rows can add up to more than the total. */
@@ -86,7 +120,7 @@ export function spendingByTag(
   ledger: Ledger, period: Period, options: ReportOptions,
 ): { currency: CurrencyCode | undefined; rows: TagSpend[]; totalMinor: bigint } {
   const sums = new Map<Id, bigint>();
-  let totalMinor = 0n;
+  let totalMinor = transferEffects(ledger, period, options).spend;
   for (const t of postedIn(ledger, period)) {
     const { spend } = effect(t, options);
     if (spend === 0n) continue;
@@ -105,22 +139,25 @@ export interface IncomeExpense {
   readonly incomeMinor: bigint;
   readonly expenseMinor: bigint;
   readonly netMinor: bigint;
+  /** Currencies with no rate, whose transfers could not be counted. Empty unless transfers are counted. */
+  readonly missingRates: CurrencyCode[];
 }
 
-function sumEffects(ledger: Ledger, period: Period, options: ReportOptions): { income: bigint; spend: bigint } {
-  let income = 0n;
-  let spend = 0n;
+function sumEffects(ledger: Ledger, period: Period, options: ReportOptions): { income: bigint; spend: bigint; missing: Set<CurrencyCode> } {
+  const moved = transferEffects(ledger, period, options);
+  let income = moved.income;
+  let spend = moved.spend;
   for (const t of postedIn(ledger, period)) {
     const e = effect(t, options);
     income += e.income;
     spend += e.spend;
   }
-  return { income, spend };
+  return { income, spend, missing: moved.missing };
 }
 
 export function incomeVsExpense(ledger: Ledger, period: Period, options: ReportOptions): IncomeExpense {
-  const { income, spend } = sumEffects(ledger, period, options);
-  return { currency: ledger.baseCurrency, incomeMinor: income, expenseMinor: spend, netMinor: income - spend };
+  const { income, spend, missing } = sumEffects(ledger, period, options);
+  return { currency: ledger.baseCurrency, incomeMinor: income, expenseMinor: spend, netMinor: income - spend, missingRates: [...missing].sort() };
 }
 
 export interface MonthBucket extends IncomeExpense {

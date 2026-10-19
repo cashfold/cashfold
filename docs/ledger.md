@@ -18,6 +18,7 @@ set of ops written with schema 1; `frozen-fixture.test.ts` replays it and fails 
 | category | 3 | `parent_id` null for a root; depth at most 2 |
 | payee, tag | 4, 5 | name and colour |
 | transaction | 6 | `tag_ids` is an add-wins set; see the amount group below |
+| transfer | 7 | one record, two amounts; see below |
 | exchange rate | 11 | |
 | settings | 13 | the Fold's name and base currency |
 
@@ -38,7 +39,21 @@ result does not depend on the order entries are visited in. A balance beyond 64 
 A balance adjustment is an ordinary entry of direction `adjustment` for `target − balance(account, date)`. Reports leave adjustments
 out unless the user turns on "adjustments as income and expenses"; then a negative one counts as spending and a positive one as income.
 
-## Exchange rates and base amounts
+## Transfers
+
+A transfer is one record with a source account, a destination account and an amount for each side (`from_amount_minor`,
+`to_amount_minor`). It materialises as two ledger entries, `out` (negative, in the source currency) and `in` (positive, in the
+destination currency), and is never synced as two things. `from_account_id`, `to_account_id`, both amounts and `fx_rate_id` are one
+field group (`TRANSFER_GROUP`): an edit writes all five in one op, so two devices editing at once end with one whole version, never
+the amount of one and the account of the other. Editing, deleting and restoring act on both sides because there is only one record.
+
+Same-currency accounts exchange equal amounts. Across currencies each side is exactly what the person entered; a rate is only ever
+offered as a suggestion for the destination field and `fx_rate_id` merely records which rate they used. Transfers carry no base-currency
+snapshot. When "transfers as income and expenses" is on, reports convert each leg with the nearest rate at or before the end of its day
+and name any currency that has none.
+
+Repair: a transfer whose account is missing is hidden (so the other account is not left short by half a transfer) and listed in Needs
+attention; one that breaks its own rules (same account, amount not above zero, unequal amounts in one currency) is left out of balances.
 
 Rates are units of the quote currency per one USD, scaled by 10^12, unique per `(quote, as_of)`. When a transaction is saved, its
 base-currency equivalent is frozen using the **nearest rate at or before the transaction's time** for each currency, one division and
@@ -85,6 +100,5 @@ reports violations on merged state. The rules never write; every device repairs 
   Screens read a ledger projected in memory from the merge state and cached per Fold until the next change. That is exact and fast enough
   for thousands of transactions; the 50,000-transaction target (SC-008) is measured on the raw tables and needs these read models, or an
   incrementally maintained projection, before the screens can claim it.
-* **Transfers** (user story 3). `transfersAsIncomeExpense` is accepted and does nothing until transfers exist.
 * **A transaction's place** is stored (`place_name`, `lat_e7`, `lon_e7` as integers) but the entry form has no field for it yet.
 * **Attachments** wait for user story 9.

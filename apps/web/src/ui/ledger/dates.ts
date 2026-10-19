@@ -62,3 +62,12 @@ export function formatDate(d: LocalDate, locale: string): string {
 export function formatDateTime(utcMs: number, locale: string): string {
   return new Intl.DateTimeFormat(`${locale}-u-nu-latn`, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(utcMs));
 }
+
+/** Seconds since 1970 at the start (UTC) of a civil day. Rates are dated this way. */
+export const startOfDayUtcS = (d: LocalDate): number => Date.UTC(yearOfDate(d), monthOfDate(d) - 1, d % 100) / 1000;
+
+/** The civil date (UTC) that an instant in seconds falls on. */
+export function dateOfUtcSeconds(s: number): LocalDate {
+  const d = new Date(s * 1000);
+  return (d.getUTCFullYear() * 10_000 + (d.getUTCMonth() + 1) * 100 + d.getUTCDate()) as LocalDate;
+}

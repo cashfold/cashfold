@@ -140,3 +140,23 @@ describe('ledger queries: edges', () => {
     expect(basics.ok && basics.value.categories.map((c) => c.id)).toEqual([id(61), id(60)]);
   });
 });
+
+describe('transfer queries', () => {
+  it('list transfers newest first with their last change, filter by account, and list deleted ones', async () => {
+    const s = await setup();
+    const { createTransferCommands } = await import('./transfer-commands');
+    const moves = createTransferCommands({ clock: { nowMs: () => 1_800_000_000_000 } });
+    for (const n of [1, 2, 3]) await s.commandBus.execute(s.accounts.createAccountRecord, { fold: FOLD, id: id(n), kind: 'checking', name: `A${n}`, currency: 'USD', openingBalanceMinor: 0n, openingDate: date(2026, 1, 1) });
+    const base = { fold: FOLD, fromAccountId: id(1), toAccountId: id(2), fromAmountMinor: 100n, toAmountMinor: 100n, tzOffsetMin: 0 };
+    await s.commandBus.execute(moves.addTransfer, { ...base, id: id(10), occurredUtcMs: Date.UTC(2026, 2, 1, 12) });
+    await s.commandBus.execute(moves.addTransfer, { ...base, id: id(11), toAccountId: id(3), occurredUtcMs: Date.UTC(2026, 2, 5, 12) });
+    const all = await s.bus.execute(s.queries.listTransfers, { fold: FOLD });
+    expect(all.ok && all.value.map((x) => x.id)).toEqual([id(11), id(10)]);
+    expect(all.ok && all.value[0]!.lastChanged?.dev).toBe(id(0xa));
+    const some = await s.bus.execute(s.queries.listTransfers, { fold: FOLD, accountId: id(3) });
+    expect(some.ok && some.value.map((x) => x.id)).toEqual([id(11)]);
+    await s.commandBus.execute(moves.deleteTransfer, { fold: FOLD, id: id(10) });
+    const gone = await s.bus.execute(s.queries.recentlyDeletedTransfers, { fold: FOLD });
+    expect(gone.ok && gone.value.map((d) => [d.transfer.id, d.daysLeft])).toEqual([[id(10), 30]]);
+  });
+});

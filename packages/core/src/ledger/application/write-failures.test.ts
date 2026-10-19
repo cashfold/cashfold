@@ -8,6 +8,7 @@ import { createCategoryCommands, createLabelCommands } from './category-commands
 import { createRateCommands } from './rate-commands';
 import { createRevalue } from './revalue';
 import { createTransactionCommands } from './transaction-commands';
+import { createTransferCommands } from './transfer-commands';
 
 // When storing fails (here: this device has lost the Fold's key), every command must report a typed error, leave
 // the ledger exactly as it was, and never claim success.
@@ -23,6 +24,7 @@ async function prepared(): Promise<{ h: LedgerHarness; cases: Array<[string, () 
   const labels = createLabelCommands();
   const txns = createTransactionCommands({ clock });
   const rates = createRateCommands();
+  const transfers = createTransferCommands({ clock });
   const run = <C, R, E extends DomainError>(def: CommandDef<C, R, E>, c: C) => h.run(def, c);
   const f = h.fold;
 
@@ -42,6 +44,11 @@ async function prepared(): Promise<{ h: LedgerHarness; cases: Array<[string, () 
   await run(txns.deleteTransaction, { fold: f, id: id(11) });
   await run(txns.addTransaction, { ...base, id: id(12), accountId: id(2), currency: 'EUR', occurredUtcMs: 150_000 });
   await run(rates.setCustomRate, { fold: f, id: id(31), quote: 'EUR', asOfUtcS: 200, rateE12: 2n * E12 });
+  await run(accounts.createAccountRecord, { fold: f, id: id(3), kind: 'savings', name: 'Savings', currency: 'USD', openingBalanceMinor: 0n, openingDate: date(2026, 1, 1) });
+  const move = { fold: f, fromAccountId: id(1), toAccountId: id(3), fromAmountMinor: 100n, toAmountMinor: 100n, occurredUtcMs: MARCH, tzOffsetMin: 0 };
+  await run(transfers.addTransfer, { ...move, id: id(40) });
+  await run(transfers.addTransfer, { ...move, id: id(41) });
+  await run(transfers.deleteTransfer, { fold: f, id: id(41) });
 
   const before = (await h.replica.oplog.list(f)).length;
   h.world.dropFold(f);
@@ -82,6 +89,10 @@ async function prepared(): Promise<{ h: LedgerHarness; cases: Array<[string, () 
     ['setCustomRate (update)', () => run(rates.setCustomRate, { fold: f, id: id(33), quote: 'EUR', asOfUtcS: 100, rateE12: 3n * E12 })],
     ['deleteCustomRate', () => run(rates.deleteCustomRate, { fold: f, id: id(30) })],
     ['applyRateTable', () => run(rates.applyRateTable, { fold: f, asOfUtcS: 300, rates: [{ quote: 'JPY', rateE12: E12 }] })],
+    ['addTransfer', () => run(transfers.addTransfer, { ...move, id: id(42) })],
+    ['updateTransfer', () => run(transfers.updateTransfer, { fold: f, id: id(40), changes: { fromAmountMinor: 200n, toAmountMinor: 200n } })],
+    ['deleteTransfer', () => run(transfers.deleteTransfer, { fold: f, id: id(40) })],
+    ['restoreTransfer', () => run(transfers.restoreTransfer, { fold: f, id: id(41) })],
     ['revalue', () => run(revalue, { fold: f, ids: [id(12)] })],
   ];
   expect(before).toBeGreaterThan(0);

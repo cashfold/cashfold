@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { dateToInput, deviceOffsetAt, formatDate, inputToDate, inputToMoment, momentToInput, nowInput, todayLocal } from './dates';
+import { dateOfUtcSeconds, dateToInput, deviceOffsetAt, startOfDayUtcS, formatDate, inputToDate, inputToMoment, momentToInput, nowInput, todayLocal } from './dates';
 
 describe('civil dates', () => {
   it('round-trips to and from the date field text', () => {
@@ -45,5 +45,14 @@ describe('entry time', () => {
     expect(Number.isInteger(offset)).toBe(true);
     expect(offset).toBe(-new Date(2026, 2, 5, 12, 0).getTimezoneOffset());
     expect(Number.isInteger(deviceOffsetAt('nonsense'))).toBe(true);
+  });
+});
+
+describe('rate dates', () => {
+  it('turns a civil day into the second it starts at, and back', () => {
+    expect(startOfDayUtcS(20_260_305 as never)).toBe(Date.UTC(2026, 2, 5) / 1000);
+    expect(dateOfUtcSeconds(startOfDayUtcS(20_260_305 as never))).toBe(20_260_305);
+    expect(dateOfUtcSeconds(startOfDayUtcS(20_260_305 as never) + 86_399)).toBe(20_260_305);
+    expect(dateOfUtcSeconds(startOfDayUtcS(20_260_305 as never) + 86_400)).toBe(20_260_306);
   });
 });

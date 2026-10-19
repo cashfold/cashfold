@@ -99,7 +99,7 @@ function DashboardBody() {
             <h2 id="nw-title" className="text-lg font-semibold">{t('ledger.dash.netWorth')}</h2>
             <p className="mt-1 text-sm text-muted">{t('ledger.dash.netWorth.asOf', { date: formatDate(asOf, locale) })}</p>
             <p className="mt-2 text-2xl" data-testid="net-worth">{data.netWorth.totalMinor === null ? t('ledger.dash.netWorth.unavailable') : ledger.money(data.netWorth.totalMinor, currency)}</p>
-            {data.netWorth.missing.length > 0 ? <MissingRates currencies={data.netWorth.missing} /> : null}
+            {[...new Set([...data.netWorth.missing, ...data.incomeExpense.missingRates])].length > 0 ? <MissingRates currencies={[...new Set([...data.netWorth.missing, ...data.incomeExpense.missingRates])].sort()} /> : null}
             <ul className="mt-3 divide-y divide-border-strong rounded-ui border border-border-strong empty:hidden" aria-label={t('ledger.dash.accounts')}>
               {data.netWorth.accounts.map((a) => (
                 <li key={a.accountId} className="flex flex-wrap items-center justify-between gap-2 p-2">

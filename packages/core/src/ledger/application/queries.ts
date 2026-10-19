@@ -8,7 +8,9 @@ import type { AccountGroup, Category, Transaction } from '../domain/records';
 import { compareText } from '../domain/util';
 import { accountBalance } from './balance';
 import type { ClockPort, QuarantinedOp } from '../../sync/ports/index';
-import { recentlyDeleted, type RecentlyDeleted } from './queries/recently-deleted';
+import { recentlyDeleted, recentlyDeletedTransfers, type RecentlyDeleted, type RecentlyDeletedTransfer } from './queries/recently-deleted';
+import type { Transfer } from '../domain/transfer';
+import type { ExchangeRate } from '../domain/exchange-rate';
 import {
   dayEndBalances, incomeVsExpense, monthlyTrend, netWorth, spendingByCategory, spendingByTag,
   type CategorySpend, type DayBalance, type IncomeExpense, type MonthBucket, type NetWorth, type Period, type ReportOptions, type TagSpend,
@@ -27,6 +29,11 @@ export interface TransactionRow extends Transaction {
   readonly lastChanged: { readonly dev: Id; readonly atMs: number } | undefined;
 }
 
+/** A transfer as listed, with when and on which device it last changed. */
+export interface TransferRow extends Transfer {
+  readonly lastChanged: { readonly dev: Id; readonly atMs: number } | undefined;
+}
+
 export interface LedgerBasics {
   readonly baseCurrency: string | undefined;
   readonly accounts: readonly AccountRow[];
@@ -34,6 +41,8 @@ export interface LedgerBasics {
   readonly categories: readonly Category[];
   readonly payees: readonly Label[];
   readonly tags: readonly Label[];
+  /** Exchange rates in force, oldest first: the ones a person entered and the ones the service published. */
+  readonly rates: readonly ExchangeRate[];
 }
 
 export interface DashboardData {
@@ -71,6 +80,7 @@ export function createLedgerQueries({ views, clock, quarantined }: LedgerQueryDe
     categories: [...ledger.categories.values()].sort((a, b) => a.direction.localeCompare(b.direction) || byOrder(a, b)),
     payees: [...ledger.payees.values()].sort(byName),
     tags: [...ledger.tags.values()].sort(byName),
+    rates: ledger.rates,
   }));
 
   const accountBalanceQuery = q<{ fold: Id; account: Id; asOf?: LocalDate }, bigint | undefined>('accountBalance', ({ account, asOf }, { ledger }) => {
@@ -86,6 +96,16 @@ export function createLedgerQueries({ views, clock, quarantined }: LedgerQueryDe
       return { items: shown.map((t) => ({ ...t, lastChanged: ledger.lastChanged.get(t.id) })), count: all.length };
     },
   );
+
+  /** Transfers, newest first. */
+  const listTransfers = q<{ fold: Id; accountId?: Id }, TransferRow[]>('listTransfers', ({ accountId }, { ledger }) =>
+    [...ledger.transfers.values()]
+      .filter((x) => accountId === undefined || x.fromAccountId === accountId || x.toAccountId === accountId)
+      .sort((a, b) => b.localDate - a.localDate || b.occurredUtcMs - a.occurredUtcMs || compareText(a.id, b.id))
+      .map((x) => ({ ...x, lastChanged: ledger.lastChanged.get(x.id) })),
+  );
+
+  const recentlyDeletedTransfersQuery = q<{ fold: Id }, RecentlyDeletedTransfer[]>('recentlyDeletedTransfers', (_, { ledger }) => recentlyDeletedTransfers(ledger, clock.nowMs()));
 
   const netWorthQuery = q<{ fold: Id; asOf: LocalDate }, NetWorth>('netWorth', ({ asOf }, { ledger }) => netWorth(ledger, asOf));
   const spendingByCategoryQuery = q<{ fold: Id; period: Period; options: ReportOptions; rollUp?: boolean }, ReturnType<typeof spendingByCategory>>(
@@ -118,7 +138,7 @@ export function createLedgerQueries({ views, clock, quarantined }: LedgerQueryDe
   };
 
   return {
-    ledgerBasics, accountBalance: accountBalanceQuery, listTransactions, netWorth: netWorthQuery, spendingByCategory: spendingByCategoryQuery,
+    ledgerBasics, accountBalance: accountBalanceQuery, listTransactions, listTransfers, recentlyDeletedTransfers: recentlyDeletedTransfersQuery, netWorth: netWorthQuery, spendingByCategory: spendingByCategoryQuery,
     incomeVsExpense: incomeVsExpenseQuery, dayEndBalances: dayEndBalancesQuery, dashboard, recentlyDeleted: recentlyDeletedQuery, needsAttention,
   };
 }

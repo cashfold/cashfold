@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { TABLE, TRANSFER_FIELD } from '../domain/tables';
+import { TABLE } from '../domain/tables';
+import { transferFieldPatch } from '../domain/transfer';
 import { date, id, ledgerHarness, type LedgerHarness } from '../../testing/index';
 import { createAccountCommands } from './account-commands';
 import { createAdjustBalance } from './adjust-balance';
@@ -71,7 +72,7 @@ describe('account commands: errors and no-ops', () => {
     await account(2);
     await add(10);
     for (const [n, from, to] of [[20, id(1), id(2)], [21, id(2), id(1)], [22, id(2), id(2)]] as const) {
-      await h.replica.writePath.submit({ fold: h.fold, rec: id(n), table: TABLE.transfer, sets: new Map(), fields: new Map([[TRANSFER_FIELD.fromAccountId, from], [TRANSFER_FIELD.toAccountId, to]]) });
+      await h.replica.writePath.submit({ fold: h.fold, rec: id(n), table: TABLE.transfer, sets: new Map(), fields: transferFieldPatch({ fromAccountId: from, toAccountId: to, fromAmountMinor: 1n, toAmountMinor: 1n, fxRateId: null }) });
     }
     expect(await h.ask(accounts.describeAccountDeletion, { fold: h.fold, id: id(1) })).toEqual({ ok: true, value: { accountName: 'A1', transactions: 1, transfers: 2 } });
     await h.run(accounts.deleteLedgerAccount, { fold: h.fold, id: id(1), confirm: true });

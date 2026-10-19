@@ -6,6 +6,7 @@ import { categoryFieldPatch, type NewCategory } from '../ledger/domain/category'
 import { exchangeRateFieldPatch, type NewExchangeRate } from '../ledger/domain/exchange-rate';
 import { TABLE, TXN_FIELD } from '../ledger/domain/tables';
 import { transactionFieldPatch, type TransactionFields } from '../ledger/domain/transaction';
+import { transferFieldPatch, type TransferFields } from '../ledger/domain/transfer';
 import { DELETED_FIELD, applyOp, emptyFold, type FieldValue, type FoldState, type Op, type SetDelta } from '../sync/domain/merge';
 import { foldSettingsPatch, settingsRecordId } from '../sharing/domain/fold';
 import { id } from './world';
@@ -71,6 +72,17 @@ export class LedgerFixture {
     });
     const sets = tagIds === undefined ? noSets : new Map([[TXN_FIELD.tagIds, { add: tagIds, rem: [] } satisfies SetDelta]]);
     this.apply(rec, TABLE.transaction, patch, sets);
+    return rec;
+  }
+
+  /** A transfer of `from` minor units out of one account and `to` into another (equal unless the currencies differ). */
+  transfer(fromAccount: Id, toAccount: Id, fields: TransferFields & { from?: bigint; to?: bigint } = {}, rec: Id = this.nextId()): Id {
+    const { from, to, ...rest } = fields;
+    const fromAmountMinor = rest.fromAmountMinor ?? from ?? 1_000n;
+    this.apply(rec, TABLE.transfer, transferFieldPatch({
+      localDate: date(2026, 1, 15), occurredUtcMs: Date.UTC(2026, 0, 15, 12), tzOffsetMin: 0, status: 'posted', note: '', fxRateId: null,
+      toAmountMinor: to ?? fromAmountMinor, ...rest, fromAccountId: fromAccount, toAccountId: toAccount, fromAmountMinor,
+    }));
     return rec;
   }
 

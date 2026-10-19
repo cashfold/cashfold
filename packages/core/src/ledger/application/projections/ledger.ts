@@ -9,11 +9,12 @@ import { categoryTreeViolations } from '../../domain/category';
 import { resolveRates, type ExchangeRate } from '../../domain/exchange-rate';
 import type { Label } from '../../domain/label';
 import {
-  decodeAccount, decodeCategory, decodeExchangeRate, decodeGroup, decodeLabel, decodeTransaction, deletedAtMs, lastChanged,
+  decodeAccount, decodeCategory, decodeExchangeRate, decodeGroup, decodeLabel, decodeTransaction, decodeTransfer, deletedAtMs, lastChanged,
   type AccountGroup, type Category, type Transaction,
 } from '../../domain/records';
 import { TABLE } from '../../domain/tables';
 import type { TxnStatus } from '../../domain/transaction';
+import type { Transfer } from '../../domain/transfer';
 import { compareText } from '../../domain/util';
 
 /** One signed movement on one account: the derived `ledger_entry` read model (data-model.md). */
@@ -31,6 +32,11 @@ export interface DeletedTransaction {
   readonly deletedAtMs: number;
 }
 
+export interface DeletedTransfer {
+  readonly transfer: Transfer;
+  readonly deletedAtMs: number;
+}
+
 export interface Ledger {
   readonly baseCurrency: CurrencyCode | undefined;
   readonly accounts: ReadonlyMap<Id, Account>;
@@ -41,6 +47,9 @@ export interface Ledger {
   /** Visible, not hidden by repair. */
   readonly transactions: ReadonlyMap<Id, Transaction>;
   readonly deleted: ReadonlyMap<Id, DeletedTransaction>;
+  /** Visible, not hidden by repair. */
+  readonly transfers: ReadonlyMap<Id, Transfer>;
+  readonly deletedTransfers: ReadonlyMap<Id, DeletedTransfer>;
   /** When and on which device each transaction was last changed (FR-053), from the clocks of its fields. */
   readonly lastChanged: ReadonlyMap<Id, { readonly dev: Id; readonly atMs: number }>;
   readonly rates: readonly ExchangeRate[];
@@ -49,7 +58,7 @@ export interface Ledger {
   readonly entriesByAccount: ReadonlyMap<Id, readonly LedgerEntry[]>;
 }
 
-const byDateThenRef = (a: LedgerEntry, b: LedgerEntry): number => a.localDate - b.localDate || compareText(a.refId, b.refId);
+const byDateThenRef = (a: LedgerEntry, b: LedgerEntry): number => a.localDate - b.localDate || compareText(a.refId, b.refId) || compareText(a.leg, b.leg);
 
 /**
  * Projects merged record state into typed ledger read models. A pure function of the records and the repair
@@ -64,6 +73,8 @@ export function buildLedger(records: FoldState, report?: Pick<RepairReport, 'hid
   const transactions = new Map<Id, Transaction>();
   const deleted = new Map<Id, DeletedTransaction>();
   const changed = new Map<Id, { dev: Id; atMs: number }>();
+  const transfers = new Map<Id, Transfer>();
+  const deletedTransfers = new Map<Id, DeletedTransfer>();
   const allRates: ExchangeRate[] = [];
   let baseCurrency: CurrencyCode | undefined;
 
@@ -104,6 +115,15 @@ export function buildLedger(records: FoldState, report?: Pick<RepairReport, 'hid
         else deleted.set(rec, { transaction: t, deletedAtMs: deletedAtMs(state) ?? 0 });
         break;
       }
+      case TABLE.transfer: {
+        const x = decodeTransfer(rec, state);
+        if (x === undefined) break;
+        const last = lastChanged(state);
+        if (last !== undefined) changed.set(rec, last);
+        if (isVisible(state)) transfers.set(rec, x);
+        else deletedTransfers.set(rec, { transfer: x, deletedAtMs: deletedAtMs(state) ?? 0 });
+        break;
+      }
       case TABLE.exchangeRate: {
         const r = isVisible(state) ? decodeExchangeRate(rec, state) : undefined;
         if (r !== undefined) allRates.push(r);
@@ -136,6 +156,12 @@ export function buildLedger(records: FoldState, report?: Pick<RepairReport, 'hid
     if (!accounts.has(t.accountId) || report?.excluded.has(t.id) === true) continue;
     entries.push({ accountId: t.accountId, refId: t.id, leg: 'single', localDate: t.localDate, amountMinor: t.amountMinor, status: t.status });
   }
+  // A transfer is one record that is two ledger entries: money leaves one account and arrives in the other (FR-043).
+  for (const x of transfers.values()) {
+    if (report?.excluded.has(x.id) === true) continue;
+    if (accounts.has(x.fromAccountId)) entries.push({ accountId: x.fromAccountId, refId: x.id, leg: 'out', localDate: x.localDate, amountMinor: -x.fromAmountMinor, status: x.status });
+    if (accounts.has(x.toAccountId)) entries.push({ accountId: x.toAccountId, refId: x.id, leg: 'in', localDate: x.localDate, amountMinor: x.toAmountMinor, status: x.status });
+  }
   entries.sort(byDateThenRef);
 
   const entriesByAccount = new Map<Id, LedgerEntry[]>();
@@ -146,7 +172,7 @@ export function buildLedger(records: FoldState, report?: Pick<RepairReport, 'hid
   }
 
   return {
-    baseCurrency, accounts, groups, categories, payees, tags, transactions, deleted, lastChanged: changed,
+    baseCurrency, accounts, groups, categories, payees, tags, transactions, deleted, transfers, deletedTransfers, lastChanged: changed,
     rates: resolveRates(allRates).rates, entries, entriesByAccount,
   };
 }

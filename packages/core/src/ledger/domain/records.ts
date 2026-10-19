@@ -8,7 +8,8 @@ import { kindOfCode } from './account';
 import { directionOfCode, type CategoryNode, type Direction } from './category';
 import type { ExchangeRate } from './exchange-rate';
 import type { Label } from './label';
-import { ACCOUNT_FIELD, CATEGORY_FIELD, GROUP_FIELD, LABEL_FIELD, RATE_FIELD, TABLE, TXN_FIELD } from './tables';
+import { ACCOUNT_FIELD, CATEGORY_FIELD, GROUP_FIELD, LABEL_FIELD, RATE_FIELD, TABLE, TRANSFER_FIELD, TXN_FIELD } from './tables';
+import type { Transfer } from './transfer';
 import { txnDirectionOfCode, txnStatusOfCode, type Place, type TxnDirection, type TxnStatus } from './transaction';
 
 // Decoding merged record state into typed ledger records. Decoding is deliberately forgiving about *rules*
@@ -209,4 +210,23 @@ export function decodeExchangeRate(rec: Id, state: RecordState): ExchangeRate | 
   const r = rate(value);
   if (!r.ok) return undefined;
   return { id: rec, quote: quote.value, asOfUtcS: Number(asOf), rateE12: r.value, source };
+}
+
+export function decodeTransfer(rec: Id, state: RecordState): Transfer | undefined {
+  if (state.table !== TABLE.transfer) return undefined;
+  const f = new Fields(state);
+  const fromAccountId = f.id(TRANSFER_FIELD.fromAccountId);
+  const toAccountId = f.id(TRANSFER_FIELD.toAccountId);
+  const fromAmountMinor = f.big(TRANSFER_FIELD.fromAmountMinor);
+  const toAmountMinor = f.big(TRANSFER_FIELD.toAmountMinor);
+  const status = txnStatusOfCode(f.raw(TRANSFER_FIELD.status) ?? 1n);
+  const localDate = f.int(TRANSFER_FIELD.localDate, 0);
+  if (
+    fromAccountId == null || toAccountId == null || fromAmountMinor === undefined || toAmountMinor === undefined || status === undefined || localDate === 0
+  ) return undefined;
+  return {
+    id: rec, fromAccountId, toAccountId, fromAmountMinor, toAmountMinor, status, localDate: localDate as LocalDate,
+    occurredUtcMs: f.int(TRANSFER_FIELD.occurredUtcMs, 0), tzOffsetMin: f.int(TRANSFER_FIELD.tzOffsetMin, 0),
+    note: f.text(TRANSFER_FIELD.note) ?? '', fxRateId: f.id(TRANSFER_FIELD.fxRateId) ?? null,
+  };
 }

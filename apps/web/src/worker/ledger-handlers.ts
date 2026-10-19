@@ -1,5 +1,5 @@
 import {
-  createAccountCommands, createAdjustBalance, createCategoryCommands, createLabelCommands, createRateCommands, createRevalue,
+  createAccountCommands, createAdjustBalance, createTransferCommands, createCategoryCommands, createLabelCommands, createRateCommands, createRevalue,
   createTransactionCommands, labelUsage, newIdV4, purgeExpired, type ClockPort, type CommandDef, type DomainError, type Id,
 } from '@cashfold/core';
 import type { OpenSession } from '../adapters/sqlite-opfs/web-session';
@@ -24,6 +24,7 @@ export function createLedgerHandlers({ open, clock, rng }: LedgerHandlerDeps): H
   const labels = createLabelCommands();
   const transactions = createTransactionCommands({ clock });
   const rates = createRateCommands();
+  const moves = createTransferCommands({ clock });
   const { adjustBalance } = createAdjustBalance({ clock });
   const { revalue } = createRevalue({ clock });
 
@@ -55,6 +56,10 @@ export function createLedgerHandlers({ open, clock, rng }: LedgerHandlerDeps): H
     'ledger.updateTransaction': { def: transactions.updateTransaction as unknown as AnyCommand },
     'ledger.deleteTransaction': { def: transactions.deleteTransaction as unknown as AnyCommand },
     'ledger.restoreTransaction': { def: transactions.restoreTransaction as unknown as AnyCommand },
+    'ledger.addTransfer': { def: moves.addTransfer as unknown as AnyCommand, mint },
+    'ledger.updateTransfer': { def: moves.updateTransfer as unknown as AnyCommand },
+    'ledger.deleteTransfer': { def: moves.deleteTransfer as unknown as AnyCommand },
+    'ledger.restoreTransfer': { def: moves.restoreTransfer as unknown as AnyCommand },
     'ledger.adjustBalance': { def: adjustBalance as unknown as AnyCommand, mint },
     'ledger.setCustomRate': { def: rates.setCustomRate as unknown as AnyCommand, mint },
     'ledger.deleteCustomRate': { def: rates.deleteCustomRate as unknown as AnyCommand },
@@ -82,6 +87,8 @@ export function createLedgerHandlers({ open, clock, rng }: LedgerHandlerDeps): H
   });
   query('ledger.accountBalance', via((s) => s.queries.accountBalance));
   query('ledger.transactions', via((s) => s.queries.listTransactions));
+  query('ledger.transfers', via((s) => s.queries.listTransfers));
+  query('ledger.recentlyDeletedTransfers', via((s) => s.queries.recentlyDeletedTransfers));
   query('ledger.netWorth', via((s) => s.queries.netWorth));
   query('ledger.spendingByCategory', via((s) => s.queries.spendingByCategory));
   query('ledger.incomeVsExpense', via((s) => s.queries.incomeVsExpense));
@@ -91,6 +98,14 @@ export function createLedgerHandlers({ open, clock, rng }: LedgerHandlerDeps): H
   query('ledger.needsAttention', via((s) => s.queries.needsAttention));
   query('ledger.accountDeletion', via(() => accounts.describeAccountDeletion));
   query('ledger.usage', via(() => labelUsage));
+
+  /** Re-snapshots every transaction that is not in the Fold's base currency, with the rates known now (FR-041). */
+  query('ledger.revalueAll', async (session, args: { fold: Id; asOfUtcS?: number }) => {
+    const view = await session.views.get(args.fold, session.projections);
+    const base = view.ledger.baseCurrency;
+    const ids = [...view.ledger.transactions.values()].filter((t) => t.currency !== base).map((t) => t.id);
+    return session.commandBus.execute(revalue as unknown as CommandDef<{ fold: Id; ids: Id[]; asOfUtcS?: number }, unknown, DomainError>, { fold: args.fold, ids, ...(args.asOfUtcS !== undefined && { asOfUtcS: args.asOfUtcS }) });
+  });
 
   /** Runs the retention job now (it also runs when a session starts). */
   query('ledger.purge', async (session, args: { fold: Id }) => purgeExpired({ oplog: session.oplog, projections: session.projections }, args.fold, clock.nowMs()));

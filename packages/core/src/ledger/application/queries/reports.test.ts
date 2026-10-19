@@ -117,7 +117,7 @@ describe('incomeVsExpense', () => {
     x.f.transaction(x.usd, { amountMinor: 300_000n, categoryId: x.salary, ...at(2026, 1, 25) });
     x.f.transaction(x.usd, { amountMinor: -1_000n, ...at(2026, 1, 5) });
     x.f.transaction(x.usd, { amountMinor: 200n, direction: 'income', isRefund: true, ...at(2026, 1, 6) });
-    expect(incomeVsExpense(buildLedger(x.f.fold), JAN, OFF)).toEqual({ currency: 'USD', incomeMinor: 300_000n, expenseMinor: 800n, netMinor: 299_200n });
+    expect(incomeVsExpense(buildLedger(x.f.fold), JAN, OFF)).toEqual({ currency: 'USD', incomeMinor: 300_000n, expenseMinor: 800n, netMinor: 299_200n, missingRates: [] });
   });
 
   it('honours the adjustments option', () => {

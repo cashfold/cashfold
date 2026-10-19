@@ -4,11 +4,12 @@ import { isVisible, type FoldState } from '../../sync/domain/merge';
 import { categoryTreeViolations, type CategoryNode } from '../domain/category';
 import { resolveRates, type ExchangeRate } from '../domain/exchange-rate';
 import {
-  decodeAccount, decodeCategory, decodeExchangeRate, decodeGroup, decodeLabel, decodeTransaction, isTombstoned,
+  decodeAccount, decodeCategory, decodeExchangeRate, decodeGroup, decodeLabel, decodeTransaction, decodeTransfer, isTombstoned,
   type Transaction,
 } from '../domain/records';
 import { TABLE } from '../domain/tables';
 import type { Account } from '../domain/account';
+import type { Transfer } from '../domain/transfer';
 
 // Deterministic post-merge repair for the ledger (FR-078). Each rule reads merged state and reports; nothing here
 // writes. Messages are i18n keys with no amounts, names or notes (FR-098).
@@ -23,6 +24,7 @@ function visibleOf<T>(state: FoldState, table: number, decode: (rec: Id, s: Fold
   return out;
 }
 
+const transfersOf = (state: FoldState): Array<[Id, Transfer]> => visibleOf(state, TABLE.transfer, decodeTransfer);
 const accountsOf = (state: FoldState): Map<Id, Account> => new Map(visibleOf(state, TABLE.account, decodeAccount));
 const transactionsOf = (state: FoldState): Array<[Id, Transaction]> => visibleOf(state, TABLE.transaction, decodeTransaction);
 
@@ -58,6 +60,31 @@ const signMismatch: RepairRule = {
   },
 };
 
+/** A transfer needs both of its accounts. If one is gone it is hidden, so the other account is not left short by half a transfer. */
+const orphanTransfer: RepairRule = {
+  id: 'ledger.orphan_transfer',
+  check(state) {
+    const accounts = accountsOf(state);
+    return transfersOf(state).filter(([, x]) => !accounts.has(x.fromAccountId) || !accounts.has(x.toAccountId)).map(([rec]) => finding('orphan_transfer', rec, 'hide'));
+  },
+};
+
+/** The rules of FR-043 and FR-044, checked on merged values. */
+const invalidTransfer: RepairRule = {
+  id: 'ledger.invalid_transfer',
+  check(state) {
+    const accounts = accountsOf(state);
+    return transfersOf(state)
+      .filter(([, x]) => {
+        const from = accounts.get(x.fromAccountId);
+        const to = accounts.get(x.toAccountId);
+        if (from === undefined || to === undefined) return false; // reported as an orphan
+        return x.fromAccountId === x.toAccountId || x.fromAmountMinor <= 0n || x.toAmountMinor <= 0n || (from.currency === to.currency && x.fromAmountMinor !== x.toAmountMinor);
+      })
+      .map(([rec]) => finding('invalid_transfer', rec, 'exclude_from_balance'));
+  },
+};
+
 const categoryTree: RepairRule = {
   id: 'ledger.category_tree',
   check(state) {
@@ -82,7 +109,7 @@ const malformed: RepairRule = {
     const decoders: Record<number, ((rec: Id, s: never) => unknown) | undefined> = {
       [TABLE.account]: decodeAccount, [TABLE.accountGroup]: decodeGroup, [TABLE.category]: decodeCategory,
       [TABLE.payee]: (rec, s) => decodeLabel(rec, s, TABLE.payee), [TABLE.tag]: (rec, s) => decodeLabel(rec, s, TABLE.tag),
-      [TABLE.transaction]: decodeTransaction, [TABLE.exchangeRate]: decodeExchangeRate,
+      [TABLE.transaction]: decodeTransaction, [TABLE.transfer]: decodeTransfer, [TABLE.exchangeRate]: decodeExchangeRate,
     };
     for (const [rec, s] of state) {
       const decode = decoders[s.table];
@@ -93,4 +120,4 @@ const malformed: RepairRule = {
   },
 };
 
-export const ledgerRepairRules: readonly RepairRule[] = [orphanTransaction, currencyMismatch, signMismatch, categoryTree, duplicateRates, malformed];
+export const ledgerRepairRules: readonly RepairRule[] = [orphanTransaction, orphanTransfer, invalidTransfer, currencyMismatch, signMismatch, categoryTree, duplicateRates, malformed];
