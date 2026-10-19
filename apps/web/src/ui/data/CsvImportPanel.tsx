@@ -74,7 +74,7 @@ export function CsvImportPanel() {
       setSource(picked.name);
       setSample(reply);
       // A guess at the obvious columns from a header row saves most of the work.
-      const guess: Record<string, number> = { date: NONE };
+      const guess: Record<string, number> = {};
       reply.header.forEach((h, i) => {
         const k = h.trim().toLowerCase();
         const set = (field: string, ...names: string[]) => names.includes(k) && guess[field] === undefined && (guess[field] = i);

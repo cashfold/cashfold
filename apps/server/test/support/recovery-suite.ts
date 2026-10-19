@@ -4,7 +4,7 @@ import { SecretBuf } from '@cashfold/crypto';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { Store } from '../../src/store/store.js';
 import { randomX, testPake } from './pake.js';
-import { register, signIn, startRelay, type Harness } from './relay-harness.js';
+import { newDevice, register, signIn, startRelay, type Harness } from './relay-harness.js';
 
 // The Recovery Key credential on the service (ARCH 6.8, FR-009): a second SRP verifier and the wrapped keys, which the service
 // can neither read nor use. An account without one is indistinguishable from an address that has no account.
@@ -38,6 +38,20 @@ export function describeRecovery(label: string, makeStore: () => Promise<Store>)
       expect(Buffer.from(got.get('wrapped')!)).toEqual(body.wrapped);
       expect(Buffer.from(got.get('uuid')!)).toEqual(body.uuid);
       expect(got.get('keyset')).toBeInstanceOf(Uint8Array);
+    });
+
+    it('lets a device that is not registered yet read the wrapped keys and set new credentials, which is how recovery works', async () => {
+      const h = await start();
+      const { a, x, body } = await setUp(h);
+      const { session } = await signIn(h, a, await newDevice(), x, 'recovery');
+      expect(Buffer.from(((await session.request('GET', '/accounts/me/recovery')).body as Map<string, Uint8Array>).get('wrapped')!)).toEqual(body.wrapped);
+      const x2 = randomX();
+      const rotated = await session.request('PUT', '/accounts/me/keyset', {
+        auth_salt: randomBytes(16), kdf: { kdf: 'argon2id', m_kib: 65_536n, t: 3n, p: 1n, enc_salt: randomBytes(16) }, srp_verifier: (await testPake()).verifier(SecretBuf.from(x2)), keyset: randomBytes(310),
+      });
+      expect(rotated.status).toBe(204);
+      await expect(signIn(h, a, a.device, x2)).resolves.toBeDefined();
+      expect(await status(session.request('GET', '/accounts/me'))).toBe(403); // nothing else is open to an unregistered device
     });
 
     it('does not accept the account password for it, nor the Recovery Key for the password', async () => {

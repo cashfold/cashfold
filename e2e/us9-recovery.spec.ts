@@ -121,7 +121,7 @@ test.describe('@us9 portability and recovery', () => {
     await c.goto(`/add/#${new URLSearchParams({ email, server: RELAY, key: secretKey }).toString()}`);
     await c.getByLabel('Password', { exact: true }).fill(PASSWORD);
     await c.getByRole('button', { name: 'Add this device' }).click();
-    await expect(c.getByRole('alert')).toContainText('not right', { timeout: 60_000 });
+    await expect(c.locator('form [role=alert]')).toContainText('not right', { timeout: 60_000 });
     await old.close();
     const fresh = await signInNew(browser, email, newSecretKey, NEW_PASSWORD);
     await go(fresh.page, 'Accounts');
@@ -174,7 +174,7 @@ test.describe('@us9 portability and recovery', () => {
     await c.goto(`/add/#${new URLSearchParams({ email, server: RELAY, key: secretKey }).toString()}`);
     await c.getByLabel('Password', { exact: true }).fill(PASSWORD);
     await c.getByRole('button', { name: 'Add this device' }).click();
-    await expect(c.getByRole('alert')).toContainText('not right', { timeout: 60_000 });
+    await expect(c.locator('form [role=alert]')).toContainText('not right', { timeout: 60_000 });
     await stale.close();
     const fresh = await signInNew(browser, email, secretKey, NEW_PASSWORD);
     await go(fresh.page, 'Transactions');
@@ -291,8 +291,8 @@ test.describe('@us9 portability and recovery', () => {
     await section.getByLabel('Current password').fill(PASSWORD);
     await submit.click();
 
-    // This device is empty: no account, nothing to unlock.
-    await expect(page.getByText('Everyday')).toHaveCount(0);
+    // The worker erased this device and locked it; nothing is left to unlock after a reload.
+    await expect(page.getByRole('heading', { name: 'Unlock Cashfold' })).toBeVisible({ timeout: 120_000 });
     await page.goto('/dashboard/');
     await expect(page.getByRole('link', { name: /Create (an )?account/i })).toBeVisible({ timeout: 60_000 });
 
@@ -302,7 +302,7 @@ test.describe('@us9 portability and recovery', () => {
     await c.goto(`/add/#${new URLSearchParams({ email, server: RELAY, key: secretKey }).toString()}`);
     await c.getByLabel('Password', { exact: true }).fill(PASSWORD);
     await c.getByRole('button', { name: 'Add this device' }).click();
-    await expect(c.getByRole('alert')).toContainText('not right', { timeout: 60_000 });
+    await expect(c.locator('form [role=alert]')).toContainText('not right', { timeout: 60_000 });
     await gone.close();
   });
 });

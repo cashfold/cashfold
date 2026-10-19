@@ -46,7 +46,8 @@ export class AccountsController {
     return k === undefined ? fail(404, 'not_found') : { keyset: k.keyset, auth_salt: k.authSalt, kdf: kdfToWire(k.kdf) };
   }
 
-  @Put('me/keyset') @HttpCode(204)
+  /** Open to a device that is not registered yet: signing in with the Recovery Key and setting new credentials is how it gets in. */
+  @AllowUnregistered() @Put('me/keyset') @HttpCode(204)
   async rotate(@Auth() caller: Caller, @Payload() inner: unknown): Promise<void> {
     const b = parseValue(inner, CredentialRotationBody);
     await this.accounts.rotate(caller.accountId, Buffer.from(caller.sessionId).toString('hex'), { authSalt: b.auth_salt, kdf: b.kdf, srpVerifier: b.srp_verifier, keyset: b.keyset });
@@ -58,7 +59,7 @@ export class AccountsController {
     await this.accounts.setRecovery(caller.accountId, { uuid: b.uuid, authSalt: b.auth_salt, srpVerifier: b.srp_verifier, wrapped: b.wrapped });
   }
 
-  @Get('me/recovery')
+  @AllowUnregistered() @Get('me/recovery')
   async recovery(@Auth() caller: Caller): Promise<unknown> {
     const r = await this.accounts.recovery(caller.accountId);
     return r === undefined ? fail(404, 'not_found') : { uuid: r.uuid, wrapped: r.wrapped, keyset: r.keyset };
