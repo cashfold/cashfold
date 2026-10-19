@@ -258,3 +258,35 @@ export interface DeviceLabelPort {
   /** Undefined when the label does not open (damaged, or written under another key). */
   open(sealed: Uint8Array, account: AccountSecrets): Promise<string | undefined>;
 }
+
+// ---------------------------------------------------------------- changing credentials
+
+/** Everything the service stores for the account once the password or Secret Key has changed. */
+export interface PreparedRotation {
+  readonly rotation: {
+    readonly authSalt: Uint8Array;
+    readonly kdf: { readonly mKib: number; readonly t: number; readonly p: number; readonly encSalt: Uint8Array };
+    readonly srpVerifier: Uint8Array;
+    /** CBOR key set: the same keys, sealed under the new AUK. */
+    readonly keySet: Uint8Array;
+  };
+  /** This device's credentials blob under the new Local Vault Key. */
+  readonly sealed: Uint8Array;
+  /** The new SRP-x, for the rest of this session. */
+  readonly srpX: Secret;
+  /** The new Secret Key, in display form, when it was rotated: shown once and written into a new Emergency Kit. */
+  readonly secretKeyText?: string;
+}
+
+export interface CredentialChangeHandle {
+  /** SRP-x for proving the current credentials to the service. */
+  currentSrpX(hello: { authSalt: Uint8Array; kdf: KdfOffer }): Promise<Secret>;
+  /** Builds the replacement credentials. Consumes `newPassword`. Rejects when `keySet` does not open with the current credentials. */
+  prepare(args: { keySet: Uint8Array; newPassword?: Secret; rotateSecretKey: boolean }): Promise<PreparedRotation>;
+  wipe(): void;
+}
+
+export interface CredentialChangeCryptoPort {
+  /** Checks the password against this device's credentials. Consumes `password`. */
+  begin(args: { password: Secret; credentials: DeviceCredentials }): Promise<CredentialChangeHandle | 'wrong_password'>;
+}

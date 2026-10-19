@@ -76,4 +76,20 @@ describe('personal key set', () => {
     expect(keySet.kdf).toEqual(kdf);
     expect(asParams()).toEqual({ kdf: 'argon2id', mKib: 65536, t: 3, p: 1 });
   });
+
+  it('rewraps the same keys under another AUK, keeping the identity and refusing the old one', async () => {
+    const made = await service.create({ auk: auk(), kdf });
+    const next = SecretBuf.from(new Uint8Array(32).fill(7));
+    const newKdf = { ...kdf, enc_salt: new Uint8Array(16).fill(8) };
+    const again = await service.rewrap({ keySet: made.keySet, from: auk(), to: next, kdf: newKdf });
+    expect(toHex(again.keySet.uuid)).toBe(toHex(made.keySet.uuid));
+    expect(toHex(again.keySet.enc.pk)).toBe(toHex(made.keySet.enc.pk));
+    expect(toHex(again.keySet.sig.pk)).toBe(toHex(made.keySet.sig.pk));
+    expect(again.keySet.kdf).toEqual(newKdf);
+    expect(toHex(again.keySet.enc.sk_ct)).not.toBe(toHex(made.keySet.enc.sk_ct));
+    const opened = await service.open(decodeKeySet(encodeKeySet(again.keySet)), next);
+    expect(toHex(opened.encSk.use((b) => b))).toBe(toHex(made.encSk.use((b) => b)));
+    await expect(service.open(again.keySet, auk())).rejects.toBeInstanceOf(AeadError);
+    await expect(service.rewrap({ keySet: made.keySet, from: next, to: auk(), kdf })).rejects.toBeInstanceOf(AeadError);
+  });
 });

@@ -30,6 +30,11 @@ export interface KeySetService {
   create(args: { auk: SecretBuf; kdf: KdfRecord }): Promise<{ keySet: KeySet } & KeySetPrivate>;
   /** Opens the private keys. Rejects with `AeadError` for a wrong AUK or any tampering. */
   open(keySet: KeySet, auk: SecretBuf): Promise<KeySetPrivate>;
+  /**
+   * The same keys sealed under a different AUK (password or Secret Key change, recovery). Public keys and uuid stay, so
+   * grants and bundles already issued remain valid. The caller wipes the returned private keys.
+   */
+  rewrap(args: { keySet: KeySet; from: SecretBuf; to: SecretBuf; kdf: KdfRecord }): Promise<{ keySet: KeySet } & KeySetPrivate>;
 }
 
 const sameBytes = (a: Uint8Array, b: Uint8Array): boolean => a.length === b.length && a.every((x, i) => x === b[i]);
@@ -47,7 +52,7 @@ export function createKeySetService({ aead, signer, rng }: { aead: Aead; signer:
     return SecretBuf.take(await aead.open(auk, blob.slice(0, NONCE_BYTES), blob.slice(NONCE_BYTES), aadFor(uuid, role)));
   }
 
-  return {
+  const service: KeySetService = {
     async create({ auk, kdf }) {
       const uuid = Uint8Array.from(rng.bytes(16));
       const encSk = SecretBuf.take(Uint8Array.from(rng.bytes(32)));
@@ -69,6 +74,20 @@ export function createKeySetService({ aead, signer, rng }: { aead: Aead; signer:
       }
     },
 
+    async rewrap({ keySet, from, to, kdf }) {
+      const keys = await service.open(keySet, from);
+      try {
+        return {
+          keySet: { ...keySet, kdf, enc: { ...keySet.enc, sk_ct: await seal(to, keySet.uuid, 'enc', keys.encSk) }, sig: { ...keySet.sig, sk_ct: await seal(to, keySet.uuid, 'sig', keys.sigSk) } },
+          ...keys,
+        };
+      } catch (e) {
+        keys.encSk.wipe();
+        keys.sigSk.wipe();
+        throw e;
+      }
+    },
+
     async open(keySet, auk) {
       const encSk = await unseal(auk, keySet.uuid, 'enc', keySet.enc.sk_ct);
       let sigSk: SecretBuf | undefined;
@@ -85,4 +104,5 @@ export function createKeySetService({ aead, signer, rng }: { aead: Aead; signer:
       }
     },
   };
+  return service;
 }

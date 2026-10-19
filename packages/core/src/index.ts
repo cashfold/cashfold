@@ -61,6 +61,7 @@ export * from './identity/application/relay-wire';
 export * from './identity/application/sign-in';
 export * from './identity/application/enrol-device';
 export * from './identity/application/register-existing';
+export * from './identity/application/credential-change';
 export * from './identity/application/email-verification';
 export * from './sync/application/sync-client';
 export * from './sync/application/snapshot';
