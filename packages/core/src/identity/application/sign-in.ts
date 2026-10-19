@@ -176,11 +176,12 @@ export async function receiveFolds(args: {
     const raw = (Array.isArray(reply.body) ? reply.body : []).filter((g): g is Uint8Array => g instanceof Uint8Array);
     const opened = await grants.open({ fold, grants: raw, account, publicKeys });
     if (opened.length === 0 || services.keyImport === undefined) continue; // nothing this device can read
-    for (const k of opened) await services.keyImport.importFoldKey(fold, k.epoch, k.key);
     const top = opened.reduce((a, b) => (b.epoch > a.epoch ? b : a));
     // The name and base currency are in the Fold's settings record, which arrives with the first sync and replaces these.
+    // The entry comes first: stored keys belong to it.
     const summary: FoldSummary = { id: fold, name: 'Syncing…', baseCurrency: 'USD', epoch: top.epoch, role: top.role };
     await services.directory.add(summary);
+    for (const k of opened) await services.keyImport.importFoldKey(fold, k.epoch, k.key);
     out.push(summary);
   }
   return ok(out);

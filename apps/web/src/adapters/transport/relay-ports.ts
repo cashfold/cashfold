@@ -1,6 +1,6 @@
 import { foldRef, idFromBytes, idToBytes, type Id, type PullResult, type PushOutcome, type SealedOp, type SnapshotTransportPort, type TransportPort } from '@cashfold/core';
 import { envelopeToSealed, sealedToEnvelope } from '@cashfold/crypto';
-import { decodeOpEnvelope, encodeOpEnvelope } from '@cashfold/protocol';
+import { decodeOpEnvelopeWire as decodeOpEnvelope, encodeOpEnvelopeWire as encodeOpEnvelope } from '@cashfold/protocol/wire';
 import type { RelayErrorKind, RelayLink } from '@cashfold/core';
 
 // Core's transport ports over a signed-in relay session. Ops travel as their CBOR envelopes exactly as signed; the service

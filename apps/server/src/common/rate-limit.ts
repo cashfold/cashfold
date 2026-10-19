@@ -13,7 +13,8 @@ export interface RateLimiter {
   hit(key: string, limit: number, windowMs: number): Decision;
 }
 
-export function createRateLimiter(clock: Clock): RateLimiter {
+/** `scale` multiplies every limit. It is 1 in production; test setups that sign in many accounts from one address raise it. */
+export function createRateLimiter(clock: Clock, scale = 1): RateLimiter {
   const events = new Map<string, number[]>();
   let sweepAt = 0;
   return {
@@ -24,7 +25,7 @@ export function createRateLimiter(clock: Clock): RateLimiter {
         sweepAt = now + 60_000;
       }
       const recent = (events.get(key) ?? []).filter((t) => now - t < windowMs);
-      if (recent.length >= limit) {
+      if (recent.length >= limit * scale) {
         events.set(key, recent);
         return { allowed: false, retryAfterSec: Math.max(1, Math.ceil((recent[0]! + windowMs - now) / 1000)) };
       }

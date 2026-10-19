@@ -17,6 +17,8 @@ export interface ServerConfig {
   readonly defaultKdf: { readonly mKib: number; readonly t: number; readonly p: number };
   /** Origins allowed to call the API from a browser. */
   readonly allowedOrigins: readonly string[];
+  /** Multiplier on every rate limit. Leave at 1 except in test setups. */
+  readonly rateLimitScale?: number;
 }
 
 const flag = (v: string | undefined, fallback: string): string => (v === undefined || v === '' ? fallback : v);
@@ -45,6 +47,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
     publicUrl: flag(env['PUBLIC_URL'], 'http://localhost:3000'),
     rates: ratesSource === 'disabled' ? { kind: 'disabled' } : { kind: 'upstream', url: ratesSource, everyHours: Number(flag(env['RATES_EVERY_HOURS'], '12')) },
     defaultKdf: { mKib: 65_536, t: 3, p: 1 },
+    rateLimitScale: Number(flag(env['RATE_LIMIT_SCALE'], '1')),
     allowedOrigins: (env['ALLOWED_ORIGINS'] ?? '').split(',').map((o) => o.trim()).filter(Boolean),
   };
 }

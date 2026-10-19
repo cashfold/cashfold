@@ -1,6 +1,6 @@
 import { createAesGcm, createEd25519Signer, createFoldKeyGrants, createHpke, SecretBuf, type Rng } from '@cashfold/crypto';
 import { idToBytes, type FoldGrantPort, type Role } from '@cashfold/core';
-import { decodeFoldKeyGrant, encodeFoldKeyGrant } from '@cashfold/protocol';
+import { decodeFoldKeyGrantWire as decodeFoldKeyGrant, encodeFoldKeyGrantWire as encodeFoldKeyGrant } from '@cashfold/protocol/wire';
 import type { FoldKeyring } from '../sqlite-opfs/fold-store';
 
 // Fold keys travel between an account's devices as HPKE grants addressed to the account's own encryption key, signed with

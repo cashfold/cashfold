@@ -71,7 +71,7 @@ export async function createRelay(options: RelayOptions): Promise<Relay> {
   const { config, store } = options;
   const clock = options.clock ?? { now: () => Date.now() };
   const mail = options.mail ?? (config.mail.kind === 'smtp' ? createSmtpMailer(config.mail.url, config.mail.from) : config.mail.kind === 'log' ? createLogMailer() : noMailer);
-  const limiter = options.limiter ?? createRateLimiter(clock);
+  const limiter = options.limiter ?? createRateLimiter(clock, config.rateLimitScale ?? 1);
   const sessions = createSessionStore(clock);
   const events = new EventEmitter();
   const srp = createSrpServer();

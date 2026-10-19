@@ -6,7 +6,7 @@ import {
   idToBytes, newIdV4, type AccountCryptoPort, type AccountSecrets, type DeviceCredentials, type EnrolCryptoHandle, type EnrolCryptoPort, type Id, type KdfOffer, type NewAccountMaterial, type NewDeviceMaterial,
   type RegisterExistingCryptoPort, type Secret, type UnlockCryptoPort, type UnlockedMaterial,
 } from '@cashfold/core';
-import { decodeKeySet } from '@cashfold/protocol';
+import { decodeKeySetWire as decodeKeySet } from '@cashfold/protocol/wire';
 import { decode, encode, type CborValue } from '@cashfold/protocol/cbor';
 
 // Account key management for one device, composed from the crypto package (ARCH 5.2 to 5.4):
@@ -297,7 +297,7 @@ export function createAccountCrypto(options: AccountCryptoOptions): WebAccountCr
             try {
               opened = await keySets.open(decodeKeySet(keySet), auk);
             } catch (e) {
-              if (isBenign(e) || (e as Error).name === 'ZodError') return 'wrong_secret';
+              if (isBenign(e) || (e as Error).name === 'ZodError' || (e as Error).name === 'WireError') return 'wrong_secret';
               throw e;
             }
             created.push(opened.encSk, opened.sigSk);

@@ -164,6 +164,14 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/RateTable' }
         '404': { description: Publication disabled }
+  /accounts/me/verification:
+    post:
+      tags: [auth]
+      summary: Ask for a new confirmation link for the account's email address
+      responses:
+        '204': { description: Sent }
+        '404': { description: This service sends no email }
+        '409': { description: Already confirmed }
   /accounts/verify-email:
     post:
       tags: [auth]
@@ -284,6 +292,23 @@ paths:
       responses:
         '201': { description: Registered }
   /devices/{devId}:
+    put:
+      tags: [devices]
+      summary: Replace a device's encrypted label (any device of the account may rename any other)
+      parameters:
+        - { name: devId, in: path, required: true, schema: { $ref: '#/components/schemas/Bytes16' } }
+      requestBody:
+        required: true
+        content:
+          application/cbor:
+            schema:
+              type: object
+              required: [label_ct]
+              properties:
+                label_ct: { type: string, contentEncoding: base64url, nullable: true, maxLength: 344 }
+      responses:
+        '204': { description: Renamed }
+        '404': { description: Unknown, revoked or another account's device }
     delete:
       tags: [devices]
       summary: Revoke a device; server refuses its subsequent traffic
@@ -432,6 +457,22 @@ paths:
               schema:
                 type: array
                 items: { $ref: '#/components/schemas/FoldKeyGrant' }
+  /folds/{foldId}/ack:
+    post:
+      tags: [ops]
+      summary: Say that this device holds everything up to a position of the log (lets the service prune below a snapshot)
+      parameters: [ { $ref: '#/components/parameters/FoldId' } ]
+      requestBody:
+        required: true
+        content:
+          application/cbor:
+            schema:
+              type: object
+              required: [seq]
+              properties:
+                seq: { type: integer, format: int64, minimum: 0 }
+      responses:
+        '204': { description: Recorded }
   /folds/{foldId}/snapshot:
     get:
       tags: [ops]
@@ -600,7 +641,7 @@ components:
       properties:
         op: { $ref: '#/components/schemas/Bytes16' }
         server_seq: { type: integer, format: int64 }
-        error: { type: string, enum: [bad_signature, unauthorised, seq_gap, too_large, unknown_epoch, duplicate] }
+        error: { type: string, enum: [bad_signature, unauthorised, seq_gap, seq_conflict, too_large, unknown_epoch, duplicate] }
     LogEntry:
       type: string
       contentEncoding: base64url

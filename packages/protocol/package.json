@@ -6,7 +6,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./cbor": "./src/cbor/cbor.ts",
-    "./wire": "./src/schemas/op-wire.ts",
+    "./wire": "./src/wire.ts",
     "./snapshot": "./src/schemas/snapshot-wire.ts"
   },
   "scripts": {

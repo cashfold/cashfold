@@ -239,7 +239,10 @@ export function createSyncService(deps: SyncServiceDeps): SyncService {
       onNudge: () => schedule(0),
       onClose: () => {
         streams.delete(fold);
-        if (live(g) && link === l) scheduleStreamReopen(g, fold);
+        if (live(g) && link === l) {
+          schedule(0); // nudges may have been missed while the stream was down
+          scheduleStreamReopen(g, fold);
+        }
       },
     }).catch(() => undefined);
     if (stream !== undefined && live(g) && link === l) streams.set(fold, stream);
@@ -247,7 +250,7 @@ export function createSyncService(deps: SyncServiceDeps): SyncService {
   }
 
   function scheduleStreamReopen(g: number, fold: Id): void {
-    timers.set(() => void openStream(g, fold), 15_000);
+    timers.set(() => void openStream(g, fold), 2_000);
   }
 
   function armPoll(g: number): void {
@@ -289,6 +292,18 @@ export function createSyncService(deps: SyncServiceDeps): SyncService {
     if (s === undefined || l === undefined || id === undefined || connection !== 'online') return;
 
     const transport = createRelayTransport(l);
+    // A refused session (removed device, expired session) and a deleted account are not network trouble: say what they are.
+    let sessionRefused = false;
+    let accountGone = false;
+    const guard = async <T>(call: Promise<T>): Promise<T> => {
+      try {
+        return await call;
+      } catch (e) {
+        if (e instanceof RelayFailure && (e.kind === 'rejected' || e.kind === 'forbidden')) sessionRefused = true;
+        if (e instanceof RelayFailure && e.kind === 'gone') accountGone = true;
+        throw e;
+      }
+    };
     const snapshots = createSnapshotService({
       codec: snapshotCodec, oplog: s.oplog, projections: s.projections, cursors: s.cursors, keys: { deviceId: () => s.deviceId, currentEpoch: async (f) => (await s.keyImport.epochs(f)).at(-1) },
       sealer: s.snapshotSealer, transport: createRelaySnapshotTransport(l),
@@ -300,8 +315,8 @@ export function createSyncService(deps: SyncServiceDeps): SyncService {
       const client = createSyncClient({
         oplog: s.oplog, writePath: s.writePath, cursors: s.cursors, clock: { nowMs: deps.nowMs },
         transport: {
-          push: (f, ops) => transport.push(f, ops),
-          pull: (f, after, limit) => transport.pull(f, after, limit),
+          push: (f, ops) => guard(transport.push(f, ops)),
+          pull: (f, after, limit) => guard(transport.pull(f, after, limit)),
         },
         onApplied: (fold, outcome) => {
           applyingRemote = true;
@@ -333,6 +348,8 @@ export function createSyncService(deps: SyncServiceDeps): SyncService {
       if (named !== undefined) await s.directory.add(named);
       const pending = (await s.oplog.listPending(summary.id)).length;
       status.finish(summary.id, report, deps.nowMs(), pending);
+      if (accountGone) return void gone();
+      if (sessionRefused) return void sessionLost(g); // sign in again: that is also how a removed device finds out
       if (report.failure === undefined) {
         s.syncMarks.markSynced(summary.id, deps.nowMs());
         await snapshots.acknowledge(summary.id).catch(() => undefined);
@@ -343,7 +360,7 @@ export function createSyncService(deps: SyncServiceDeps): SyncService {
       } else if (report.failure === 'offline') {
         sessionLost(g);
       }
-      if (report.applied > 0) deps.publish({ type: 'RemoteChanged', fold: summary.id });
+      if (report.applied > 0 || report.quarantined > 0) deps.publish({ type: 'RemoteChanged', fold: summary.id });
       changed();
     }
     void refreshRates(g);

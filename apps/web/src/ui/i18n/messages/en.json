@@ -587,5 +587,7 @@
   "email.confirm": "Confirm address",
   "email.discoverable": "Let people who know my email address find me to invite me to a Fold.",
   "email.error.invalid_token": "That code is not valid or has expired.",
-  "email.error.generic": "That did not work. Try again."
+  "email.error.generic": "That did not work. Try again.",
+  "removed.notice": "This device was removed from the account, and the data it held was erased.",
+  "removed.addAgain": "Add it again"
 }

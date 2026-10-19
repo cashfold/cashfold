@@ -1,7 +1,7 @@
 // Fails when a production dependency has a licence outside the allowlist.
 import { execFileSync } from 'node:child_process';
 
-const ALLOWED = new Set(['MIT', 'ISC', 'BSD-2-Clause', 'BSD-3-Clause', 'Apache-2.0', '0BSD', 'BlueOak-1.0.0', 'CC0-1.0', 'Python-2.0', 'Unlicense']);
+const ALLOWED = new Set(['MIT', 'MIT-0', 'ISC', 'BSD-2-Clause', 'BSD-3-Clause', 'Apache-2.0', '0BSD', 'BlueOak-1.0.0', 'CC0-1.0', 'Python-2.0', 'Unlicense']);
 // Reviewed build-time-only exceptions (not shipped in the client bundle). Add with a reason.
 const EXCEPTIONS = new Set([
   'caniuse-lite', // CC-BY-4.0 browser data used by the CSS toolchain

@@ -1,0 +1,28 @@
+# Every setting the relay understands, as the environment variables it reads. deploy/compose.yml passes them through from
+# deploy/.env; this file is the reference, with the defaults the relay uses when a variable is not set.
+# (The relay reads the environment, not this file.)
+database:
+  DATABASE_URL: postgres://cashfold:<password>@postgres:5432/cashfold   # leave unset for a throwaway in-memory store
+  STORE: postgres                                                         # postgres | memory
+listen:
+  PORT: 8080                                                              # plain HTTP and WebSocket; put TLS in front
+secrets:
+  SERVER_SECRET: <64 hex characters>                                      # keyed hashes of email addresses; losing it locks everyone out
+registration:
+  REGISTRATION: open                                                      # open | invite
+  INVITE_CODES: ""                                                        # comma separated
+email:
+  MAIL: log                                                               # none | log | smtp
+  SMTP_URL: ""                                                            # smtps://user:password@mail.example.com
+  MAIL_FROM: ""                                                           # Cashfold <no-reply@example.com>
+  PUBLIC_URL: http://localhost:3000                                       # base address of links in emails
+rates:
+  RATES_URL: disabled                                                     # disabled | https://… returning {"rates": {"EUR": "0.91"}}
+  RATES_EVERY_HOURS: 12
+limits:
+  RATE_LIMIT_SCALE: 1                                                      # multiplies every rate limit; leave at 1
+browser:
+  ALLOWED_ORIGINS: ""                                                     # web-app origins that may call the relay
+storage:
+  # Attachments and large snapshots will use an S3-compatible bucket (compose profile "storage"); not used yet.
+  S3_ENDPOINT: ""

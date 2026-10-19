@@ -95,7 +95,7 @@ function setup(o: Opts = {}) {
       calls.push('session.start');
       return {
         directory, commandBus: undefined as never, foldKeys: { createFoldKey: async () => 1, dropFoldKeys: async () => undefined },
-        keyImport: { importFoldKey: async (f: Id, e: number) => void imported.push([f, e]), epochs: async () => [] },
+        keyImport: { importFoldKey: async (f: Id, e: number) => { if (!folds.has(f)) throw new Error('key stored before its Fold'); imported.push([f, e]); }, epochs: async () => [] },
       };
     },
     stop: async () => void stopped(),

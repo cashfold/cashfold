@@ -43,6 +43,11 @@ export function AppShell({ children }: { children: ReactNode }) {
           <button type="button" className={`${buttonClass} ms-auto`} onClick={() => core.lock()}>{t('lock.button')}</button>
         ) : null}
       </header>
+      {core.removed ? (
+        <p role="alert" className="border-b border-border-strong bg-surface px-4 py-3">
+          {t('removed.notice')} <Link className="underline" href="/add/">{t('removed.addAgain')}</Link>
+        </p>
+      ) : null}
       {core.covered ? <PrivacyCover /> : null}
       <div className="mx-auto max-w-4xl p-4" inert={core.covered}>{children}</div>
     </>

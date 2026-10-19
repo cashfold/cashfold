@@ -193,11 +193,11 @@ test.describe('@us1 account', () => {
     await page.getByLabel('Lock after no activity for').selectOption('15');
     await expect(page.getByRole('status').filter({ hasText: 'Saved' })).toBeVisible();
 
-    await page.getByLabel('Password').fill('this is not my password');
+    await page.getByRole('region', { name: 'Emergency Kit' }).getByLabel('Password').fill('this is not my password');
     await page.getByRole('button', { name: 'Show Emergency Kit' }).click();
     await expect(page.locator('form [role=alert]')).toContainText('not right');
 
-    await page.getByLabel('Password').fill(PASSWORD);
+    await page.getByRole('region', { name: 'Emergency Kit' }).getByLabel('Password').fill(PASSWORD);
     await page.getByRole('button', { name: 'Show Emergency Kit' }).click();
     const download = page.waitForEvent('download');
     await page.getByRole('button', { name: 'Download Emergency Kit' }).click();
