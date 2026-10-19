@@ -22,6 +22,7 @@ Version 0.1.0. Sources: `specs/001-secure-finance-core/contracts/op-envelope.cdd
 | `PUT` | `/accounts/me/keyset` | session | Replace verifier, salts, KDF params and key set atomically (password or Secret Key change) |
 | `DELETE` | `/accounts/me` | session | Delete the caller's account (FR-101) |
 | `GET` | `/rates` | no | Shared exchange-rate table (FR-103) |
+| `POST` | `/accounts/me/verification` | session | Ask for a new confirmation link for the account's email address |
 | `POST` | `/accounts/verify-email` | no | Confirm control of an email address (FR-105) |
 | `PUT` | `/accounts/me/discoverable` | session | Set whether other users can find this account by email (FR-106) |
 | `POST` | `/accounts/lookup` | session | Resolve an email address to a public key bundle for an invitation (FR-106) |
@@ -29,6 +30,7 @@ Version 0.1.0. Sources: `specs/001-secure-finance-core/contracts/op-envelope.cdd
 | `GET` | `/accounts/{accountId}/public-keys` | session | Public key bundle used for invitations |
 | `GET` | `/devices` | session | List own devices |
 | `POST` | `/devices` | session | Register a device signing key |
+| `PUT` | `/devices/{devId}` | session | Replace a device's encrypted label (any device of the account may rename any other) |
 | `DELETE` | `/devices/{devId}` | session | Revoke a device; server refuses its subsequent traffic |
 | `POST` | `/folds` | session | Create a Fold (genesis log entry and owner grant) |
 | `GET` | `/folds` | session | List Folds the caller belongs to (ids and heads only) |
@@ -39,6 +41,7 @@ Version 0.1.0. Sources: `specs/001-secure-finance-core/contracts/op-envelope.cdd
 | `GET` | `/folds/{foldId}/log` | session | Read the membership log |
 | `POST` | `/folds/{foldId}/log` | session | Append a signed log entry (and, where applicable, new grants) |
 | `GET` | `/folds/{foldId}/grants` | session | Grants addressed to the caller (one per epoch the caller may read) |
+| `POST` | `/folds/{foldId}/ack` | session | Say that this device holds everything up to a position of the log (lets the service prune below a snapshot) |
 | `GET` | `/folds/{foldId}/snapshot` | session | Latest snapshot |
 | `PUT` | `/folds/{foldId}/snapshot` | session | Upload a snapshot |
 | `PUT` | `/folds/{foldId}/attachments/{attId}/chunks/{index}` | session | Upload one encrypted chunk (≤ 64 KiB plaintext, padded) |

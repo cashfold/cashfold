@@ -112,6 +112,7 @@ export function createSyncService(deps: SyncServiceDeps): SyncService {
   let nudgeTimer: unknown;
   let backoff = retry.first;
   let running: Promise<void> | undefined;
+  let connecting: Promise<void> | undefined;
   let again = false;
   let applyingRemote = false;
   let signerRetries = 0;
@@ -146,10 +147,18 @@ export function createSyncService(deps: SyncServiceDeps): SyncService {
     retryTimer = timers.set(() => void connect(), wait);
   }
 
-  async function connect(): Promise<void> {
+  function connect(): Promise<void> {
+    if (connecting !== undefined) return connecting;
+    connecting = connectOnce().finally(() => {
+      connecting = undefined;
+    });
+    return connecting;
+  }
+
+  async function connectOnce(): Promise<void> {
     const g = generation;
     const id = identity;
-    if (id === undefined || !live(g) || connection === 'connecting') return;
+    if (id === undefined || !live(g)) return;
     setConnection('connecting');
     const srpX = id.account.srpX;
     const signed = await deps.auth.signIn({
@@ -181,7 +190,8 @@ export function createSyncService(deps: SyncServiceDeps): SyncService {
     }
     link = signed.link as WebRelayLink;
     backoff = retry.first;
-    setConnection('online');
+    // 'online' means ready to sync: the Folds exist on the service and the devices' keys are known. Until then a round would
+    // push to a Fold the service has not been told about.
     await onConnected(g);
   }
 
@@ -218,6 +228,7 @@ export function createSyncService(deps: SyncServiceDeps): SyncService {
     if (!live(g)) return;
     await receiveFolds({ link: l, grants: deps.grants, services, account: id.account, publicKeys: id.publicKeys });
 
+    setConnection('online');
     await syncAll();
     if (!live(g)) return;
     for (const fold of await s.directory.list()) void openStream(g, fold.id);
@@ -299,7 +310,7 @@ export function createSyncService(deps: SyncServiceDeps): SyncService {
       try {
         return await call;
       } catch (e) {
-        if (e instanceof RelayFailure && (e.kind === 'rejected' || e.kind === 'forbidden')) sessionRefused = true;
+        if (e instanceof RelayFailure && e.kind === 'rejected') sessionRefused = true;
         if (e instanceof RelayFailure && e.kind === 'gone') accountGone = true;
         throw e;
       }
@@ -420,7 +431,8 @@ export function createSyncService(deps: SyncServiceDeps): SyncService {
 
     async syncNow() {
       if (identity === undefined) return;
-      if (link === undefined && registration === 'done' && connection !== 'connecting' && connection !== 'removed' && connection !== 'needs_password') {
+      if (connecting !== undefined) await connecting;
+      if (link === undefined && registration === 'done' && connection !== 'removed' && connection !== 'needs_password') {
         clear(retryTimer);
         await connect();
         return;

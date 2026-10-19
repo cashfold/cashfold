@@ -192,7 +192,14 @@ export function createRelayClient({ send, pake, aead, hkdf, nowMs = Date.now }: 
         sealRequest: (method, path) => endpoint.seal(encode({ m: method, p: path, b: null } as never)),
         request(method, path, body) {
           const run = async (): Promise<Reply> => {
-            const frame = await endpoint.seal(encode({ m: method, p: path, b: body === undefined ? null : body } as never));
+            let frame: Uint8Array;
+            try {
+              frame = await endpoint.seal(encode({ m: method, p: path, b: body === undefined ? null : body } as never));
+            } catch (e) {
+              // A session that ended (closed here, expired, or ended by a bad frame) cannot send: signing in again is the way on.
+              if (e instanceof FrameError) throw new RelayError('rejected', 401);
+              throw e;
+            }
             const headers: Record<string, string> = { 'x-cashfold-session': b64url(sessionId), 'content-type': 'application/cbor' };
             const hasBody = method === 'POST' || method === 'PUT';
             if (!hasBody) headers['x-cashfold-frame'] = b64url(frame);

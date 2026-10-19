@@ -40,8 +40,15 @@ jobs:
         run: pnpm --filter @cashfold/web test:browser
       - name: Playwright (includes blocking axe WCAG 2.2 AA assertions)
         run: pnpm test:e2e
-      - name: Testcontainers (PostgreSQL)
-        run: pnpm --filter @cashfold/server test
+      - name: Testcontainers (PostgreSQL: store contract and the relay's HTTP scenarios)
+        run: pnpm --filter @cashfold/server test:integration
+      - name: SRP module rebuilds to the committed bytes
+        run: |
+          rustup target add wasm32-unknown-unknown
+          bash scripts/build-srp-wasm.sh
+          git diff --exit-code packages/crypto/src/adapters/srp-wasm
+      - name: The relay image builds
+        run: docker build -f deploy/Dockerfile.server -t cashfold-relay .
       - name: SBOM
         run: pnpm dlx @cyclonedx/cdxgen -o sbom.cdx.json
       - uses: actions/upload-artifact@v4

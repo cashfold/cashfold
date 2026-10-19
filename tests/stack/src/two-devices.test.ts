@@ -123,6 +123,7 @@ describe('two devices through the real relay', () => {
 
     const sB = b.session();
     const records = async (s: NodeSession) => [...(await s.projections.listRecords(foldId)).keys()].sort();
+    await vi_waitFor(async () => JSON.stringify(await records(sB)) === JSON.stringify(await records(sA)) && (await sB.directory.get(foldId))!.name === 'Personal');
     expect(await records(sB)).toEqual(await records(sA));
     expect((await sB.directory.get(foldId))!.name).toBe('Personal'); // the settings record arrived and named the Fold
 
@@ -131,6 +132,7 @@ describe('two devices through the real relay', () => {
     expect(edit.ok).toBe(true);
     await b.sync.syncNow();
     await a.sync.syncNow();
+    await vi_waitFor(async () => JSON.stringify(await records(sA)) === JSON.stringify(await records(sB)));
     expect(await records(sA)).toEqual(await records(sB));
     expect((await records(sA)).length).toBeGreaterThan(2);
 
