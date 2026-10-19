@@ -43,6 +43,7 @@ export async function withPasswordBytes<T>(password: string, use: (bytes: Uint8A
 }
 
 const ACTIVITY_THROTTLE_MS = 5_000;
+const SESSION_CHECK_MS = 5_000;
 
 export function CoreProvider({ children, makeWorker }: { children: ReactNode; makeWorker?: () => Worker }) {
   const clientRef = useRef<CoreClient | null>(null);
@@ -87,6 +88,19 @@ export function CoreProvider({ children, makeWorker }: { children: ReactNode; ma
       off();
     };
   }, [client, refresh]);
+
+  // Another tab holds the unlocked session. If that tab goes (closed, crashed, or it locked), this one is promoted to the worker that keeps the
+  // database, which starts locked: ask now and then, so the page shows the unlock screen instead of a screen that no longer works.
+  useEffect(() => {
+    if (phase !== 'unlocked') return;
+    const timer = setInterval(() => {
+      client().call<{ phase: Exclude<Phase, 'loading' | 'failed'> }>('status').then(
+        (status) => status.phase !== 'unlocked' && setPhase(status.phase),
+        () => undefined,
+      );
+    }, SESSION_CHECK_MS);
+    return () => clearInterval(timer);
+  }, [phase, client]);
 
   // Hide content the moment the window is hidden or loses focus, before the worker has even heard about it.
   useEffect(() => {

@@ -134,15 +134,21 @@ test.describe('@durability storage and tabs', () => {
     await expect(second.getByTestId('account-row').filter({ hasText: 'Second tab' }).getByTestId('account-balance')).toHaveText('100.00 USD');
   });
 
-  test('a tab that opens while the first is busy still gets an answer, and closing the first hands over to the second', async ({ page, context }) => {
+  test('closing the tab that holds the unlocked session leaves the other tab locked, and the data is still there after unlocking', async ({ page, context }) => {
     await signUp(page);
     await addAccount(page, 'Before');
     const second = await context.newPage();
     await second.goto('/accounts/');
     await expect(second.getByRole('link', { name: 'Before', exact: true })).toBeVisible({ timeout: 30_000 });
 
-    // The first tab goes away; the second takes over as the writer and can still save.
+    // The keys live only in the first tab's worker. When it goes, nothing keeps them: the second tab asks for the password again.
     await page.close();
+    await expect(second.getByRole('heading', { name: 'Unlock Cashfold' })).toBeVisible({ timeout: 90_000 });
+    await expect(second.getByText('Before')).toHaveCount(0);
+    await second.getByLabel('Password').fill(PASSWORD);
+    await second.getByRole('button', { name: 'Unlock' }).click();
+    await go(second, 'Accounts');
+    await expect(second.getByRole('link', { name: 'Before', exact: true })).toBeVisible({ timeout: 60_000 });
     await addAccount(second, 'After');
     await expect(second.getByTestId('account-row')).toHaveCount(2);
   });

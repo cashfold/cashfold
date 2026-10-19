@@ -2,6 +2,7 @@
 
 import { decideBackupNag, type NagLevel } from '@cashfold/core';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { requestPersistence, type PersistenceState } from '../../adapters/storage-persistence';
 import { useCore } from '../core/CoreProvider';
@@ -25,6 +26,7 @@ export function StorageNotice() {
   const [persistence, setPersistence] = useState<PersistenceState | undefined>();
   const [status, setStatus] = useState<Status | undefined>();
   const [hidden, setHidden] = useState(false);
+  const pathname = usePathname(); // what there is to lose changes as the person works: ask again when they move to another screen
 
   useEffect(() => {
     if (core.phase !== 'unlocked') return;
@@ -34,7 +36,7 @@ export function StorageNotice() {
     return () => {
       live = false;
     };
-  }, [core, core.phase, core.epoch]);
+  }, [core, core.phase, core.epoch, pathname]);
 
   if (core.phase !== 'unlocked' || persistence === undefined || status === undefined || hidden) return null;
   const level: NagLevel = decideBackupNag({ persisted: persistence.persisted, onService: status.onService, hasData: status.hasData, lastBackupAtMs: status.lastBackupAtMs, dismissedAtMs: status.dismissedAtMs, nowMs: Date.now() });
