@@ -8,9 +8,9 @@
     "build": "next build && node scripts/build-sw.mjs",
     "typecheck": "tsc --noEmit",
     "test:browser": "vitest run -c vitest.browser.config.ts",
-    "predev": "node scripts/copy-sqlite3mc.mjs",
-    "prebuild": "node scripts/copy-sqlite3mc.mjs",
-    "pretest:browser": "node scripts/copy-sqlite3mc.mjs"
+    "predev": "node scripts/copy-sqlite3mc.mjs && node scripts/copy-srp-wasm.mjs",
+    "prebuild": "node scripts/copy-sqlite3mc.mjs && node scripts/copy-srp-wasm.mjs",
+    "pretest:browser": "node scripts/copy-sqlite3mc.mjs && node scripts/copy-srp-wasm.mjs"
   },
   "dependencies": {
     "@cashfold/core": "workspace:*",

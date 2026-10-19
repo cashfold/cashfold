@@ -7,6 +7,7 @@ import { downloadKit, printKit, type KitSource } from '../emergency-kit/actions'
 import { TextField, buttonClass, secondaryButtonClass } from '../forms/TextField';
 import { useI18n } from '../i18n/I18nProvider';
 import { QuickUnlockSection } from './QuickUnlockSection';
+import { SyncSection } from './SyncSection';
 
 const IDLE_MINUTES = [1, 2, 5, 10, 15, 30, 60];
 const HIDDEN_SECONDS = [0, 15, 30, 60, 120, 300];
@@ -67,6 +68,8 @@ export function SettingsScreen() {
       </section>
 
       {settings ? <QuickUnlockSection enabled={settings.quickUnlock.enabled} onChange={reload} /> : null}
+
+      <SyncSection />
 
       <section aria-labelledby="account-heading" className="mt-8">
         <h2 id="account-heading" className="text-lg font-semibold">{t('settings.account.title')}</h2>

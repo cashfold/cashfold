@@ -1,11 +1,14 @@
 import {
-  createAccount, createCategoryCommands, createFoldCommands, createQuickUnlock, createSession, describeFoldDeletion, DEFAULT_LOCK_POLICY, newIdV4, unlock,
-  parseSettings, toLockPolicy, type AccountCryptoPort, type CredentialStorePort, type DeviceSettings, type DeviceSettingsPort, type Id, type LockPolicy, type QuickUnlockCryptoPort, type QuickUnlockStorePort, type Session, type SessionPort, type UnlockCryptoPort,
+  createAccount, createCategoryCommands, createDeviceManager, createEmailVerification, createFoldCommands, createQuickUnlock, createRefreshRates, createSession, describeFoldDeletion, DEFAULT_LOCK_POLICY, newIdV4, registerExisting, signInOnNewDevice, unlock,
+  parseSettings, toLockPolicy, type AccountCryptoPort, type CredentialStorePort, type DeviceLabelPort, type DeviceSettings, type DeviceSettingsPort, type EnrolCryptoPort, type Id, type LockPolicy, type QuickUnlockCryptoPort, type QuickUnlockStorePort,
+  type RatesSourcePort, type RegisterExistingCryptoPort, type RegistrationPort, type RelayAuthPort, type Session, type SessionPort, type UnlockCryptoPort,
 } from '@cashfold/core';
 import { SecretBuf } from '@cashfold/crypto';
 import { createWebSession } from '../adapters/sqlite-opfs/web-session';
 import type { SqliteRuntime } from '../adapters/sqlite-opfs/runtime';
 import { createLedgerHandlers } from './ledger-handlers';
+import { createFoldGrantPort } from '../adapters/transport/fold-grants';
+import { createSyncService, type SyncIdentity, type SyncService, type SyncSession } from './sync-service';
 import { RpcError, type Handlers } from './rpc';
 
 // The Core Worker's application surface (contracts/core-api.md). Everything crossing the RPC boundary is plain data:
@@ -24,6 +27,19 @@ export interface AppHandlerDeps {
   /** Called after the session locks itself (idle, hidden, page gone): announce and end the worker. */
   readonly onLocked: () => void;
   readonly lockPolicy?: LockPolicy;
+  // Sync (US4). Every part is optional: without them the app is purely local, exactly as before.
+  readonly relayAuth?: RelayAuthPort;
+  readonly registration?: RegistrationPort;
+  readonly enrolCrypto?: EnrolCryptoPort;
+  readonly registerCrypto?: RegisterExistingCryptoPort;
+  readonly deviceLabels?: DeviceLabelPort;
+  readonly ratesSource?: (server: string) => RatesSourcePort;
+  readonly confirmEmail?: (server: string, token: string) => Promise<{ ok: true } | { ok: false; kind: string }>;
+  /** Told about changes the page should reflect (sync status, other devices' changes, this device's removal). */
+  readonly publish?: (event: { readonly type: string; readonly [key: string]: unknown }) => void;
+  /** Erases this device's database. Used when the device is removed from the account. */
+  readonly eraseLocalData?: () => Promise<void>;
+  readonly syncTimers?: { set(fn: () => void, ms: number): unknown; clear(handle: unknown): void };
 }
 
 export type Phase = 'no_account' | 'locked' | 'unlocked';
@@ -43,8 +59,11 @@ const secretFrom = (bytes: unknown): SecretBuf => {
 export function createAppHandlers(deps: AppHandlerDeps): AppRuntime {
   let webSession: ReturnType<typeof createWebSession> | undefined;
   const quickHolder: { quick?: ReturnType<typeof createQuickUnlock> } = {};
+  let sync: SyncService | undefined;
+  let identity: SyncIdentity | undefined;
   const session = createSession({
     closeDatabase: async () => {
+      sync?.stop();
       await webSession?.stop();
       await quickHolder.quick?.markLocked().catch(() => undefined); // the inactivity period for quick unlock runs from here
     },
@@ -83,7 +102,53 @@ export function createAppHandlers(deps: AppHandlerDeps): AppRuntime {
     await current.commandBus.execute(createCategoryCommands().seedDefaultCategories, { fold }).catch(() => undefined);
   };
 
+  const grants = createFoldGrantPort({ keyring: () => webSession?.current()?.keyring, rng: deps.rng });
+  const publish = deps.publish ?? (() => undefined);
+  if (deps.relayAuth !== undefined) {
+    sync = createSyncService({
+      auth: deps.relayAuth, grants, session: () => webSession?.current() as SyncSession | undefined, nowMs: deps.nowMs,
+      ...(deps.ratesSource && { ratesSource: deps.ratesSource }), ...(deps.syncTimers && { timers: deps.syncTimers }),
+      publish: (event) => {
+        publish(event);
+        // A device that has been removed from the account erases what it holds (FR-010): nothing more syncs, and nothing stays.
+        if (event.type === 'DeviceRemoved') void (async () => {
+          await deps.credentials.clear().catch(() => undefined);
+          await deps.quickStore.clear().catch(() => undefined);
+          try {
+            webSession?.current()?.db.destroy();
+          } catch {
+            // The file is removed by eraseLocalData below if it is still there.
+          }
+          await deps.eraseLocalData?.().catch(() => undefined);
+          await session.lock();
+        })();
+      },
+    });
+  }
+  const startSync = (next: SyncIdentity, registration: 'done' | 'pending'): void => {
+    identity = next;
+    sync?.start(next, registration);
+  };
+  const needSync = (): { sync: SyncService; identity: SyncIdentity } => {
+    if (sync === undefined || identity === undefined) throw new RpcError('RpcError', 'sync_unavailable');
+    return { sync, identity };
+  };
+  const sessionDeviceId = (): Id => {
+    const current = webSession?.current();
+    if (current === undefined) throw new RpcError('RpcError', 'locked');
+    return current.deviceId;
+  };
+
   const ledger = createLedgerHandlers({ open, clock: { nowMs: deps.nowMs }, rng: deps.rng });
+
+  const needLabels = (): DeviceLabelPort => {
+    if (deps.deviceLabels === undefined) throw new RpcError('RpcError', 'sync_unavailable');
+    return deps.deviceLabels;
+  };
+  const emailVerification = () => {
+    const { identity: id } = needSync();
+    return createEmailVerification({ link: () => sync?.link(), confirm: (token) => (deps.confirmEmail ? deps.confirmEmail(id.server, token) : Promise.resolve({ ok: false as const, kind: 'offline' })) });
+  };
 
   const handlers: Handlers = {
     ...ledger,
@@ -98,10 +163,11 @@ export function createAppHandlers(deps: AppHandlerDeps): AppRuntime {
     async createAccount(args: { email: string; password: Uint8Array; server: string; discoverable: boolean; foldName?: string; baseCurrency?: string }) {
       const sessionPort = await newWebSession();
       const input = { email: args.email, password: secretFrom(args.password), server: args.server, discoverable: args.discoverable, ...(args.foldName === undefined ? {} : { foldName: args.foldName }), ...(args.baseCurrency === undefined ? {} : { baseCurrency: args.baseCurrency }) };
-      const result = await createAccount({ crypto: deps.accountCrypto, registration: { register: async () => ({ ok: false, reason: 'offline' }) }, credentials: deps.credentials, sessionPort, session, random: deps.rng })(input);
+      const result = await createAccount({ crypto: deps.accountCrypto, registration: deps.registration ?? { register: async () => ({ ok: false, reason: 'offline' }) }, credentials: deps.credentials, sessionPort, session, random: deps.rng })(input);
       if (result.ok) {
         await applySettings();
         await seedCategories(result.value.fold.id); // the first Fold starts with the default category set
+        if (result.value.sync !== undefined) startSync({ email: args.email.trim().toLowerCase(), accountId: result.value.accountId, server: args.server, ...result.value.sync }, result.value.registration);
       }
       return result.ok ? { ok: true, value: { secretKeyText: result.value.secretKeyText, accountId: result.value.accountId, fold: result.value.fold, registration: result.value.registration } } : result;
     },
@@ -112,6 +178,8 @@ export function createAppHandlers(deps: AppHandlerDeps): AppRuntime {
       if (result.ok) {
         await applySettings();
         await quick.recordPasswordUnlock();
+        const stored = await deps.credentials.load();
+        if (result.value.sync !== undefined && stored !== undefined) startSync({ email: result.value.email, accountId: result.value.accountId, server: result.value.server, ...result.value.sync }, stored.registration);
       }
       return result.ok ? { ok: true, value: { accountId: result.value.accountId, email: result.value.email, server: result.value.server } } : result;
     },
@@ -127,7 +195,11 @@ export function createAppHandlers(deps: AppHandlerDeps): AppRuntime {
 
     async 'quickUnlock.unlock'(args: { prfOutput: Uint8Array; sessionMarker?: string }) {
       const result = await quick.unlock({ prfOutput: args.prfOutput, sessionMarker: args.sessionMarker });
-      if (result.ok) await applySettings();
+      if (result.ok) {
+        await applySettings();
+        const stored = await deps.credentials.load();
+        if (result.value.sync !== undefined && stored !== undefined) startSync({ email: result.value.email, accountId: result.value.accountId, server: result.value.server, ...result.value.sync }, stored.registration);
+      }
       return result.ok ? { ok: true, value: { accountId: result.value.accountId, email: result.value.email, server: result.value.server } } : result;
     },
 
@@ -167,6 +239,94 @@ export function createAppHandlers(deps: AppHandlerDeps): AppRuntime {
       for (const secret of [material.sessionKey, material.deviceSigningKey, material.secretKey]) secret.wipe();
       session.recordSuccessfulUnlock();
       return { ok: true, value: { accountId: stored.accountId, email: stored.email, server: stored.server, secretKeyText } };
+    },
+
+    // ------------------------------------------------------------ sync (US4)
+
+    /** Signs in on a device that has no account yet, from the password and Secret Key (FR-004). */
+    async 'account.signIn'(args: { email: string; server: string; secretKeyText: string; password: Uint8Array }) {
+      if (deps.relayAuth === undefined || deps.enrolCrypto === undefined) throw new RpcError('RpcError', 'sync_unavailable');
+      const sessionPort = await newWebSession();
+      const result = await signInOnNewDevice({
+        relay: deps.relayAuth, enrolCrypto: deps.enrolCrypto, grants, credentials: deps.credentials, sessionPort, session, random: deps.rng,
+      })({ email: args.email, server: args.server, secretKeyText: args.secretKeyText, password: secretFrom(args.password) });
+      if (!result.ok) return result;
+      await applySettings();
+      const stored = await deps.credentials.load();
+      if (stored !== undefined) startSync({ email: stored.email, accountId: result.value.accountId, server: stored.server, ...result.value.sync }, 'done');
+      return { ok: true, value: { accountId: result.value.accountId, folds: result.value.folds } };
+    },
+
+    /** Registers an account made offline (or before sync existed) with a service, then starts syncing it (T200). */
+    async 'sync.enable'(args: { password: Uint8Array; server?: string; inviteCode?: string }) {
+      if (deps.registerCrypto === undefined || deps.registration === undefined) throw new RpcError('RpcError', 'sync_unavailable');
+      open();
+      const result = await registerExisting({ crypto: deps.registerCrypto, registration: deps.registration, credentials: deps.credentials })({
+        password: secretFrom(args.password), ...(args.server !== undefined && { server: args.server }), ...(args.inviteCode !== undefined && { inviteCode: args.inviteCode }),
+      });
+      if (!result.ok) return result;
+      const stored = await deps.credentials.load();
+      if (stored === undefined) return { ok: false, error: { code: 'no_account' } };
+      session.track(result.value.account.encSk);
+      session.track(result.value.account.sigSk);
+      session.track(result.value.account.srpX);
+      startSync({ email: stored.email, accountId: stored.accountId, server: result.value.server, account: result.value.account, publicKeys: result.value.publicKeys }, 'done');
+      return { ok: true, value: { server: result.value.server } };
+    },
+
+    async 'sync.status'() {
+      open();
+      const stored = await deps.credentials.load();
+      const snap = sync === undefined ? { connection: 'idle', overall: 'synced', folds: [], attention: [], clock: [] } : await sync.snapshot();
+      return { ...snap, available: sync !== undefined, registration: stored?.registration ?? 'pending', server: stored?.server };
+    },
+
+    async 'sync.now'() {
+      open();
+      await sync?.syncNow();
+      return true;
+    },
+
+    async 'devices.list'() {
+      open();
+      const { identity: id } = needSync();
+      return createDeviceManager({ link: () => sync?.link(), labels: needLabels(), account: id.account, thisDevice: sessionDeviceId() }).list();
+    },
+
+    async 'devices.rename'(args: { device: Id; label: string }) {
+      open();
+      const { identity: id } = needSync();
+      return createDeviceManager({ link: () => sync?.link(), labels: needLabels(), account: id.account, thisDevice: sessionDeviceId() }).rename(args.device, args.label);
+    },
+
+    async 'devices.revoke'(args: { device: Id }) {
+      open();
+      const { identity: id } = needSync();
+      return createDeviceManager({ link: () => sync?.link(), labels: needLabels(), account: id.account, thisDevice: sessionDeviceId() }).revoke(args.device);
+    },
+
+    async 'email.status'() {
+      open();
+      return emailVerification().status();
+    },
+    async 'email.request'() {
+      open();
+      return emailVerification().request();
+    },
+    async 'email.submit'(args: { token: string }) {
+      open();
+      return emailVerification().submit(args.token);
+    },
+    async 'email.setDiscoverable'(args: { discoverable: boolean }) {
+      open();
+      return emailVerification().setDiscoverable(args.discoverable);
+    },
+
+    async 'rates.refresh'(args: { fold: Id }) {
+      const s = open();
+      const stored = await deps.credentials.load();
+      if (deps.ratesSource === undefined || stored === undefined) return { ok: true, value: { status: 'unavailable', reason: 'not_published' } };
+      return s.commandBus.execute(createRefreshRates({ source: deps.ratesSource(stored.server) }), { fold: args.fold });
     },
 
     async 'session.activity'() {

@@ -59,6 +59,17 @@ export function LedgerProvider({ children }: { children: ReactNode }) {
     setVersion((n) => n + 1);
   }, [core, fold]);
 
+  // Changes that arrive from other devices: the Fold list (a new Fold, a new name) and the open Fold's lists are asked again.
+  useEffect(
+    () =>
+      core.subscribe((event) => {
+        if (event.type !== 'RemoteChanged') return;
+        void core.call<FoldSummary[]>('folds.list').then(setFolds, () => undefined);
+        void reload();
+      }),
+    [core, reload],
+  );
+
   useEffect(() => {
     let live = true;
     core.call<FoldSummary[]>('folds.list').then(

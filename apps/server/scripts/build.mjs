@@ -13,7 +13,7 @@ await build({
   sourcemap: true,
   tsconfigRaw: { compilerOptions: { experimentalDecorators: true } },
   // Nest loads optional packages lazily; leave what it probes for out of the bundle.
-  external: ['@nestjs/microservices', '@nestjs/websockets', '@nestjs/websockets/*', '@nestjs/microservices/*', 'class-transformer', 'class-validator', 'pg-native', 'cpu-features'],
+  external: ['@nestjs/microservices', '@nestjs/websockets', '@nestjs/websockets/*', '@nestjs/microservices/*', 'class-transformer', 'class-validator', 'pg-native', 'cpu-features', '@nestjs/platform-express', '@fastify/static', '@fastify/view', '@fastify/multipart'],
   banner: { js: "import { createRequire as __cr } from 'node:module'; const require = __cr(import.meta.url);" },
   logLevel: 'info',
 });

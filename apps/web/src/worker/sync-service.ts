@@ -1,5 +1,5 @@
 import {
-  asMap, clockNotices, createRefreshRates, createSnapshotService, createSyncClient, createSyncStatus, deriveEvents, ensureRemoteFolds, idOfBytes, receiveFolds, syncAttention,
+  asMap, clockNotices, createRefreshRates, createSnapshotService, createSyncClient, createSyncStatus, deriveEvents, ensureRemoteFolds, idOfBytes, receiveFolds, settingsRecordId, summaryFromSettings, syncAttention,
   type AccountSecrets, type ClockNotice, type CommandBus, type EventBus, type FoldDirectory, type FoldGrantPort, type FoldKeyImportPort, type FoldKeyPort, type FoldSyncStatus, type Id, type NeedsAttentionItem,
   type OpLogStore, type ProjectionStore, type RatesSourcePort, type RelayAuthPort, type RelayErrorKind, type SealedSnapshotPort, type SessionServices, type SyncCursorPort, type SyncReport, type SyncState, type WritePath,
 } from '@cashfold/core';
@@ -114,6 +114,7 @@ export function createSyncService(deps: SyncServiceDeps): SyncService {
   let running: Promise<void> | undefined;
   let again = false;
   let applyingRemote = false;
+  let signerRetries = 0;
   let unsubscribe: (() => void) | undefined;
   let lastRates = 0;
   const reports = new Map<Id, SyncReport>();
@@ -184,13 +185,11 @@ export function createSyncService(deps: SyncServiceDeps): SyncService {
     await onConnected(g);
   }
 
-  async function onConnected(g: number): Promise<void> {
+  /** Who else signs for this account, so their ops can be verified. */
+  async function refreshDevices(): Promise<void> {
     const s = deps.session();
     const l = link;
-    const id = identity;
-    if (s === undefined || l === undefined || id === undefined || !live(g)) return;
-
-    // Who else signs for this account, so their ops can be verified.
+    if (s === undefined || l === undefined) return;
     const devices = await l.request('GET', '/devices');
     if (devices.ok && Array.isArray(devices.body)) {
       const rows = [];
@@ -202,6 +201,15 @@ export function createSyncService(deps: SyncServiceDeps): SyncService {
       }
       s.deviceKeys.replaceAll(rows, deps.nowMs());
     }
+  }
+
+  async function onConnected(g: number): Promise<void> {
+    const s = deps.session();
+    const l = link;
+    const id = identity;
+    if (s === undefined || l === undefined || id === undefined || !live(g)) return;
+
+    await refreshDevices();
 
     // Folds made offline reach the service; Folds made on other devices reach this one.
     const services: SessionServices = { commandBus: s.commandBus, directory: s.directory, foldKeys: s.foldKeys, keyImport: s.keyImport };
@@ -261,6 +269,7 @@ export function createSyncService(deps: SyncServiceDeps): SyncService {
     }
     running = (async () => {
       try {
+        signerRetries = 0;
         do {
           again = false;
           await syncRound();
@@ -310,7 +319,18 @@ export function createSyncService(deps: SyncServiceDeps): SyncService {
         report = { pushed: 0, pulled: 0, applied: 0, duplicates: 0, quarantined: 0, ignored: 0, head: 0n, rejectedOps: [], failure: e instanceof RelayFailure && e.kind === 'offline' ? 'offline' : 'failed' };
       }
       if (!live(g)) return;
+      if (report.failure === 'unknown_signer' && signerRetries < 1) {
+        // A device was added since this one last asked: learn it, then run the round again.
+        signerRetries++;
+        await refreshDevices();
+        again = true;
+        continue;
+      }
       reports.set(summary.id, report);
+      // The Fold's name and base currency are an ordinary record; the directory follows whatever the merge settled on.
+      const settings = await s.projections.getRecord(summary.id, settingsRecordId(summary.id));
+      const named = settings === undefined ? undefined : summaryFromSettings((await s.directory.get(summary.id)) ?? summary, settings);
+      if (named !== undefined) await s.directory.add(named);
       const pending = (await s.oplog.listPending(summary.id)).length;
       status.finish(summary.id, report, deps.nowMs(), pending);
       if (report.failure === undefined) {

@@ -1,5 +1,7 @@
-import { Page } from '../../ui/shell/Page';
+'use client';
 
-export default function Screen() {
-  return <Page titleKey="page.addDevice.title" />;
+import { AddDeviceScreen } from '../../ui/devices/AddDeviceScreen';
+
+export default function AddDevicePage() {
+  return <AddDeviceScreen />;
 }

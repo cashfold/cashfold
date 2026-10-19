@@ -1,0 +1,15 @@
+{
+  "name": "@cashfold/stack-tests",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@cashfold/core": "workspace:*",
+    "@cashfold/crypto": "workspace:*",
+    "@cashfold/protocol": "workspace:*"
+  }
+}

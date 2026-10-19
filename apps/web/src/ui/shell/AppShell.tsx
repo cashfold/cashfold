@@ -5,6 +5,7 @@ import type { ReactNode } from 'react';
 import { useCore } from '../core/CoreProvider';
 import { buttonClass } from '../forms/TextField';
 import { useI18n } from '../i18n/I18nProvider';
+import { SyncIndicator } from '../sync/SyncIndicator';
 import { PrivacyCover } from './PrivacyCover';
 
 const NAV = [
@@ -14,6 +15,7 @@ const NAV = [
   ['/transfers/', 'nav.transfers'],
   ['/categories/', 'nav.categories'],
   ['/folds/', 'nav.folds'],
+  ['/devices/', 'nav.devices'],
   ['/settings/', 'nav.settings'],
 ] as const;
 
@@ -36,6 +38,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             ))}
           </ul>
         </nav>
+        {core.phase === 'unlocked' ? <SyncIndicator /> : null}
         {core.phase === 'unlocked' ? (
           <button type="button" className={`${buttonClass} ms-auto`} onClick={() => core.lock()}>{t('lock.button')}</button>
         ) : null}

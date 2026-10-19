@@ -165,6 +165,9 @@ export function createWritePath(deps: WritePathDeps): WritePath {
           } catch (e) {
             const kind = sealFailureKind(e);
             if (kind === undefined) throw e;
+            // An unknown signer is usually a device added moments ago whose key this device has not learned yet: the op is
+            // reported, not stored, so it can be applied cleanly once the key is known.
+            if (kind === 'unknown_signer') return { result: { kind: 'quarantined', reason: kind } };
             return quarantine(kind);
           }
           const upcast = upcasters.upcast(opened);

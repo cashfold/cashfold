@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { createCoreClient, type CoreClient } from './core-client';
+import { createCoreClient, type CoreClient, type CoreEvent } from './core-client';
 
 export type Phase = 'loading' | 'no_account' | 'locked' | 'unlocked' | 'failed';
 
@@ -24,6 +24,10 @@ export interface Core {
   lock(): void;
   /** Marks the app unlocked after a successful sign-up or unlock. */
   markUnlocked(): Promise<void>;
+  /** True after this device was removed from the account from another device: its data was erased. */
+  readonly removed: boolean;
+  /** Hears the worker's events (sync status, changes from other devices). Returns the way to stop listening. */
+  subscribe(listener: (event: CoreEvent) => void): () => void;
 }
 
 const Context = createContext<Core | null>(null);
@@ -47,6 +51,7 @@ export function CoreProvider({ children, makeWorker }: { children: ReactNode; ma
   const [hidden, setHidden] = useState(false);
   const [blurred, setBlurred] = useState(false);
   const [epoch, setEpoch] = useState(0);
+  const [removed, setRemoved] = useState(false);
 
   const client = useCallback((): CoreClient => {
     clientRef.current ??= createCoreClient(makeWorker ?? (() => new Worker(new URL('../../worker/core-worker.ts', import.meta.url), { type: 'module', name: 'cashfold-core' })), { timeoutMs: 60_000 });
@@ -69,6 +74,12 @@ export function CoreProvider({ children, makeWorker }: { children: ReactNode; ma
     const off = c.onEvent((event) => {
       if (event.type === 'Locked') {
         setPhase((p) => (p === 'no_account' ? p : 'locked'));
+        setEpoch((n) => n + 1);
+      }
+      if (event.type === 'DeviceRemoved') {
+        setRemoved(true);
+        setPhase('no_account');
+        setAccount(undefined);
         setEpoch((n) => n + 1);
       }
     });
@@ -125,10 +136,13 @@ export function CoreProvider({ children, makeWorker }: { children: ReactNode; ma
         client().notify('lock');
       },
       async markUnlocked() {
+        setRemoved(false);
         await refresh();
       },
+      removed,
+      subscribe: (listener) => client().onEvent(listener),
     }),
-    [phase, account, hidden, blurred, epoch, client, refresh],
+    [phase, account, hidden, blurred, epoch, removed, client, refresh],
   );
 
   return <Context.Provider value={value}>{children}</Context.Provider>;

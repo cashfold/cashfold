@@ -14,6 +14,8 @@ export type SyncFailure =
   | 'rejected'
   /** The relay served a device's ops with one missing: it dropped something, or the log was truncated. */
   | 'gap'
+  /** An op is signed by a device this one does not know yet (newly added on another device): learn the device, then try again. */
+  | 'unknown_signer'
   | 'failed';
 
 export interface SyncReport {
@@ -127,6 +129,7 @@ export function createSyncClient(deps: SyncClientDeps): SyncClient {
       // at or below where this page started.
       const pageStart = cursor;
       let gapAt: bigint | undefined;
+      let stalled = false;
       for (const { serverSeq, sealed } of page.ops) {
         if (serverSeq <= pageStart) continue; // a relay that repeats itself costs nothing
         report.pulled++;
@@ -153,11 +156,22 @@ export function createSyncClient(deps: SyncClientDeps): SyncClient {
             report.ignored++;
             break;
           case 'quarantined':
+            if (r.value.reason === 'unknown_signer') {
+              // Not the op's fault: nothing is passed over until the signer is known, then it is applied like any other.
+              stalled = true;
+              break;
+            }
             report.quarantined++;
             if (CONSUMES_SEQ.has(r.value.reason)) accounted.set(sealed.dev, sealed.seq > (accounted.get(sealed.dev) ?? 0n) ? sealed.seq : accounted.get(sealed.dev)!);
             break;
         }
+        if (stalled) break;
         if (serverSeq > cursor) cursor = serverSeq;
+      }
+      if (stalled) {
+        await cursors.set(fold, { serverSeq: pageStart, fromSnapshot });
+        report.failure = 'unknown_signer';
+        return;
       }
       if (gapAt !== undefined) cursor = pageStart; // nothing is passed over until the missing op arrives
       await cursors.set(fold, { serverSeq: cursor, fromSnapshot });

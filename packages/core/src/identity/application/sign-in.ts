@@ -32,6 +32,8 @@ export interface SignedIn {
   readonly accountId: string;
   readonly folds: readonly FoldSummary[];
   readonly deviceId: Id;
+  /** The account's keys, tracked by the session, for the sync service. */
+  readonly sync: { readonly account: AccountSecrets; readonly publicKeys: { readonly enc: Uint8Array; readonly sig: Uint8Array } };
 }
 
 export interface SignInDeps {
@@ -132,7 +134,7 @@ export function signInOnNewDevice(deps: SignInDeps) {
       const folds = await receiveFolds({ link, grants, services, account: m.account, publicKeys: m.publicKeys });
       if (!folds.ok) return folds;
       logger?.info('device.enrolled', {});
-      return ok({ accountId: m.accountId, folds: folds.value, deviceId });
+      return ok({ accountId: m.accountId, folds: folds.value, deviceId, sync: { account: m.account, publicKeys: m.publicKeys } });
     };
 
     try {

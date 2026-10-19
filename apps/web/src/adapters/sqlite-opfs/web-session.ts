@@ -1,5 +1,5 @@
 import {
-  createCommandBus, createEventBus, createLedgerQueries, createLedgerViews, createQueryBus, createUpcasters, createWritePath, LEDGER_GROUPS, purgeExpired, roleResolver, SCHEMA_VERSION, SETTINGS_TABLE, summaryFromSettings,
+  createCommandBus, createEventBus, createLedgerQueries, createLedgerViews, createQueryBus, createUpcasters, createWritePath, LEDGER_GROUPS, purgeExpired, roleResolver, SCHEMA_VERSION,
   type CommandBus, type EventBus, type FoldDirectory, type Id, type LedgerViews, type OpLogStore, type OpSealerPort, type ProjectionStore, type QueryBus, type SealedSnapshotPort, type SessionPort, type SessionSecrets, type SessionServices,
   type SyncCursorPort, type WritePath,
 } from '@cashfold/core';
@@ -91,17 +91,6 @@ export function createWebSession(options: WebSessionOptions): SessionPort & { cu
         db, oplog, projections, writePath, events, keyring, commandBus, queryBus, queries, views, directory, foldKeys: keyring, keyImport: keyring, deviceId: secrets.deviceId as Id,
         cursors: createSqliteCursors(db), deviceKeys, syncMarks: createSqliteSyncMarks(db), snapshotSealer,
       };
-
-      // A Fold's name and base currency arrive as an ordinary record; the directory is kept in line with it, on this device's
-      // own edits and on those that arrive from other devices alike.
-      events.subscribe((event) => {
-        if (event.table !== SETTINGS_TABLE) return;
-        void (async () => {
-          const [summary, record] = [await directory.get(event.fold), await projections.getRecord(event.fold, event.rec)];
-          const next = summary !== undefined && record !== undefined ? summaryFromSettings(summary, record) : undefined;
-          if (next !== undefined) await directory.add(next);
-        })().catch(() => undefined);
-      });
 
       // Deleted records older than 30 days are removed for good (FR-052). Done at every start, which is when a
       // long-closed app catches up; a failure here must not stop the app from opening.

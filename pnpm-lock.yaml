@@ -225,6 +225,18 @@ importers:
         specifier: 2.9.1
         version: 2.9.1
 
+  tests/stack:
+    dependencies:
+      '@cashfold/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@cashfold/crypto':
+        specifier: workspace:*
+        version: link:../../packages/crypto
+      '@cashfold/protocol':
+        specifier: workspace:*
+        version: link:../../packages/protocol
+
 packages:
 
   '@alloc/quick-lru@5.3.0':

@@ -4,6 +4,12 @@ import { createIdbCredentialStore } from '../adapters/keystore-idb/credential-st
 import { createIdbDeviceSettings } from '../adapters/keystore-idb/device-settings';
 import { createIdbQuickUnlockStore } from '../adapters/keystore-idb/quick-unlock-store';
 import { loadRuntime } from '../adapters/sqlite-opfs/runtime';
+import { createDeviceLabels } from '../adapters/transport/device-labels';
+import { createEmailConfirm } from '../adapters/transport/email';
+import { createPakeLoader } from '../adapters/transport/pake';
+import { createWebRatesSource } from '../adapters/transport/rates';
+import { createWebRegistration } from '../adapters/transport/registration';
+import { createWebRelayAuth } from '../adapters/transport/relay-auth';
 import { createAppHandlers } from './app-handlers';
 import { serveRpc, type Endpoint } from './rpc';
 import { createCoreRuntime, type CoreRuntime } from './runtime';
@@ -27,7 +33,13 @@ const pageEndpoint: Endpoint = {
 // onLocked fires from inside handlers that are created before the runtime exists, so it reaches it through this holder.
 const holder: { core?: CoreRuntime } = {};
 
-const accountCrypto = createAccountCrypto({ rng });
+const pake = createPakeLoader({ rng });
+const accountCrypto = createAccountCrypto({ rng, pake });
+
+const publishEvent = (event: { readonly type: string; readonly [key: string]: unknown }): void => {
+  holder.core?.publish(event);
+  self.postMessage({ rpc: 'event', event });
+};
 
 const app = createAppHandlers({
   runtime: () => loadRuntime(),
@@ -38,6 +50,14 @@ const app = createAppHandlers({
   quickStore: createIdbQuickUnlockStore(),
   quickCrypto: { enroll: (a) => accountCrypto.enrollQuick(a), unlock: (a) => accountCrypto.unlockQuick(a) },
   nowMs: Date.now,
+  relayAuth: createWebRelayAuth({ pake }),
+  registration: createWebRegistration(),
+  enrolCrypto: accountCrypto,
+  registerCrypto: accountCrypto,
+  deviceLabels: createDeviceLabels(rng),
+  ratesSource: (server) => createWebRatesSource(server),
+  confirmEmail: createEmailConfirm(),
+  publish: publishEvent,
   // The session locked itself (idle timeout, hidden too long, page going away): tell every tab, then end.
   onLocked: () => {
     holder.core?.publish({ type: 'Locked' });
