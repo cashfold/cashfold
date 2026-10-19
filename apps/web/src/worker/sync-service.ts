@@ -83,6 +83,8 @@ export interface SyncServiceDeps {
   readonly pollMs?: number;
   readonly retryMs?: { readonly first: number; readonly max: number };
   readonly ratesEveryMs?: number;
+  /** Runs after every round that reached the service: the place to send what is not ordinary ops (attachment pieces). */
+  readonly afterRound?: (link: WebRelayLink) => Promise<void>;
   /** After this many changes a snapshot is published, so new devices start close to the head. */
   readonly snapshotEvery?: number;
 }
@@ -390,6 +392,7 @@ export function createSyncService(deps: SyncServiceDeps): SyncService {
       changed();
     }
     void refreshRates(g);
+    if (deps.afterRound !== undefined && l !== undefined && connection === 'online') void deps.afterRound(l).catch(() => undefined);
   }
 
   /** A request failed because the network did; the session may be gone too, so sign in again from scratch. */

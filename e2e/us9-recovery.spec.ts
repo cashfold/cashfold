@@ -305,4 +305,54 @@ test.describe('@us9 portability and recovery', () => {
     await expect(c.locator('form [role=alert]')).toContainText('not right', { timeout: 60_000 });
     await gone.close();
   });
+
+  test('a file attached to a transaction is sealed, reaches another device, opens byte for byte, and can be taken off', async ({ page, browser }) => {
+    const email = `alice+${unique()}@example.com`;
+    const secretKey = await signUp(page, email);
+    await addAccount(page, 'Everyday', '1,000.00');
+    const contents = Buffer.from('receipt for the coffee beans, 12.50 USD\n'.repeat(3000)); // more than one 64 KiB piece
+    expect(contents.length).toBeGreaterThan(65_536);
+
+    await go(page, 'Transactions');
+    await page.getByRole('button', { name: 'Add transaction', exact: true }).click();
+    const dialog = page.getByRole('dialog');
+    await dialog.getByLabel('Account').selectOption({ label: 'Everyday (USD)' });
+    await dialog.getByLabel('Amount (USD)').fill('12.50');
+    await dialog.getByLabel('Note').fill('Coffee beans');
+    await dialog.locator('#attachment-file').setInputFiles({ name: 'receipt.txt', mimeType: 'text/plain', buffer: contents });
+    await dialog.getByRole('button', { name: 'Add transaction' }).click();
+    await expect(page.getByRole('dialog')).toHaveCount(0, { timeout: 60_000 });
+    await expect(syncState(page)).toHaveAttribute('data-sync-state', 'synced', { timeout: 60_000 });
+
+    const openAndRead = async (p: Page): Promise<Buffer> => {
+      await go(p, 'Transactions');
+      await p.getByRole('button', { name: 'Edit Coffee beans' }).click();
+      const d = p.getByRole('dialog');
+      await expect(d.getByTestId('attachment-current')).toContainText('receipt.txt');
+      const [download] = await Promise.all([p.waitForEvent('download'), d.getByRole('button', { name: 'Open receipt.txt' }).click()]);
+      expect(download.suggestedFilename()).toBe('receipt.txt');
+      const bytes = readFileSync(await download.path());
+      await d.getByRole('button', { name: 'Cancel' }).click();
+      return bytes;
+    };
+    expect((await openAndRead(page)).equals(contents)).toBe(true);
+
+    // Another device has the record but none of the pieces: it fetches them from the service and checks them as a whole.
+    const other = await signInNew(browser, email, secretKey);
+    await go(other.page, 'Transactions');
+    await expect(other.page.getByTestId('tx-row').filter({ hasText: 'Coffee beans' })).toHaveCount(1, { timeout: 60_000 });
+    expect((await openAndRead(other.page)).equals(contents)).toBe(true);
+    await other.context.close();
+
+    // Taking it off
+    await go(page, 'Transactions');
+    await page.getByRole('button', { name: 'Edit Coffee beans' }).click();
+    const d = page.getByRole('dialog');
+    await d.getByRole('button', { name: 'Remove receipt.txt' }).click();
+    await expect(d.getByText('The attachment will be removed when you save.')).toBeVisible();
+    await d.getByRole('button', { name: 'Save', exact: true }).click();
+    await expect(page.getByRole('dialog')).toHaveCount(0, { timeout: 30_000 });
+    await page.getByRole('button', { name: 'Edit Coffee beans' }).click();
+    await expect(page.getByRole('dialog').getByTestId('attachment-current')).toHaveCount(0);
+  });
 });

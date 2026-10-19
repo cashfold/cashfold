@@ -6,6 +6,7 @@ import {
 } from '@cashfold/core';
 import { createAesGcm, createEd25519Signer, createHkdf, createOpSealer, createSharingCrypto, createSnapshotSealer, SecretBuf, type Rng } from '@cashfold/crypto';
 import { createWebMembershipRemote } from '../transport/membership-remote';
+import { createSqliteAttachmentStore, type SqliteAttachmentStore } from './attachment-store';
 import { createSqliteMembershipStore } from './membership-store';
 import type { EncryptedDatabase } from './database';
 import { EncryptedDatabase as Database } from './database';
@@ -54,6 +55,8 @@ export interface OpenSession extends SessionServices {
   readonly membership: MembershipLog;
   readonly sharing: MembershipCommands;
   readonly sharingCrypto: SharingCrypto;
+  /** The sealed pieces of attachments kept on this device. */
+  readonly attachmentStore: SqliteAttachmentStore;
 }
 
 async function purgeAllFolds(stores: { oplog: OpLogStore; projections: ProjectionStore }, directory: FoldDirectory, now: number): Promise<void> {
@@ -120,9 +123,13 @@ export function createWebSession(options: WebSessionOptions): SessionPort & { cu
         () => { const me = sharingContext.identity(); return me === undefined ? undefined : { member: me.accountId }; },
       );
       const cursors = createSqliteCursors(db);
+      const attachmentStore = createSqliteAttachmentStore(db);
       const wipe = createFoldWiper({
         directory, foldKeys: keyring, membership: membershipStore,
-        also: async (fold) => void (await projections.clear(fold)),
+        also: async (fold) => {
+          await projections.clear(fold);
+          attachmentStore.clearFold(fold);
+        },
         announce: (e) => { views.invalidate(e.fold); sharingContext.announce(e); },
       });
       const sharing = createMembershipCommands({
@@ -135,7 +142,7 @@ export function createWebSession(options: WebSessionOptions): SessionPort & { cu
       const queries = createLedgerQueries({ views, clock: { nowMs }, quarantined: (fold) => oplog.listQuarantined(fold) });
       open = {
         db, oplog, projections, writePath, events, keyring, commandBus, queryBus, queries, views, directory, foldKeys: keyring, keyImport: keyring, deviceId: secrets.deviceId as Id,
-        cursors, deviceKeys, syncMarks: createSqliteSyncMarks(db), snapshotSealer, membership, sharing, sharingCrypto,
+        cursors, deviceKeys, syncMarks: createSqliteSyncMarks(db), snapshotSealer, membership, sharing, sharingCrypto, attachmentStore,
       };
 
       // Deleted records older than 30 days are removed for good (FR-052). Done at every start, which is when a

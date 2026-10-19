@@ -31,5 +31,10 @@ export const MIGRATIONS: readonly Migration[] = [
     "version": 5,
     "name": "membership",
     "sql": "-- 0005: sharing. The membership log of each Fold, kept as the signed entries the members wrote (ARCH 7.3, 8.2). It has no foreign key\n-- to `fold`: an invitation is read, and its log verified, before the Fold is joined; leaving or being removed clears it with the Fold.\nCREATE TABLE fold_log (\n  fold_id BLOB NOT NULL CHECK (length(fold_id)=16),\n  idx     INTEGER NOT NULL CHECK (idx >= 0),\n  entry   BLOB NOT NULL,\n  PRIMARY KEY (fold_id, idx)\n) STRICT, WITHOUT ROWID;\n"
+  },
+  {
+    "version": 6,
+    "name": "attachments",
+    "sql": "-- 0006: attachments (FR-093). The sealed pieces of the files attached to transactions, exactly as they travel: one AES-256-GCM frame\n-- each. `sent` is 0 for pieces made here that the service does not have yet. Dropped with the Fold.\nCREATE TABLE attachment_chunk (\n  fold_id BLOB NOT NULL CHECK (length(fold_id)=16),\n  att_id  BLOB NOT NULL CHECK (length(att_id)=16),\n  idx     INTEGER NOT NULL CHECK (idx >= 0),\n  data    BLOB NOT NULL,\n  sent    INTEGER NOT NULL DEFAULT 0 CHECK (sent IN (0,1)),\n  PRIMARY KEY (fold_id, att_id, idx)\n) STRICT, WITHOUT ROWID;\nCREATE INDEX attachment_chunk_unsent ON attachment_chunk(sent) WHERE sent = 0;\n"
   }
 ];

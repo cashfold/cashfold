@@ -6,6 +6,9 @@ import {
 import { SecretBuf } from '@cashfold/crypto';
 import { createWebSession } from '../adapters/sqlite-opfs/web-session';
 import type { SqliteRuntime } from '../adapters/sqlite-opfs/runtime';
+import { createAttachments } from '@cashfold/core';
+import { createWebAttachmentCrypto } from '../adapters/attachment-crypto';
+import { createWebAttachmentTransport } from '../adapters/transport/attachment-transport';
 import { createAccountHandlers } from './account-handlers';
 import { createLedgerHandlers } from './ledger-handlers';
 import { createSharingHandlers } from './sharing-handlers';
@@ -137,8 +140,20 @@ export function createAppHandlers(deps: AppHandlerDeps): AppRuntime {
 
   const grants = createFoldGrantPort({ keyring: () => webSession?.current()?.keyring, rng: deps.rng });
   const publish = deps.publish ?? (() => undefined);
+  /** Attachments: sealed here, kept here, sent when the service can be reached, fetched on the first open elsewhere (FR-093). */
+  const attachmentsFor = () => {
+    const current = webSession?.current();
+    if (current === undefined) throw new RpcError('RpcError', 'locked');
+    return createAttachments({
+      crypto: createWebAttachmentCrypto({ keyring: () => webSession?.current()?.keyring, rng: deps.rng }),
+      store: current.attachmentStore, transport: createWebAttachmentTransport(() => sync?.link()),
+      epochOf: (fold) => current.keyring.currentEpoch(fold),
+    });
+  };
+
   if (deps.relayAuth !== undefined) {
     sync = createSyncService({
+      afterRound: async () => void (await attachmentsFor().upload()),
       auth: deps.relayAuth, grants, session: () => webSession?.current() as SyncSession | undefined, nowMs: deps.nowMs,
       ...(deps.ratesSource && { ratesSource: deps.ratesSource }), ...(deps.syncTimers && { timers: deps.syncTimers }),
       sharing: {
@@ -219,6 +234,24 @@ export function createAppHandlers(deps: AppHandlerDeps): AppRuntime {
     ...ledger,
     ...sharingHandlers,
     ...accountHandlers,
+
+    async 'attachments.attach'(args: { fold: Id; transaction: Id; name: string; mime: string; bytes: Uint8Array }) {
+      const s = open();
+      const service = attachmentsFor();
+      const result = await s.commandBus.execute(service.attachFile, { fold: args.fold, transaction: args.transaction, id: newIdV4((n) => deps.rng.bytes(n)), name: args.name, mime: args.mime, bytes: args.bytes });
+      if (result.ok) void service.upload().then(() => sync?.syncNow()).catch(() => undefined);
+      return result;
+    },
+
+    async 'attachments.open'(args: { fold: Id; transaction: Id }) {
+      const s = open();
+      return attachmentsFor().open(s.projections, args.fold, args.transaction);
+    },
+
+    async 'attachments.remove'(args: { fold: Id; transaction: Id }) {
+      const s = open();
+      return s.commandBus.execute(attachmentsFor().removeAttachment, args);
+    },
     async status() {
       const stored = await deps.credentials.load();
       const phase: Phase = stored === undefined ? 'no_account' : webSession?.current() !== undefined && session.state() === 'unlocked' ? 'unlocked' : 'locked';

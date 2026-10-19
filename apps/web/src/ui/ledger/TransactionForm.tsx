@@ -5,6 +5,8 @@ import { useMemo, useState, type FormEvent } from 'react';
 import { buttonClass, secondaryButtonClass, TextField } from '../forms/TextField';
 import { useI18n } from '../i18n/I18nProvider';
 import { AmountField } from './AmountField';
+import { AttachmentField, type AttachmentChoice } from './AttachmentField';
+import { useCore } from '../core/CoreProvider';
 import { deviceOffsetAt, formatDateTime, inputToMoment, momentToInput, nowInput } from './dates';
 import { decimalsOf, degreesFromDevice, formatDegrees, formatPlain, parseDegrees, parseRateText } from './format';
 import { useLedger } from './LedgerProvider';
@@ -15,6 +17,8 @@ type Kind = 'expense' | 'income' | 'adjustment';
 export function TransactionForm({ existing, defaultAccountId, onDone }: { existing?: TransactionRow; defaultAccountId?: string; onDone: () => void }) {
   const { t, locale } = useI18n();
   const ledger = useLedger();
+  const core = useCore();
+  const [attachment, setAttachment] = useState<AttachmentChoice>({ file: undefined, remove: false });
   const basics = ledger.basics!;
   const usable = basics.accounts.filter((a) => !a.archived || a.id === existing?.accountId);
   const firstAccount = usable.find((a) => a.id === defaultAccountId) ?? usable.find((a) => a.kind !== 'goal') ?? usable[0];
@@ -135,7 +139,21 @@ export function TransactionForm({ existing, defaultAccountId, onDone }: { existi
             ...(when !== initialWhen && { occurredUtcMs, tzOffsetMin }),
           },
         });
-      if (result.ok) return onDone();
+      if (result.ok) {
+        // The file goes on once the transaction exists. If that fails the transaction is still saved, and the person is told.
+        const id = existing?.id ?? (result.value as { id: string }).id;
+        if (ledger.fold !== undefined && (attachment.file !== undefined || attachment.remove)) {
+          const outcome = attachment.file !== undefined
+            ? await core.call<{ ok: boolean; error?: { code: string } }>('attachments.attach', { fold: ledger.fold.id, transaction: id, name: attachment.file.name, mime: attachment.file.type, bytes: new Uint8Array(await attachment.file.arrayBuffer()) })
+            : await core.call<{ ok: boolean; error?: { code: string } }>('attachments.remove', { fold: ledger.fold.id, transaction: id });
+          if (!outcome.ok) {
+            await ledger.reload();
+            return setError(t('ledger.attachment.error.saved'));
+          }
+          await ledger.reload();
+        }
+        return onDone();
+      }
       if (result.error.code === 'rate_required' && result.error.currency !== undefined) {
         setNeedRate({ currency: result.error.currency, asOfUtcS: Number(BigInt(occurredUtcMs) / 1000n) });
         return;
@@ -280,6 +298,8 @@ export function TransactionForm({ existing, defaultAccountId, onDone }: { existi
         <input type="checkbox" checked={isPinned} onChange={(e) => setIsPinned(e.target.checked)} />
         {t('ledger.tx.pin')}
       </label>
+
+      {kind !== 'adjustment' ? <AttachmentField {...(existing && { existing })} choice={attachment} onChange={setAttachment} /> : null}
 
       {error ? <p role="alert" className="mt-3 text-danger">{error}</p> : null}
       <div className="mt-6 flex gap-3">
