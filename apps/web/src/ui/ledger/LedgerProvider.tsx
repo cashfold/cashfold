@@ -108,7 +108,9 @@ export function LedgerProvider({ children }: { children: ReactNode }) {
     async <T,>(method: string, args: Record<string, unknown> = {}): Promise<Outcome<T>> => {
       if (fold === undefined) return { ok: false, error: { code: 'no_fold' } };
       const result = await core.call<Outcome<T>>(method, { fold: fold.id as Id, ...args });
-      if (result.ok) await reload();
+      // The change is saved when the command answers. The screens catch up when the view has been read again, which is not something a
+      // person should wait for before the dialog closes (SC-008: adding a transaction takes 200 ms).
+      if (result.ok) void reload();
       return result;
     },
     [core, fold, reload],

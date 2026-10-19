@@ -6,9 +6,11 @@ import { SecretBuf } from '@cashfold/crypto';
 import { EncryptedDatabase } from './database';
 import { migrate, MigrationError } from './migrate';
 import type { Migration } from './migrations/generated';
+import type { Bind } from './database';
 import { loadRuntime, type SqliteRuntime } from './runtime';
 import { createSqliteAttachmentStore } from './attachment-store';
 import { openOrRecover } from './recovery';
+import { decodeValue, encodeValue } from './value-codec';
 import { createSqliteOpLog, createSqliteProjections } from './sqlite-stores';
 import { createAccount, createSession, parseSettings, unlock, type CredentialStorePort, type DeviceCredentials, type RegistrationResult } from '@cashfold/core';
 import { createAccountCrypto } from '../account-crypto';
@@ -443,6 +445,96 @@ export const scenarios = {
       db.exec('PRAGMA user_version = 999');
       const tooNew = await throws(() => migrate(db));
       return { first, again, version, tables, failure, afterFailure, tooNew, isMigrationError: tooNew.startsWith(MigrationError.name) };
+    });
+  },
+
+  /** The plans of the queries the app runs on every start and every change (ARCH 8.2): each must use an index, not scan or sort a table. */
+  async queryPlans(ctx: ScenarioContext) {
+    return withDb(ctx, 1, async (db) => {
+      await migrate(db);
+      const f = idToBytes('00000000-0000-4000-8000-0000000000f1' as Id);
+      const r = new Uint8Array(16);
+      const queries: Record<string, { sql: string; bind: Bind[] }> = {
+        pendingToPush: { sql: 'SELECT op_id FROM op_log WHERE fold_id = ? AND state = 0 ORDER BY dev_seq', bind: [f] },
+        newestStamp: { sql: 'SELECT hlc_wall, hlc_ctr FROM op_log WHERE fold_id = ? ORDER BY hlc_wall DESC, hlc_ctr DESC LIMIT 1', bind: [f] },
+        opAlreadyHeld: { sql: 'SELECT 1 FROM op_log WHERE fold_id = ? AND op_id = ?', bind: [f, r] },
+        deviceSequence: { sql: 'SELECT MAX(dev_seq) FROM op_log WHERE fold_id = ? AND dev_id = ?', bind: [f, r] },
+        deviceSequenceTaken: { sql: 'SELECT 1 FROM op_log WHERE fold_id = ? AND dev_id = ? AND dev_seq = ?', bind: [f, r, 1n] },
+        oneRecordMeta: { sql: 'SELECT table_code, table_conflict FROM record_meta WHERE fold_id = ? AND rec_id = ?', bind: [f, r] },
+        oneRecordFields: { sql: 'SELECT field_id, hlc_wall, hlc_ctr, dev_id, op_id, value FROM field_clock WHERE fold_id = ? AND rec_id = ?', bind: [f, r] },
+        oneRecordSets: { sql: 'SELECT rec_id, field_id, member, tag FROM set_add WHERE fold_id = ? AND rec_id = ?', bind: [f, r] },
+        wholeFold: { sql: 'SELECT rec_id, state FROM record_blob WHERE fold_id = ? ORDER BY rec_id', bind: [f] },
+        recordCount: { sql: 'SELECT count(*) FROM record_meta WHERE fold_id = ?', bind: [f] },
+        anyData: { sql: 'SELECT 1 FROM record_meta WHERE table_code IN (1, 6, 7) LIMIT 1', bind: [] },
+        purged: { sql: 'SELECT 1 FROM purged_record WHERE fold_id = ? AND rec_id = ?', bind: [f, r] },
+        unsentPieces: { sql: 'SELECT fold_id, att_id, idx FROM attachment_chunk WHERE sent = 0 ORDER BY fold_id, att_id, idx', bind: [] },
+        membershipLog: { sql: 'SELECT entry FROM fold_log WHERE fold_id = ? ORDER BY idx', bind: [f] },
+      };
+      const plans: Record<string, string[]> = {};
+      for (const [name, q] of Object.entries(queries)) plans[name] = db.rows(`EXPLAIN QUERY PLAN ${q.sql}`, q.bind).map((row) => String(row[3]));
+      return plans;
+    });
+  },
+
+  /** Reading a whole Fold back (every view starts here): time, and that it equals reading the records one by one. */
+  async bigFold(ctx: ScenarioContext) {
+    return withDb(ctx, 1, async (db) => {
+      await migrate(db);
+      const projections = createSqliteProjections(db);
+      const fold = '00000000-0000-4000-8000-0000000000f1' as Id;
+      db.run("INSERT INTO fold(fold_id, name, epoch, role, base_currency, created_at) VALUES (?, 'Home', 1, 1, 'USD', 0)", [idToBytes(fold)]);
+      const records = ctx.arg ?? 2000;
+      const dev = '00000000-0000-4000-8000-0000000000d1' as Id;
+      const id = (n: number, kind: number): Id => `${kind.toString(16).padStart(8, '0')}-0000-4000-8000-${n.toString(16).padStart(12, '0')}` as Id;
+      await db.transaction(async () => {
+        for (let n = 0; n < records; n++) {
+          const fields = new Map<number, { hlc: { wallMs: number; ctr: number }; dev: Id; opId: Id; value: never }>();
+          const op = id(n, 2);
+          const put = (field: number, value: unknown) => fields.set(field, { hlc: { wallMs: 1_800_000_000_000 + n, ctr: field % 3 }, dev, opId: op, value: value as never });
+          put(1, id(n % 7, 3)); put(2, 1n); put(3, BigInt(-100 - (n % 90))); put(4, 'USD'); put(5, BigInt(-100 - (n % 90))); put(6, 'USD'); put(8, BigInt(1_800_000_000_000 + n));
+          put(9, 0n); put(10, BigInt(20_260_101 + (n % 28))); put(11, id(n % 20, 4)); put(12, id(n % 50, 5)); put(14, `Row ${n}`); put(18, null); put(19, false); put(20, false); put(21, 1n);
+          await projections.putRecord(fold, id(n, 1), { table: 6, tableConflict: false, fields, sets: new Map() });
+        }
+      });
+      const times: number[] = [];
+      let listed = new Map();
+      for (let i = 0; i < 3; i++) {
+        const t0 = performance.now();
+        listed = await projections.listRecords(fold) as never;
+        times.push(Math.round(performance.now() - t0));
+      }
+      const t1 = performance.now();
+      let rows = 0;
+      let bytes = 0;
+      db.forEachRow('SELECT m.rec_id, m.table_code, m.table_conflict, c.field_id, c.hlc_wall, c.hlc_ctr, c.dev_id, c.op_id, c.value FROM record_meta m LEFT JOIN field_clock c ON c.fold_id = m.fold_id AND c.rec_id = m.rec_id WHERE m.fold_id = ? ORDER BY m.rec_id, c.field_id', [idToBytes(fold)], (r) => { rows++; bytes += (r[8] as Uint8Array).length; }, 'small');
+      const stepOnly = Math.round(performance.now() - t1);
+      const t2 = performance.now();
+      db.forEachRow('SELECT c.rec_id FROM field_clock c WHERE c.fold_id = ?', [idToBytes(fold)], () => undefined, 'small');
+      const scanOnly = Math.round(performance.now() - t2);
+      const t3 = performance.now();
+      const sample = decodeValue(encodeValue('USD'));
+      for (let i = 0; i < rows; i++) decodeValue(encodeValue(i % 2 ? 'USD' : BigInt(i)));
+      const decodeOnly = Math.round(performance.now() - t3);
+      void sample;
+      // Same content as reading one by one, on a sample spread over the Fold.
+      let same = listed.size === records;
+      for (const n of [0, 1, Math.floor(records / 2), records - 1]) {
+        const one = await projections.getRecord(fold, id(n, 1));
+        const all = listed.get(id(n, 1)) as { table: number; fields: Map<number, unknown> } | undefined;
+        same &&= one !== undefined && all !== undefined && one.table === all.table && one.fields.size === all.fields.size
+          && [...one.fields].every(([f, e]) => JSON.stringify(e, (_k, v) => (typeof v === 'bigint' ? `${v}n` : v)) === JSON.stringify(all.fields.get(f), (_k, v) => (typeof v === 'bigint' ? `${v}n` : v)));
+      }
+      // A database without the copies reads the rows once, writes the copies, and gives the same answer.
+      db.run('DELETE FROM record_blob');
+      const slowAt = performance.now();
+      const rebuilt = await projections.listRecords(fold);
+      const slow = Math.round(performance.now() - slowAt);
+      const copies = Number(db.value('SELECT count(*) FROM record_blob'));
+      const fastAt = performance.now();
+      const again = await projections.listRecords(fold);
+      const fast = Math.round(performance.now() - fastAt);
+      const agree = rebuilt.size === again.size && [...rebuilt].every(([k, v]) => JSON.stringify([...v.fields], (_x, y) => (typeof y === 'bigint' ? `${y}n` : y)) === JSON.stringify([...(again.get(k)?.fields ?? [])], (_x, y) => (typeof y === 'bigint' ? `${y}n` : y)));
+      return { records, times, same, note: { stepOnly, scanOnly, decodeAndEncode: decodeOnly, rows, bytes, slow, fast, copies, agree } };
     });
   },
 

@@ -34,3 +34,5 @@ apps/web/public/sqlite3mc/
 # Rust build output of the SRP big-integer module
 packages/crypto/wasm/*/target/
 apps/web/public/srp-bigint.wasm
+
+.vitest/

@@ -36,5 +36,15 @@ export const MIGRATIONS: readonly Migration[] = [
     "version": 6,
     "name": "attachments",
     "sql": "-- 0006: attachments (FR-093). The sealed pieces of the files attached to transactions, exactly as they travel: one AES-256-GCM frame\n-- each. `sent` is 0 for pieces made here that the service does not have yet. Dropped with the Fold.\nCREATE TABLE attachment_chunk (\n  fold_id BLOB NOT NULL CHECK (length(fold_id)=16),\n  att_id  BLOB NOT NULL CHECK (length(att_id)=16),\n  idx     INTEGER NOT NULL CHECK (idx >= 0),\n  data    BLOB NOT NULL,\n  sent    INTEGER NOT NULL DEFAULT 0 CHECK (sent IN (0,1)),\n  PRIMARY KEY (fold_id, att_id, idx)\n) STRICT, WITHOUT ROWID;\nCREATE INDEX attachment_chunk_unsent ON attachment_chunk(sent) WHERE sent = 0;\n"
+  },
+  {
+    "version": 7,
+    "name": "record_blob",
+    "sql": "-- 0007: a whole record's merge state in one row (SC-008). A Fold is read back in one row per record instead of one per field, which is the\n-- difference between seconds and a fraction of a second at fifty thousand transactions. A copy of what record_meta, field_clock, set_add and\n-- set_removed hold, written in the same transaction; they stay the source of truth, and a missing copy is rebuilt from them.\nCREATE TABLE record_blob (\n  fold_id BLOB NOT NULL CHECK (length(fold_id)=16),\n  rec_id  BLOB NOT NULL CHECK (length(rec_id)=16),\n  state   BLOB NOT NULL,\n  PRIMARY KEY (fold_id, rec_id)\n) STRICT, WITHOUT ROWID;\n"
+  },
+  {
+    "version": 8,
+    "name": "pending_ops_index",
+    "sql": "-- 0008: the operations not yet sent are read in device-sequence order on every sync round. The old index found them but left the ordering to\n-- a sort on the side (ARCH 8.2: no query sorts a table). This one finds them already in order.\nDROP INDEX IF EXISTS op_log_push;\nCREATE INDEX op_log_pending ON op_log(fold_id, dev_seq) WHERE state = 0;\n\n-- \"Is there anything here worth losing?\" (the backup reminder) asks for any account, transaction or transfer without reading the Fold.\nCREATE INDEX record_meta_table ON record_meta(table_code, fold_id);\n"
   }
 ];

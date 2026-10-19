@@ -7,7 +7,7 @@ export function encodeValue(value: FieldValue): Uint8Array {
   return encode(value as CborValue);
 }
 
-function fromCbor(v: CborValue): FieldValue {
+export function fromCbor(v: CborValue): FieldValue {
   if (v instanceof Map) {
     const out: { [key: string]: FieldValue } = {};
     for (const [k, x] of v) {

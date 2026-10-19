@@ -23,33 +23,68 @@ describe('ledger views', () => {
     expect(counter.calls).toBe(4);
   });
 
-  it('drops the cache on a domain event for that Fold only', async () => {
+  const changed = (fold: typeof FOLD, rec: typeof FOLD) => [{ type: 'RecordChanged' as const, fold, rec, table: 1, changedFields: [], changedSets: [] }];
+
+  it('on a change re-reads only the records that changed, for that Fold only, never the whole Fold again', async () => {
     const events = createEventBus();
     const views = createLedgerViews(events);
+    const f = new LedgerFixture();
+    const reads: string[] = [];
+    const counter = { calls: 0 };
+    const reader: ProjectionReader = { listRecords: async () => (counter.calls++, new Map(f.fold)), getRecord: async (_fold, rec) => (reads.push(rec), f.fold.get(rec)) };
+    await views.get(FOLD, reader);
+    events.publish(changed(id(0xf9), id(1))); // another Fold: nothing to do
+    await views.get(FOLD, reader);
+    expect(reads).toEqual([]);
+    events.publish(changed(FOLD, id(1)));
+    events.publish(changed(FOLD, id(2)));
+    events.publish(changed(FOLD, id(1)));
+    await views.get(FOLD, reader);
+    expect(reads.sort()).toEqual([id(1), id(2)]);
+    expect(counter.calls).toBe(1);
+    await views.get(FOLD, reader); // and nothing more until the next change
+    expect(reads).toHaveLength(2);
+  });
+
+  it('shows a record that was added, changed or removed since the view was built', async () => {
+    const events = createEventBus();
+    const views = createLedgerViews(events);
+    const f = new LedgerFixture();
+    const reader = readerOf(f);
+    expect((await views.get(FOLD, reader)).ledger.accounts.size).toBe(0);
+    f.account({ name: 'Main' }, id(1));
+    events.publish(changed(FOLD, id(1)));
+    expect([...(await views.get(FOLD, reader)).ledger.accounts.values()].map((a) => a.name)).toEqual(['Main']);
+    (f.fold as unknown as Map<string, unknown>).delete(id(1));
+    events.publish(changed(FOLD, id(1)));
+    expect((await views.get(FOLD, reader)).ledger.accounts.size).toBe(0);
+  });
+
+  it('includes a change that arrived while the view was being built in the next one', async () => {
+    const events = createEventBus();
+    const views = createLedgerViews(events);
+    const f = new LedgerFixture();
+    let release!: () => void;
+    const gate = new Promise<void>((r) => (release = r));
+    const slow: ProjectionReader = { getRecord: async (_fold, rec) => f.fold.get(rec), listRecords: async () => (await gate, new Map(f.fold)) };
+    const first = views.get(FOLD, slow);
+    f.account({ name: 'Late' }, id(1));
+    events.publish(changed(FOLD, id(1)));
+    release();
+    await first;
+    expect([...(await views.get(FOLD, slow)).ledger.accounts.values()].map((a) => a.name)).toEqual(['Late']);
+  });
+
+  it('starts over when told to, for one Fold or all', async () => {
+    const views = createLedgerViews(createEventBus());
     const counter = { calls: 0 };
     const reader = readerOf(new LedgerFixture(), counter);
     await views.get(FOLD, reader);
-    events.publish([{ type: 'RecordChanged', fold: id(0xf9), rec: id(1), table: 1, changedFields: [], changedSets: [] }]);
+    await views.get(id(0xf1), reader);
+    views.invalidate(FOLD);
     await views.get(FOLD, reader);
-    expect(counter.calls).toBe(1);
-    events.publish([{ type: 'RecordChanged', fold: FOLD, rec: id(1), table: 1, changedFields: [], changedSets: [] }]);
-    await views.get(FOLD, reader);
-    expect(counter.calls).toBe(2);
-  });
-
-  it('does not keep a view that was built while a change arrived', async () => {
-    const events = createEventBus();
-    const views = createLedgerViews(events);
-    let release!: () => void;
-    const gate = new Promise<void>((r) => (release = r));
-    const counter = { calls: 0 };
-    const slow: ProjectionReader = { getRecord: async () => undefined, listRecords: async () => (counter.calls++, await gate, new LedgerFixture().fold) };
-    const first = views.get(FOLD, slow);
-    events.publish([{ type: 'RecordChanged', fold: FOLD, rec: id(1), table: 1, changedFields: [], changedSets: [] }]);
-    release();
-    await first;
-    await views.get(FOLD, slow);
-    expect(counter.calls).toBe(2);
+    await views.get(id(0xf1), reader);
+    expect(counter.calls).toBe(3);
   });
 
   it('does not cache a failed build', async () => {

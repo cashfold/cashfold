@@ -396,13 +396,8 @@ export function createAppHandlers(deps: AppHandlerDeps): AppRuntime {
     /** What the backup reminder needs: whether there is anything to lose, when a backup was last made, and whether the account is on a service. */
     async 'storage.status'() {
       const s = open();
-      let hasData = false;
-      for (const fold of await s.directory.list()) {
-        for (const state of (await s.projections.listRecords(fold.id)).values()) {
-          if (state.table === 1 || state.table === 6 || state.table === 7) hasData = true; // an account, a transaction or a transfer
-        }
-        if (hasData) break;
-      }
+      // Any account, transaction or transfer record at all: one indexed probe, not a read of the Fold.
+      const hasData = s.db.rows('SELECT 1 FROM record_meta WHERE table_code IN (1, 6, 7) LIMIT 1').length > 0;
       const settings = await deps.settings.load();
       const stored = await deps.credentials.load();
       const r = s.recovery;

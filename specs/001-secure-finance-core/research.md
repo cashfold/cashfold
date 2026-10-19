@@ -100,6 +100,17 @@ Decisions for the TypeScript stack mandated by the constitution (v1.0.1). "ARCH"
 
 - **Decision**: Target evergreen Chromium, Firefox and Safari releases that support OPFS (SyncAccessHandle), Web Workers, WebCrypto, and WASM. Feature-detect at start and show a clear unsupported-browser message. Set an initial JavaScript budget (target 250 KB gzipped for the shell plus a lazily loaded WASM set) enforced by the CI bundle-size gate; confirm numbers in M0.
 - **Reference device (SC-008, FR-096)**: Chromium on a desktop-class machine with 4× CPU throttling stands in for a mid-range phone; the 50,000-transaction benchmark (T187) runs on this profile. Revisit with real-device measurements before release.
+- **Measured (T187, 50,000 transactions in one Fold, Apple-silicon laptop, Chromium; `e2e/bench/dashboard-50k.spec.ts`)**:
+
+  | | before | after |
+  | --- | --- | --- |
+  | reading a whole Fold into memory (start of every view) | 6.4 s | 0.7 s |
+  | dashboard ready | 13.4 s | **1.35 s** (budget 2 s) |
+  | add a transaction, until the dialog closes | 7.4 s | **82 ms** (budget 200 ms) |
+  | unlock (Argon2id, open, integrity check, first view) | 7.3 s | 7.9 s |
+
+  What changed: a Fold is read as one row per record (`record_blob`, a copy of the normalized rows kept in the same transaction) instead of one per field; a change re-reads only the records it touched; the dialog no longer waits for the lists to catch up; and the first read after upgrading builds the copies once (7 s). Query plans for what runs on each start and change are asserted in the browser tests.
+- **Caveat on the profile**: Chromium's CPU throttle slows the page's main thread but does not reach dedicated workers, where the database and the ledger live, so the figures above are this machine's speed for the worker and 4× slower only for rendering. Unlock was unchanged by the throttle (7.3 s at 1×, 7.9 s at 4×), which is how this showed. On a device four times slower than this machine the worker-bound part would be about four times longer: the dashboard near 5 s, not 2 s. Reaching the budget there needs the dashboard totals to come from SQL aggregates rather than from decoding every record (follow-up), and a faster unlock (the integrity check reads every page).
 - **Rationale**: Constitution Quality Gates require a bundle budget; local-first needs OPFS.
 - **VERIFY**: the exact minimum browser versions and the actual WASM sizes.
 

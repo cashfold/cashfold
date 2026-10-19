@@ -73,6 +73,31 @@ describe('encryption at rest (FR-016)', () => {
   });
 });
 
+describe('query plans (ARCH 8.2, SC-008)', () => {
+  it('every query the app runs on each start and each change uses an index: no table scan, no sort of a table', async () => {
+    const plans = await run('queryPlans');
+    for (const [name, steps] of Object.entries(plans)) {
+      const text = steps.join(' | ');
+      expect(text, `${name}: ${text}`).not.toMatch(/\bSCAN\b(?!.*USING (COVERING )?INDEX)/); // a bare SCAN reads the whole table
+      expect(text, `${name}: ${text}`).not.toMatch(/TEMP B-TREE/); // and nothing is sorted on the side
+      expect(text, `${name}: ${text}`).toMatch(/SEARCH|SCAN .* USING (COVERING )?INDEX|SCAN .* USING PRIMARY KEY|SCAN record_blob/);
+    }
+    expect(plans['pendingToPush']!.join(' ')).toContain('op_log_pending');
+    expect(plans['newestStamp']!.join(' ')).toContain('op_log_hlc');
+    expect(plans['oneRecordFields']!.join(' ')).toContain('PRIMARY KEY');
+    expect(plans['wholeFold']!.join(' ')).toContain('PRIMARY KEY');
+  });
+});
+
+describe('reading a whole Fold (SC-008)', () => {
+  it('equals reading the records one by one, and is quick enough to start from', async () => {
+    const r = await run('bigFold', { arg: 20_000 });
+    console.log(`listRecords of ${r.records} records (3 runs): ${r.times.join(', ')} ms; ${JSON.stringify(r.note)}`);
+    expect(r.same).toBe(true);
+    expect(r.note).toMatchObject({ copies: 20_000, agree: true });
+  }, 300_000);
+});
+
 describe('a damaged database (FR-072)', () => {
   it('sets the damaged file aside whole, keeps what can be read, drops what is derived, and starts again from the start of the sync', async () => {
     const r = await run('recovery');
@@ -113,10 +138,10 @@ describe('attachment pieces', () => {
 describe('schema migrations', () => {
   it('applies the ARCH 8.2 schema in order, idempotently, and refuses a newer database', async () => {
     const r = await run('migrations');
-    expect(r.first).toBe(6);
-    expect(r.again).toBe(6);
-    expect(r.version).toBe(6);
-    expect(r.tables).toEqual(expect.arrayContaining(['fold', 'op_log', 'sync_quarantine', 'record_meta', 'field_clock', 'set_add', 'set_removed', 'account', 'txn', 'transfer', 'category', 'payee', 'tag', 'budget', 'goal', 'schedule', 'fx_rate', 'import_batch', 'checkpoint', 'purged_record', 'device', 'fold_log', 'attachment_chunk', 'ledger_entry', 'account_balance']));
+    expect(r.first).toBe(8);
+    expect(r.again).toBe(8);
+    expect(r.version).toBe(8);
+    expect(r.tables).toEqual(expect.arrayContaining(['fold', 'op_log', 'sync_quarantine', 'record_meta', 'field_clock', 'set_add', 'set_removed', 'account', 'txn', 'transfer', 'category', 'payee', 'tag', 'budget', 'goal', 'schedule', 'fx_rate', 'import_batch', 'checkpoint', 'purged_record', 'device', 'fold_log', 'attachment_chunk', 'record_blob', 'ledger_entry', 'account_balance']));
     expect(r.tooNew).toMatch(/^MigrationError/);
   });
 

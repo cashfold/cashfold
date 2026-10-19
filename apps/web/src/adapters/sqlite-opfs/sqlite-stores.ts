@@ -3,6 +3,7 @@ import {
   type FieldEntry, type Id, type OpLogStore, type ProjectionStore, type QuarantinedOp, type QuarantineReason, type RecordState, type SealedOp, type SetState, type StoredOp,
 } from '@cashfold/core';
 import type { Bind, EncryptedDatabase, SqlValue } from './database';
+import { decodeRecord, encodeRecord } from './record-codec';
 import { decodeValue, encodeValue } from './value-codec';
 
 const OP_PENDING = 0n;
@@ -125,8 +126,9 @@ export function createSqliteProjections(db: EncryptedDatabase, options: SqliteSt
     fieldRows: SqlValue[][],
     adds: Map<Id, Map<number, Map<Id, Set<Id>>>>,
     removed: Map<Id, Map<number, Map<Id, Set<Id>>>>,
+    ready?: Map<number, FieldEntry>,
   ): RecordState {
-    const fields = new Map<number, FieldEntry>();
+    const fields = ready ?? new Map<number, FieldEntry>();
     for (const r of fieldRows) {
       fields.set(num(r[0]), { hlc: { wallMs: num(r[1]), ctr: num(r[2]) }, dev: idOf(r[3]), opId: idOf(r[4]), value: decodeValue(r[5] as Uint8Array) });
     }
@@ -173,37 +175,39 @@ export function createSqliteProjections(db: EncryptedDatabase, options: SqliteSt
           }
         }
       }
+      db.run('INSERT OR REPLACE INTO record_blob(fold_id, rec_id, state) VALUES (?,?,?)', [f, r, encodeRecord(state)]);
       projectors.get(state.table)?.apply(db, fold, rec, state);
     },
 
     async listRecords(fold) {
       const f = bytesOf(fold);
-      const adds = new Map<Id, Map<number, Map<Id, Set<Id>>>>();
-      const removed = new Map<Id, Map<number, Map<Id, Set<Id>>>>();
-      loadSets(f, undefined, adds, removed);
-      const fieldsByRec = new Map<Id, SqlValue[][]>();
-      for (const r of db.rows('SELECT rec_id, field_id, hlc_wall, hlc_ctr, dev_id, op_id, value FROM field_clock WHERE fold_id = ?', [f])) {
-        const rec = idOf(r[0]);
-        fieldsByRec.set(rec, [...(fieldsByRec.get(rec) ?? []), r.slice(1)]);
-      }
-      const out = new Map<Id, RecordState>();
-      for (const meta of db.rows('SELECT rec_id, table_code, table_conflict FROM record_meta WHERE fold_id = ? ORDER BY rec_id', [f])) {
-        const rec = idOf(meta[0]);
-        out.set(rec, assemble(rec, meta.slice(1), fieldsByRec.get(rec) ?? [], adds, removed));
-      }
-      return out;
+      // The usual case: one row per record. If any record has no usable copy (a database from before the copies, or a damaged one), read the
+      // normalized rows and write the copies, which is slow once and never again.
+      const quick = new Map<Id, RecordState>();
+      let usable = true;
+      db.forEachRow('SELECT rec_id, state FROM record_blob WHERE fold_id = ? ORDER BY rec_id', [f], (r) => {
+        const state = usable ? decodeRecord(r[1] as Uint8Array) : undefined;
+        if (state === undefined) usable = false;
+        else quick.set(idFromBytes(r[0] as Uint8Array), state);
+      });
+      if (usable && quick.size === Number(db.value('SELECT count(*) FROM record_meta WHERE fold_id = ?', [f]))) return quick;
+      const slow = readNormalized(f);
+      await db.transaction(() => {
+        for (const [rec, state] of slow) db.run('INSERT OR REPLACE INTO record_blob(fold_id, rec_id, state) VALUES (?,?,?)', [f, bytesOf(rec), encodeRecord(state)]);
+      });
+      return slow;
     },
 
     async clear(fold) {
       const f = bytesOf(fold);
-      for (const table of ['set_removed', 'set_add', 'field_clock', 'record_meta', ...domainTables]) db.run(`DELETE FROM ${table} WHERE fold_id = ?`, [f]);
+      for (const table of ['set_removed', 'set_add', 'field_clock', 'record_meta', 'record_blob', ...domainTables]) db.run(`DELETE FROM ${table} WHERE fold_id = ?`, [f]);
     },
 
     async purgeRecord(fold, rec, atMs) {
       const [f, r] = [bytesOf(fold), bytesOf(rec)];
       const table = db.value('SELECT table_code FROM record_meta WHERE fold_id = ? AND rec_id = ?', [f, r]);
       if (table !== undefined) projectors.get(Number(table))?.remove?.(db, fold, rec);
-      for (const name of ['set_removed', 'set_add', 'field_clock', 'record_meta']) db.run(`DELETE FROM ${name} WHERE fold_id = ? AND rec_id = ?`, [f, r]);
+      for (const name of ['set_removed', 'set_add', 'field_clock', 'record_meta', 'record_blob']) db.run(`DELETE FROM ${name} WHERE fold_id = ? AND rec_id = ?`, [f, r]);
       db.run('INSERT OR IGNORE INTO purged_record(fold_id, rec_id, purged_at) VALUES (?,?,?)', [f, r, BigInt(atMs)]);
     },
 
@@ -211,4 +215,64 @@ export function createSqliteProjections(db: EncryptedDatabase, options: SqliteSt
       return db.rows('SELECT 1 FROM purged_record WHERE fold_id = ? AND rec_id = ?', [bytesOf(fold), bytesOf(rec)]).length > 0;
     },
   };
+
+  /** Every record of a Fold from the normalized rows, field by field. */
+  function readNormalized(f: Uint8Array): Map<Id, RecordState> {
+      const adds = new Map<Id, Map<number, Map<Id, Set<Id>>>>();
+      const removed = new Map<Id, Map<number, Map<Id, Set<Id>>>>();
+      loadSets(f, undefined, adds, removed);
+
+      // One ordered pass over the records and their fields together. Ids are turned into text once per record, and the device and operation
+      // ids, which repeat from one field to the next, once per change of bytes. (This is where every view of a Fold starts: SC-008.)
+      const out = new Map<Id, RecordState>();
+      let recBytes: Uint8Array | undefined;
+      let rec: Id | undefined;
+      let meta: SqlValue[] = [];
+      let fields = new Map<number, FieldEntry>();
+      let devBytes: Uint8Array | undefined;
+      let dev = '' as Id;
+      let opBytes: Uint8Array | undefined;
+      let op = '' as Id;
+      const same = (a: Uint8Array | undefined, b: Uint8Array): boolean => {
+        if (a === undefined || a.length !== b.length) return false;
+        for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
+        return true;
+      };
+      const finish = (): void => {
+        if (rec !== undefined) out.set(rec, assemble(rec, meta.slice(1), [], adds, removed, fields));
+      };
+      db.forEachRow(
+        `SELECT m.rec_id, m.table_code, m.table_conflict, c.field_id, c.hlc_wall, c.hlc_ctr, c.dev_id, c.op_id, c.value
+         FROM record_meta m LEFT JOIN field_clock c ON c.fold_id = m.fold_id AND c.rec_id = m.rec_id
+         WHERE m.fold_id = ? ORDER BY m.rec_id, c.field_id`,
+        [f],
+        (r) => {
+          const id = r[0] as Uint8Array;
+          if (!same(recBytes, id)) {
+            finish();
+            recBytes = id;
+            rec = idFromBytes(id);
+            meta = [r[0] ?? null, r[1] ?? null, r[2] ?? null] as SqlValue[];
+            meta[1] = BigInt(r[1] as number);
+            meta[2] = BigInt(r[2] as number);
+            fields = new Map();
+          }
+          if (r[3] === null) return; // a record with no fields yet
+          const d = r[6] as Uint8Array;
+          if (!same(devBytes, d)) {
+            devBytes = d;
+            dev = idFromBytes(d);
+          }
+          const o = r[7] as Uint8Array;
+          if (!same(opBytes, o)) {
+            opBytes = o;
+            op = idFromBytes(o);
+          }
+          fields.set(r[3] as number, { hlc: { wallMs: r[4] as number, ctr: r[5] as number }, dev, opId: op, value: decodeValue(r[8] as Uint8Array) });
+        },
+        'small',
+      );
+      finish();
+      return out;
+  }
 }

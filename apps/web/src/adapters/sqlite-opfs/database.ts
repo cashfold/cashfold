@@ -105,17 +105,24 @@ export class EncryptedDatabase {
 
   /**
    * Reads rows one at a time and hands each to `fn`. If reading fails part-way (a damaged page), the rows already handed over stay
-   * with the caller and the error is thrown: this is how a damaged table is salvaged (recovery.ts).
+   * with the caller and the error is thrown: this is how a damaged table is salvaged (recovery.ts). `small` reads whole numbers as plain numbers
+   * (fast, and exact only below 2^53): it is for columns that can never be larger, such as clocks and field numbers.
    */
-  forEachRow(sql: string, bind: readonly Bind[], fn: (row: SqlValue[]) => void): void {
+  forEachRow(sql: string, bind: readonly Bind[], fn: (row: SqlValue[]) => void, mode: 'exact' | 'small' = 'exact'): void {
     const stmt = this.db.prepare(sql);
     try {
       if (bind.length > 0) stmt.bind(bind.map(toBind) as never);
       const capi = this.runtime.sqlite3.capi;
       while (stmt.step()) {
-        const row: SqlValue[] = [];
-        for (let i = 0; i < stmt.columnCount; i++) {
-          row.push(capi.sqlite3_column_type(stmt.pointer!, i) === SQLITE_INTEGER ? BigInt(capi.sqlite3_column_int64(stmt.pointer!, i)) : (stmt.get(i) as SqlValue));
+        let row: SqlValue[];
+        if (mode === 'small') {
+          // For columns known to hold small whole numbers (counters, clocks, field numbers): plain numbers, one call per row, no bigint.
+          row = stmt.get([]) as SqlValue[];
+        } else {
+          row = [];
+          for (let i = 0; i < stmt.columnCount; i++) {
+            row.push(capi.sqlite3_column_type(stmt.pointer!, i) === SQLITE_INTEGER ? BigInt(capi.sqlite3_column_int64(stmt.pointer!, i)) : (stmt.get(i) as SqlValue));
+          }
         }
         fn(row);
       }
