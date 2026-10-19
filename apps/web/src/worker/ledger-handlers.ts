@@ -1,5 +1,5 @@
 import {
-  createAccountCommands, createAdjustBalance, createBudgetCommands, createBudgetQueries, createMaterialiser, createScheduleCommands, createScheduleQueries, createTransferCommands, createCategoryCommands, createLabelCommands, createRateCommands, createRevalue,
+  createAccountCommands, createAdjustBalance, createBudgetCommands, createBudgetQueries, createGoalCommands, createGoalQueries, createMaterialiser, createScheduleCommands, createScheduleQueries, createTransferCommands, createCategoryCommands, createLabelCommands, createRateCommands, createRevalue,
   createTransactionCommands, labelUsage, newIdV4, purgeExpired, type ClockPort, type CommandDef, type DomainError, type Id,
 } from '@cashfold/core';
 import type { OpenSession } from '../adapters/sqlite-opfs/web-session';
@@ -31,6 +31,7 @@ export function createLedgerHandlers({ open, clock, rng }: LedgerHandlerDeps): H
   const { adjustBalance } = createAdjustBalance({ clock });
   const { revalue } = createRevalue({ clock });
   const budgets = createBudgetCommands();
+  const goals = createGoalCommands();
   const schedules = createScheduleCommands({ clock });
   const materialiser = createMaterialiser({ clock });
 
@@ -73,6 +74,9 @@ export function createLedgerHandlers({ open, clock, rng }: LedgerHandlerDeps): H
     'budgets.create': { def: budgets.createBudget as unknown as AnyCommand, mint },
     'budgets.update': { def: budgets.updateBudget as unknown as AnyCommand },
     'budgets.delete': { def: budgets.deleteBudget as unknown as AnyCommand },
+    'goals.create': { def: goals.addGoal as unknown as AnyCommand, mint },
+    'goals.update': { def: goals.updateGoal as unknown as AnyCommand },
+    'goals.delete': { def: goals.deleteGoal as unknown as AnyCommand },
     'schedules.create': { def: schedules.createSchedule as unknown as AnyCommand, mint },
     'schedules.update': { def: schedules.updateSchedule as unknown as AnyCommand },
     'schedules.finish': { def: schedules.finishSchedule as unknown as AnyCommand },
@@ -130,6 +134,11 @@ export function createLedgerHandlers({ open, clock, rng }: LedgerHandlerDeps): H
   query('budgets.detail', async (session, args: { fold: Id; id: Id; index?: number }) => {
     const queries = createBudgetQueries({ views: session.views, clock });
     return session.queryBus.execute(queries.budgetDetail as never, args as never);
+  });
+
+  query('goals.progress', async (session, args: { fold: Id }) => {
+    const queries = createGoalQueries({ views: session.views, clock });
+    return session.queryBus.execute(queries.goalProgress as never, { tzOffsetMin: deviceOffsetMin(), ...args } as never);
   });
 
   const scheduleQueries = (session: OpenSession) => createScheduleQueries({ views: session.views, clock });

@@ -83,3 +83,6 @@ export * from './scheduling/application/projected-balance';
 export * from './scheduling/application/reminders';
 export * from './scheduling/application/schedule-queries';
 export * from './scheduling/application/repair-rules';
+export * from './budgeting/domain/goal';
+export * from './budgeting/application/goal-commands';
+export * from './budgeting/application/goal-queries';

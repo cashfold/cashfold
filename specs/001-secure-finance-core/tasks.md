@@ -298,10 +298,10 @@ The spec covers the whole v1 product, so this list is large. Recommended first r
 
 **Purpose**: Goals backed by goal accounts.
 
-- [ ] T164 [P] [US8] Write failing tests for `Goal` in `packages/core/src/budgeting/domain/goal.test.ts`: `target_minor > 0`, linked account kind `goal` with one goal per goal account, status active|achieved|overdue, `required_per_month = ceil(remaining / months_left)` with `months_left ≥ 1`, goal account accepts only transfers and adjustments — Refs: FR-067, FR-068
-- [ ] T165 [P] [US8] Write failing Playwright test with axe assertions `e2e/us8-goals.spec.ts`: 6,000.00 due in 12 months, transfer 1,000.00 in, remaining 5,000.00 and the required monthly amount exact, achieved and overdue states — Refs: FR-068
-- [ ] T166 [US8] Implement the `Goal` aggregate, commands add/update/delete and the `goalProgress` query in `packages/core/src/budgeting/domain/goal.ts` and `application/goal-commands.ts` (depends on T164, T083, T097) — Refs: FR-067, FR-068, FR-029
-- [ ] T167 [US8] Build goal list/detail and create/edit screens with progress, remaining, percent, status and required monthly saving in `apps/web/src/app/goals/` and `apps/web/src/ui/goals/` — Refs: FR-068
+- [X] T164 [P] [US8] Write failing tests for `Goal` in `packages/core/src/budgeting/domain/goal.test.ts`: `target_minor > 0`, linked account kind `goal` with one goal per goal account, status active|achieved|overdue, `required_per_month = ceil(remaining / months_left)` with `months_left ≥ 1`, goal account accepts only transfers and adjustments — Refs: FR-067, FR-068
+- [X] T165 [P] [US8] Write failing Playwright test with axe assertions `e2e/us8-goals.spec.ts`: 6,000.00 due in 12 months, transfer 1,000.00 in, remaining 5,000.00 and the required monthly amount exact, achieved and overdue states — Refs: FR-068
+- [X] T166 [US8] Implement the `Goal` aggregate, commands add/update/delete and the `goalProgress` query in `packages/core/src/budgeting/domain/goal.ts` and `application/goal-commands.ts` (depends on T164, T083, T097) — Refs: FR-067, FR-068, FR-029
+- [X] T167 [US8] Build goal list/detail and create/edit screens with progress, remaining, percent, status and required monthly saving in `apps/web/src/app/goals/` and `apps/web/src/ui/goals/` — Refs: FR-068
 
 **Checkpoint**: US8 works independently.
 

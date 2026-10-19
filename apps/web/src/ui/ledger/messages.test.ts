@@ -53,6 +53,7 @@ describe('the ledger screens only use words that exist', () => {
       ...['day', 'week', 'month', 'year', 'custom'].map((u) => `budgets.unit.${u}`),
       ...['day', 'week', 'month', 'year'].flatMap((u) => [`schedules.unit.${u}`, `schedules.every.${u}`]),
       ...['none', '0', '60', '1440'].map((r) => `schedules.reminder.${r}`),
+      ...['active', 'achieved', 'overdue'].map((x) => `goals.status.${x}`),
       ...['none', 'carry_positive', 'carry_all'].map((r) => `budgets.rollover.${r}`),
       ...['spent', 'limit', 'available', 'ratio'].map((m) => `budgets.mode.${m}`),
       ...['payee', 'tag'].flatMap((x) => ['title', 'new', 'edit', 'empty'].map((s) => `ledger.${x}.${s}`)),

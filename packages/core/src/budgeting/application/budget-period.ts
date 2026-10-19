@@ -82,7 +82,7 @@ function contribution(budget: Budget, t: Transaction): { own: bigint; base: bigi
   return t.direction === 'income' && !t.isRefund ? { own: t.amountMinor, base: t.baseAmountMinor } : undefined;
 }
 
-class Converter {
+export class Converter {
   readonly missing = new Set<CurrencyCode>();
   constructor(private readonly ledger: Ledger, private readonly target: CurrencyCode) {}
 

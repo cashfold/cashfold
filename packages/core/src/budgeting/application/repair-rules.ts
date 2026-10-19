@@ -4,6 +4,8 @@ import { isVisible, type FoldState } from '../../sync/domain/merge';
 import { isTombstoned } from '../../ledger/domain/records';
 import { TABLE } from '../../ledger/domain/tables';
 import { decodeBudget } from '../domain/budget';
+import { decodeGoal } from '../domain/goal';
+import { decodeAccount } from '../../ledger/domain/records';
 
 // Deterministic post-merge repair for budgets (FR-078). Budgets are plans, not balances: nothing a merge can do to
 // one corrupts money, so these rules only report, and a budget is never hidden because of a damaged scope.
@@ -52,4 +54,44 @@ const malformedBudget: RepairRule = {
   },
 };
 
-export const budgetingRepairRules: readonly RepairRule[] = [scopeOrphan, malformedBudget];
+/**
+ * A goal needs a goal account of its own (FR-067). After a merge its account can be gone, not a goal account, or shared
+ * with a goal that sorts before it. The goal is reported and shows no progress; the one that sorts first keeps working.
+ */
+const goalAccount: RepairRule = {
+  id: 'budgeting.goal_account',
+  check(state) {
+    const kinds = new Map<Id, string>();
+    for (const [rec, s] of state) {
+      if (s.table !== TABLE.account || !isVisible(s)) continue;
+      const a = decodeAccount(rec, s);
+      if (a !== undefined) kinds.set(rec, a.kind);
+    }
+    const goals = [...state].filter(([, s]) => s.table === TABLE.goal && isVisible(s)).flatMap(([rec, s]) => {
+      const g = decodeGoal(rec, s);
+      return g === undefined ? [] : [g];
+    }).sort((a, b) => (a.id < b.id ? -1 : 1));
+    const found: Finding[] = [];
+    const used = new Set<Id>();
+    for (const g of goals) {
+      if (kinds.get(g.accountId) !== 'goal') found.push(finding('goal_invalid', g.id, 'flag'));
+      else if (used.has(g.accountId)) found.push(finding('goal_duplicate_account', g.id, 'flag'));
+      else used.add(g.accountId);
+    }
+    return found;
+  },
+};
+
+const malformedGoal: RepairRule = {
+  id: 'budgeting.malformed_goal',
+  check(state) {
+    const found: Finding[] = [];
+    for (const [rec, s] of state) {
+      if (s.table !== TABLE.goal || isTombstoned(s)) continue;
+      if (decodeGoal(rec, s) === undefined) found.push(finding('malformed_record', rec, 'hide'));
+    }
+    return found;
+  },
+};
+
+export const budgetingRepairRules: readonly RepairRule[] = [scopeOrphan, malformedBudget, goalAccount, malformedGoal];

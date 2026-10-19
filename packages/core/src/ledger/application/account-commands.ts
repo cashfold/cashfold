@@ -6,7 +6,7 @@ import {
   accountFieldPatch, cleanName, validateAccountUpdate, validateNewAccount,
   type Account, type AccountChanges, type AccountError, type AccountFields, type NewAccountInput,
 } from '../domain/account';
-import { GROUP_FIELD, ACCOUNT_FIELD, TABLE, TRANSFER_FIELD, TXN_FIELD } from '../domain/tables';
+import { GOAL_FIELD, GROUP_FIELD, ACCOUNT_FIELD, TABLE, TRANSFER_FIELD, TXN_FIELD } from '../domain/tables';
 import { addMembers, removeMembers } from '../domain/sets';
 import { compareText, maxOf } from '../domain/util';
 import { loadAccount, loadLedger, noSets, type NotFound } from './context';
@@ -222,6 +222,7 @@ async function dependantsOf(ctx: Parameters<typeof loadLedger>[0], fold: Id, acc
     if (!isVisible(state)) continue;
     const value = (field: number): unknown => state.fields.get(field)?.value;
     if (state.table === TABLE.transaction && value(TXN_FIELD.accountId) === account) out.push({ rec, table: state.table });
+    else if (state.table === TABLE.goal && value(GOAL_FIELD.accountId) === account) out.push({ rec, table: state.table }); // a goal cannot outlive its account
     else if (state.table === TABLE.transfer && (value(TRANSFER_FIELD.fromAccountId) === account || value(TRANSFER_FIELD.toAccountId) === account)) {
       out.push({ rec, table: state.table });
     }

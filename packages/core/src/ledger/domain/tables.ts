@@ -47,6 +47,8 @@ export const BUDGET_FIELD = {
   sortOrder: 17,
 } as const;
 
+export const GOAL_FIELD = { name: 1, icon: 2, color: 3, targetMinor: 4, currency: 5, targetLocalDate: 6, accountId: 7 } as const;
+
 export const SCHEDULE_FIELD = {
   name: 1, kind: 2, beginLocalDate: 3, endLocalDate: 4, unit: 5, interval: 6, requiresConfirmation: 7, reminderMin: 8, completedUtcMs: 9,
   direction: 10, accountId: 11, amountMinor: 12, categoryId: 13, payeeId: 14, note: 15, tagIds: 16, placeName: 17, latE7: 18, lonE7: 19,
