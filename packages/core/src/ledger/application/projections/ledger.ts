@@ -1,6 +1,7 @@
 import { parseCurrency, type CurrencyCode } from '../../../shared-kernel/currency';
 import type { Id } from '../../../shared-kernel/id';
 import type { LocalDate } from '../../../shared-kernel/local-date';
+import { decodeCheckpoint, type Checkpoint, type HistoryWindow } from '../../../sharing/domain/checkpoint';
 import { FOLD_SETTINGS_FIELDS, SETTINGS_TABLE } from '../../../sharing/domain/fold';
 import { isVisible, type FoldState } from '../../../sync/domain/merge';
 import type { RepairReport } from '../../../sync/application/repair';
@@ -56,6 +57,11 @@ export interface Ledger {
   /** Entries that count towards balances: orphaned and repair-excluded records are left out. */
   readonly entries: readonly LedgerEntry[];
   readonly entriesByAccount: ReadonlyMap<Id, readonly LedgerEntry[]>;
+  /**
+   * The checkpoints written for the viewing account, by subject, when it joined with `from_join` history (FR-102). Empty for
+   * members who see everything. Account balances already start from them; budgets read them.
+   */
+  readonly checkpoints: ReadonlyMap<Id, Checkpoint>;
 }
 
 const byDateThenRef = (a: LedgerEntry, b: LedgerEntry): number => a.localDate - b.localDate || compareText(a.refId, b.refId) || compareText(a.leg, b.leg);
@@ -64,7 +70,7 @@ const byDateThenRef = (a: LedgerEntry, b: LedgerEntry): number => a.localDate - 
  * Projects merged record state into typed ledger read models. A pure function of the records and the repair
  * report, so every replica with the same ops sees the same ledger (invariants 1 and 4).
  */
-export function buildLedger(records: FoldState, report?: Pick<RepairReport, 'hidden' | 'excluded'>): Ledger {
+export function buildLedger(records: FoldState, report?: Pick<RepairReport, 'hidden' | 'excluded'>, history?: HistoryWindow): Ledger {
   const accounts = new Map<Id, Account>();
   const groups = new Map<Id, AccountGroup>();
   const categories = new Map<Id, Category>();
@@ -76,6 +82,7 @@ export function buildLedger(records: FoldState, report?: Pick<RepairReport, 'hid
   const transfers = new Map<Id, Transfer>();
   const deletedTransfers = new Map<Id, DeletedTransfer>();
   const allRates: ExchangeRate[] = [];
+  const checkpoints = new Map<Id, Checkpoint>();
   let baseCurrency: CurrencyCode | undefined;
 
   for (const [rec, state] of records) {
@@ -129,6 +136,11 @@ export function buildLedger(records: FoldState, report?: Pick<RepairReport, 'hid
         if (r !== undefined) allRates.push(r);
         break;
       }
+      case TABLE.checkpoint: {
+        const c = isVisible(state) ? decodeCheckpoint(rec, state) : undefined;
+        if (c !== undefined && history !== undefined && c.member === history.member) checkpoints.set(c.subject, c);
+        break;
+      }
       case SETTINGS_TABLE: {
         const text = state.fields.get(FOLD_SETTINGS_FIELDS.baseCurrency)?.value;
         const parsed = typeof text === 'string' ? parseCurrency(text) : undefined;
@@ -151,16 +163,27 @@ export function buildLedger(records: FoldState, report?: Pick<RepairReport, 'hid
     if (live.length !== a.groupIds.length) accounts.set(rec, { ...a, groupIds: live });
   }
 
+  // A member who joined "from now on" starts each account from the balance written for them, and sees only what came after.
+  const startsAfter = (account: Id): LocalDate | undefined => {
+    const c = checkpoints.get(account);
+    return c?.kind === 'account_balance' ? c.asOf : undefined;
+  };
+  for (const [rec, a] of accounts) {
+    const c = checkpoints.get(rec);
+    if (c?.kind === 'account_balance') accounts.set(rec, { ...a, openingBalanceMinor: c.valueMinor, openingDate: c.asOf });
+  }
+
   const entries: LedgerEntry[] = [];
   for (const t of transactions.values()) {
     if (!accounts.has(t.accountId) || report?.excluded.has(t.id) === true) continue;
+    if (t.localDate <= (startsAfter(t.accountId) ?? 0)) continue;
     entries.push({ accountId: t.accountId, refId: t.id, leg: 'single', localDate: t.localDate, amountMinor: t.amountMinor, status: t.status });
   }
   // A transfer is one record that is two ledger entries: money leaves one account and arrives in the other (FR-043).
   for (const x of transfers.values()) {
     if (report?.excluded.has(x.id) === true) continue;
-    if (accounts.has(x.fromAccountId)) entries.push({ accountId: x.fromAccountId, refId: x.id, leg: 'out', localDate: x.localDate, amountMinor: -x.fromAmountMinor, status: x.status });
-    if (accounts.has(x.toAccountId)) entries.push({ accountId: x.toAccountId, refId: x.id, leg: 'in', localDate: x.localDate, amountMinor: x.toAmountMinor, status: x.status });
+    if (accounts.has(x.fromAccountId) && x.localDate > (startsAfter(x.fromAccountId) ?? 0)) entries.push({ accountId: x.fromAccountId, refId: x.id, leg: 'out', localDate: x.localDate, amountMinor: -x.fromAmountMinor, status: x.status });
+    if (accounts.has(x.toAccountId) && x.localDate > (startsAfter(x.toAccountId) ?? 0)) entries.push({ accountId: x.toAccountId, refId: x.id, leg: 'in', localDate: x.localDate, amountMinor: x.toAmountMinor, status: x.status });
   }
   entries.sort(byDateThenRef);
 
@@ -173,6 +196,6 @@ export function buildLedger(records: FoldState, report?: Pick<RepairReport, 'hid
 
   return {
     baseCurrency, accounts, groups, categories, payees, tags, transactions, deleted, transfers, deletedTransfers, lastChanged: changed,
-    rates: resolveRates(allRates).rates, entries, entriesByAccount,
+    rates: resolveRates(allRates).rates, entries, entriesByAccount, checkpoints,
   };
 }

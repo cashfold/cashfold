@@ -13,7 +13,8 @@ export const LogEntrySchema = textRecord({
   scope: z.enum(['full', 'from_join']).optional(),
   from_epoch: u32.optional(),
   server: z.string().optional(),
-  pubkeys: textRecord({ enc: pk32, sig: pk32 }).optional(),
+  // `enc` is absent on device entries, which certify only a device's signing key.
+  pubkeys: textRecord({ enc: pk32.optional(), sig: pk32 }).optional(),
   epoch: u32.optional(),
   signer: anyBytes,
   ts: u64,
@@ -35,6 +36,8 @@ export type Snapshot = z.output<typeof SnapshotSchema>;
 const wire = <T extends Record<string, unknown>>(value: T) => encode(stripUndefined(value) as never);
 
 export const encodeLogEntry = (e: LogEntry): Uint8Array => wire(e);
+/** The entry as it is signed: every field but the signature. */
+export const encodeLogEntryUnsigned = (e: Omit<LogEntry, 'sig'>): Uint8Array => wire(e);
 export const decodeLogEntry = (b: Uint8Array): LogEntry => LogEntrySchema.parse(decode(b));
 export const encodeSnapshot = (s: Snapshot): Uint8Array => wire(s);
 export const decodeSnapshot = (b: Uint8Array): Snapshot => SnapshotSchema.parse(decode(b));

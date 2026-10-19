@@ -133,7 +133,7 @@ describe('BudgetPeriod: what counts as spent', () => {
     const b = f.budget({ currency: 'USD' });
     f.transaction(eur, { amountMinor: -1_000n, currency: 'EUR' as never, baseAmountMinor: -1_000n, baseCurrency: 'EUR', localDate: date(2026, 1, 10) });
     expect(view(f, b, 0)).toMatchObject({ spentMinor: 0n, missingRates: ['EUR'] });
-    f.exchangeRate({ quote: 'EUR', asOfUtcS: Date.UTC(2026, 0, 1) / 1000, rateE12: 800_000_000_000n, source: 'custom' });
+    f.exchangeRate({ quote: 'EUR', asOfUtcS: Date.UTC(2026, 0, 1) / 1000, rateE12: 800_000_000_000n, source: 'custom' } as never);
     expect(view(f, b, 0)).toMatchObject({ spentMinor: 1_250n, missingRates: [] });
   });
 

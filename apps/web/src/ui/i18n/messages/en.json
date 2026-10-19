@@ -772,5 +772,6 @@
   "ledger.error.not_a_goal_account": "A goal is saved in an account of the kind Goal.",
   "ledger.error.account_has_goal": "That goal account already has a goal.",
   "attention.goal_invalid": "A goal's account is missing or is not a goal account, so it shows no progress.",
-  "attention.goal_duplicate_account": "Two goals share one goal account. The first keeps working; edit the other to give it its own account."
+  "attention.goal_duplicate_account": "Two goals share one goal account. The first keeps working; edit the other to give it its own account.",
+  "attention.quarantined.unauthorised": "A change came from someone who was not allowed to make changes in this Fold when it was made, so it was set aside."
 }

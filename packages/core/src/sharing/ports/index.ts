@@ -35,3 +35,5 @@ export interface FoldKeyImportPort {
   /** The epochs this device holds a key for, ascending. */
   epochs(fold: Id): Promise<readonly number[]>;
 }
+
+export * from './membership';

@@ -9,6 +9,8 @@ export type FieldValue = bigint | string | Uint8Array | boolean | null | FieldVa
 export interface SetDeltaWire {
   add?: Uint8Array[] | undefined;
   rem?: Array<[Uint8Array, Uint8Array]> | undefined;
+  /** `[member, tag]`: adds that keep a given tag (a republished baseline). */
+  tagged?: Array<[Uint8Array, Uint8Array]> | undefined;
 }
 
 export interface OpPayload {
@@ -84,7 +86,7 @@ function fieldValue(v: unknown, depth: number): FieldValue {
 
 function setDelta(v: unknown): SetDeltaWire {
   const m = textMap(v, 'set delta');
-  for (const k of m.keys()) if (k !== 'add' && k !== 'rem') return bad('set delta field');
+  for (const k of m.keys()) if (k !== 'add' && k !== 'rem' && k !== 'tagged') return bad('set delta field');
   const out: SetDeltaWire = {};
   if (m.has('add')) {
     const add = m.get('add');
@@ -95,6 +97,11 @@ function setDelta(v: unknown): SetDeltaWire {
     const rem = m.get('rem');
     if (!Array.isArray(rem) || !rem.every((x) => Array.isArray(x) && x.length === 2 && isBytes(x[0], 16) && isBytes(x[1], 16))) return bad('set removals');
     out.rem = rem as Array<[Uint8Array, Uint8Array]>;
+  }
+  if (m.has('tagged')) {
+    const tagged = m.get('tagged');
+    if (!Array.isArray(tagged) || !tagged.every((x) => Array.isArray(x) && x.length === 2 && isBytes(x[0], 16) && isBytes(x[1], 16))) return bad('tagged additions');
+    out.tagged = tagged as Array<[Uint8Array, Uint8Array]>;
   }
   return out;
 }

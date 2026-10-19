@@ -20,6 +20,11 @@ export interface OpDraft {
   readonly table: number;
   readonly fields: ReadonlyMap<number, FieldValue>;
   readonly sets: ReadonlyMap<number, SetDelta>;
+  /**
+   * Stamps the op with this clock instead of the device's next one. Only a baseline republished for a new member does this,
+   * so each field keeps the clock that last wrote it and the op changes nothing for members who already have it.
+   */
+  readonly hlc?: Hlc;
 }
 
 export type WriteError = MergeError | DomainError<'no_key' | 'clock_overflow'>;
@@ -55,6 +60,12 @@ export interface WritePathDeps {
   readonly groups: GroupRegistry;
   /** Brings an op written under an older schema up to the current one before it is merged. */
   readonly upcasters?: Upcasters;
+  /**
+   * Whether the op's author was allowed to write at the time the op says it was written (the membership log decides, FR-085).
+   * `unknown_signer` means the log has not yet told this device who owns the signing device: the op is not stored, so it can
+   * be applied cleanly once the log is current.
+   */
+  readonly authorise?: (op: WireOp) => Promise<'ok' | 'unauthorised' | 'unknown_signer'>;
 }
 
 export interface WritePath {
@@ -113,7 +124,7 @@ export function createWritePath(deps: WritePathDeps): WritePath {
           for (const draft of drafts) {
             const epoch = await keys.currentEpoch(draft.fold);
             if (epoch === undefined) return err('no_key', 'This device holds no key for the Fold');
-            const stamped = tick(next.get(draft.fold) ?? (await clockFor(draft.fold)), clock.nowMs());
+            const stamped = draft.hlc !== undefined ? ok(draft.hlc) : tick(next.get(draft.fold) ?? (await clockFor(draft.fold)), clock.nowMs());
             if (!stamped.ok) return err(stamped.error.code, stamped.error.message);
 
             const dev = keys.deviceId();
@@ -130,7 +141,7 @@ export function createWritePath(deps: WritePathDeps): WritePath {
             if ((await oplog.append({ sealed, origin: 'local', pushed: false })) !== 'inserted') throw new Error('local op was not inserted: sequence bookkeeping is corrupt');
             const { before, after } = await project(op, draft.fold);
             applied.push({ op, sealed, before, after });
-            next.set(draft.fold, stamped.value);
+            if (draft.hlc === undefined) next.set(draft.fold, stamped.value);
           }
           return ok({ applied, clocks: next });
         });
@@ -173,6 +184,12 @@ export function createWritePath(deps: WritePathDeps): WritePath {
           const upcast = upcasters.upcast(opened);
           if (!upcast.ok) return quarantine('schema_unsupported');
           const wire = upcast.value;
+
+          if (deps.authorise !== undefined) {
+            const verdict = await deps.authorise(wire);
+            if (verdict === 'unknown_signer') return { result: { kind: 'quarantined', reason: 'unknown_signer' } };
+            if (verdict === 'unauthorised') return quarantine('unauthorised');
+          }
 
           const merged = receive(await clockFor(sealed.fold), wire.hlc, clock.nowMs());
           if (!merged.ok) return quarantine('clock_ahead');

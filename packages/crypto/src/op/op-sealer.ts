@@ -13,6 +13,7 @@ export type { FieldValue };
 export interface SetDeltaText {
   readonly add: readonly string[];
   readonly rem: readonly (readonly [string, string])[];
+  readonly tagged?: readonly (readonly [string, string])[];
 }
 
 /** An operation in the clear: what a device produced, or what was recovered from a sealed op. */
@@ -93,14 +94,15 @@ export function envelopeToSealed(e: OpEnvelope): SealedOp {
 }
 
 function toPayload(op: SealableOp): OpPayload {
-  const payload: { t: number; f?: Map<number, FieldValue>; fx?: Map<number, { add?: Uint8Array[]; rem?: [Uint8Array, Uint8Array][] }> } = { t: op.table };
+  const payload: { t: number; f?: Map<number, FieldValue>; fx?: Map<number, { add?: Uint8Array[]; rem?: [Uint8Array, Uint8Array][]; tagged?: [Uint8Array, Uint8Array][] }> } = { t: op.table };
   if (op.fields.size > 0) payload.f = new Map(op.fields);
   if (op.sets.size > 0) {
     payload.fx = new Map(
       [...op.sets].map(([field, delta]) => {
-        const out: { add?: Uint8Array[]; rem?: [Uint8Array, Uint8Array][] } = {};
+        const out: { add?: Uint8Array[]; rem?: [Uint8Array, Uint8Array][]; tagged?: [Uint8Array, Uint8Array][] } = {};
         if (delta.add.length > 0) out.add = delta.add.map(uuidBytes);
         if (delta.rem.length > 0) out.rem = delta.rem.map(([member, tag]) => [uuidBytes(member), uuidBytes(tag)]);
+        if (delta.tagged !== undefined && delta.tagged.length > 0) out.tagged = delta.tagged.map(([member, tag]) => [uuidBytes(member), uuidBytes(tag)]);
         return [field, out];
       }),
     );
@@ -162,6 +164,7 @@ export function createOpSealer({ aead, hkdf, signer, rng, keys }: { aead: Aead; 
         sets.set(field, {
           add: (delta.add ?? []).map(uuidText),
           rem: (delta.rem ?? []).map(([member, tag]) => [uuidText(member), uuidText(tag)] as const),
+          ...(delta.tagged !== undefined && { tagged: delta.tagged.map(([member, tag]) => [uuidText(member), uuidText(tag)] as const) }),
         });
       }
       return {

@@ -50,10 +50,12 @@ field-value = int / tstr / bstr / bool / null / uuid16 / [* field-value] / {* ts
 
 set-delta = {
   ? add: [* set-add],
-  ? rem: [* set-rem]
+  ? rem: [* set-rem],
+  ? tagged: [* set-tagged]
 }
 set-add = uuid16            ; member id; the add's unique tag is the carrying op id
 set-rem = [ member: uuid16, observed-add-op: uuid16 ]
+set-tagged = [ member: uuid16, tag: uuid16 ]   ; an add that keeps an existing tag; only a baseline republished for a new member (ARCH 7.6) uses it
 
 ; ---------------------------------------------------------------- Key material objects
 

@@ -102,7 +102,7 @@ export class Converter {
 }
 
 /** Spending of each period from the anchor up to `lastIndex`, in one pass over the ledger. */
-function spentByPeriod(ledger: Ledger, budget: Budget, lastIndex: number): { spent: Map<number, bigint>; missing: ReadonlySet<CurrencyCode> } {
+function spentByPeriod(ledger: Ledger, budget: Budget, lastIndex: number, after?: LocalDate): { spent: Map<number, bigint>; missing: ReadonlySet<CurrencyCode> } {
   const matcher = matcherFor(ledger, budget);
   const converter = new Converter(ledger, budget.currency);
   const spent = new Map<number, bigint>();
@@ -112,7 +112,7 @@ function spentByPeriod(ledger: Ledger, budget: Budget, lastIndex: number): { spe
     spent.set(span.index, (spent.get(span.index) ?? 0n) + minor);
   };
   for (const t of ledger.transactions.values()) {
-    if (t.status !== 'posted' || !matcher.transaction(t)) continue;
+    if (t.status !== 'posted' || !matcher.transaction(t) || (after !== undefined && t.localDate <= after)) continue;
     const part = contribution(budget, t);
     if (part === undefined) continue;
     // The amount frozen at entry is used when it is already in the budget currency; otherwise convert the account amount.
@@ -121,7 +121,7 @@ function spentByPeriod(ledger: Ledger, budget: Budget, lastIndex: number): { spe
   }
   if (matcher.transfersAllowed) {
     for (const x of ledger.transfers.values()) {
-      if (x.status !== 'posted') continue;
+      if (x.status !== 'posted' || (after !== undefined && x.localDate <= after)) continue;
       const accountId = budget.direction === 'expense' ? x.fromAccountId : x.toAccountId;
       const own = budget.direction === 'expense' ? x.fromAmountMinor : x.toAmountMinor;
       const account = ledger.accounts.get(accountId);
@@ -133,13 +133,22 @@ function spentByPeriod(ledger: Ledger, budget: Budget, lastIndex: number): { spe
   return { spent, missing: converter.missing };
 }
 
-/** The budget's period number `index` (0 is the one starting at the anchor). */
+/**
+ * The budget's period number `index` (0 is the one starting at the anchor).
+ *
+ * A member who joined with "from now on" history has a checkpoint for the budget: it stands for everything up to the joining
+ * day. Periods start from the one holding that day, with the checkpoint as its carry-in, and only later entries are counted
+ * (FR-102). Asking for an earlier period gives that first one.
+ */
 export function budgetPeriodAt(ledger: Ledger, budget: Budget, index: number): BudgetPeriodView {
-  const last = budget.periodUnit === 'custom' ? 0 : maxOf([0], index);
-  const { spent, missing } = spentByPeriod(ledger, budget, last);
-  let carryIn = 0n;
+  const checkpoint = ledger.checkpoints.get(budget.id);
+  const joined = checkpoint?.kind === 'envelope_carry' ? checkpoint : undefined;
+  const first = joined === undefined ? 0 : (periodContaining(budget, joined.asOf)?.index ?? 0);
+  const last = budget.periodUnit === 'custom' ? 0 : maxOf([first], index);
+  const { spent, missing } = spentByPeriod(ledger, budget, last, joined?.asOf);
+  let carryIn = joined?.valueMinor ?? 0n;
   let view: BudgetPeriodView | undefined;
-  for (let k = 0; k <= last; k++) {
+  for (let k = first; k <= last; k++) {
     const span = periodSpan(budget, k);
     const spentMinor = spent.get(k) ?? 0n;
     const availableMinor = carryIn + budget.allocationMinor - spentMinor;
@@ -152,6 +161,21 @@ export function budgetPeriodAt(ledger: Ledger, budget: Budget, index: number): B
     carryIn = budget.rollover === 'none' ? 0n : budget.rollover === 'carry_positive' ? (availableMinor > 0n ? availableMinor : 0n) : availableMinor;
   }
   return view!;
+}
+
+/** What a joining member's checkpoint for a budget must hold: the carry-in of the period holding the day, less what was spent in it up to that day. */
+export function envelopeCheckpointValue(ledger: Ledger, budget: Budget, joined: LocalDate): bigint | undefined {
+  const span = periodContaining(budget, joined);
+  if (span === undefined) return undefined; // the budget has not started; nothing to carry
+  const whole = budgetPeriodAt({ ...ledger, checkpoints: new Map() }, budget, span.index);
+  // Spent in the period on or before the joining day = spent in the whole period minus spent after it.
+  const after = spentAfter(ledger, budget, span.index, joined);
+  const spentUpTo = whole.spentMinor - after;
+  return whole.carryInMinor - spentUpTo;
+}
+
+function spentAfter(ledger: Ledger, budget: Budget, index: number, joined: LocalDate): bigint {
+  return spentByPeriod(ledger, budget, index, joined).spent.get(index) ?? 0n;
 }
 
 /** The period containing `on`, or undefined before the budget starts or after a custom period ends. */

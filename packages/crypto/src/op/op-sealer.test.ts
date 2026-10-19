@@ -32,7 +32,7 @@ async function setup() {
 const op: SealableOp = {
   fold: FOLD, op: uuid(0x100), rec: uuid(0x200), dev: DEV, seq: 7n, hlc: { wallMs: 1_700_000_000_000, ctr: 3 }, epoch: 1, schema: 1, table: 6,
   fields: new Map<number, FieldValue>([[1, -12345n], [2, 'Coffee'], [3, new Uint8Array([1, 2, 3])], [0xffff, false]]),
-  sets: new Map([[10, { add: [uuid(0x51)], rem: [[uuid(0x52), uuid(0x300)] as const] }]]),
+  sets: new Map([[10, { add: [uuid(0x51)], rem: [[uuid(0x52), uuid(0x300)] as const], tagged: [[uuid(0x53), uuid(0x301)] as const] }]]),
 };
 
 describe('OpSealer', () => {

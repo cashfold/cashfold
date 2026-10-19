@@ -102,6 +102,24 @@ describe('add-wins OR-Set', () => {
     expect(members(fold(readd, remove, add))).toEqual([m1]);
   });
 
+  it('an add that keeps a given tag makes the member visible under that tag, so removes that name it still work', () => {
+    const original = setOp({ add: [m1] });
+    const republished = setOp({ tagged: [[m1, original.id]] }, { dev: DEV_B });
+    const remove = setOp({ rem: [[m1, original.id]] });
+    // a member who only ever saw the republished add removes the member it saw: everyone ends with it gone
+    expect(members(fold(original, republished, remove))).toEqual([]);
+    expect(members(fold(republished, remove))).toEqual([]);
+    expect(members(fold(remove, republished, original))).toEqual([]);
+    expect(members(fold(republished))).toEqual([m1]);
+  });
+
+  it('a tagged add is idempotent and commutes with the original add', () => {
+    const original = setOp({ add: [m1] });
+    const republished = setOp({ tagged: [[m1, original.id]] });
+    expect(fold(original, republished, republished).get(REC)!.sets.get(TAG_FIELD)!.adds.get(m1)).toEqual(new Set([original.id]));
+    expect(fold(republished, original).get(REC)!.sets.get(TAG_FIELD)).toEqual(fold(original, republished).get(REC)!.sets.get(TAG_FIELD));
+  });
+
   it('removing one member leaves the others', () => {
     const add = setOp({ add: [m1, m2] });
     const remove = setOp({ rem: [[m1, add.id]] });

@@ -21,6 +21,11 @@ export interface SetDelta {
   readonly add: readonly Id[];
   /** `[member, add-op-id]` pairs: only the adds the remover observed are removed. */
   readonly rem: readonly (readonly [Id, Id])[];
+  /**
+   * `[member, tag]` pairs added under an explicit tag instead of this op's id. Only a baseline republished for a new member
+   * uses them, so the tags the other members already hold stay the same and a later remove still names the right adds.
+   */
+  readonly tagged?: readonly (readonly [Id, Id])[];
 }
 
 export interface Op {
@@ -76,7 +81,8 @@ export function recordFromOp(op: Op): RecordState {
   for (const [field, value] of op.fields) fields.set(field, { hlc: op.hlc, dev: op.dev, opId: op.id, value });
   const sets = new Map<number, SetState>();
   for (const [field, delta] of op.sets) {
-    const adds = new Map<Id, ReadonlySet<Id>>(delta.add.map((member) => [member, new Set([op.id])]));
+    const adds = new Map<Id, Set<Id>>(delta.add.map((member) => [member, new Set([op.id])]));
+    for (const [member, tag] of delta.tagged ?? []) adds.set(member, (adds.get(member) ?? new Set<Id>()).add(tag));
     const removed = new Map<Id, Set<Id>>();
     for (const [member, tag] of delta.rem) removed.set(member, (removed.get(member) ?? new Set<Id>()).add(tag));
     sets.set(field, { adds, removed });

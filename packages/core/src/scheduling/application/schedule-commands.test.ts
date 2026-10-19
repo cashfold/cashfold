@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
+import type { FieldValue } from '../../sync/domain/merge';
 import { createRepair } from '../../sync/application/repair';
 import { LedgerFixture, date, id, ledgerHarness, type LedgerHarness } from '../../testing/index';
 import { createAccountCommands } from '../../ledger/application/account-commands';
@@ -198,7 +199,7 @@ describe('repair rules', () => {
     const f = new LedgerFixture();
     const a = f.account();
     const rec = f.nextId();
-    f.apply(rec, TABLE.schedule, new Map([[1, 'Rent'], [2, 1n], [3, BigInt(date(2026, 1, 1))], [5, 3n], [6, 1n], [10, 1n], [11, a], [12, -100n]]));
+    f.apply(rec, TABLE.schedule, new Map<number, FieldValue>([[1, 'Rent'], [2, 1n], [3, BigInt(date(2026, 1, 1))], [5, 3n], [6, 1n], [10, 1n], [11, a], [12, -100n]]));
     expect(run2(f).findings).toEqual([]);
     f.remove(a, TABLE.account);
     expect(run2(f).findings).toMatchObject([{ kind: 'schedule_invalid', ref: rec, effect: 'flag' }]);

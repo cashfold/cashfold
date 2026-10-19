@@ -11,3 +11,5 @@ export * from './store-contract';
 export * from './ledger-fixtures';
 export * from './ledger-harness';
 export * from './sync-harness';
+export * from './membership';
+export * from './sharing-world';

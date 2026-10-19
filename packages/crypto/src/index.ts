@@ -20,3 +20,7 @@ export * from './transport/relay-client';
 export * from './snapshot/snapshot-sealer';
 export * from './hpke/fold-key-grant';
 export * from './adapters/srp-wasm/pinned';
+export * from './fingerprint';
+export * from './membership/log-crypto';
+export * from './membership/bundle';
+export * from './membership/sharing-crypto';

@@ -19,7 +19,7 @@ const value: fc.Arbitrary<FieldValue> = fc.letrec((tie) => ({
 const payloads = fc.record({
   t: fc.integer({ min: 1, max: 14 }),
   f: fc.option(fc.array(fc.tuple(u16, value), { maxLength: 4 }).map((e) => new Map(e)), { nil: undefined }),
-  fx: fc.option(fc.array(fc.tuple(u16, fc.record({ add: fc.array(id16, { maxLength: 3 }), rem: fc.array(fc.tuple(id16, id16), { maxLength: 3 }) }, { requiredKeys: [] })), { maxLength: 3 }).map((e) => new Map(e)), { nil: undefined }),
+  fx: fc.option(fc.array(fc.tuple(u16, fc.record({ add: fc.array(id16, { maxLength: 3 }), rem: fc.array(fc.tuple(id16, id16), { maxLength: 3 }), tagged: fc.array(fc.tuple(id16, id16), { maxLength: 3 }) }, { requiredKeys: [] })), { maxLength: 3 }).map((e) => new Map(e)), { nil: undefined }),
 }, { requiredKeys: ['t'] });
 
 function both(bytes: Uint8Array): { zod: unknown; fast: unknown } {
@@ -52,7 +52,7 @@ describe('decodeOpPayload (hand-written) agrees with the schema', () => {
       { t: 0 }, { t: 15 }, { t: 6, extra: 1 }, { f: new Map() }, { t: 6, f: [] }, { t: 6, f: new Map([[65536, 1]]) },
       { t: 6, f: new Map([[-1, 1]]) }, { t: 6, f: new Map([['a', 1]]) }, { t: 6, f: new Map([[1, 2n ** 63n]]) }, { t: 6, f: new Map([[1, -(2n ** 63n) - 1n]]) },
       { t: 6, f: new Map([[1, new Map([[1, 2]])]]) }, { t: 6, fx: new Map([[1, { add: [new Uint8Array(15)] }]]) },
-      { t: 6, fx: new Map([[1, { rem: [[new Uint8Array(16)]] }]]) }, { t: 6, fx: new Map([[1, { other: [] }]]) }, { t: 6, fx: [] },
+      { t: 6, fx: new Map([[1, { rem: [[new Uint8Array(16)]] }]]) }, { t: 6, fx: new Map([[1, { other: [] }]]) }, { t: 6, fx: new Map([[1, { tagged: [[new Uint8Array(16)]] }]]) }, { t: 6, fx: [] },
       { t: 6, fx: new Map([[1, { add: 'x' }]]) }, { t: 6, fx: new Map([[1, 5]]) }, [], 5, 'x', null,
     ];
     for (const input of bad) {

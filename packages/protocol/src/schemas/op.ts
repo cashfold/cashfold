@@ -100,6 +100,7 @@ const fieldId = intRange(0n, 0xffffn);
 const setDelta = textRecord({
   add: z.array(uuid16).optional(),
   rem: z.array(z.tuple([uuid16, uuid16])).optional(),
+  tagged: z.array(z.tuple([uuid16, uuid16])).optional(),
 });
 
 export const OpPayloadSchema = textRecord({
