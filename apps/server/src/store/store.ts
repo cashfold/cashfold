@@ -123,6 +123,8 @@ export interface Store {
   readonly snapshots: {
     put(row: SnapshotRow): Promise<void>;
     get(foldId: Bytes): Promise<SnapshotRow | undefined>;
+    /** Every Fold that has a snapshot: the ones a pruning sweep must look at. */
+    folds(): Promise<Bytes[]>;
     /** A device confirms it holds everything up to `seq`. */
     acknowledge(foldId: Bytes, devId: Bytes, seq: bigint): Promise<void>;
     /** Deletes ops at or below the snapshot once every active device has acknowledged at least that far. Returns how many. */

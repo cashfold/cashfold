@@ -229,6 +229,12 @@ export function describeStoreContract(label: string, make: () => Promise<Store>)
         expect(await store.snapshots.prune(b(1))).toBe(2);
       });
 
+      it('lists the Folds that have a snapshot', async () => {
+        expect(await store.snapshots.folds()).toEqual([]);
+        await store.snapshots.put({ foldId: b(1), atSeq: 2n, blob: b(1, 50), sig: b(1, 64) });
+        expect((await store.snapshots.folds()).map((f) => Buffer.from(f).toString('hex'))).toEqual([Buffer.from(b(1)).toString('hex')]);
+      });
+
       it('prunes nothing without a snapshot', async () => {
         expect(await store.snapshots.prune(b(1))).toBe(0);
       });

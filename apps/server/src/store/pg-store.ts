@@ -232,6 +232,9 @@ export async function createPgStore(databaseUrl: string, options: { migrations?:
         const r = await q('SELECT * FROM snapshot WHERE fold_id = $1', [buf(foldId)]);
         return r[0] === undefined ? undefined : { foldId: r[0]['fold_id'] as Buffer, atSeq: big(r[0]['at_seq']), blob: r[0]['blob'] as Buffer, sig: r[0]['sig'] as Buffer };
       },
+      async folds() {
+        return (await q('SELECT fold_id FROM snapshot')).map((r) => r['fold_id'] as Buffer);
+      },
       async acknowledge(foldId, devId, seq) {
         await q(
           `INSERT INTO snapshot_ack(fold_id, dev_id, seq) VALUES ($1,$2,$3) ON CONFLICT (fold_id, dev_id) DO UPDATE SET seq = GREATEST(snapshot_ack.seq, EXCLUDED.seq)`,

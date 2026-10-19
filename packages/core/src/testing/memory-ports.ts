@@ -120,3 +120,14 @@ export function createMemoryStores(): MemoryStores {
     },
   };
 }
+
+/** An in-memory sync cursor store for tests. */
+export function createMemoryCursors(): import('../sync/ports/index').SyncCursorPort {
+  const state = new Map<Id, { serverSeq: bigint; fromSnapshot: boolean }>();
+  return {
+    get: async (fold) => state.get(fold) ?? { serverSeq: 0n, fromSnapshot: false },
+    set: async (fold, next) => {
+      state.set(fold, { ...next });
+    },
+  };
+}

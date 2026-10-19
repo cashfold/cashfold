@@ -116,7 +116,7 @@ export interface KeyStorePort {
 export interface PushOutcome {
   readonly op: Id;
   readonly serverSeq?: bigint;
-  readonly error?: 'bad_signature' | 'unauthorised' | 'seq_gap' | 'too_large' | 'unknown_epoch' | 'duplicate';
+  readonly error?: 'bad_signature' | 'unauthorised' | 'seq_gap' | 'seq_conflict' | 'too_large' | 'unknown_epoch' | 'duplicate';
 }
 
 export interface PullResult {
@@ -128,4 +128,11 @@ export interface PullResult {
 export interface TransportPort {
   push(fold: Id, ops: readonly SealedOp[]): Promise<readonly PushOutcome[]>;
   pull(fold: Id, after: bigint, limit: number): Promise<PullResult>;
+}
+
+/** Where this device has got to in each Fold's relay log. Local to the device; never synced. */
+export interface SyncCursorPort {
+  /** `fromSnapshot` is true when the log below the cursor was replaced by a verified snapshot, so a device's first op need not be seq 1. */
+  get(fold: Id): Promise<{ readonly serverSeq: bigint; readonly fromSnapshot: boolean }>;
+  set(fold: Id, state: { readonly serverSeq: bigint; readonly fromSnapshot: boolean }): Promise<void>;
 }

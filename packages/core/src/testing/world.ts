@@ -1,5 +1,6 @@
-import { createAesGcm, createEd25519Signer, createHkdf, createOpSealer, SecretBuf, type Rng } from '@cashfold/crypto';
+import { createAesGcm, createEd25519Signer, createHkdf, createOpSealer, createSnapshotSealer, SecretBuf, type Rng } from '@cashfold/crypto';
 import type { Id } from '../shared-kernel/id';
+import type { SealedSnapshotPort } from '../sync/application/snapshot';
 import { createWritePath, type WritePath } from '../sync/application/write-path';
 import type { GroupRegistry } from '../sync/domain/merge';
 import type { OpLogStore, OpSealerPort, ProjectionStore } from '../sync/ports/index';
@@ -69,6 +70,7 @@ export interface Replica {
   readonly oplog: OpLogStore;
   readonly projections: ProjectionStore;
   readonly writePath: WritePath;
+  readonly snapshots: SealedSnapshotPort;
   setNow(ms: number): void;
   /** A second replica with the same device identity and signing key but an empty log: a restored backup or a clone. */
   fork(): Promise<Replica>;
@@ -84,14 +86,13 @@ export async function createReplica(world: World, opts: { device: Id; groups?: G
   const stores = createMemoryStores();
   let now = opts.nowMs ?? 1_700_000_000_000;
 
-  const crypt = createOpSealer({
-    aead: createAesGcm(), hkdf: createHkdf(), signer, rng: osRng,
-    keys: {
-      foldKey: async (fold, epoch) => internals.foldKey(fold as Id, epoch),
-      deviceSigningKey: () => deviceKey,
-      signerPublicKey: async (_fold, dev) => internals.publicKey(dev as Id),
-    },
-  });
+  const sealKeys = {
+    foldKey: async (fold: string, epoch: number) => internals.foldKey(fold as Id, epoch),
+    deviceSigningKey: () => deviceKey,
+    signerPublicKey: async (_fold: string, dev: string) => internals.publicKey(dev as Id),
+  };
+  const crypt = createOpSealer({ aead: createAesGcm(), hkdf: createHkdf(), signer, rng: osRng, keys: sealKeys });
+  const snapshots = createSnapshotSealer({ aead: createAesGcm(), hkdf: createHkdf(), signer, rng: osRng, keys: sealKeys }) as unknown as SealedSnapshotPort;
   // The crypto package types ids as plain strings; core brands them. The shapes are otherwise identical.
   const sealer = crypt as unknown as OpSealerPort;
 
@@ -110,6 +111,7 @@ export async function createReplica(world: World, opts: { device: Id; groups?: G
     oplog: stores.oplog,
     projections: stores.projections,
     writePath,
+    snapshots,
     setNow: (ms) => {
       now = ms;
     },

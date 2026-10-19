@@ -19,6 +19,7 @@ import { DevicesController } from './modules/devices/devices.controller.js';
 import { FoldsController } from './modules/folds/folds.controller.js';
 import { createFoldsService } from './modules/folds/folds.service.js';
 import { attachStream } from './modules/folds/stream.js';
+import { createPruneJob, type PruneJob } from './modules/snapshots/prune.job.js';
 import { createLogMailer, createSmtpMailer, lockoutMessage, noMailer, type Mailer } from './modules/mail/mail.js';
 import { RatesController } from './modules/rates/rates.controller.js';
 import { createRatesService } from './modules/rates/rates.service.js';
@@ -61,7 +62,7 @@ class RelayModule {
 
 export interface Relay {
   readonly app: NestFastifyApplication;
-  readonly services: { readonly rates: ReturnType<typeof createRatesService>; readonly store: Store; readonly events: EventEmitter };
+  readonly services: { readonly rates: ReturnType<typeof createRatesService>; readonly store: Store; readonly events: EventEmitter; readonly pruneJob: PruneJob };
   close(): Promise<void>;
 }
 
@@ -112,7 +113,7 @@ export async function createRelay(options: RelayOptions): Promise<Relay> {
 
   return {
     app,
-    services: { rates, store, events },
+    services: { rates, store, events, pruneJob: createPruneJob(store) },
     async close() {
       detach();
       await app.close();

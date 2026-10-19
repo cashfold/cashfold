@@ -180,6 +180,9 @@ export function createMemoryStore(): Store {
         const k = hex(devId);
         if (seq > (f.acks.get(k) ?? 0n)) f.acks.set(k, seq);
       },
+      async folds() {
+        return [...folds.values()].filter((f) => f.snapshot !== undefined).map((f) => f.snapshot!.foldId);
+      },
       async prune(foldId) {
         const f = fold(foldId);
         if (f?.snapshot === undefined) return 0;

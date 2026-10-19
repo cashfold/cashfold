@@ -6,7 +6,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./cbor": "./src/cbor/cbor.ts",
-    "./wire": "./src/schemas/op-wire.ts"
+    "./wire": "./src/schemas/op-wire.ts",
+    "./snapshot": "./src/schemas/snapshot-wire.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
