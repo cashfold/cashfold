@@ -12,10 +12,11 @@ const GOOD: KdfOffer = { kdf: 'argon2id', mKib: 65_536, t: 3, p: 1, encSalt: new
 const OLD = 'https://old.example';
 const NEW = 'https://new.example';
 const KEYSET = new Uint8Array([4, 2]);
+const idBytes = (i: Id) => Uint8Array.from({ length: 16 }, (_, k) => parseInt(i.replaceAll('-', '').slice(k * 2, k * 2 + 2), 16));
 
 interface Opts {
   wrong?: boolean; signInFails?: Record<string, RelayErrorKind>; register?: RegistrationResult; announceFails?: boolean; transfer?: 'ok' | 'offline' | 'failed'; sharedFolds?: Id[]; emailTakenButOurs?: boolean; del?: RelayReply;
-  folds?: Id[]; registration?: 'pending' | 'done'; server?: string; keyset?: RelayReply;
+  folds?: Id[]; devices?: RelayReply; registration?: 'pending' | 'done'; server?: string; keyset?: RelayReply;
 }
 
 function setup(o: Opts = {}) {
@@ -36,6 +37,7 @@ function setup(o: Opts = {}) {
     async request(method, path) {
       events.push(`${server} ${method} ${path}`);
       if (path === '/accounts/me/keyset') return o.keyset ?? { ok: true, status: 200, body: new Map([['keyset', KEYSET]]) };
+      if (path === '/devices') return o.devices ?? { ok: true, status: 200, body: [new Map<string, unknown>([['dev_id', idBytes(id(1))]])] };
       if (path === '/accounts/me' && method === 'GET') return { ok: true, status: 200, body: new Map([['discoverable', false]]) };
       return o.del ?? { ok: true, status: 204, body: null };
     },
@@ -74,7 +76,7 @@ describe('migrateToServer (FR-100)', () => {
   it('registers the same key set on the new service, announces and copies every Fold, switches the device and deletes the old copy', async () => {
     const s = setup();
     const pw = textSecret('correct horse');
-    expect(await s.run({ password: pw, server: 'https://NEW.example/' })).toEqual({ ok: true, value: { server: NEW, folds: 2, kept: [], oldDeleted: true } });
+    expect(await s.run({ password: pw, server: 'https://NEW.example/' })).toEqual({ ok: true, value: { server: NEW, folds: 2, kept: [], otherDevices: 0, oldDeleted: true } });
     expect(s.registered).toHaveLength(1);
     expect(s.registered[0]!.payload).toMatchObject({ keySet: KEYSET, server: NEW, discoverable: false, email: 'a@b.cc' });
     expect(s.stored()!.server).toBe(NEW);
@@ -93,10 +95,20 @@ describe('migrateToServer (FR-100)', () => {
 
   it('leaves shared Folds where they are, says which, announces only what moved, and keeps the old account while any remain', async () => {
     const s = setup({ sharedFolds: [id(11)] });
-    expect(await s.run({ password: textSecret('x'), server: NEW })).toEqual({ ok: true, value: { server: NEW, folds: 1, kept: [id(11)], oldDeleted: false } });
+    expect(await s.run({ password: textSecret('x'), server: NEW })).toEqual({ ok: true, value: { server: NEW, folds: 1, kept: [id(11)], otherDevices: 0, oldDeleted: false } });
     expect(s.events.filter((e) => e.startsWith('announce'))).toEqual([`announce ${id(10)} ${NEW}`]);
     expect(s.events.some((e) => e.includes('DELETE'))).toBe(false);
     expect(s.stored()!.server).toBe(NEW);
+  });
+
+  it('keeps the old account while the account has other live devices, so they are not told to erase themselves', async () => {
+    const other = new Map<string, unknown>([['dev_id', idBytes(id(2))]]);
+    const gone = new Map<string, unknown>([['dev_id', idBytes(id(3))], ['revoked_at', 5n]]);
+    const s = setup({ devices: { ok: true, status: 200, body: [new Map([['dev_id', idBytes(id(1))]]), other, gone] } });
+    expect(await s.run({ password: textSecret('x'), server: NEW })).toMatchObject({ ok: true, value: { otherDevices: 1, oldDeleted: false } });
+    expect(s.events.some((e) => e.includes('DELETE'))).toBe(false);
+    const unknown = setup({ devices: { ok: false, kind: 'offline' } });
+    expect(await unknown.run({ password: textSecret('x'), server: NEW })).toMatchObject({ ok: true, value: { oldDeleted: false } });
   });
 
   it('carries on a move that stopped half-way: the same credentials already sign in at the new service', async () => {

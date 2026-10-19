@@ -4,7 +4,7 @@ import { err, ok, type DomainError, type Result } from '../../shared-kernel/resu
 import { normaliseServerAddress } from '../domain/server-address';
 import type { CredentialStorePort, MigrationCryptoPort, RegistrationPort, RelayAuthPort, RelayLink, Secret } from '../ports/index';
 import { checkKdfPolicy } from './kdf-policy';
-import { asMap } from './relay-wire';
+import { asMap, idOfBytes } from './relay-wire';
 import { mapRelayError, type SignInError } from './sign-in';
 
 // Moving the account and its Folds to another service (US9, FR-100). The Secret Key and password do not change: the new
@@ -40,7 +40,9 @@ export interface Migrated {
   readonly folds: number;
   /** Folds left on the old service because they are shared. While any remain the old account is not deleted. */
   readonly kept: readonly Id[];
-  /** False when the old service kept its copy: offline, kept Folds, or the account owns a Fold others still share there. */
+  /** The account's other devices still set up on the old service. They must sign in again on the new one; until they have, the old account is kept. */
+  readonly otherDevices: number;
+  /** False when the old service kept its copy: offline, kept Folds, other devices, or the account owns a Fold others still share there. */
   readonly oldDeleted: boolean;
 }
 
@@ -152,13 +154,22 @@ export function migrateToServer(deps: MigrateDeps) {
       // Everything is on the new service: this device follows it. Past this point the move has happened.
       await credentials.save({ ...stored, server: server.value });
 
+      // Deleting the old account tells every device still on it to erase itself (410), and unsent changes would go with them.
+      const listed = await old.value.request('GET', '/devices');
+      const otherDevices = listed.ok && Array.isArray(listed.body)
+        ? (listed.body as unknown[]).filter((d) => {
+            const m = asMap(d);
+            const dev = m.get('dev_id');
+            return !m.has('revoked_at') && !(dev instanceof Uint8Array && idOfBytes(dev) === stored.deviceId);
+          }).length
+        : 0;
       let oldDeleted = false;
-      if (input.deleteOld !== false && kept.length === 0) {
+      if (input.deleteOld !== false && kept.length === 0 && otherDevices === 0 && listed.ok) {
         const gone = await old.value.request('DELETE', '/accounts/me', { fresh_proof: old.value.freshProof, removal_entries: [] });
         oldDeleted = gone.ok || gone.kind === 'gone';
       }
       logger?.info('account.migrated', {});
-      return ok({ server: server.value, folds: all.length - kept.length, kept, oldDeleted });
+      return ok({ server: server.value, folds: all.length - kept.length, kept, otherDevices, oldDeleted });
     } finally {
       for (const l of links) l.close();
       handle.wipe();
