@@ -4,7 +4,9 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./cbor": "./src/cbor/cbor.ts",
+    "./wire": "./src/schemas/op-wire.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
@@ -15,5 +17,6 @@
   },
   "devDependencies": {
     "yaml": "2.9.1"
-  }
+  },
+  "sideEffects": false
 }

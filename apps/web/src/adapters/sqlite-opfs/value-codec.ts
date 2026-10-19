@@ -1,5 +1,5 @@
 import type { FieldValue } from '@cashfold/core';
-import { decode, encode, type CborValue } from '@cashfold/protocol';
+import { decode, encode, type CborValue } from '@cashfold/protocol/cbor';
 
 // Field values are stored as deterministic CBOR so bigint, bytes, null and nested values survive exactly.
 

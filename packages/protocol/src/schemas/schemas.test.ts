@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { CborError } from '../cbor/cbor';
 import { ZodError } from 'zod';
 import { decode, encode } from '../cbor/cbor';
 import {
@@ -89,24 +90,24 @@ describe('OpPayload', () => {
   });
 
   it('rejects table codes outside 1..14', () => {
-    for (const t of [0, 15]) expect(() => decodeOpPayload(encode({ t }))).toThrow(ZodError);
+    for (const t of [0, 15]) expect(() => decodeOpPayload(encode({ t }))).toThrow(CborError);
   });
 
   it('rejects integer field values outside i64', () => {
     for (const bad of [2n ** 63n, -(2n ** 63n) - 1n]) {
-      expect(() => decodeOpPayload(encode({ t: 6, f: new Map([[1, bad]]) }))).toThrow(ZodError);
+      expect(() => decodeOpPayload(encode({ t: 6, f: new Map([[1, bad]]) }))).toThrow(CborError);
     }
-    expect(() => decodeOpPayload(encode({ t: 6, f: new Map([[1, { deep: [2n ** 63n] }]]) }))).toThrow(ZodError);
+    expect(() => decodeOpPayload(encode({ t: 6, f: new Map([[1, { deep: [2n ** 63n] }]]) }))).toThrow(CborError);
   });
 
   it('rejects field ids beyond u16 and unknown payload keys', () => {
-    expect(() => decodeOpPayload(encode({ t: 6, f: new Map([[65536, 1]]) }))).toThrow(ZodError);
-    expect(() => decodeOpPayload(encode({ t: 6, extra: 1 }))).toThrow(ZodError);
+    expect(() => decodeOpPayload(encode({ t: 6, f: new Map([[65536, 1]]) }))).toThrow(CborError);
+    expect(() => decodeOpPayload(encode({ t: 6, extra: 1 }))).toThrow(CborError);
   });
 
   it('rejects malformed set deltas', () => {
-    expect(() => decodeOpPayload(encode({ t: 6, fx: new Map([[1, { add: [b(15)] }]]) }))).toThrow(ZodError);
-    expect(() => decodeOpPayload(encode({ t: 6, fx: new Map([[1, { rem: [[b(16)]] }]]) }))).toThrow(ZodError);
+    expect(() => decodeOpPayload(encode({ t: 6, fx: new Map([[1, { add: [b(15)] }]]) }))).toThrow(CborError);
+    expect(() => decodeOpPayload(encode({ t: 6, fx: new Map([[1, { rem: [[b(16)]] }]]) }))).toThrow(CborError);
   });
 });
 

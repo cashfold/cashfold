@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { decode, encode } from '../cbor/cbor';
-import { anyBytes, i64, intMapToObject, intRange, sig64, stripUndefined, textRecord, u16, u32, u48, u64, uuid16, bytesMin } from './primitives';
+import { anyBytes, i64, intMapToObject, intRange, sig64, textRecord, u16, u32, u48, u64, uuid16, bytesMin } from './primitives';
 
 // ---------------------------------------------------------------- op-envelope (integer keys 1..11)
 
@@ -41,8 +41,6 @@ export const OpEnvelopeSchema = envelopeWire.transform((w) => ({
 
 export type OpEnvelope = z.output<typeof OpEnvelopeSchema>;
 
-const SIGNING_LABEL = Uint8Array.from('cashfold.op.v1', (c) => c.charCodeAt(0));
-
 function envelopeFields(e: OpEnvelope): Map<bigint, unknown> {
   return new Map<bigint, unknown>([
     [1n, 1],
@@ -58,15 +56,6 @@ function envelopeFields(e: OpEnvelope): Map<bigint, unknown> {
   ]);
 }
 
-/** `"cashfold.op.v1" || canonical(fields 1..10)`: the bytes covered by the Ed25519 signature (field 11). */
-export function opSigningBytes(e: OpEnvelope): Uint8Array {
-  const body = encode(envelopeFields(e) as never);
-  const out = new Uint8Array(SIGNING_LABEL.length + body.length);
-  out.set(SIGNING_LABEL);
-  out.set(body, SIGNING_LABEL.length);
-  return out;
-}
-
 export function encodeOpEnvelope(e: OpEnvelope): Uint8Array {
   const fields = envelopeFields(e);
   fields.set(11n, e.sig);
@@ -79,7 +68,8 @@ export function decodeOpEnvelope(bytes: Uint8Array): OpEnvelope {
 
 // ---------------------------------------------------------------- op-payload (plaintext inside the blob)
 
-export type FieldValue = bigint | string | Uint8Array | boolean | null | FieldValue[] | { [key: string]: FieldValue };
+export { decodeOpPayload, encodeOpPayload, opSigningBytes, type FieldValue, type OpPayload, type OpEnvelopeSigned } from './op-wire';
+import type { FieldValue } from './op-wire';
 
 const fieldValue: z.ZodType<FieldValue, unknown> = z.lazy(() =>
   z.union([
@@ -118,12 +108,3 @@ export const OpPayloadSchema = textRecord({
   fx: z.map(fieldId, setDelta).optional(),
 });
 
-export type OpPayload = z.output<typeof OpPayloadSchema>;
-
-export function encodeOpPayload(p: OpPayload): Uint8Array {
-  return encode(stripUndefined(p) as never);
-}
-
-export function decodeOpPayload(bytes: Uint8Array): OpPayload {
-  return OpPayloadSchema.parse(decode(bytes));
-}

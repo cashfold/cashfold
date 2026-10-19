@@ -1,4 +1,5 @@
-import { encode, type KeySet } from '@cashfold/protocol';
+import { encode } from '@cashfold/protocol/cbor';
+import type { KeySet } from '@cashfold/protocol';
 import { x25519PublicKey } from '../adapters/noble/x25519';
 import type { Aead, Rng, Signer } from '../ports/index';
 import { SecretBuf } from '../secret-buf';

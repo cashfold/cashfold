@@ -3,7 +3,7 @@ import {
   KdfBelowFloor, normalisePassword, SecretBuf, type KdfParams, type Rng,
 } from '@cashfold/crypto';
 import { idToBytes, newIdV4, type AccountCryptoPort, type DeviceCredentials, type Id, type NewAccountMaterial, type Secret, type UnlockCryptoPort, type UnlockedMaterial } from '@cashfold/core';
-import { decode, encode, encodeKeySet, type CborValue } from '@cashfold/protocol';
+import { decode, encode, type CborValue } from '@cashfold/protocol/cbor';
 
 // Account key management for one device, composed from the crypto package (ARCH 5.2 to 5.4):
 //   AUK    = 2SKD(password, Secret Key, enc_salt)       unlocks the personal key set; never stored
@@ -129,7 +129,7 @@ export function createAccountCrypto(options: AccountCryptoOptions): WebAccountCr
           accountId: secretKey.accountId,
           secretKeyText,
           deviceId,
-          registration: { accountId: secretKey.accountId, deviceId, keySet: encodeKeySet(made.keySet), deviceSigPk: device.publicKey },
+          registration: { accountId: secretKey.accountId, deviceId, keySet: encode(made.keySet as never), deviceSigPk: device.publicKey },
           credentials: { deviceId, accountId: secretKey.accountId, sealed },
           sessionKey,
           deviceSigningKey: device.secretKey,

@@ -1,6 +1,6 @@
 import { idFromBytes, idToBytes, type FoldDirectory, type FoldKeyPort, type FoldSummary, type Id, type Role } from '@cashfold/core';
 import { createAesGcm, createHkdf, SecretBuf, type Rng } from '@cashfold/crypto';
-import { encode } from '@cashfold/protocol';
+import { encode } from '@cashfold/protocol/cbor';
 import type { EncryptedDatabase } from './database';
 
 const ROLE_CODE: Readonly<Record<Role, bigint>> = { owner: 1n, editor: 2n, viewer: 3n };

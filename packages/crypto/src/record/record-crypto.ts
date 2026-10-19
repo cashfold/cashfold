@@ -1,4 +1,4 @@
-import { encode } from '@cashfold/protocol';
+import { encode } from '@cashfold/protocol/cbor';
 import { AeadError, type Aead, type Hkdf, type Rng } from '../ports/index';
 import type { SecretBuf } from '../secret-buf';
 

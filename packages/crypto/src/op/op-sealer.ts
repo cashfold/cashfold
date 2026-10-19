@@ -1,4 +1,5 @@
-import { decodeOpPayload, encodeOpPayload, opSigningBytes, type FieldValue, type OpEnvelope, type OpPayload } from '@cashfold/protocol';
+import { decodeOpPayload, encodeOpPayload, opSigningBytes, type FieldValue, type OpPayload } from '@cashfold/protocol/wire';
+import type { OpEnvelope } from '@cashfold/protocol';
 import { AeadError, type Aead, type Hkdf, type Rng, type Signer } from '../ports/index';
 import { createRecordCrypto } from '../record/record-crypto';
 import type { SecretBuf } from '../secret-buf';
