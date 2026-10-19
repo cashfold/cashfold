@@ -151,7 +151,7 @@ test.describe('@security the app under that policy', () => {
       await page.getByRole('navigation').getByRole('link', { name, exact: true }).click();
       await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
     }
-    await expect(page.getByTestId('fold-name').or(page.getByRole('heading', { level: 1 }))).toBeVisible();
+    await expect(page.getByTestId('fold-name')).toHaveText('Personal');
     await page.waitForTimeout(2_000); // let the service worker and the sync connection settle
     const inPage = await page.evaluate(() => (window as unknown as { __csp?: string[] }).__csp ?? []);
     expect([...inPage, ...seen()]).toEqual([]);
