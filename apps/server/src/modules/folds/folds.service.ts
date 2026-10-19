@@ -84,8 +84,11 @@ export function createFoldsService(deps: { store: Store; events: EventEmitter })
     },
 
     async pull(foldId: Bytes, accountId: string, after: bigint, limit: number) {
-      if ((await store.folds.roleOf(foldId, accountId)) === undefined) return undefined;
-      return store.ops.pull(foldId, after, Math.min(Math.max(limit, 1), PULL_LIMIT));
+      const member = await store.folds.member(foldId, accountId);
+      if (member === undefined || member.removedAtMs !== null) return undefined;
+      // A member who joined with "from now on" history is not sent what was written under earlier keys: they cannot open it, and
+      // sending it would waste their time. This saves bandwidth; it is not what keeps it private (FR-102).
+      return store.ops.pull(foldId, after, Math.min(Math.max(limit, 1), PULL_LIMIT), member.fromEpoch);
     },
   };
 }

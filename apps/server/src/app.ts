@@ -21,6 +21,8 @@ import { createFoldsService } from './modules/folds/folds.service.js';
 import { attachStream } from './modules/folds/stream.js';
 import { createPruneJob, type PruneJob } from './modules/snapshots/prune.job.js';
 import { createLogMailer, createSmtpMailer, lockoutMessage, noMailer, type Mailer } from './modules/mail/mail.js';
+import { MembershipController } from './modules/membership/membership.controller.js';
+import { createMembershipService } from './modules/membership/membership.service.js';
 import { RatesController } from './modules/rates/rates.controller.js';
 import { createRatesService } from './modules/rates/rates.service.js';
 import type { Store } from './store/store.js';
@@ -48,7 +50,7 @@ class RelayModule {
   static register(providers: Array<{ provide: symbol; useValue: unknown }>): DynamicModule {
     return {
       module: RelayModule,
-      controllers: [HealthController, AuthController, AccountsController, DevicesController, FoldsController, RatesController],
+      controllers: [HealthController, AuthController, AccountsController, DevicesController, FoldsController, MembershipController, RatesController],
       providers: [
         ...providers,
         FrameGuard,
@@ -81,6 +83,7 @@ export async function createRelay(options: RelayOptions): Promise<Relay> {
   });
   const accounts = createAccountsService({ store, config, sessions, mail, clock, limiter });
   const folds = createFoldsService({ store, events });
+  const membership = createMembershipService({ store, mail, clock, limiter, config });
   const rates = createRatesService({ store, config: config.rates, now: () => clock.now(), ...(options.fetchRates && { fetchText: options.fetchRates }) });
 
   const adapter = new FastifyAdapter({ bodyLimit: 6 * 1024 * 1024, trustProxy: true });
@@ -102,7 +105,7 @@ export async function createRelay(options: RelayOptions): Promise<Relay> {
     RelayModule.register([
       { provide: T.STORE, useValue: store }, { provide: T.AUTH, useValue: auth }, { provide: T.SESSIONS, useValue: sessions }, { provide: T.CONFIG, useValue: config },
       { provide: T.MAIL, useValue: mail }, { provide: T.LIMITER, useValue: limiter }, { provide: T.CLOCK, useValue: clock }, { provide: T.EVENTS, useValue: events },
-      { provide: T.RATES, useValue: rates }, { provide: T.ACCOUNTS, useValue: accounts }, { provide: T.FOLDS, useValue: folds },
+      { provide: T.RATES, useValue: rates }, { provide: T.ACCOUNTS, useValue: accounts }, { provide: T.FOLDS, useValue: folds }, { provide: T.MEMBERSHIP, useValue: membership },
     ]),
     adapter,
     { logger: false },

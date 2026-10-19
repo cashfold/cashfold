@@ -8,6 +8,7 @@ import { AuthError } from '../auth/auth.service.js';
 import type { SessionStore } from '../auth/sessions.js';
 import type { Mailer } from '../mail/mail.js';
 import { verificationMessage } from '../mail/mail.js';
+import { keysFromKeyset, verifyBundleSignature } from '../membership/bundle.js';
 
 export type Outcome<T = void> = ({ readonly ok: true } & (T extends void ? unknown : { readonly value: T })) | { readonly ok: false; readonly status: 400 | 403 | 404 | 409 | 410; readonly code: string };
 
@@ -23,6 +24,7 @@ export interface RegistrationInput {
   readonly keyset: Uint8Array;
   readonly device: { readonly devId: Uint8Array; readonly sigPk: Uint8Array; readonly labelCt?: Uint8Array | undefined };
   readonly discoverable: boolean;
+  readonly bundleSig?: Uint8Array | undefined;
   readonly invite?: string | undefined;
 }
 
@@ -48,9 +50,14 @@ export function createAccountsService(deps: {
     async register(input: RegistrationInput, ip: string): Promise<Outcome> {
       limit(`register:ip:${ip}`, 10, 3_600_000);
       if (config.registration === 'invite' && (input.invite === undefined || !config.inviteCodes.includes(input.invite))) return { ok: false, status: 403, code: 'invite_required' };
+      if (input.bundleSig !== undefined) {
+        // A bundle signature that does not match the key set it came with is refused, so the relay never hands out a bad one.
+        const keys = keysFromKeyset(input.keyset);
+        if (keys === undefined || !verifyBundleSignature(input.accountId, keys.encPk, keys.sigPk, input.bundleSig)) return { ok: false, status: 400, code: 'rejected' };
+      }
       const made = await store.accounts.create({
         accountId: input.accountId, emailHmac: emailMac(config.serverSecret, input.email), email: input.email.trim().toLowerCase(), authSalt: input.authSalt,
-        kdf: kdfToRecord(input.kdf), srpVerifier: input.srpVerifier, keyset: input.keyset, discoverable: input.discoverable, createdAtMs: clock.now(),
+        kdf: kdfToRecord(input.kdf), srpVerifier: input.srpVerifier, keyset: input.keyset, discoverable: input.discoverable, createdAtMs: clock.now(), ...(input.bundleSig !== undefined && { bundleSig: input.bundleSig }),
       });
       if (made !== 'ok') return { ok: false, status: 409, code: made };
       await store.devices.add({ devId: input.device.devId, accountId: input.accountId, sigPk: input.device.sigPk, labelCt: input.device.labelCt ?? null, createdAtMs: clock.now(), revokedAtMs: null });

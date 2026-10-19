@@ -21,6 +21,16 @@ export const verificationMessage = (to: string, link: string): MailMessage => ({
   text: `Open this link to confirm your email address:\n\n${link}\n\nIf you did not create a Cashfold account, ignore this message. The link works once and expires in 24 hours.\n`,
 });
 
+/**
+ * Tells someone they were invited, naming only the person who asked. No Fold name, member list or financial content (FR-107):
+ * mail passes through servers nobody here controls.
+ */
+export const invitationMessage = (to: string, from: string, appUrl: string): MailMessage => ({
+  to,
+  subject: 'You have been invited to share on Cashfold',
+  text: `${from} invited you to share on Cashfold.\n\nOpen Cashfold and look under Folds to see the invitation:\n\n${appUrl.replace(/\/+$/, '')}/folds/\n\nCompare the fingerprint with ${from} before you accept. If you do not know them, ignore this message.\n`,
+});
+
 export const lockoutMessage = (to: string): MailMessage => ({
   to,
   subject: 'Several failed sign-in attempts on your Cashfold account',

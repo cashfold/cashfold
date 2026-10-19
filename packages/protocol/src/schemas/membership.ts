@@ -38,6 +38,17 @@ const wire = <T extends Record<string, unknown>>(value: T) => encode(stripUndefi
 export const encodeLogEntry = (e: LogEntry): Uint8Array => wire(e);
 /** The entry as it is signed: every field but the signature. */
 export const encodeLogEntryUnsigned = (e: Omit<LogEntry, 'sig'>): Uint8Array => wire(e);
+const SIGN_LABEL = new TextEncoder().encode('cashfold.log.v1');
+
+/** The bytes a log entry's signature covers: `"cashfold.log.v1" || canonical(entry without sig)` (ARCH 7.3). */
+export function logEntrySigningBytes(e: Omit<LogEntry, 'sig'>): Uint8Array {
+  const body = encodeLogEntryUnsigned(e);
+  const out = new Uint8Array(SIGN_LABEL.length + body.length);
+  out.set(SIGN_LABEL);
+  out.set(body, SIGN_LABEL.length);
+  return out;
+}
+
 export const decodeLogEntry = (b: Uint8Array): LogEntry => LogEntrySchema.parse(decode(b));
 export const encodeSnapshot = (s: Snapshot): Uint8Array => wire(s);
 export const decodeSnapshot = (b: Uint8Array): Snapshot => SnapshotSchema.parse(decode(b));

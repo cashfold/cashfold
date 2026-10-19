@@ -13,7 +13,7 @@ const METHODS = ['get', 'post', 'put', 'delete'];
 const documented = new Set(Object.entries(spec.paths).flatMap(([path, ops]) => Object.keys(ops).filter((m) => METHODS.includes(m)).map((m) => `${m.toUpperCase()} ${path.replace(/\{(\w+)\}/g, ':$1')}`)));
 
 // Contract paths the contract lists for later stories; the relay does not serve them yet.
-const LATER = new Set(['POST /accounts/lookup', 'POST /folds/:foldId/invitations', 'GET /accounts/:accountId/public-keys', 'GET /folds/:foldId/log', 'POST /folds/:foldId/log', 'PUT /folds/:foldId/attachments/:attId/chunks/:index', 'GET /folds/:foldId/attachments/:attId/chunks/:index']);
+const LATER = new Set(['PUT /folds/:foldId/attachments/:attId/chunks/:index', 'GET /folds/:foldId/attachments/:attId/chunks/:index']);
 
 let relay: Relay;
 beforeAll(async () => {

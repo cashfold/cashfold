@@ -54,6 +54,13 @@ export function describeStoreContract(label: string, make: () => Promise<Store>)
         expect([Buffer.from(a.authSalt), a.kdf.t, Buffer.from(a.srpVerifier)[0], a.failCount]).toEqual([b(5), 4, 6, 0]);
       });
 
+      it('keeps the signature over the public key bundle when there is one', async () => {
+        await store.accounts.create(account('ABCDEF', 1, { bundleSig: b(8, 64) }));
+        await store.accounts.create(account('GHJKLM', 2));
+        expect(Buffer.from((await store.accounts.byId('ABCDEF'))!.bundleSig!)).toEqual(b(8, 64));
+        expect((await store.accounts.byId('GHJKLM'))!.bundleSig).toBeNull();
+      });
+
       it('records verification and the discoverable choice', async () => {
         await store.accounts.create(account('ABCDEF', 1));
         await store.accounts.setEmailVerified('ABCDEF', 7_000);
@@ -124,12 +131,65 @@ export function describeStoreContract(label: string, make: () => Promise<Store>)
         expect(await store.folds.members(b(1))).toEqual(['ABCDEF']);
       });
 
+      it('adds, re-roles and removes members, and keeps a removed member\'s row but not their access', async () => {
+        await store.folds.create(b(1), 'ABCDEF', 10);
+        await store.folds.addMember(b(1), 'GHJKLM', 2, 3);
+        expect(await store.folds.roleOf(b(1), 'GHJKLM')).toBe(2);
+        expect(await store.folds.member(b(1), 'GHJKLM')).toEqual({ role: 2, fromEpoch: 3, removedAtMs: null });
+        expect([...(await store.folds.members(b(1)))].sort()).toEqual(['ABCDEF', 'GHJKLM']);
+        expect((await store.folds.list('GHJKLM')).length).toBe(1);
+
+        await store.folds.setRole(b(1), 'GHJKLM', 3);
+        expect(await store.folds.roleOf(b(1), 'GHJKLM')).toBe(3);
+
+        await store.folds.removeMember(b(1), 'GHJKLM', 99);
+        expect(await store.folds.roleOf(b(1), 'GHJKLM')).toBeUndefined();
+        expect(await store.folds.member(b(1), 'GHJKLM')).toEqual({ role: 3, fromEpoch: 3, removedAtMs: 99 });
+        expect(await store.folds.members(b(1))).toEqual(['ABCDEF']);
+        expect(await store.folds.list('GHJKLM')).toEqual([]);
+
+        await store.folds.addMember(b(1), 'GHJKLM', 2, 5);
+        expect(await store.folds.member(b(1), 'GHJKLM')).toEqual({ role: 2, fromEpoch: 5, removedAtMs: null });
+        expect(await store.folds.member(b(1), 'NOBODY')).toBeUndefined();
+      });
+
       it('removes a fold with its ops', async () => {
         await store.folds.create(b(1), 'ABCDEF', 10);
         await store.ops.push(b(1), [op(1, b(50), 1n)]);
         await store.folds.remove(b(1));
         expect(await store.folds.list('ABCDEF')).toEqual([]);
         expect(await store.ops.head(b(1))).toBe(0n);
+      });
+    });
+
+    describe('membership log', () => {
+      beforeEach(async () => {
+        await store.accounts.create(account('ABCDEF', 1));
+        await store.folds.create(b(1), 'ABCDEF', 10);
+      });
+
+      it('appends entries in order, refuses a gap or a repeat, and reads them back after any index', async () => {
+        expect(await store.log.list(b(1), -1)).toEqual({ entries: [], head: -1 });
+        expect(await store.log.last(b(1))).toBeUndefined();
+        expect(await store.log.append(b(1), 1, b(1, 50), b(1, 32))).toBe('conflict');
+        expect(await store.log.append(b(1), 0, b(10, 50), b(11, 32))).toBe('ok');
+        expect(await store.log.append(b(1), 0, b(12, 50), b(13, 32))).toBe('conflict');
+        expect(await store.log.append(b(1), 1, b(20, 50), b(21, 32))).toBe('ok');
+        const all = await store.log.list(b(1), -1);
+        expect(all.head).toBe(1);
+        expect(all.entries.map((e) => e[0])).toEqual([10, 20]);
+        expect((await store.log.list(b(1), 0)).entries.map((e) => e[0])).toEqual([20]);
+        expect((await store.log.list(b(1), 1)).entries).toEqual([]);
+        const last = (await store.log.last(b(1)))!;
+        expect([last.idx, last.hash[0], last.entry[0]]).toEqual([1, 21, 20]);
+      });
+
+      it('goes with the fold and does not mix folds', async () => {
+        await store.folds.create(b(2), 'ABCDEF', 11);
+        await store.log.append(b(1), 0, b(10, 50), b(11, 32));
+        expect((await store.log.list(b(2), -1)).head).toBe(-1);
+        await store.folds.remove(b(1));
+        expect((await store.log.list(b(1), -1)).head).toBe(-1);
       });
     });
 
@@ -154,6 +214,19 @@ export function describeStoreContract(label: string, make: () => Promise<Store>)
         await store.grants.put(b(1), 'ABCDEF', 1, b(1, 40));
         await store.folds.remove(b(1));
         expect(await store.grants.forMember(b(1), 'ABCDEF')).toEqual([]);
+      });
+    });
+
+    describe('ops for a later member', () => {
+      it('withholds ops of earlier epochs from a member who starts later', async () => {
+        await store.accounts.create(account('ABCDEF', 1));
+        await store.folds.create(b(1), 'ABCDEF', 10);
+        await store.ops.push(b(1), [op(1, b(50), 1n, { epoch: 1 }), op(2, b(50), 2n, { epoch: 2 }), op(3, b(50), 3n, { epoch: 2 })]);
+        expect((await store.ops.pull(b(1), 0n, 10)).ops).toHaveLength(3);
+        const later = await store.ops.pull(b(1), 0n, 10, 2);
+        expect(later.ops.map((o) => o.serverSeq)).toEqual([2n, 3n]);
+        expect(later.head).toBe(3n);
+        expect((await store.ops.pull(b(1), 0n, 1, 2))).toMatchObject({ more: true });
       });
     });
 

@@ -22,7 +22,7 @@ export class AccountsController {
     const b = parseBody(raw, RegistrationBody);
     const invite = typeof req.headers['x-invite-code'] === 'string' ? req.headers['x-invite-code'] : undefined;
     const r = await this.accounts.register(
-      { accountId: b.account_id, email: b.email, authSalt: b.auth_salt, kdf: b.kdf, srpVerifier: b.srp_verifier, keyset: b.keyset, discoverable: b.discoverable ?? true, invite, device: { devId: b.device.dev_id, sigPk: b.device.sig_pk, labelCt: b.device.label_ct } },
+      { accountId: b.account_id, email: b.email, authSalt: b.auth_salt, kdf: b.kdf, srpVerifier: b.srp_verifier, keyset: b.keyset, discoverable: b.discoverable ?? true, bundleSig: b.bundle_sig, invite, device: { devId: b.device.dev_id, sigPk: b.device.sig_pk, labelCt: b.device.label_ct } },
       ip,
     );
     if (!r.ok) fail(r.status, r.code);

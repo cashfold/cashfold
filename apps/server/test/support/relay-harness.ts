@@ -1,7 +1,7 @@
 import { randomBytes } from 'node:crypto';
-import { createAesGcm, createEd25519Signer, createHkdf, createRelayClient, SecretBuf, type RelaySession, type Send, type SignedIn } from '@cashfold/crypto';
+import { createAesGcm, createEd25519Signer, createHkdf, createRelayClient, createSharingCrypto, SecretBuf, x25519PublicKey, type RelaySession, type Send, type SignedIn } from '@cashfold/crypto';
 import { encode } from '@cashfold/protocol/cbor';
-import { encodeOpEnvelope } from '@cashfold/protocol';
+import { encodeKeySet, encodeOpEnvelope } from '@cashfold/protocol';
 import { opSigningBytes } from '@cashfold/protocol/wire';
 import { createRelay, type Relay } from '../../src/app.js';
 import type { ServerConfig } from '../../src/config.js';
@@ -63,26 +63,46 @@ export interface TestAccount {
   readonly x: Buffer;
   readonly device: TestDevice;
   readonly authSalt: Buffer;
+  /** The account's own key pairs, present when it was registered with a real key set (`keys: true`). */
+  readonly keys?: { readonly encPk: Uint8Array; readonly encSk: SecretBuf; readonly sigPk: Uint8Array; readonly sigSk: SecretBuf; readonly bundleSig: Uint8Array };
 }
 
 const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 export const newAccountId = (): string => Array.from(randomBytes(6), (b) => ALPHABET[b % ALPHABET.length]).join('');
 
 /** Registers an account with a random SRP secret, as a client that has already derived it would. */
-export async function register(h: Harness, over: { email?: string; accountId?: string; invite?: string } = {}): Promise<TestAccount> {
+export async function register(h: Harness, over: { email?: string; accountId?: string; invite?: string; keys?: boolean; discoverable?: boolean } = {}): Promise<TestAccount> {
   const pake = await testPake();
   const x = randomX();
   const device = await newDevice();
   const authSalt = randomBytes(16);
   const accountId = over.accountId ?? newAccountId();
   const email = over.email ?? `${accountId.toLowerCase()}@example.com`;
+  // A real key set (public keys a log entry can be checked against) when the test is about sharing; random bytes otherwise.
+  let keys: TestAccount['keys'];
+  let keyset: Uint8Array = randomBytes(300);
+  let bundleSig: Uint8Array | undefined;
+  const encSalt = randomBytes(16);
+  if (over.keys === true) {
+    const encSk = SecretBuf.from(rng.bytes(32));
+    const encPk = x25519PublicKey(encSk);
+    const sig = await signer.generate(rng);
+    const bundle = await createSharingCrypto({ rng }).signBundle({ accountId, encPk, sigSk: sig.secretKey });
+    bundleSig = bundle.selfSig;
+    keys = { encPk, encSk, sigPk: sig.publicKey, sigSk: sig.secretKey, bundleSig };
+    keyset = encodeKeySet({
+      v: 1, uuid: randomBytes(16), enc: { alg: 'HPKE-X25519-HKDF-SHA256-AES256GCM', pk: encPk, sk_ct: randomBytes(60) }, sig: { alg: 'Ed25519', pk: sig.publicKey, sk_ct: randomBytes(60) },
+      kdf: { kdf: 'argon2id', m_kib: 65_536, t: 3, p: 1, v: 19, enc_salt: encSalt }, encrypted_by: 'mp',
+    });
+  }
   const body = {
-    account_id: accountId, email, auth_salt: authSalt, kdf: { kdf: 'argon2id', m_kib: 65_536n, t: 3n, p: 1n, enc_salt: randomBytes(16) },
-    srp_verifier: pake.verifier(SecretBuf.from(x)), keyset: randomBytes(300), device: { dev_id: device.devId, sig_pk: device.sigPk },
+    account_id: accountId, email, auth_salt: authSalt, kdf: { kdf: 'argon2id', m_kib: 65_536n, t: 3n, p: 1n, enc_salt: encSalt },
+    srp_verifier: pake.verifier(SecretBuf.from(x)), keyset, device: { dev_id: device.devId, sig_pk: device.sigPk },
+    ...(bundleSig !== undefined && { bundle_sig: bundleSig }), ...(over.discoverable !== undefined && { discoverable: over.discoverable }),
   };
   const res = await h.raw('POST', '/accounts', { 'content-type': 'application/cbor', ...(over.invite && { 'x-invite-code': over.invite }) }, encode(body as never));
   if (res.statusCode !== 201) throw new Error(`registration failed: ${res.statusCode}`);
-  return { accountId, email, x, device, authSalt };
+  return { accountId, email, x, device, authSalt, ...(keys !== undefined && { keys }) };
 }
 
 export async function signIn(h: Harness, a: TestAccount, device: TestDevice = a.device, x: Buffer = a.x): Promise<SignedIn> {

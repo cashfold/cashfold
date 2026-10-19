@@ -29,7 +29,7 @@ const accountFrom = (r: Row): AccountRow => ({
   accountId: r['account_id'] as string, emailHmac: r['email_hmac'] as Buffer, email: r['email'] as string, authSalt: r['auth_salt'] as Buffer,
   kdf: kdfFromJson(r['kdf'] as Record<string, unknown>), srpVerifier: r['srp_v'] as Buffer, keyset: r['keyset'] as Buffer,
   failCount: num(r['fail_count']), lockedUntilMs: optNum(r['locked_until']), emailVerifiedAtMs: optNum(r['email_verified_at']),
-  discoverable: r['discoverable'] as boolean, createdAtMs: num(r['created_at']),
+  discoverable: r['discoverable'] as boolean, bundleSig: (r['bundle_sig'] as Buffer | null) ?? null, createdAtMs: num(r['created_at']),
 });
 const deviceFrom = (r: Row): DeviceRow => ({
   devId: r['dev_id'] as Buffer, accountId: r['account_id'] as string, sigPk: r['sig_pk'] as Buffer, labelCt: (r['label_ct'] as Buffer | null) ?? null,
@@ -72,8 +72,8 @@ export async function createPgStore(databaseUrl: string, options: { migrations?:
       async create(a) {
         try {
           await q(
-            `INSERT INTO account(account_id, email_hmac, email, auth_salt, kdf, srp_v, keyset, discoverable, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
-            [a.accountId, buf(a.emailHmac), a.email, buf(a.authSalt), JSON.stringify(kdfToJson(a.kdf)), buf(a.srpVerifier), buf(a.keyset), a.discoverable, a.createdAtMs],
+            `INSERT INTO account(account_id, email_hmac, email, auth_salt, kdf, srp_v, keyset, discoverable, created_at, bundle_sig) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+            [a.accountId, buf(a.emailHmac), a.email, buf(a.authSalt), JSON.stringify(kdfToJson(a.kdf)), buf(a.srpVerifier), buf(a.keyset), a.discoverable, a.createdAtMs, a.bundleSig === undefined || a.bundleSig === null ? null : buf(a.bundleSig)],
           );
           return 'ok';
         } catch (e) {
@@ -170,11 +170,50 @@ export async function createPgStore(databaseUrl: string, options: { migrations?:
         const r = await q('SELECT role FROM fold_member WHERE fold_id = $1 AND member = $2 AND removed_at IS NULL', [buf(foldId), accountId]);
         return r[0] === undefined ? undefined : num(r[0]['role']);
       },
+      async member(foldId, accountId) {
+        const r = await q('SELECT role, from_epoch, removed_at FROM fold_member WHERE fold_id = $1 AND member = $2', [buf(foldId), accountId]);
+        return r[0] === undefined ? undefined : { role: num(r[0]['role']), fromEpoch: num(r[0]['from_epoch']), removedAtMs: optNum(r[0]['removed_at']) };
+      },
+      async addMember(foldId, accountId, role, fromEpoch) {
+        await q(
+          `INSERT INTO fold_member(fold_id, member, role, from_epoch) VALUES ($1,$2,$3,$4)
+           ON CONFLICT (fold_id, member) DO UPDATE SET role = EXCLUDED.role, from_epoch = EXCLUDED.from_epoch, removed_at = NULL`,
+          [buf(foldId), accountId, role, fromEpoch],
+        );
+      },
+      async setRole(foldId, accountId, role) {
+        await q('UPDATE fold_member SET role = $3 WHERE fold_id = $1 AND member = $2', [buf(foldId), accountId, role]);
+      },
+      async removeMember(foldId, accountId, atMs) {
+        await q('UPDATE fold_member SET removed_at = $3 WHERE fold_id = $1 AND member = $2', [buf(foldId), accountId, atMs]);
+      },
       async members(foldId) {
         return (await q('SELECT member FROM fold_member WHERE fold_id = $1 AND removed_at IS NULL ORDER BY member', [buf(foldId)])).map((x) => x['member'] as string);
       },
       async remove(foldId) {
         await q('DELETE FROM fold WHERE fold_id = $1', [buf(foldId)]);
+      },
+    },
+    log: {
+      async append(foldId, idx, entry, hash) {
+        // The fold row is the lock that orders concurrent appends, so the chain has no gaps and no forks.
+        return inTransaction(async (c) => {
+          const locked = await c.query('SELECT 1 FROM fold WHERE fold_id = $1 FOR UPDATE', [buf(foldId)]);
+          if (locked.rowCount === 0) return 'conflict' as const;
+          const last = await c.query('SELECT COALESCE(MAX(idx), -1) AS head FROM fold_log WHERE fold_id = $1', [buf(foldId)]);
+          if (num(last.rows[0]['head']) + 1 !== idx) return 'conflict' as const;
+          await c.query('INSERT INTO fold_log(fold_id, idx, entry, hash) VALUES ($1,$2,$3,$4)', [buf(foldId), idx, buf(entry), buf(hash)]);
+          return 'ok' as const;
+        });
+      },
+      async list(foldId, after) {
+        const rows = await q('SELECT entry FROM fold_log WHERE fold_id = $1 AND idx > $2 ORDER BY idx', [buf(foldId), after]);
+        const head = await q('SELECT COALESCE(MAX(idx), -1) AS head FROM fold_log WHERE fold_id = $1', [buf(foldId)]);
+        return { entries: rows.map((r) => r['entry'] as Buffer), head: num(head[0]!['head']) };
+      },
+      async last(foldId) {
+        const r = await q('SELECT idx, hash, entry FROM fold_log WHERE fold_id = $1 ORDER BY idx DESC LIMIT 1', [buf(foldId)]);
+        return r[0] === undefined ? undefined : { idx: num(r[0]['idx']), hash: r[0]['hash'] as Buffer, entry: r[0]['entry'] as Buffer };
       },
     },
     grants: {
@@ -220,8 +259,8 @@ export async function createPgStore(databaseUrl: string, options: { migrations?:
           return out;
         });
       },
-      async pull(foldId, after, limit) {
-        const rows = await q('SELECT * FROM op WHERE fold_id = $1 AND server_seq > $2 ORDER BY server_seq LIMIT $3', [buf(foldId), after.toString(), limit + 1]);
+      async pull(foldId, after, limit, minEpoch = 0) {
+        const rows = await q('SELECT * FROM op WHERE fold_id = $1 AND server_seq > $2 AND epoch >= $4 ORDER BY server_seq LIMIT $3', [buf(foldId), after.toString(), limit + 1, minEpoch]);
         const head = await q('SELECT head_seq FROM fold WHERE fold_id = $1', [buf(foldId)]);
         return { ops: rows.slice(0, limit).map(opFrom), head: head[0] === undefined ? 0n : big(head[0]['head_seq']), more: rows.length > limit };
       },

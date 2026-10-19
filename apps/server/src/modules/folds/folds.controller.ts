@@ -7,6 +7,7 @@ import { T } from '../../common/tokens.js';
 import { AckBody, CreateFoldBody, parseValue, SnapshotBody } from '../../common/wire.js';
 import type { Store, StoredOp } from '../../store/store.js';
 import { PULL_LIMIT, type FoldsService } from './folds.service.js';
+import type { MembershipService } from '../membership/membership.service.js';
 import { decodeFoldKeyGrant, encodeOpEnvelope } from '@cashfold/protocol';
 
 const fail = (status: number, code: string): never => {
@@ -24,6 +25,7 @@ export class FoldsController {
     @Inject(T.STORE) private readonly store: Store,
     @Inject(T.FOLDS) private readonly folds: FoldsService,
     @Inject(T.CLOCK) private readonly clock: Clock,
+    @Inject(T.MEMBERSHIP) private readonly membership: MembershipService,
   ) {}
 
   @Post() @HttpCode(201)
@@ -42,6 +44,14 @@ export class FoldsController {
       }
     }
     if ((await this.folds.create(b.fold, caller.accountId, this.clock.now())) === 'exists') fail(409, 'exists');
+    if (b.genesis !== undefined) {
+      // The first entry of the Fold's log comes with the Fold. If it is refused the Fold is not left half made.
+      const first = await this.membership.append(b.fold, caller.accountId, b.genesis, [], 'log');
+      if (!first.ok) {
+        await this.store.folds.remove(b.fold);
+        return fail(first.status, first.code);
+      }
+    }
     if (grant !== undefined) await this.store.grants.put(b.fold, caller.accountId, grant.epoch, grant.bytes);
   }
 
@@ -95,7 +105,9 @@ export class FoldsController {
     const id = foldIdOf(fold);
     if ((await this.store.folds.roleOf(id, caller.accountId)) === undefined) fail(403, 'forbidden');
     const s = await this.store.snapshots.get(id);
-    return s === undefined ? fail(404, 'not_found') : { fold: id, at_seq: s.atSeq, epoch: BigInt(s.epoch), blob: s.blob, sig: s.sig };
+    // A snapshot of a state written under keys this member never had is of no use to them, and is not theirs to read (FR-102).
+    const mine = await this.store.folds.member(id, caller.accountId);
+    return s === undefined || (mine !== undefined && s.epoch < mine.fromEpoch) ? fail(404, 'not_found') : { fold: id, at_seq: s.atSeq, epoch: BigInt(s.epoch), blob: s.blob, sig: s.sig };
   }
 
   @Put(':fold/snapshot') @HttpCode(204)

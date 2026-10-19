@@ -415,14 +415,22 @@ paths:
       parameters:
         - $ref: '#/components/parameters/FoldId'
         - { name: after, in: query, schema: { type: integer, format: int64, minimum: -1, default: -1 } }
+      description: |
+        Anyone who has ever been a member may read the log, so a removed member learns that they were removed.
+        `head` is the index of the last entry the service holds, or -1 for none.
       responses:
         '200':
-          description: Log entries
+          description: Log entries after the given index, and the index of the last one
           content:
             application/cbor:
               schema:
-                type: array
-                items: { $ref: '#/components/schemas/LogEntry' }
+                type: object
+                required: [entries, head]
+                properties:
+                  entries:
+                    type: array
+                    items: { $ref: '#/components/schemas/LogEntry' }
+                  head: { type: integer, format: int64, minimum: -1 }
     post:
       tags: [membership]
       summary: Append a signed log entry (and, where applicable, new grants)
@@ -595,6 +603,14 @@ components:
         srp_verifier: { type: string, contentEncoding: base64url, description: 512 bytes }
         keyset: { $ref: '#/components/schemas/KeySetBlob' }
         device: { $ref: '#/components/schemas/Device' }
+        discoverable: { type: boolean, description: Whether others may find this account by email (default true) }
+        bundle_sig:
+          type: string
+          contentEncoding: base64url
+          description: |
+            64 bytes. The account's Ed25519 signature over its public key bundle:
+            "cashfold.bundle.v1" || len16(account_id) || account_id || enc.pk || sig.pk. Checked against the key set at
+            registration and handed out unchanged with the bundle.
     CredentialRotation:
       type: object
       required: [auth_salt, kdf, srp_verifier, keyset]

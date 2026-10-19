@@ -27,9 +27,19 @@ export interface AccountRow {
   readonly emailVerifiedAtMs: number | null;
   readonly discoverable: boolean;
   readonly createdAtMs: number;
+  /** The account's signature over its own public key bundle, kept so others can be given it (FR-106). Null if the client sent none. */
+  readonly bundleSig: Bytes | null;
 }
 
-export type NewAccount = Omit<AccountRow, 'failCount' | 'lockedUntilMs' | 'emailVerifiedAtMs' | 'createdAtMs'> & { readonly createdAtMs: number };
+export type NewAccount = Omit<AccountRow, 'failCount' | 'lockedUntilMs' | 'emailVerifiedAtMs' | 'createdAtMs' | 'bundleSig'> & { readonly createdAtMs: number; readonly bundleSig?: Bytes | null };
+
+export interface MemberRow {
+  /** 1 owner, 2 editor, 3 viewer. */
+  readonly role: number;
+  /** The first key epoch this member may be sent ops for (FR-102). */
+  readonly fromEpoch: number;
+  readonly removedAtMs: number | null;
+}
 
 export interface DeviceRow {
   readonly devId: Bytes;
@@ -112,8 +122,22 @@ export interface Store {
     list(accountId: string): Promise<ReadonlyArray<{ foldId: Bytes; headSeq: bigint }>>;
     /** The caller's role (1 owner, 2 editor, 3 viewer), or undefined if not a current member. */
     roleOf(foldId: Bytes, accountId: string): Promise<number | undefined>;
+    /** The membership row including a member who has since left or been removed (they may still read the log to learn it). */
+    member(foldId: Bytes, accountId: string): Promise<MemberRow | undefined>;
+    /** Adds a member, or brings back one who left, with a fresh role and starting epoch. */
+    addMember(foldId: Bytes, accountId: string, role: number, fromEpoch: number): Promise<void>;
+    setRole(foldId: Bytes, accountId: string, role: number): Promise<void>;
+    removeMember(foldId: Bytes, accountId: string, atMs: number): Promise<void>;
     members(foldId: Bytes): Promise<readonly string[]>;
     remove(foldId: Bytes): Promise<void>;
+  };
+  /** The membership log of each Fold: signed, hash-chained entries stored exactly as the clients wrote them (ARCH 7.3). */
+  readonly log: {
+    /** Appends entry `idx`; `conflict` unless it is the next index. */
+    append(foldId: Bytes, idx: number, entry: Bytes, hash: Bytes): Promise<'ok' | 'conflict'>;
+    /** Entries after index `after` (-1 for all), and the index of the last entry (-1 for an empty log). */
+    list(foldId: Bytes, after: number): Promise<{ entries: readonly Bytes[]; head: number }>;
+    last(foldId: Bytes): Promise<{ idx: number; hash: Bytes; entry: Bytes } | undefined>;
   };
   readonly grants: {
     /** Keeps the newest write for `(fold, member, epoch)`; a grant is replaced only by another for the same epoch. */
@@ -124,7 +148,8 @@ export interface Store {
   readonly ops: {
     /** Atomic: assigns server_seq in order, enforces the per-device sequence, answers each op. Idempotent on op id. */
     push(foldId: Bytes, ops: readonly OpRow[]): Promise<readonly PushOutcome[]>;
-    pull(foldId: Bytes, after: bigint, limit: number): Promise<{ ops: readonly StoredOp[]; head: bigint; more: boolean }>;
+    /** Ops after `after`. `minEpoch` withholds older ones from a member who joined later; it saves bandwidth and is not a security boundary. */
+    pull(foldId: Bytes, after: bigint, limit: number, minEpoch?: number): Promise<{ ops: readonly StoredOp[]; head: bigint; more: boolean }>;
     head(foldId: Bytes): Promise<bigint>;
     /** Highest device sequence stored for the device in this Fold, or 0. */
     lastDevSeq(foldId: Bytes, devId: Bytes): Promise<bigint>;

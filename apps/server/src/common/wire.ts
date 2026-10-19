@@ -39,6 +39,7 @@ export const DeviceBody = textMap({ dev_id: uuid16, sig_pk: bytes(32), label_ct:
 export const RegistrationBody = textMap({
   account_id: accountId, email, auth_salt: uuid16, kdf: KdfWire, srp_verifier: bytes(512), keyset: anyBytes.refine((b) => b.length > 0 && b.length <= 4096), device: DeviceBody,
   discoverable: z.boolean().optional(),
+  bundle_sig: bytes(64).optional(),
 });
 
 export const CredentialRotationBody = textMap({ auth_salt: uuid16, kdf: KdfWire, srp_verifier: bytes(512), keyset: anyBytes.refine((b) => b.length > 0 && b.length <= 4096) });
@@ -47,6 +48,10 @@ export const VerifyEmailBody = textMap({ token: z.union([z.string().min(16).max(
 export const DiscoverableBody = textMap({ discoverable: z.boolean() });
 
 export const CreateFoldBody = textMap({ fold: uuid16, genesis: anyBytes.optional(), grant: anyBytes.optional() });
+
+export const LookupBody = textMap({ email });
+export const LogAppendBody = textMap({ entry: anyBytes, grants: z.array(anyBytes).max(128).optional() });
+export const InviteBody = textMap({ entry: anyBytes, grants: z.array(anyBytes).max(128).optional(), notify_email: email.optional() });
 
 export const SnapshotBody = textMap({ fold: uuid16, at_seq: z.bigint().gte(0n).lte(2n ** 63n - 1n), epoch: int(0, 0xffff_ffff), blob: anyBytes, sig: bytes(64) });
 export const AckBody = textMap({ seq: z.bigint().gte(0n).lte(2n ** 63n - 1n) });

@@ -13,4 +13,5 @@ export const T = {
   DEVICES: Symbol('devices'),
   FOLDS: Symbol('folds'),
   SNAPSHOTS: Symbol('snapshots'),
+  MEMBERSHIP: Symbol('membership'),
 } as const;

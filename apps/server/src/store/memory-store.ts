@@ -5,7 +5,8 @@ const hex = (b: Bytes): string => Buffer.from(b).toString('hex');
 interface FoldState {
   createdAtMs: number;
   headSeq: bigint;
-  members: Map<string, number>;
+  members: Map<string, { role: number; fromEpoch: number; removedAtMs: number | null }>;
+  log: Array<{ entry: Uint8Array; hash: Uint8Array }>;
   ops: StoredOp[];
   byOpId: Map<string, StoredOp>;
   /** Highest device sequence ever stored, kept after pruning so the sequence check survives it. */
@@ -32,7 +33,7 @@ export function createMemoryStore(): Store {
       async create(row) {
         if (accounts.has(row.accountId)) return 'id_taken';
         if (byEmail.has(hex(row.emailHmac))) return 'email_taken';
-        accounts.set(row.accountId, { ...row, failCount: 0, lockedUntilMs: null, emailVerifiedAtMs: null });
+        accounts.set(row.accountId, { ...row, bundleSig: row.bundleSig ?? null, failCount: 0, lockedUntilMs: null, emailVerifiedAtMs: null });
         byEmail.set(hex(row.emailHmac), row.accountId);
         return 'ok';
       },
@@ -119,20 +120,52 @@ export function createMemoryStore(): Store {
     folds: {
       async create(foldId, owner, atMs) {
         if (fold(foldId) !== undefined) return 'exists';
-        folds.set(hex(foldId), { createdAtMs: atMs, headSeq: 0n, members: new Map([[owner, 1]]), ops: [], byOpId: new Map(), lastSeq: new Map(), acks: new Map(), grants: new Map() });
+        folds.set(hex(foldId), { createdAtMs: atMs, headSeq: 0n, members: new Map([[owner, { role: 1, fromEpoch: 1, removedAtMs: null }]]), log: [], ops: [], byOpId: new Map(), lastSeq: new Map(), acks: new Map(), grants: new Map() });
         return 'ok';
       },
       async list(accountId) {
-        return [...folds].filter(([, f]) => f.members.has(accountId)).map(([k, f]) => ({ foldId: Buffer.from(k, 'hex'), headSeq: f.headSeq }));
+        return [...folds].filter(([, f]) => f.members.get(accountId)?.removedAtMs === null).map(([k, f]) => ({ foldId: Buffer.from(k, 'hex'), headSeq: f.headSeq }));
       },
       async roleOf(foldId, accountId) {
+        const m = fold(foldId)?.members.get(accountId);
+        return m?.removedAtMs === null ? m.role : undefined;
+      },
+      async member(foldId, accountId) {
         return fold(foldId)?.members.get(accountId);
       },
+      async addMember(foldId, accountId, role, fromEpoch) {
+        fold(foldId)?.members.set(accountId, { role, fromEpoch, removedAtMs: null });
+      },
+      async setRole(foldId, accountId, role) {
+        const m = fold(foldId)?.members.get(accountId);
+        if (m !== undefined) fold(foldId)!.members.set(accountId, { ...m, role });
+      },
+      async removeMember(foldId, accountId, atMs) {
+        const m = fold(foldId)?.members.get(accountId);
+        if (m !== undefined) fold(foldId)!.members.set(accountId, { ...m, removedAtMs: atMs });
+      },
       async members(foldId) {
-        return [...(fold(foldId)?.members.keys() ?? [])];
+        return [...(fold(foldId)?.members ?? [])].filter(([, m]) => m.removedAtMs === null).map(([account]) => account);
       },
       async remove(foldId) {
         folds.delete(hex(foldId));
+      },
+    },
+    log: {
+      async append(foldId, idx, entry, hash) {
+        const f = fold(foldId);
+        if (f === undefined || idx !== f.log.length) return 'conflict';
+        f.log.push({ entry, hash });
+        return 'ok';
+      },
+      async list(foldId, after) {
+        const log = fold(foldId)?.log ?? [];
+        return { entries: log.slice(after + 1).map((l) => l.entry), head: log.length - 1 };
+      },
+      async last(foldId) {
+        const log = fold(foldId)?.log ?? [];
+        const l = log.at(-1);
+        return l === undefined ? undefined : { idx: log.length - 1, hash: l.hash, entry: l.entry };
       },
     },
     grants: {
@@ -169,10 +202,10 @@ export function createMemoryStore(): Store {
         }
         return out;
       },
-      async pull(foldId, after, limit) {
+      async pull(foldId, after, limit, minEpoch = 0) {
         const f = fold(foldId);
         if (f === undefined) return { ops: [], head: 0n, more: false };
-        const rest = f.ops.filter((o) => o.serverSeq > after);
+        const rest = f.ops.filter((o) => o.serverSeq > after && o.epoch >= minEpoch);
         return { ops: rest.slice(0, limit), head: f.headSeq, more: rest.length > limit };
       },
       async head(foldId) {
@@ -203,7 +236,7 @@ export function createMemoryStore(): Store {
         const f = fold(foldId);
         if (f?.snapshot === undefined) return 0;
         const at = f.snapshot.atSeq;
-        const active = [...devices.values()].filter((d) => d.revokedAtMs === null && f.members.has(d.accountId));
+        const active = [...devices.values()].filter((d) => d.revokedAtMs === null && f.members.get(d.accountId)?.removedAtMs === null);
         if (active.length === 0 || active.some((d) => (f.acks.get(hex(d.devId)) ?? 0n) < at)) return 0;
         const keep = f.ops.filter((o) => o.serverSeq > at);
         const removed = f.ops.length - keep.length;

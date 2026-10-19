@@ -1,5 +1,5 @@
 import { sha256 } from '@noble/hashes/sha2.js';
-import { decodeLogEntry, encodeLogEntry, encodeLogEntryUnsigned, type LogEntry as WireLogEntry } from '@cashfold/protocol';
+import { decodeLogEntry, encodeLogEntry, logEntrySigningBytes, type LogEntry as WireLogEntry } from '@cashfold/protocol';
 import type { SecretBuf } from '../secret-buf';
 import type { Signer } from '../ports/index';
 
@@ -8,7 +8,6 @@ import type { Signer } from '../ports/index';
 //   sig  = Ed25519("cashfold.log.v1" || canonical(entry without sig))
 // The shape below is the plain form the core works with; this module is the only place it meets the wire format.
 
-const SIGN_LABEL = new TextEncoder().encode('cashfold.log.v1');
 const utf8 = (s: string) => new TextEncoder().encode(s);
 const fromUtf8 = (b: Uint8Array) => new TextDecoder().decode(b);
 
@@ -72,11 +71,7 @@ export const decodeEntry = (b: Uint8Array): PlainLogEntry => fromWireEntry(decod
 export function entrySigningBytes(e: Omit<PlainLogEntry, 'sig'>): Uint8Array {
   const { sig, ...unsigned } = toWireEntry({ ...e, sig: new Uint8Array(64) });
   void sig;
-  const body = encodeLogEntryUnsigned(unsigned);
-  const out = new Uint8Array(SIGN_LABEL.length + body.length);
-  out.set(SIGN_LABEL);
-  out.set(body, SIGN_LABEL.length);
-  return out;
+  return logEntrySigningBytes(unsigned);
 }
 
 export const hashEntry = (e: PlainLogEntry): Uint8Array => sha256(encodeEntry(e));
