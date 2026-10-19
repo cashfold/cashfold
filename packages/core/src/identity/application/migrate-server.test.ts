@@ -14,7 +14,7 @@ const NEW = 'https://new.example';
 const KEYSET = new Uint8Array([4, 2]);
 
 interface Opts {
-  wrong?: boolean; signInFails?: Record<string, RelayErrorKind>; register?: RegistrationResult; announceFails?: boolean; transfer?: 'ok' | 'offline' | 'failed'; del?: RelayReply;
+  wrong?: boolean; signInFails?: Record<string, RelayErrorKind>; register?: RegistrationResult; announceFails?: boolean; transfer?: 'ok' | 'offline' | 'failed'; sharedFolds?: Id[]; emailTakenButOurs?: boolean; del?: RelayReply;
   folds?: Id[]; registration?: 'pending' | 'done'; server?: string; keyset?: RelayReply;
 }
 
@@ -42,7 +42,7 @@ function setup(o: Opts = {}) {
   });
   const relay: RelayAuthPort = {
     async signIn({ server, deriveX }) {
-      const fail = o.signInFails?.[server];
+      const fail = o.signInFails?.[server] ?? (server === NEW && o.register?.ok === false && o.register.reason === 'email_taken' && !o.emailTakenButOurs ? 'rejected' : undefined);
       if (fail) return { ok: false, kind: fail };
       await deriveX({ authSalt: new Uint8Array(16), kdf: GOOD });
       return { ok: true, accountId: 'ABCDEF', link: linkFor(server) };
@@ -63,7 +63,7 @@ function setup(o: Opts = {}) {
     async transfer(f, to) {
       events.push(`transfer ${f}`);
       await to.request('POST', '/folds');
-      return o.transfer ?? 'ok';
+      return o.sharedFolds?.includes(f) ? 'shared' : (o.transfer ?? 'ok');
     },
   };
   const run = migrateToServer({ crypto, relay, registration, credentials, folds });
@@ -74,13 +74,13 @@ describe('migrateToServer (FR-100)', () => {
   it('registers the same key set on the new service, announces and copies every Fold, switches the device and deletes the old copy', async () => {
     const s = setup();
     const pw = textSecret('correct horse');
-    expect(await s.run({ password: pw, server: 'https://NEW.example/' })).toEqual({ ok: true, value: { server: NEW, folds: 2, oldDeleted: true } });
+    expect(await s.run({ password: pw, server: 'https://NEW.example/' })).toEqual({ ok: true, value: { server: NEW, folds: 2, kept: [], oldDeleted: true } });
     expect(s.registered).toHaveLength(1);
     expect(s.registered[0]!.payload).toMatchObject({ keySet: KEYSET, server: NEW, discoverable: false, email: 'a@b.cc' });
     expect(s.stored()!.server).toBe(NEW);
     expect(pw.isWiped).toBe(true);
     const order = s.events.filter((e) => /announce|transfer|DELETE/.test(e));
-    expect(order).toEqual([`announce ${id(10)} ${NEW}`, `transfer ${id(10)}`, `announce ${id(11)} ${NEW}`, `transfer ${id(11)}`, `${OLD} DELETE /accounts/me`]);
+    expect(order).toEqual([`transfer ${id(10)}`, `announce ${id(10)} ${NEW}`, `transfer ${id(11)}`, `announce ${id(11)} ${NEW}`, `${OLD} DELETE /accounts/me`]);
     expect(s.events.slice(-3).sort()).toEqual(['close https://new.example', 'close https://old.example', 'handle.wipe'].sort());
   });
 
@@ -89,6 +89,20 @@ describe('migrateToServer (FR-100)', () => {
     const blocked = setup({ del: { ok: false, kind: 'conflict' } });
     expect(await blocked.run({ password: textSecret('x'), server: NEW })).toMatchObject({ ok: true, value: { oldDeleted: false } });
     expect(blocked.stored()!.server).toBe(NEW); // the move still happened
+  });
+
+  it('leaves shared Folds where they are, says which, announces only what moved, and keeps the old account while any remain', async () => {
+    const s = setup({ sharedFolds: [id(11)] });
+    expect(await s.run({ password: textSecret('x'), server: NEW })).toEqual({ ok: true, value: { server: NEW, folds: 1, kept: [id(11)], oldDeleted: false } });
+    expect(s.events.filter((e) => e.startsWith('announce'))).toEqual([`announce ${id(10)} ${NEW}`]);
+    expect(s.events.some((e) => e.includes('DELETE'))).toBe(false);
+    expect(s.stored()!.server).toBe(NEW);
+  });
+
+  it('carries on a move that stopped half-way: the same credentials already sign in at the new service', async () => {
+    const s = setup({ register: { ok: false, reason: 'email_taken' }, emailTakenButOurs: true });
+    expect(await s.run({ password: textSecret('x'), server: NEW })).toMatchObject({ ok: true, value: { folds: 2, oldDeleted: true } });
+    expect(s.stored()!.server).toBe(NEW);
   });
 
   it('passes an invitation code to the new service', async () => {

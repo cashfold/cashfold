@@ -17,8 +17,12 @@ export interface MigrationFolds {
   list(): Promise<readonly Id[]>;
   /** Writes the signed `set_server` setting into the Fold so other members learn where it moved. */
   announce(fold: Id, server: string): Promise<boolean>;
-  /** Puts the Fold's membership log, grants and op log on the service `to` is signed in to. */
-  transfer(fold: Id, to: RelayLink): Promise<'ok' | 'offline' | 'failed'>;
+  /**
+   * Puts the Fold's membership log, grants and op log on the service `to` is signed in to. `shared` when other people belong
+   * to the Fold (or it has a membership history): their signed entries can only be replayed by their own authors, so it stays
+   * where it is until its members move it together.
+   */
+  transfer(fold: Id, to: RelayLink): Promise<'ok' | 'offline' | 'failed' | 'shared'>;
 }
 
 export interface MigrateInput {
@@ -32,8 +36,11 @@ export interface MigrateInput {
 
 export interface Migrated {
   readonly server: string;
+  /** Folds now on the new service. */
   readonly folds: number;
-  /** False when the old service kept its copy: offline, or the account owns a Fold others still share there. */
+  /** Folds left on the old service because they are shared. While any remain the old account is not deleted. */
+  readonly kept: readonly Id[];
+  /** False when the old service kept its copy: offline, kept Folds, or the account owns a Fold others still share there. */
   readonly oldDeleted: boolean;
 }
 
@@ -110,7 +117,13 @@ export function migrateToServer(deps: MigrateDeps) {
 
       const payload = await handle.registration({ keySet, email: stored.email, server: server.value, discoverable });
       const registered = await registration.register(payload, input.inviteCode === undefined ? {} : { inviteCode: input.inviteCode });
-      if (!registered.ok) {
+      // A move that stopped half-way left the account on the new service already: the same credentials still sign in there,
+      // so the move can simply carry on from where it was. Anyone else's account would not accept them.
+      let resumed: Result<RelayLink, SignInError> | undefined;
+      if (!registered.ok && registered.reason === 'email_taken') {
+        resumed = await signIn(server.value);
+        if (!resumed.ok) return err('email_taken', 'That email address is already registered with the new service');
+      } else if (!registered.ok) {
         switch (registered.reason) {
           case 'offline': return { ok: false, error: mapRelayError('offline') };
           case 'email_taken': return err('email_taken', 'That email address is already registered with the new service');
@@ -120,26 +133,32 @@ export function migrateToServer(deps: MigrateDeps) {
         }
       }
 
-      const fresh = await signIn(server.value);
+      const fresh = resumed ?? (await signIn(server.value));
       if (!fresh.ok) return fresh;
       const all = await folds.list();
+      const kept: Id[] = [];
       for (const fold of all) {
-        if (!(await folds.announce(fold, server.value))) return err('transfer_failed', 'Could not record the move in a Fold. Nothing was deleted.');
         const moved = await folds.transfer(fold, fresh.value);
         if (moved === 'offline') return { ok: false, error: mapRelayError('offline') };
         if (moved === 'failed') return err('transfer_failed', 'A Fold could not be copied to the new service. Nothing was deleted.');
+        if (moved === 'shared') {
+          kept.push(fold);
+          continue;
+        }
+        // Said last, so the new location is only recorded for a Fold that is really there.
+        if (!(await folds.announce(fold, server.value))) return err('transfer_failed', 'Could not record the move in a Fold. Nothing was deleted.');
       }
 
       // Everything is on the new service: this device follows it. Past this point the move has happened.
       await credentials.save({ ...stored, server: server.value });
 
       let oldDeleted = false;
-      if (input.deleteOld !== false) {
+      if (input.deleteOld !== false && kept.length === 0) {
         const gone = await old.value.request('DELETE', '/accounts/me', { fresh_proof: old.value.freshProof, removal_entries: [] });
         oldDeleted = gone.ok || gone.kind === 'gone';
       }
       logger?.info('account.migrated', {});
-      return ok({ server: server.value, folds: all.length, oldDeleted });
+      return ok({ server: server.value, folds: all.length - kept.length, kept, oldDeleted });
     } finally {
       for (const l of links) l.close();
       handle.wipe();
