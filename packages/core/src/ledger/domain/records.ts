@@ -155,11 +155,28 @@ export interface Transaction {
   readonly note: string;
   readonly place: Place | null;
   readonly attachmentRef: Id | null;
+  /** What the attached file is, when the transaction has one that reads as well-formed. */
+  readonly attachment?: AttachmentInfo | null;
   readonly isRefund: boolean;
   readonly isPinned: boolean;
   readonly status: TxnStatus;
   readonly origin: { readonly scheduleId: Id; readonly n: number } | null;
   readonly importId: Id | null;
+}
+
+export interface AttachmentInfo {
+  readonly name: string;
+  readonly mime: string;
+  readonly size: number;
+  readonly chunkCount: number;
+  readonly epoch: number;
+}
+
+function decodeAttachmentInfo(f: Fields): AttachmentInfo | null {
+  const [name, mime, size, chunks, epoch] = [f.text(TXN_FIELD.attachmentName), f.text(TXN_FIELD.attachmentMime), f.nullableBig(TXN_FIELD.attachmentSize), f.nullableBig(TXN_FIELD.attachmentChunks), f.nullableBig(TXN_FIELD.attachmentEpoch)];
+  if (name === undefined || mime === undefined || size == null || chunks == null || epoch == null) return null;
+  if (chunks < 1n || chunks > 0xffffn || size < 0n || size > 25n * 1024n * 1024n || epoch < 0n) return null;
+  return { name, mime, size: Number(size), chunkCount: Number(chunks), epoch: Number(epoch) };
 }
 
 export function decodeTransaction(rec: Id, state: RecordState): Transaction | undefined {
@@ -192,7 +209,7 @@ export function decodeTransaction(rec: Id, state: RecordState): Transaction | un
     fxRateId: f.id(TXN_FIELD.fxRateId) ?? null, fxBaseRateId: f.id(TXN_FIELD.fxBaseRateId) ?? null, occurredUtcMs: f.int(TXN_FIELD.occurredUtcMs, 0), tzOffsetMin: f.int(TXN_FIELD.tzOffsetMin, 0),
     localDate: localDate as LocalDate, categoryId: f.id(TXN_FIELD.categoryId) ?? null, payeeId: f.id(TXN_FIELD.payeeId) ?? null,
     tagIds: [...visibleMembers(state, TXN_FIELD.tagIds)].sort(), note: f.text(TXN_FIELD.note) ?? '', place,
-    attachmentRef: f.id(TXN_FIELD.attachmentRef) ?? null, isRefund: f.bool(TXN_FIELD.isRefund, false), isPinned: f.bool(TXN_FIELD.isPinned, false),
+    attachmentRef: f.id(TXN_FIELD.attachmentRef) ?? null, attachment: f.id(TXN_FIELD.attachmentRef) == null ? null : decodeAttachmentInfo(f), isRefund: f.bool(TXN_FIELD.isRefund, false), isPinned: f.bool(TXN_FIELD.isPinned, false),
     status,
     origin: scheduleId != null && originN != null ? { scheduleId, n: Number(originN) } : null,
     importId: f.id(TXN_FIELD.importId) ?? null,

@@ -34,6 +34,8 @@ export const TXN_FIELD = {
   occurredUtcMs: 8, tzOffsetMin: 9, localDate: 10, categoryId: 11, payeeId: 12, tagIds: 13, note: 14,
   placeName: 15, latE7: 16, lonE7: 17, attachmentRef: 18, isRefund: 19, isPinned: 20, status: 21,
   originScheduleId: 22, originN: 23, importId: 24, fxBaseRateId: 25,
+  // The file attached to the transaction (`attachmentRef` is its id); its sealed pieces are kept apart (FR-093).
+  attachmentName: 26, attachmentMime: 27, attachmentSize: 28, attachmentChunks: 29, attachmentEpoch: 30,
 } as const;
 
 export const TRANSFER_FIELD = {

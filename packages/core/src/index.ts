@@ -103,3 +103,4 @@ export * from './sharing/application/op-authorisation';
 export * from './ledger/application/export-csv';
 export * from './sync/application/backup';
 export * from './ledger/application/import-csv';
+export * from './ledger/application/attachments';
