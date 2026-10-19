@@ -97,3 +97,5 @@ export * from './sharing/domain/checkpoint';
 export * from './sharing/application/history-scope';
 export * from './sharing/application/op-authorisation';
 export * from './ledger/application/export-csv';
+export * from './sync/application/backup';
+export * from './ledger/application/import-csv';

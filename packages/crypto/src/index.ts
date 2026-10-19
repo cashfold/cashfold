@@ -24,3 +24,6 @@ export * from './fingerprint';
 export * from './membership/log-crypto';
 export * from './membership/bundle';
 export * from './membership/sharing-crypto';
+export * from './recovery/recovery-key';
+export * from './attachment/attachment';
+export * from './backup/backup-crypto';

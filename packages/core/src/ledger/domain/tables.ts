@@ -52,6 +52,9 @@ export const GOAL_FIELD = { name: 1, icon: 2, color: 3, targetMinor: 4, currency
 /** A balance or envelope carry-in written for one member who joined with `from_join` history (ARCH 7.6). */
 export const CHECKPOINT_FIELD = { kind: 1, subject: 2, asOfLocalDate: 3, valueMinor: 4, member: 5 } as const;
 
+/** One CSV import: where it came from, when, and whether it was taken back (FR-090). */
+export const IMPORT_FIELD = { source: 1, importedUtcMs: 2, undone: 3, count: 4 } as const;
+
 export const SCHEDULE_FIELD = {
   name: 1, kind: 2, beginLocalDate: 3, endLocalDate: 4, unit: 5, interval: 6, requiresConfirmation: 7, reminderMin: 8, completedUtcMs: 9,
   direction: 10, accountId: 11, amountMinor: 12, categoryId: 13, payeeId: 14, note: 15, tagIds: 16, placeName: 17, latE7: 18, lonE7: 19,
