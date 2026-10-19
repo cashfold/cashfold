@@ -27,7 +27,7 @@ export interface AttachmentCryptoPort {
 export interface AttachmentStorePort {
   put(fold: Id, attachment: Id, index: number, bytes: Uint8Array, sent: boolean): Promise<void>;
   get(fold: Id, attachment: Id, index: number): Promise<Uint8Array | undefined>;
-  /** Pieces made here that the service does not have yet, oldest first. */
+  /** Pieces made here that the service does not have yet, in a stable order. */
   pending(): Promise<ReadonlyArray<{ readonly fold: Id; readonly attachment: Id; readonly index: number }>>;
   markSent(fold: Id, attachment: Id, index: number): Promise<void>;
   discard(fold: Id, attachment: Id): Promise<void>;

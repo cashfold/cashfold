@@ -7,6 +7,7 @@ import { EncryptedDatabase } from './database';
 import { migrate, MigrationError } from './migrate';
 import type { Migration } from './migrations/generated';
 import { loadRuntime, type SqliteRuntime } from './runtime';
+import { createSqliteAttachmentStore } from './attachment-store';
 import { createSqliteOpLog, createSqliteProjections } from './sqlite-stores';
 import { createAccount, createSession, parseSettings, unlock, type CredentialStorePort, type DeviceCredentials, type RegistrationResult } from '@cashfold/core';
 import { createAccountCrypto } from '../account-crypto';
@@ -441,6 +442,25 @@ export const scenarios = {
       db.exec('PRAGMA user_version = 999');
       const tooNew = await throws(() => migrate(db));
       return { first, again, version, tables, failure, afterFailure, tooNew, isMigrationError: tooNew.startsWith(MigrationError.name) };
+    });
+  },
+
+  async attachmentStore(ctx: ScenarioContext) {
+    return withDb(ctx, 1, async (db) => {
+      await migrate(db);
+      const store = createSqliteAttachmentStore(db);
+      const fold = '00000000-0000-4000-8000-0000000000f1' as Id;
+      const att = '00000000-0000-4000-8000-0000000000a1' as Id;
+      const piece = Uint8Array.from({ length: 300 }, (_, i) => i & 255);
+      await store.put(fold, att, 0, piece, false);
+      await store.put(fold, att, 1, piece.slice(0, 10), true);
+      const read = await store.get(fold, att, 0);
+      const pending = await store.pending();
+      await store.markSent(fold, att, 0);
+      const after = await store.pending();
+      const missing = await store.get(fold, att, 5);
+      store.clearFold(fold);
+      return { same: read !== undefined && read.length === 300 && read[299] === 43, pending, after, missing: missing === undefined, cleared: (await store.get(fold, att, 0)) === undefined };
     });
   },
 

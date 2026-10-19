@@ -17,7 +17,7 @@ export function createSqliteAttachmentStore(db: EncryptedDatabase): SqliteAttach
       return v instanceof Uint8Array ? v : undefined;
     },
     async pending() {
-      return db.rows('SELECT fold_id, att_id, idx FROM attachment_chunk WHERE sent = 0 ORDER BY rowid').map((r) => ({
+      return db.rows('SELECT fold_id, att_id, idx FROM attachment_chunk WHERE sent = 0 ORDER BY fold_id, att_id, idx').map((r) => ({
         fold: idFromBytes(r[0] as Uint8Array), attachment: idFromBytes(r[1] as Uint8Array), index: Number(r[2] as bigint),
       }));
     },

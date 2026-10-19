@@ -329,7 +329,11 @@ test.describe('@us9 portability and recovery', () => {
       await p.getByRole('button', { name: 'Edit Coffee beans' }).click();
       const d = p.getByRole('dialog');
       await expect(d.getByTestId('attachment-current')).toContainText('receipt.txt');
-      const [download] = await Promise.all([p.waitForEvent('download'), d.getByRole('button', { name: 'Open receipt.txt' }).click()]);
+      const downloading = p.waitForEvent('download', { timeout: 60_000 });
+      await d.getByRole('button', { name: 'Open receipt.txt' }).click();
+      const outcome = await Promise.race([downloading, d.getByRole('alert').waitFor({ timeout: 60_000 }).then(async () => d.getByRole('alert').textContent())]);
+      if (typeof outcome === 'string' || outcome === null) throw new Error(`the file did not open: ${String(outcome)}`);
+      const download = outcome;
       expect(download.suggestedFilename()).toBe('receipt.txt');
       const bytes = readFileSync(await download.path());
       await d.getByRole('button', { name: 'Cancel' }).click();

@@ -73,13 +73,24 @@ describe('encryption at rest (FR-016)', () => {
   });
 });
 
+describe('attachment pieces', () => {
+  it('keeps sealed pieces, lists the ones not sent yet, and drops them with the Fold', async () => {
+    const r = await run('attachmentStore');
+    expect(r.same).toBe(true);
+    expect(r.pending).toEqual([{ fold: '00000000-0000-4000-8000-0000000000f1', attachment: '00000000-0000-4000-8000-0000000000a1', index: 0 }]);
+    expect(r.after).toEqual([]);
+    expect(r.missing).toBe(true);
+    expect(r.cleared).toBe(true);
+  });
+});
+
 describe('schema migrations', () => {
   it('applies the ARCH 8.2 schema in order, idempotently, and refuses a newer database', async () => {
     const r = await run('migrations');
-    expect(r.first).toBe(5);
-    expect(r.again).toBe(5);
-    expect(r.version).toBe(5);
-    expect(r.tables).toEqual(expect.arrayContaining(['fold', 'op_log', 'sync_quarantine', 'record_meta', 'field_clock', 'set_add', 'set_removed', 'account', 'txn', 'transfer', 'category', 'payee', 'tag', 'budget', 'goal', 'schedule', 'fx_rate', 'import_batch', 'checkpoint', 'purged_record', 'device', 'fold_log', 'ledger_entry', 'account_balance']));
+    expect(r.first).toBe(6);
+    expect(r.again).toBe(6);
+    expect(r.version).toBe(6);
+    expect(r.tables).toEqual(expect.arrayContaining(['fold', 'op_log', 'sync_quarantine', 'record_meta', 'field_clock', 'set_add', 'set_removed', 'account', 'txn', 'transfer', 'category', 'payee', 'tag', 'budget', 'goal', 'schedule', 'fx_rate', 'import_batch', 'checkpoint', 'purged_record', 'device', 'fold_log', 'attachment_chunk', 'ledger_entry', 'account_balance']));
     expect(r.tooNew).toMatch(/^MigrationError/);
   });
 

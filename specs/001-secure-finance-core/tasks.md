@@ -326,7 +326,7 @@ The spec covers the whole v1 product, so this list is large. Recommended first r
 - [X] T180 [P] [US9] Implement encrypted backup and restore in `packages/core/src/sync/application/backup.ts` (depends on T172) — Refs: FR-091
 - [X] T181 [US9] Implement the CSV importer (mapping, preview, duplicate detection, row errors, `ImportBatch`, undo) and exporter in `packages/core/src/ledger/application/import-csv.ts`, `export-csv.ts` (depends on T173, T085) — Refs: FR-090, FR-092
 - [X] T182 [P] [US9] Implement attachment encryption/decryption streams and server chunk endpoints (`PUT/GET /folds/{id}/attachments/{attId}/chunks/{index}`) in `packages/crypto/src/attachment/attachment.ts` and `apps/server/src/modules/attachments/` (depends on T174) — Refs: FR-093
-- [ ] T183 [US9] Build the attachment add/open/remove UI and wire it into the transaction form in `apps/web/src/ui/ledger/attachments.tsx` (FR-030, FR-093) (depends on T182, T091) — Refs: FR-030, FR-093
+- [X] T183 [US9] Build the attachment add/open/remove UI and wire it into the transaction form in `apps/web/src/ui/ledger/attachments.tsx` (FR-030, FR-093) (depends on T182, T091) — Refs: FR-030, FR-093
 - [X] T184 [US9] Build recovery sign-in, Recovery Key setup (shown once), password/Secret Key change, account deletion with owned-Fold blocking list, server migration wizard, backup/restore, CSV import wizard (mapping, preview, undo) and CSV export warning screens in `apps/web/src/app/settings/` and `apps/web/src/ui/portability/` — Refs: FR-008, FR-009, FR-090, FR-091, FR-092, FR-100, FR-101
 
 **Checkpoint**: All user stories are independently functional.
