@@ -12,7 +12,7 @@ export function DataScreen() {
   const { t } = useI18n();
   const ledger = useLedger();
   return (
-    <LedgerFrame titleKey="page.data.title">
+    <LedgerFrame titleKey="page.data.title" withoutFold={<BackupPanel folds={ledger.folds} />}>
       <p className="mt-2 text-muted">{t('data.lede')}</p>
       <CsvImportPanel />
       <CsvExportPanel folds={ledger.folds} />

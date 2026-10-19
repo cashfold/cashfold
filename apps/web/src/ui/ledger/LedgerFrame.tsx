@@ -6,7 +6,7 @@ import { KitReminder } from '../shell/KitReminder';
 import { useLedger } from './LedgerProvider';
 
 /** The common top of every ledger screen: heading, Fold picker, and the right message while loading or empty. */
-export function LedgerFrame({ titleKey, children, actions }: { titleKey: string; children: ReactNode; actions?: ReactNode }) {
+export function LedgerFrame({ titleKey, children, actions, withoutFold }: { titleKey: string; children: ReactNode; actions?: ReactNode; withoutFold?: ReactNode }) {
   const { t } = useI18n();
   const ledger = useLedger();
   return (
@@ -30,7 +30,10 @@ export function LedgerFrame({ titleKey, children, actions }: { titleKey: string;
       {ledger.failed ? (
         <p role="alert" className="mt-4 text-danger">{t('ledger.error.load')}</p>
       ) : ledger.basics === undefined ? (
-        <p role="status" className="mt-4 text-muted">{ledger.loading ? t('loading') : t('ledger.noFold')}</p>
+        <>
+          <p role="status" className="mt-4 text-muted">{ledger.loading ? t('loading') : t('ledger.noFold')}</p>
+          {ledger.loading ? null : withoutFold}
+        </>
       ) : (
         children
       )}

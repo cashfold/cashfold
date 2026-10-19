@@ -4,7 +4,7 @@ import { CURRENCY_EXPONENTS, type ExchangeRate } from '@cashfold/core';
 import { useState, type FormEvent } from 'react';
 import { TextField, buttonClass, secondaryButtonClass } from '../../forms/TextField';
 import { useI18n } from '../../i18n/I18nProvider';
-import { dateOfUtcSeconds, dateToInput, formatDate, inputToDate, startOfDayUtcS, todayLocal } from '../dates';
+import { dateOfUtcSeconds, dateToInput, formatDate, inputToDate, localDateOfUtcSeconds, startOfLocalDayUtcS, todayLocal } from '../dates';
 import { formatRate, parseRateText } from '../format';
 import { useLedger } from '../LedgerProvider';
 
@@ -27,7 +27,7 @@ export function RateManager() {
     const rate = parseRateText(text, locale);
     if (parsedDay === undefined) return setError(t('ledger.accounts.form.date'));
     if (!rate.ok) return setError(t(`ledger.rate.${rate.error.code}`));
-    const r = await ledger.run('ledger.setCustomRate', { quote, asOfUtcS: startOfDayUtcS(parsedDay), rateE12: rate.value });
+    const r = await ledger.run('ledger.setCustomRate', { quote, asOfUtcS: startOfLocalDayUtcS(parsedDay), rateE12: rate.value });
     if (r.ok) {
       setText('');
       setError(undefined);
@@ -51,7 +51,7 @@ export function RateManager() {
           <li key={r.id} className="flex flex-wrap items-center justify-between gap-3 p-3">
             <span>
               <strong>{r.quote}</strong> {formatRate(r.rateE12, locale)} <span className="text-sm text-muted">{t('ledger.rates.per')}</span>
-              <span className="ms-3 text-sm text-muted">{formatDate(dateOfUtcSeconds(r.asOfUtcS), locale)} · {t(r.source === 'custom' ? 'ledger.rates.own' : 'ledger.rates.service')}</span>
+              <span className="ms-3 text-sm text-muted">{formatDate(r.source === 'custom' ? localDateOfUtcSeconds(r.asOfUtcS) : dateOfUtcSeconds(r.asOfUtcS), locale)} · {t(r.source === 'custom' ? 'ledger.rates.own' : 'ledger.rates.service')}</span>
             </span>
             {r.source === 'custom' ? (
               <button type="button" className={secondaryButtonClass} onClick={() => void ledger.run('ledger.deleteCustomRate', { id: r.id })} aria-label={`${t('ledger.delete')} ${r.quote} ${formatRate(r.rateE12, locale)}`}>{t('ledger.delete')}</button>

@@ -66,6 +66,19 @@ export function formatDateTime(utcMs: number, locale: string): string {
 /** Seconds since 1970 at the start (UTC) of a civil day. Rates are dated this way. */
 export const startOfDayUtcS = (d: LocalDate): number => Date.UTC(yearOfDate(d), monthOfDate(d) - 1, d % 100) / 1000;
 
+/**
+ * The instant, in seconds, at which a civil day begins in this device's own time zone. A rate the person enters "for the 20th" applies from
+ * the moment the 20th begins where they are; stored as midnight UTC it would still lie in the future for hours of that day anywhere east of
+ * Greenwich, and the rate would not be found.
+ */
+export const startOfLocalDayUtcS = (d: LocalDate): number => new Date(yearOfDate(d), monthOfDate(d) - 1, d % 100).getTime() / 1000;
+
+/** The civil date, in this device's own time zone, that an instant in seconds falls on. */
+export function localDateOfUtcSeconds(s: number): LocalDate {
+  const d = new Date(s * 1000);
+  return (d.getFullYear() * 10_000 + (d.getMonth() + 1) * 100 + d.getDate()) as LocalDate;
+}
+
 /** The civil date (UTC) that an instant in seconds falls on. */
 export function dateOfUtcSeconds(s: number): LocalDate {
   const d = new Date(s * 1000);

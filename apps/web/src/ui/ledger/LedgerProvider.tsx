@@ -30,6 +30,12 @@ export interface LedgerView {
   readonly explain: (code: string) => string;
 }
 
+/** Commands whose effect shows in lists and totals but changes nothing that the next form is built from. */
+const ENTRIES: ReadonlySet<string> = new Set([
+  'ledger.addTransaction', 'ledger.updateTransaction', 'ledger.deleteTransaction', 'ledger.restoreTransaction',
+  'ledger.addTransfer', 'ledger.updateTransfer', 'ledger.deleteTransfer', 'ledger.restoreTransfer',
+]);
+
 const Context = createContext<LedgerView | null>(null);
 
 export function useLedger(): LedgerView {
@@ -108,9 +114,13 @@ export function LedgerProvider({ children }: { children: ReactNode }) {
     async <T,>(method: string, args: Record<string, unknown> = {}): Promise<Outcome<T>> => {
       if (fold === undefined) return { ok: false, error: { code: 'no_fold' } };
       const result = await core.call<Outcome<T>>(method, { fold: fold.id as Id, ...args });
-      // The change is saved when the command answers. The screens catch up when the view has been read again, which is not something a
-      // person should wait for before the dialog closes (SC-008: adding a transaction takes 200 ms).
-      if (result.ok) void reload();
+      // The change is saved when the command answers. For entries the screens catch up when the view has been read again, which a person
+      // should not wait for before the dialog closes (SC-008: adding a transaction takes 200 ms). Everything else (accounts, categories,
+      // rates, ...) feeds the forms that come next, so it is read again before the answer is returned.
+      if (result.ok) {
+        if (ENTRIES.has(method)) void reload();
+        else await reload();
+      }
       return result;
     },
     [core, fold, reload],

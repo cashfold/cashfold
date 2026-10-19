@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { dateOfUtcSeconds, dateToInput, deviceOffsetAt, startOfDayUtcS, formatDate, inputToDate, inputToMoment, momentToInput, nowInput, todayLocal } from './dates';
+import { dateOfUtcSeconds, dateToInput, deviceOffsetAt, startOfDayUtcS, startOfLocalDayUtcS, localDateOfUtcSeconds, formatDate, inputToDate, inputToMoment, momentToInput, nowInput, todayLocal } from './dates';
 
 describe('civil dates', () => {
   it('round-trips to and from the date field text', () => {
@@ -54,5 +54,39 @@ describe('rate dates', () => {
     expect(dateOfUtcSeconds(startOfDayUtcS(20_260_305 as never))).toBe(20_260_305);
     expect(dateOfUtcSeconds(startOfDayUtcS(20_260_305 as never) + 86_399)).toBe(20_260_305);
     expect(dateOfUtcSeconds(startOfDayUtcS(20_260_305 as never) + 86_400)).toBe(20_260_306);
+  });
+});
+
+describe('the start of a day in the device time zone (rates)', () => {
+  const zones = ['UTC', 'Europe/Helsinki', 'America/New_York', 'Pacific/Auckland', 'Asia/Kolkata', 'America/St_Johns'];
+  it('is the instant the day begins there: the day is found from it, and the moment before belongs to the day before', () => {
+    const was = process.env['TZ'];
+    try {
+      for (const tz of zones) {
+        process.env['TZ'] = tz;
+        for (const day of [20_260_120, 20_260_320, 20_261_020, 20_261_231] as const) {
+          const start = startOfLocalDayUtcS(day as never);
+          expect(localDateOfUtcSeconds(start), `${tz} ${day}`).toBe(day);
+          expect(localDateOfUtcSeconds(start - 1), `${tz} ${day} - 1 s`).toBeLessThan(day);
+          expect(localDateOfUtcSeconds(start + 12 * 3600), `${tz} ${day} noon`).toBe(day);
+        }
+      }
+    } finally {
+      if (was === undefined) delete process.env['TZ'];
+      else process.env['TZ'] = was;
+    }
+  });
+
+  it('is already past at the first moment of the day, where midnight UTC may not be (east of Greenwich)', () => {
+    const was = process.env['TZ'];
+    try {
+      process.env['TZ'] = 'Europe/Helsinki';
+      const firstMinute = new Date(2026, 9, 20, 0, 30).getTime() / 1000; // 00:30 on the 20th, Helsinki
+      expect(startOfLocalDayUtcS(20_261_020 as never)).toBeLessThanOrEqual(firstMinute);
+      expect(startOfDayUtcS(20_261_020 as never)).toBeGreaterThan(firstMinute); // the old way: still in the future
+    } finally {
+      if (was === undefined) delete process.env['TZ'];
+      else process.env['TZ'] = was;
+    }
   });
 });

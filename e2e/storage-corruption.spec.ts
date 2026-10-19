@@ -115,6 +115,10 @@ test.describe('@storage a device whose storage misbehaves', () => {
     await signUp(page, RELAY);
     await addAccount(page, 'Everyday');
     await addExpense(page, 'Everyday', '12.50', 'Coffee beans');
+    // The indicator still says "synced" for a moment after a change, before the push starts: let it start, then wait for it to end.
+    await page.waitForTimeout(3_000);
+    await expect(page.locator('[data-sync-state]')).toHaveAttribute('data-sync-state', 'synced', { timeout: 60_000 });
+    await page.waitForTimeout(1_500);
     await expect(page.locator('[data-sync-state]')).toHaveAttribute('data-sync-state', 'synced', { timeout: 60_000 });
 
     await page.getByRole('button', { name: 'Lock', exact: true }).click();
@@ -174,7 +178,8 @@ test.describe('@storage a device whose storage misbehaves', () => {
     await restore.getByRole('button', { name: 'Restore', exact: true }).click();
     await expect(page.getByTestId('restored')).toContainText('(restored)', { timeout: 60_000 });
     await go(page, 'Transactions');
-    await page.locator('#ledger-fold').selectOption({ label: 'Personal (restored)' });
+    // The picker appears when the damaged Fold was kept beside the restored one; otherwise the restored Fold is the only one.
+    if (await page.locator('#ledger-fold').count()) await page.locator('#ledger-fold').selectOption({ label: 'Personal (restored)' });
     await expect(page.getByTestId('tx-row').filter({ hasText: 'Coffee beans' })).toHaveCount(1, { timeout: 30_000 });
   });
 });

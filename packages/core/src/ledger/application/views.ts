@@ -23,6 +23,9 @@ export interface LedgerViews {
  * (local command, remote op, rebuild) drops it, and the next read builds it again. A view that was being built
  * while an event arrived is returned to its caller but not kept.
  */
+/** More changed records than this and the whole Fold is read again instead (one pass beats thousands of single reads). */
+export const PATCH_LIMIT = 200;
+
 export function createLedgerViews(events: EventBus, repair: Repair = createRepair(ledgerRepairRules), history?: () => HistoryWindow | undefined): LedgerViews {
   // Per Fold: every record as last read, the records that have changed since, and the view built from them. A change touches a few records, so
   // the next read re-reads those alone and rebuilds the view, instead of reading the whole Fold again (SC-008: at fifty thousand transactions the
@@ -60,7 +63,9 @@ export function createLedgerViews(events: EventBus, repair: Repair = createRepai
       const current = entry;
       const changed = [...current.dirty];
       current.dirty.clear();
-      const records = current.records.then(async (map) => {
+      // A few records changed: read those. Many (an import, a sync of a long history): reading them one by one costs more than reading the Fold.
+      const records = (changed.length > PATCH_LIMIT ? reader.listRecords(fold).then((m) => new Map(m)) : current.records).then(async (map) => {
+        if (changed.length > PATCH_LIMIT) return map;
         for (const rec of changed) {
           const state = await reader.getRecord(fold, rec);
           if (state === undefined) map.delete(rec);

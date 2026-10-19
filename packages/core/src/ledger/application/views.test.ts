@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { ProjectionReader } from '../../sync/application/buses';
 import { createEventBus } from '../../sync/application/buses';
 import { LedgerFixture, id } from '../../testing/index';
-import { createLedgerViews } from './views';
+import { createLedgerViews, PATCH_LIMIT } from './views';
 
 const FOLD = id(0xf0);
 const readerOf = (f: LedgerFixture, counter = { calls: 0 }): ProjectionReader => ({
@@ -44,6 +44,22 @@ describe('ledger views', () => {
     expect(counter.calls).toBe(1);
     await views.get(FOLD, reader); // and nothing more until the next change
     expect(reads).toHaveLength(2);
+  });
+
+  it('reads the whole Fold again, once, when more records changed than are worth reading one by one', async () => {
+    const events = createEventBus();
+    const views = createLedgerViews(events);
+    const f = new LedgerFixture();
+    const reads: string[] = [];
+    const counter = { calls: 0 };
+    const reader: ProjectionReader = { listRecords: async () => (counter.calls++, new Map(f.fold)), getRecord: async (_fold, rec) => (reads.push(rec), f.fold.get(rec)) };
+    await views.get(FOLD, reader);
+    for (let n = 0; n <= PATCH_LIMIT; n++) events.publish(changed(FOLD, id(1000 + n)));
+    f.account({ name: 'Imported' }, id(1));
+    await views.get(FOLD, reader);
+    expect(counter.calls).toBe(2);
+    expect(reads).toEqual([]);
+    expect([...(await views.get(FOLD, reader)).ledger.accounts.values()].map((a) => a.name)).toEqual(['Imported']);
   });
 
   it('shows a record that was added, changed or removed since the view was built', async () => {
