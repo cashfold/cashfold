@@ -344,8 +344,8 @@ The spec covers the whole v1 product, so this list is large. Recommended first r
 - [ ] T189 [P] Verify CSP, SRI, service worker asset pinning, `Referrer-Policy`, `Permissions-Policy` against the built export and add an automated header test in `e2e/security-headers.spec.ts` — Refs: Constitution VIII
 - [ ] T190 [P] Extend the SBOM and provenance steps of T009 with the release workflow: reproducible-build check and published asset hashes in `.github/workflows/release.yml` and `scripts/build-verify.mjs` — Refs: Constitution VIII
 - [ ] T191 [P] Add fuzzing for the SRP message parsers, CSV importer and membership-log parser, and coverage-guided fuzzing of WASM modules, in `packages/*/src/**/*.fuzz.test.ts` — Refs: Constitution Quality Gates
-- [ ] T192 [P] Write the threat model including the JavaScript memory-erasure limit and web code-delivery residual risk in `docs/threat-model.md`, and review the generated protocol/API reference `docs/protocol.md` — Refs: Constitution VIII
-- [ ] T193 [P] Write the privacy statement listing exactly the routing metadata visible to the service (FR-012) in `docs/privacy.md` — Refs: FR-012
+- [X] T192 [P] Write the threat model including the JavaScript memory-erasure limit and web code-delivery residual risk in `docs/threat-model.md`, and review the generated protocol/API reference `docs/protocol.md` — Refs: Constitution VIII
+- [X] T193 [P] Write the privacy statement listing exactly the routing metadata visible to the service (FR-012) in `docs/privacy.md` — Refs: FR-012
 - [ ] T194 Load-test the relay (push/pull throughput, per-Fold sequence strategy decision) and record the outcome in `docs/adr/0007-fold-sequence.md` — Refs: R-13
 - [ ] T195 Verify the gates configured in T007, T009 and T010 are required status checks on `main`, and maintain the third-party notices file (`THIRD_PARTY_NOTICES.md`) — Refs: Constitution Quality Gates
 - [ ] T196 Prepare the external security review package (scope, protocol docs, vectors, threat model) in `docs/security-review/` — Refs: Constitution Workflow
