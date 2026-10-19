@@ -328,7 +328,7 @@ export interface RecoveryHandle {
    * Opens the wrapped keys with the Recovery Key and seals them again under a new Secret Key and `newPassword`, which is
    * not consumed here. Resolves `wrong_key` when the wrapped keys do not open or are not this account's.
    */
-  restore(args: { recovery: { uuid: Uint8Array; wrapped: Uint8Array }; keySet: Uint8Array; newPassword: Secret }): Promise<
+  restore(args: { accountId: string; recovery: { uuid: Uint8Array; wrapped: Uint8Array }; keySet: Uint8Array; newPassword: Secret }): Promise<
     'wrong_key' | { readonly rotation: PreparedRotation['rotation']; readonly secretKeyText: string }
   >;
   wipe(): void;

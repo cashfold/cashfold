@@ -182,7 +182,7 @@ export function recoverAccount(deps: RecoverDeps) {
       const [uuid, wrapped, keySet] = [fields.get('uuid'), fields.get('wrapped'), fields.get('keyset')];
       if (!(uuid instanceof Uint8Array) || !(wrapped instanceof Uint8Array) || !(keySet instanceof Uint8Array)) return refuse(mapRelayError('protocol'));
 
-      const restored = await handle.restore({ recovery: { uuid, wrapped }, keySet, newPassword: input.newPassword });
+      const restored = await handle.restore({ accountId: attempt.accountId, recovery: { uuid, wrapped }, keySet, newPassword: input.newPassword });
       if (restored === 'wrong_key') return refuse({ code: 'wrong_recovery_key', message: 'The email address or the Recovery Key is not right' } as const);
       const sent = await link.request('PUT', '/accounts/me/keyset', {
         auth_salt: restored.rotation.authSalt,

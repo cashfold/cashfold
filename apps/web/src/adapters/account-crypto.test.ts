@@ -306,3 +306,149 @@ describe('registering an account that only exists on this device', () => {
     expect(password.isWiped).toBe(true);
   }, 60_000);
 });
+
+// --- changing credentials, moving service, the Recovery Key (US9)
+
+describe('credential change, migration and Recovery Key', () => {
+  const NEW_PASSWORD = 'an entirely different passphrase 42';
+  const hello = (m: { registration: { authSalt?: Uint8Array; kdf?: { encSalt: Uint8Array } } }) => ({ authSalt: m.registration.authSalt!, kdf: { kdf: 'argon2id' as const, mKib: 32768, t: 2, p: 1, encSalt: m.registration.kdf!.encSalt } });
+  async function account() {
+    const crypto = withPake();
+    const m = await crypto.createAccount({ email: 'alice@example.com', password: pw(PASSWORD) });
+    const credentials = { ...m.credentials, email: 'alice@example.com', server: 'https://relay.example.com', registration: 'done' as const };
+    return { crypto, m, credentials };
+  }
+  const sessionKeyOf = async (crypto: ReturnType<typeof withPake>, password: string, credentials: Parameters<ReturnType<typeof withPake>['unlock']>[0]['credentials']) => {
+    const opened = await crypto.unlock({ password: pw(password), credentials });
+    if (opened === 'wrong_password') throw new Error('should unlock');
+    return use(opened.sessionKey);
+  };
+
+  it('changes the password: the same keys under a new key-set key, a new verifier, and the local database key does not change', async () => {
+    const { crypto, m, credentials } = await account();
+    const before = await sessionKeyOf(crypto, PASSWORD, credentials);
+    const handle = await crypto.credentialChange.begin({ password: pw(PASSWORD), credentials });
+    if (handle === 'wrong_password') throw new Error('right password');
+    expect(use(await handle.currentSrpX(hello(m)))).toBe(use(m.account!.srpX));
+    const next = pw(NEW_PASSWORD);
+    const prepared = await handle.prepare({ keySet: m.registration.keySet, newPassword: next, rotateSecretKey: false });
+    handle.wipe();
+    expect(next.isWiped).toBe(true);
+    expect(prepared.secretKeyText).toBeUndefined();
+    expect(prepared.rotation.srpVerifier).toHaveLength(512);
+    expect(hex(prepared.rotation.authSalt)).not.toBe(hex(m.registration.authSalt!));
+
+    const changed = { ...credentials, sealed: prepared.sealed };
+    expect(await crypto.unlock({ password: pw(PASSWORD), credentials: changed })).toBe('wrong_password');
+    expect(await sessionKeyOf(crypto, NEW_PASSWORD, changed)).toBe(before); // the database still opens
+    const reopened = await crypto.unlock({ password: pw(NEW_PASSWORD), credentials: changed });
+    if (reopened === 'wrong_password') throw new Error('unlocks');
+    expect(use(reopened.account!.encSk)).toBe(use(m.account!.encSk));
+    expect(use(reopened.account!.srpX)).toBe(use(prepared.srpX));
+    expect(use(prepared.srpX)).not.toBe(use(m.account!.srpX));
+    expect(contains(prepared.sealed, new TextEncoder().encode(NEW_PASSWORD))).toBe(false);
+
+    // a new device with the same Secret Key and the new password opens the re-wrapped key set, with the same keys
+    const enrol = await crypto.begin({ email: 'alice@example.com', password: pw(NEW_PASSWORD), secretKeyText: m.secretKeyText });
+    if (enrol === 'invalid_secret_key') throw new Error('valid');
+    await enrol.deriveSrpX({ authSalt: prepared.rotation.authSalt, kdf: { kdf: 'argon2id', mKib: 32768, t: 2, p: 1, encSalt: prepared.rotation.kdf.encSalt } });
+    const device = await enrol.complete({ keySet: prepared.rotation.keySet, deviceId: '00000000-0000-4000-8000-0000000000e1' as Id });
+    if (device === 'wrong_secret') throw new Error('opens');
+    expect(use(device.account.encSk)).toBe(use(m.account!.encSk));
+    expect(hex(device.publicKeys.enc)).toBe(hex(m.publicKeys!.enc));
+    enrol.wipe();
+  }, 180_000);
+
+  it('rotates the Secret Key under the same password: a new key for the same account, and the old one no longer opens the key set', async () => {
+    const { crypto, m, credentials } = await account();
+    const before = await sessionKeyOf(crypto, PASSWORD, credentials);
+    const handle = await crypto.credentialChange.begin({ password: pw(PASSWORD), credentials });
+    if (handle === 'wrong_password') throw new Error('right password');
+    const prepared = await handle.prepare({ keySet: m.registration.keySet, rotateSecretKey: true });
+    handle.wipe();
+    expect(prepared.secretKeyText).toMatch(new RegExp(`^C1-${m.accountId}-`));
+    expect(prepared.secretKeyText).not.toBe(m.secretKeyText);
+    const changed = { ...credentials, sealed: prepared.sealed };
+    expect(await sessionKeyOf(crypto, PASSWORD, changed)).toBe(before);
+
+    const offer = { authSalt: prepared.rotation.authSalt, kdf: { kdf: 'argon2id' as const, mKib: 32768, t: 2, p: 1, encSalt: prepared.rotation.kdf.encSalt } };
+    const old = await crypto.begin({ email: 'alice@example.com', password: pw(PASSWORD), secretKeyText: m.secretKeyText });
+    const fresh = await crypto.begin({ email: 'alice@example.com', password: pw(PASSWORD), secretKeyText: prepared.secretKeyText! });
+    if (old === 'invalid_secret_key' || fresh === 'invalid_secret_key') throw new Error('valid');
+    await old.deriveSrpX(offer);
+    await fresh.deriveSrpX(offer);
+    expect(await old.complete({ keySet: prepared.rotation.keySet, deviceId: '00000000-0000-4000-8000-0000000000e2' as Id })).toBe('wrong_secret');
+    const ok = await fresh.complete({ keySet: prepared.rotation.keySet, deviceId: '00000000-0000-4000-8000-0000000000e3' as Id });
+    if (ok === 'wrong_secret') throw new Error('opens');
+    expect(use(ok.account.sigSk)).toBe(use(m.account!.sigSk));
+  }, 180_000);
+
+  it('refuses a wrong current password for any of them', async () => {
+    const { crypto, credentials } = await account();
+    expect(await crypto.credentialChange.begin({ password: pw('not the password at all'), credentials })).toBe('wrong_password');
+    expect(await crypto.migration.begin({ password: pw('not the password at all'), credentials })).toBe('wrong_password');
+  }, 90_000);
+
+  it('builds the registration for another service from the same key set, salts and verifier', async () => {
+    const { crypto, m, credentials } = await account();
+    const handle = await crypto.migration.begin({ password: pw(PASSWORD), credentials });
+    if (handle === 'wrong_password') throw new Error('right password');
+    const h = hello(m);
+    expect(use(await handle.srpX(h))).toBe(use(m.account!.srpX));
+    const payload = await handle.registration({ keySet: m.registration.keySet, email: 'alice@example.com', server: 'https://new.example.com', discoverable: false });
+    handle.wipe();
+    expect(payload).toMatchObject({ accountId: m.accountId, email: 'alice@example.com', server: 'https://new.example.com', discoverable: false, deviceId: m.deviceId });
+    expect(hex(payload.keySet)).toBe(hex(m.registration.keySet));
+    expect(hex(payload.authSalt!)).toBe(hex(m.registration.authSalt!));
+    expect(hex(payload.srpVerifier!)).toBe(hex(m.registration.srpVerifier!));
+    expect(hex(payload.deviceSigPk)).toBe(hex(m.registration.deviceSigPk));
+    expect(payload.bundleSig).toHaveLength(64);
+  }, 90_000);
+
+  it('makes a Recovery Key that returns the same keys under a new password and Secret Key, and nothing else opens them', async () => {
+    const { crypto, m } = await account();
+    const made = await crypto.recovery.create({ account: m.account! });
+    expect(made.recoveryKeyText).toMatch(/^R1-/);
+    expect(made.payload.srpVerifier).toHaveLength(512);
+    expect(made.payload.uuid).toHaveLength(16);
+    expect(contains(made.payload.wrapped, m.account!.encSk.use((b) => Uint8Array.from(b)))).toBe(false);
+
+    const handle = await crypto.recovery.begin({ recoveryKeyText: made.recoveryKeyText.toLowerCase().replaceAll('-', ' '), email: 'alice@example.com' });
+    if (handle === 'invalid_recovery_key') throw new Error('valid');
+    const next = pw(NEW_PASSWORD);
+    const restored = await handle.restore({ accountId: m.accountId, recovery: { uuid: made.payload.uuid, wrapped: made.payload.wrapped }, keySet: m.registration.keySet, newPassword: next });
+    if (restored === 'wrong_key') throw new Error('opens');
+    handle.wipe();
+    expect(next.isWiped).toBe(false); // the caller still needs it to enrol this device
+    expect(restored.secretKeyText).toMatch(new RegExp(`^C1-${m.accountId}-`));
+    expect(restored.secretKeyText).not.toBe(m.secretKeyText);
+
+    const enrol = await crypto.begin({ email: 'alice@example.com', password: pw(NEW_PASSWORD), secretKeyText: restored.secretKeyText });
+    if (enrol === 'invalid_secret_key') throw new Error('valid');
+    await enrol.deriveSrpX({ authSalt: restored.rotation.authSalt, kdf: { kdf: 'argon2id', mKib: 32768, t: 2, p: 1, encSalt: restored.rotation.kdf.encSalt } });
+    const device = await enrol.complete({ keySet: restored.rotation.keySet, deviceId: '00000000-0000-4000-8000-0000000000e4' as Id });
+    if (device === 'wrong_secret') throw new Error('opens');
+    expect(use(device.account.encSk)).toBe(use(m.account!.encSk));
+    expect(use(device.account.sigSk)).toBe(use(m.account!.sigSk));
+    expect(hex(device.publicKeys.sig)).toBe(hex(m.publicKeys!.sig));
+
+    // another Recovery Key, or wrapped keys belonging to another credential, do not open
+    const other = await crypto.recovery.create({ account: m.account! });
+    const wrong = await crypto.recovery.begin({ recoveryKeyText: other.recoveryKeyText, email: 'alice@example.com' });
+    if (wrong === 'invalid_recovery_key') throw new Error('valid');
+    expect(await wrong.restore({ accountId: m.accountId, recovery: { uuid: made.payload.uuid, wrapped: made.payload.wrapped }, keySet: m.registration.keySet, newPassword: pw(NEW_PASSWORD) })).toBe('wrong_key');
+    expect(await wrong.restore({ accountId: m.accountId, recovery: { uuid: other.payload.uuid, wrapped: made.payload.wrapped }, keySet: m.registration.keySet, newPassword: pw(NEW_PASSWORD) })).toBe('wrong_key');
+  }, 240_000);
+
+  it('rejects text that is not a Recovery Key, and derives the recovery sign-in secret from the key alone', async () => {
+    const { crypto, m } = await account();
+    expect(await crypto.recovery.begin({ recoveryKeyText: 'C1-AAAAAA-AAAAAAAAAAA-AAAAA-AAAAA-AAAAA', email: 'a@b.cc' })).toBe('invalid_recovery_key');
+    expect(await crypto.recovery.begin({ recoveryKeyText: '', email: 'a@b.cc' })).toBe('invalid_recovery_key');
+    const made = await crypto.recovery.create({ account: m.account! });
+    const a = await crypto.recovery.begin({ recoveryKeyText: made.recoveryKeyText, email: 'a@b.cc' });
+    const b = await crypto.recovery.begin({ recoveryKeyText: made.recoveryKeyText, email: 'a@b.cc' });
+    if (a === 'invalid_recovery_key' || b === 'invalid_recovery_key') throw new Error('valid');
+    const hello0 = { authSalt: made.payload.authSalt, kdf: { kdf: 'argon2id' as const, mKib: 32768, t: 2, p: 1, encSalt: new Uint8Array(16) } };
+    expect(use(await a.srpX(hello0))).toBe(use(await b.srpX(hello0)));
+  }, 120_000);
+});

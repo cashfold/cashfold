@@ -1,9 +1,9 @@
 import {
-  composeKdf, createAesGcm, createArgon2Kdf, createEd25519Signer, createHkdf, createKeySetService, createPbkdf2, createSharingCrypto, createTwoSkd, generateSecretKey,
-  KdfBelowFloor, normalisePassword, parseSecretKey, SecretBuf, type KdfParams, type Pake, type Rng, type SecretKey,
+  composeKdf, createAesGcm, createArgon2Kdf, createEd25519Signer, createHkdf, createKeySetService, createPbkdf2, createRecovery, createSharingCrypto, createTwoSkd, formatRecoveryKey, generateRecoveryKey, generateSecretKey,
+  KdfBelowFloor, parseRecoveryKey, normalisePassword, parseSecretKey, SecretBuf, type KdfParams, type Pake, type Rng, type SecretKey,
 } from '@cashfold/crypto';
 import {
-  idToBytes, newIdV4, type AccountCryptoPort, type AccountSecrets, type DeviceCredentials, type EnrolCryptoHandle, type EnrolCryptoPort, type Id, type KdfOffer, type NewAccountMaterial, type NewDeviceMaterial,
+  idToBytes, newIdV4, type AccountCryptoPort, type AccountSecrets, type CredentialChangeCryptoPort, type DeviceCredentials, type MigrationCryptoPort, type RecoveryCryptoPort, type RegistrationPayload, type EnrolCryptoHandle, type EnrolCryptoPort, type Id, type KdfOffer, type NewAccountMaterial, type NewDeviceMaterial,
   type RegisterExistingCryptoPort, type Secret, type UnlockCryptoPort, type UnlockedMaterial,
 } from '@cashfold/core';
 import { decodeKeySetWire as decodeKeySet } from '@cashfold/protocol/wire';
@@ -31,8 +31,13 @@ export interface AccountCryptoOptions {
 }
 
 const aadFor = (deviceId: Id): Uint8Array => encode([LABEL, idToBytes(deviceId)]);
+const wrapAad = (deviceId: Id): Uint8Array => encode(['cashfold.lvkwrap.v1', idToBytes(deviceId)]);
 
 export type WebAccountCrypto = AccountCryptoPort & UnlockCryptoPort & EnrolCryptoPort & RegisterExistingCryptoPort & {
+  /** The ports for settings that need the account's secrets again: changing credentials, moving to another service, the Recovery Key. */
+  readonly credentialChange: CredentialChangeCryptoPort;
+  readonly migration: MigrationCryptoPort;
+  readonly recovery: RecoveryCryptoPort;
   enrollQuick(args: { password: Secret; credentials: DeviceCredentials; prfOutput: Uint8Array }): Promise<Uint8Array | 'wrong_password'>;
   unlockQuick(args: { blob: Uint8Array; prfOutput: Uint8Array; credentials: DeviceCredentials }): Promise<UnlockedMaterial | 'failed'>;
 };
@@ -74,7 +79,7 @@ export function createAccountCrypto(options: AccountCryptoOptions): WebAccountCr
   const quickKek = (prfOutput: Uint8Array, deviceId: Id) => hkdf.derive(SecretBuf.from(prfOutput), idToBytes(deviceId), text('cashfold.quick.kek.v1'), 32);
 
   /** Seals the fields under the Local Vault Key and wraps them with the device salt and parameters into the stored blob. */
-  async function sealCredentials(lvk: SecretBuf, deviceId: Id, deviceSalt: Uint8Array, header: KdfParams & { kdf: 'argon2id' }, f: SealedFields): Promise<Uint8Array> {
+  async function sealCredentials(lvk: SecretBuf, deviceId: Id, deviceSalt: Uint8Array, header: KdfParams & { kdf: 'argon2id' }, f: SealedFields, kek?: SecretBuf): Promise<Uint8Array> {
     const plaintext = encode({
       secret_key: f.secretKeyText, srp_x: f.srpX, device_sk: f.deviceSk, enc_salt: f.encSalt, auth_salt: f.authSalt,
       ...(f.encSk !== undefined && f.sigSk !== undefined && f.encPk !== undefined && f.sigPk !== undefined && { enc_sk: f.encSk, sig_sk: f.sigSk, enc_pk: f.encPk, sig_pk: f.sigPk }),
@@ -82,13 +87,17 @@ export function createAccountCrypto(options: AccountCryptoOptions): WebAccountCr
     const nonce = fresh(12);
     const blob = Uint8Array.from([...nonce, ...(await aead.seal(lvk, nonce, plaintext, aadFor(deviceId)))]);
     plaintext.fill(0);
-    return encode({ v: 1, device_salt: deviceSalt, kdf: { kdf: 'argon2id', m_kib: header.mKib, t: header.t, p: header.p }, blob });
+    const kdfHeader = { kdf: 'argon2id', m_kib: header.mKib, t: header.t, p: header.p };
+    if (kek === undefined) return encode({ v: 1, device_salt: deviceSalt, kdf: kdfHeader, blob });
+    const wrapNonce = fresh(12);
+    const wrapped_lvk = Uint8Array.from([...wrapNonce, ...(await aead.seal(kek, wrapNonce, lvk.use((b) => b), wrapAad(deviceId)))]);
+    return encode({ v: 2, device_salt: deviceSalt, kdf: kdfHeader, wrapped_lvk, blob });
   }
 
   /** Derives the Local Vault Key from the password and the parameters stored beside the sealed blob. Undefined if the stored header is unusable. */
   async function lvkFromPassword(password: Secret, credentials: DeviceCredentials, wipe: Wipeable[]): Promise<SecretBuf | undefined> {
     const header = decode(credentials.sealed);
-    if (!(header instanceof Map) || header.get('v') !== 1n) return undefined;
+    if (!(header instanceof Map) || (header.get('v') !== 1n && header.get('v') !== 2n)) return undefined;
     const deviceSalt = header.get('device_salt');
     const kdfRecord = header.get('kdf');
     if (!(deviceSalt instanceof Uint8Array) || deviceSalt.length !== 16 || !(kdfRecord instanceof Map) || kdfRecord.get('kdf') !== 'argon2id') return undefined;
@@ -96,7 +105,13 @@ export function createAccountCrypto(options: AccountCryptoOptions): WebAccountCr
     if (typeof m !== 'bigint' || typeof t !== 'bigint' || typeof p !== 'bigint') return undefined;
     const normalised = normalisePassword(copyOf(password));
     wipe.push(normalised);
-    const lvk = await kdf.derive(normalised, deviceSalt, { kdf: 'argon2id', mKib: Number(m), t: Number(t), p: Number(p) });
+    const derived = await kdf.derive(normalised, deviceSalt, { kdf: 'argon2id', mKib: Number(m), t: Number(t), p: Number(p) });
+    wipe.push(derived);
+    if (header.get('v') === 1n) return derived;
+    // Version 2: the password opens a wrapper around the Local Vault Key, which therefore does not change with the password.
+    const wrapped = header.get('wrapped_lvk');
+    if (!(wrapped instanceof Uint8Array) || wrapped.length < 28) return undefined;
+    const lvk = SecretBuf.take(await aead.open(derived, wrapped.slice(0, 12), wrapped.slice(12), wrapAad(credentials.deviceId)));
     wipe.push(lvk);
     return lvk;
   }
@@ -136,7 +151,218 @@ export function createAccountCrypto(options: AccountCryptoOptions): WebAccountCr
 
   const kdfParamsOf = (offer: KdfOffer): KdfParams => (offer.kdf === 'argon2id' ? { kdf: 'argon2id', mKib: offer.mKib, t: offer.t, p: offer.p } : { kdf: 'pbkdf2-hmac-sha256', iterations: offer.iterations });
 
+  // ------------------------------------------------------------ settings that need the account's secrets again
+
+  const recoveryCrypto = createRecovery({ aead, hkdf, rng });
+  const pakeOrThrow = async (): Promise<Pake> => {
+    if (options.pake === undefined) throw new Error('sync is not available in this build');
+    return options.pake();
+  };
+
+  /** The current device credentials opened with the password: the Local Vault Key, the sealed fields and the account's parameters. */
+  async function openCurrent(password: Secret, credentials: DeviceCredentials) {
+    const wipe: Wipeable[] = [password];
+    try {
+      const lvk = await lvkFromPassword(password, credentials, wipe);
+      if (lvk === undefined) return undefined;
+      const fields = await openFields(lvk, credentials);
+      if (fields.encSk === undefined || fields.sigSk === undefined || fields.encPk === undefined || fields.sigPk === undefined) throw new TypeError('no account keys');
+      const header = decode(credentials.sealed) as Map<string, CborValue>;
+      const kdfRecord = header.get('kdf') as Map<string, CborValue>;
+      const accountParams: Extract<KdfParams, { kdf: 'argon2id' }> = { kdf: 'argon2id', mKib: Number(kdfRecord.get('m_kib')), t: Number(kdfRecord.get('t')), p: Number(kdfRecord.get('p')) };
+      // The Local Vault Key outlives this call: the caller wipes it, so it is not in `wipe`.
+      const keep = SecretBuf.from(lvk.use((b) => b));
+      return { lvk: keep, fields: fields as SealedFields & Required<Pick<SealedFields, 'encSk' | 'sigSk' | 'encPk' | 'sigPk'>>, accountParams };
+    } catch (e) {
+      if (isBenign(e)) return undefined;
+      throw e;
+    } finally {
+      wipe.forEach((w) => w.wipe());
+    }
+  }
+
+  /** Derives the key-set key and the sign-in secret from a password and Secret Key, with fresh salts. */
+  async function freshCredentials(args: { email: string; password: SecretBuf; secretKey: SecretKey; account: Extract<KdfParams, { kdf: 'argon2id' }> }) {
+    const encSalt = fresh(16);
+    const authSalt = fresh(16);
+    const input = (purpose: 'auk' | 'srp', salt16: Uint8Array) => ({ password: copyOf(args.password), email: args.email.trim().toLowerCase(), secretKey: args.secretKey, salt16, purpose, kdf: args.account });
+    const auk = await twoSkd.derive(input('auk', encSalt));
+    const srpX = await twoSkd.derive(input('srp', authSalt));
+    return { encSalt, authSalt, auk, srpX };
+  }
+  const kdfRecordOf = (a: Extract<KdfParams, { kdf: 'argon2id' }>, encSalt: Uint8Array) => ({ kdf: 'argon2id' as const, m_kib: a.mKib, t: a.t, p: a.p, v: 19 as const, enc_salt: encSalt });
+
+  const credentialChange: CredentialChangeCryptoPort = {
+    async begin({ password, credentials }) {
+      // The current password is needed again when only the Secret Key is rotated: the new key-set key derives from both.
+      const pwForRotation = copyOf(password);
+      const current = await openCurrent(password, credentials);
+      if (current === undefined) {
+        pwForRotation.wipe();
+        return 'wrong_password';
+      }
+      const { lvk, fields, accountParams } = current;
+      return {
+        async currentSrpX() {
+          return SecretBuf.from(fields.srpX);
+        },
+        async prepare({ keySet, newPassword, rotateSecretKey }) {
+          const wipe: Wipeable[] = [];
+          try {
+            const oldSecret = parseSecretKey(fields.secretKeyText);
+            wipe.push(oldSecret);
+            const secretKey = rotateSecretKey ? generateSecretKey(rng, credentials.accountId) : oldSecret;
+            if (rotateSecretKey) wipe.push(secretKey);
+            const pw = newPassword !== undefined ? copyOf(newPassword) : copyOf(pwForRotation);
+            wipe.push(pw);
+            newPassword?.wipe();
+            const made = await freshCredentials({ email: credentials.email, password: pw, secretKey, account: accountParams });
+            wipe.push(made.auk, made.srpX);
+
+            const parsed = decodeKeySet(keySet);
+            const keys = { encSk: SecretBuf.from(fields.encSk), sigSk: SecretBuf.from(fields.sigSk) };
+            wipe.push(keys.encSk, keys.sigSk);
+            const sealedKeySet = await keySets.reseal({ keySet: parsed, keys, to: made.auk, kdf: kdfRecordOf(accountParams, made.encSalt) });
+            const verifier = (await pakeOrThrow()).verifier(made.srpX);
+            const srpXBytes = made.srpX.use((b) => Uint8Array.from(b));
+
+            // The Local Vault Key stays; only the password that opens it changes.
+            const deviceSalt = fresh(16);
+            const normalised = normalisePassword(copyOf(pw));
+            wipe.push(normalised);
+            const kek = await kdf.derive(normalised, deviceSalt, accountParams);
+            wipe.push(kek);
+            const sealed = await sealCredentials(lvk, credentials.deviceId, deviceSalt, accountParams, {
+              ...fields, secretKeyText: secretKey.format(), srpX: srpXBytes, encSalt: made.encSalt, authSalt: made.authSalt,
+            }, kek);
+            return {
+              rotation: { authSalt: made.authSalt, kdf: { mKib: accountParams.mKib, t: accountParams.t, p: accountParams.p, encSalt: made.encSalt }, srpVerifier: verifier, keySet: encode(sealedKeySet as never) },
+              sealed, srpX: SecretBuf.from(srpXBytes), ...(rotateSecretKey && { secretKeyText: secretKey.format() }),
+            };
+          } finally {
+            wipe.forEach((w) => w.wipe());
+          }
+        },
+        wipe() {
+          lvk.wipe();
+          pwForRotation.wipe();
+          for (const b of [fields.encSk, fields.sigSk, fields.srpX, fields.deviceSk]) b.fill(0);
+        },
+      };
+    },
+  };
+
+  const migration: MigrationCryptoPort = {
+    async begin({ password, credentials }) {
+      const current = await openCurrent(password, credentials);
+      if (current === undefined) return 'wrong_password';
+      const { lvk, fields } = current;
+      let hello: { authSalt: Uint8Array; kdf: KdfOffer } | undefined;
+      return {
+        async srpX(h) {
+          hello = h;
+          return SecretBuf.from(fields.srpX);
+        },
+        async registration({ keySet, email, server, discoverable }): Promise<RegistrationPayload> {
+          if (hello === undefined || hello.kdf.kdf !== 'argon2id') throw new Error('the account needs the service to have offered its settings first');
+          const sigSk = SecretBuf.from(fields.sigSk);
+          const x = SecretBuf.from(fields.srpX);
+          try {
+            const bundle = await sharing.signBundle({ accountId: credentials.accountId, encPk: fields.encPk, sigSk });
+            return {
+              accountId: credentials.accountId, email, discoverable, server, deviceId: credentials.deviceId, keySet,
+              deviceSigPk: await signer.publicKey(SecretBuf.from(fields.deviceSk)), authSalt: hello.authSalt,
+              kdf: { mKib: hello.kdf.mKib, t: hello.kdf.t, p: hello.kdf.p, encSalt: hello.kdf.encSalt },
+              srpVerifier: (await pakeOrThrow()).verifier(x), bundleSig: bundle.selfSig,
+            };
+          } finally {
+            sigSk.wipe();
+            x.wipe();
+          }
+        },
+        wipe() {
+          lvk.wipe();
+          for (const b of [fields.encSk, fields.sigSk, fields.srpX, fields.deviceSk]) b.fill(0);
+        },
+      };
+    },
+  };
+
+  const recovery: RecoveryCryptoPort = {
+    async create({ account }) {
+      const wipe: Wipeable[] = [];
+      try {
+        const key = generateRecoveryKey(rng);
+        wipe.push(key);
+        const derived = await recoveryCrypto.derive(key);
+        wipe.push(derived.auth, derived.enc);
+        const encSk = copyOf(account.encSk);
+        const sigSk = copyOf(account.sigSk);
+        wipe.push(encSk, sigSk);
+        const wrapped = await recoveryCrypto.wrap(derived, { encSk, sigSk });
+        return {
+          recoveryKeyText: formatRecoveryKey(key),
+          payload: { uuid: derived.uuid, authSalt: fresh(16), srpVerifier: (await pakeOrThrow()).verifier(derived.auth), wrapped },
+        };
+      } finally {
+        wipe.forEach((w) => w.wipe());
+      }
+    },
+
+    async begin({ recoveryKeyText, email }) {
+      let key: SecretBuf;
+      try {
+        key = parseRecoveryKey(recoveryKeyText);
+      } catch {
+        return 'invalid_recovery_key';
+      }
+      const derived = await recoveryCrypto.derive(key);
+      key.wipe();
+      return {
+        async srpX() {
+          return SecretBuf.from(derived.auth.use((b) => b));
+        },
+        async restore({ accountId, recovery: stored, keySet, newPassword }) {
+          const wipe: Wipeable[] = [];
+          try {
+            if (stored.uuid.length !== derived.uuid.length || !stored.uuid.every((b, i) => b === derived.uuid[i])) return 'wrong_key';
+            let keys;
+            try {
+              keys = await recoveryCrypto.unwrap(derived, stored.wrapped);
+            } catch (e) {
+              if (isBenign(e)) return 'wrong_key';
+              throw e;
+            }
+            wipe.push(keys.encSk, keys.sigSk);
+            const secretKey = generateSecretKey(rng, accountId);
+            wipe.push(secretKey);
+            const pw = copyOf(newPassword);
+            wipe.push(pw);
+            const made = await freshCredentials({ email, password: pw, secretKey, account: params });
+            wipe.push(made.auk, made.srpX);
+            const sealedKeySet = await keySets.reseal({ keySet: decodeKeySet(keySet), keys, to: made.auk, kdf: kdfRecordOf(params, made.encSalt) });
+            return {
+              rotation: {
+                authSalt: made.authSalt, kdf: { mKib: params.mKib, t: params.t, p: params.p, encSalt: made.encSalt },
+                srpVerifier: (await pakeOrThrow()).verifier(made.srpX), keySet: encode(sealedKeySet as never),
+              },
+              secretKeyText: secretKey.format(),
+            };
+          } finally {
+            wipe.forEach((w) => w.wipe());
+          }
+        },
+        wipe() {
+          derived.auth.wipe();
+          derived.enc.wipe();
+        },
+      };
+    },
+  };
+
+
   return {
+    credentialChange, migration, recovery,
     async createAccount({ email, password }) {
       const pwBuf = copyOf(password);
       const wipe: Wipeable[] = [password, pwBuf];
@@ -218,6 +444,7 @@ export function createAccountCrypto(options: AccountCryptoOptions): WebAccountCr
         if (lvk === undefined) return 'wrong_password';
         const fields = await openFields(lvk, credentials);
         const header = decode(credentials.sealed) as Map<string, CborValue>;
+        if (header.get('v') !== 1n) throw new Error('this account is already registered');
         const deviceSalt = bytes(header.get('device_salt'), 16)!;
         const kdfRecord = header.get('kdf') as Map<string, CborValue>;
         const accountParams: Extract<KdfParams, { kdf: 'argon2id' }> = { kdf: 'argon2id', mKib: Number(kdfRecord.get('m_kib')), t: Number(kdfRecord.get('t')), p: Number(kdfRecord.get('p')) };

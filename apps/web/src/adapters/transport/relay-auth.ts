@@ -51,7 +51,7 @@ export function createWebLink(session: RelaySession, freshProof: Uint8Array, ser
 
 export function createWebRelayAuth(deps: { pake: () => Promise<Pake>; send?: (server: string) => Send; fetchImpl?: FetchLike; nowMs?: () => number }): RelayAuthPort {
   return {
-    async signIn({ server, email, deviceId, deriveX }) {
+    async signIn({ server, email, deviceId, deriveX, credential }) {
       const send = deps.send?.(server) ?? createFetchSend(server, deps.fetchImpl);
       let pake: Pake;
       try {
@@ -62,7 +62,7 @@ export function createWebRelayAuth(deps: { pake: () => Promise<Pake>; send?: (se
       const client = createRelayClient({ send, pake, aead: createAesGcm(), hkdf: createHkdf(), ...(deps.nowMs && { nowMs: deps.nowMs }) });
       try {
         const signed = await client.signIn({
-          email, deviceId: idToBytes(deviceId),
+          email, deviceId: idToBytes(deviceId), ...(credential !== undefined && { credential }),
           deriveX: async (authSalt, kdf) => (await deriveX({ authSalt, kdf: offerOf(kdf) })) as SecretBuf,
         });
         return { ok: true, accountId: signed.accountId, link: createWebLink(signed.session, signed.freshProof, server) };
