@@ -246,29 +246,56 @@ export async function createPgStore(databaseUrl: string, options: { migrations?:
     ops: {
       async push(foldId, ops) {
         return inTransaction(async (c) => {
-          // The fold row is the lock that orders concurrent pushes, so server_seq is gapless and monotone.
+          // The fold row is the lock that orders concurrent pushes, so server_seq is gapless and monotone. Everything else is set-based:
+          // one lookup for operations already stored, one for each device's last sequence number, one insert (load test, ADR-0007).
           const locked = await c.query('SELECT head_seq FROM fold WHERE fold_id = $1 FOR UPDATE', [buf(foldId)]);
           if (locked.rowCount === 0) return ops.map((o): PushOutcome => ({ op: o.opId, status: 'seq_gap' }));
           let head = big(locked.rows[0]['head_seq']);
+          const hexOf = (b: Uint8Array): string => Buffer.from(b).toString('hex');
+
+          const known = new Map<string, bigint>();
+          const stored = await c.query('SELECT op_id, server_seq FROM op WHERE fold_id = $1 AND op_id = ANY($2::bytea[])', [buf(foldId), ops.map((o) => buf(o.opId))]);
+          for (const r of stored.rows) known.set(hexOf(r['op_id'] as Buffer), big(r['server_seq']));
+          const lastSeq = new Map<string, bigint>();
+          const devices = [...new Set(ops.map((o) => hexOf(o.devId)))];
+          const seen = await c.query('SELECT dev_id, last_seq FROM device_seq WHERE fold_id = $1 AND dev_id = ANY($2::bytea[])', [buf(foldId), devices.map((d) => Buffer.from(d, 'hex'))]);
+          for (const r of seen.rows) lastSeq.set(hexOf(r['dev_id'] as Buffer), big(r['last_seq']));
+
           const out: PushOutcome[] = [];
+          const accepted: Array<{ o: OpRow; seq: bigint }> = [];
+          const touched = new Set<string>();
           for (const o of ops) {
-            const known = await c.query('SELECT server_seq FROM op WHERE fold_id = $1 AND op_id = $2', [buf(foldId), buf(o.opId)]);
-            if ((known.rowCount ?? 0) > 0) {
-              out.push({ op: o.opId, status: 'duplicate', serverSeq: big(known.rows[0]['server_seq']) });
+            const id = hexOf(o.opId);
+            const dup = known.get(id);
+            if (dup !== undefined) {
+              out.push({ op: o.opId, status: 'duplicate', serverSeq: dup });
               continue;
             }
-            const seen = await c.query('SELECT last_seq FROM device_seq WHERE fold_id = $1 AND dev_id = $2', [buf(foldId), buf(o.devId)]);
-            const last = seen.rowCount === 0 ? 0n : big(seen.rows[0]['last_seq']);
+            const dev = hexOf(o.devId);
+            const last = lastSeq.get(dev) ?? 0n;
             if (o.devSeq <= last) out.push({ op: o.opId, status: 'seq_conflict' });
             else if (o.devSeq !== last + 1n) out.push({ op: o.opId, status: 'seq_gap' });
             else {
               head += 1n;
-              await c.query(
-                `INSERT INTO op(fold_id, server_seq, op_id, rec_id, dev_id, dev_seq, hlc_wall, hlc_ctr, epoch, schema_ver, blob, sig) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
-                [buf(foldId), head.toString(), buf(o.opId), buf(o.recId), buf(o.devId), o.devSeq.toString(), o.hlcWall, o.hlcCtr, o.epoch, o.schemaVer, buf(o.blob), buf(o.sig)],
-              );
-              await c.query('INSERT INTO device_seq(fold_id, dev_id, last_seq) VALUES ($1,$2,$3) ON CONFLICT (fold_id, dev_id) DO UPDATE SET last_seq = $3', [buf(foldId), buf(o.devId), o.devSeq.toString()]);
+              accepted.push({ o, seq: head });
+              known.set(id, head);
+              lastSeq.set(dev, o.devSeq);
+              touched.add(dev);
               out.push({ op: o.opId, status: 'stored', serverSeq: head });
+            }
+          }
+          if (accepted.length > 0) {
+            await c.query(
+              `INSERT INTO op(fold_id, server_seq, op_id, rec_id, dev_id, dev_seq, hlc_wall, hlc_ctr, epoch, schema_ver, blob, sig)
+               SELECT $1, * FROM unnest($2::bigint[], $3::bytea[], $4::bytea[], $5::bytea[], $6::bigint[], $7::bigint[], $8::int[], $9::int[], $10::int[], $11::bytea[], $12::bytea[])`,
+              [
+                buf(foldId), accepted.map((a) => a.seq.toString()), accepted.map((a) => buf(a.o.opId)), accepted.map((a) => buf(a.o.recId)), accepted.map((a) => buf(a.o.devId)),
+                accepted.map((a) => a.o.devSeq.toString()), accepted.map((a) => a.o.hlcWall), accepted.map((a) => a.o.hlcCtr), accepted.map((a) => a.o.epoch), accepted.map((a) => a.o.schemaVer),
+                accepted.map((a) => buf(a.o.blob)), accepted.map((a) => buf(a.o.sig)),
+              ],
+            );
+            for (const dev of touched) {
+              await c.query('INSERT INTO device_seq(fold_id, dev_id, last_seq) VALUES ($1,$2,$3) ON CONFLICT (fold_id, dev_id) DO UPDATE SET last_seq = $3', [buf(foldId), Buffer.from(dev, 'hex'), (lastSeq.get(dev) ?? 0n).toString()]);
             }
           }
           await c.query('UPDATE fold SET head_seq = $2 WHERE fold_id = $1', [buf(foldId), head.toString()]);

@@ -108,7 +108,7 @@ Decisions for the TypeScript stack mandated by the constitution (v1.0.1). "ARCH"
 - **Decision**: NestJS with the Fastify adapter, modules per ARCH §9.10, DTO validation from `protocol` zod schemas, Kysely for typed SQL against PostgreSQL 16, migrations as ordered SQL files. Ordered delivery via a per-Fold sequence assigned in the push transaction. Object storage port for snapshots and attachments. Rate limits and lockout counters in PostgreSQL (Redis optional for large deployments). Scheduled job for rate publication. Structured logging with redaction.
 - **Rationale**: Same language and shared schemas; thin adapter discipline per Constitution III; PostgreSQL is easy to self-host.
 - **Alternatives**: Express (less structure); an ORM (hides SQL; less control over transactions and locking); SQLite server (viable later for tiny self-hosts).
-- **Open item**: per-Fold sequence mechanism (locked counter row vs. sequence per Fold) to be chosen after load tests.
+- **Decided (T194)**: the locked counter row, with a set-based push. See [ADR-0007](../../docs/adr/0007-fold-sequence.md).
 
 ## R-14 Self-hosting and operator model (FR-099, FR-100)
 

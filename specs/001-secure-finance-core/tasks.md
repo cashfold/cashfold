@@ -346,7 +346,7 @@ The spec covers the whole v1 product, so this list is large. Recommended first r
 - [ ] T191 [P] Add fuzzing for the SRP message parsers, CSV importer and membership-log parser, and coverage-guided fuzzing of WASM modules, in `packages/*/src/**/*.fuzz.test.ts` — Refs: Constitution Quality Gates
 - [X] T192 [P] Write the threat model including the JavaScript memory-erasure limit and web code-delivery residual risk in `docs/threat-model.md`, and review the generated protocol/API reference `docs/protocol.md` — Refs: Constitution VIII
 - [X] T193 [P] Write the privacy statement listing exactly the routing metadata visible to the service (FR-012) in `docs/privacy.md` — Refs: FR-012
-- [ ] T194 Load-test the relay (push/pull throughput, per-Fold sequence strategy decision) and record the outcome in `docs/adr/0007-fold-sequence.md` — Refs: R-13
+- [X] T194 Load-test the relay (push/pull throughput, per-Fold sequence strategy decision) and record the outcome in `docs/adr/0007-fold-sequence.md` — Refs: R-13
 - [ ] T195 Verify the gates configured in T007, T009 and T010 are required status checks on `main`, and maintain the third-party notices file (`THIRD_PARTY_NOTICES.md`) — Refs: Constitution Quality Gates
 - [ ] T196 Prepare the external security review package (scope, protocol docs, vectors, threat model) in `docs/security-review/` — Refs: Constitution Workflow
 - [ ] T197 Execute every scenario in `specs/001-secure-finance-core/quickstart.md` and record results — Refs: All SC
