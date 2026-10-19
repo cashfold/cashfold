@@ -20,6 +20,9 @@ Version 0.1.0. Sources: `specs/001-secure-finance-core/contracts/op-envelope.cdd
 | `POST` | `/accounts` | no | Register an account (verifier + encrypted key set) |
 | `GET` | `/accounts/me/keyset` | session | Fetch own encrypted key set |
 | `PUT` | `/accounts/me/keyset` | session | Replace verifier, salts, KDF params and key set atomically (password or Secret Key change) |
+| `PUT` | `/accounts/me/recovery` | session | Set or replace the Recovery Key credential (FR-009) |
+| `GET` | `/accounts/me/recovery` | session | Fetch the wrapped keys and the key set (used after signing in with the Recovery Key) |
+| `DELETE` | `/accounts/me/recovery` | session | Remove the Recovery Key credential |
 | `DELETE` | `/accounts/me` | session | Delete the caller's account (FR-101) |
 | `GET` | `/rates` | no | Shared exchange-rate table (FR-103) |
 | `POST` | `/accounts/me/verification` | session | Ask for a new confirmation link for the account's email address |
@@ -102,10 +105,12 @@ field-value = int / tstr / bstr / bool / null / uuid16 / [* field-value] / {* ts
 
 set-delta = {
   ? add: [* set-add],
-  ? rem: [* set-rem]
+  ? rem: [* set-rem],
+  ? tagged: [* set-tagged]
 }
 set-add = uuid16            ; member id; the add's unique tag is the carrying op id
 set-rem = [ member: uuid16, observed-add-op: uuid16 ]
+set-tagged = [ member: uuid16, tag: uuid16 ]   ; an add that keeps an existing tag; only a baseline republished for a new member (ARCH 7.6) uses it
 
 ; ---------------------------------------------------------------- Key material objects
 
