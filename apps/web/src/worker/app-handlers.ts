@@ -1,11 +1,12 @@
 import {
-  createAccount, createCategoryCommands, createMaterialiser, createDeviceManager, createEmailVerification, createFoldCommands, createQuickUnlock, createRefreshRates, createSession, describeFoldDeletion, DEFAULT_LOCK_POLICY, newIdV4, registerExisting, signInOnNewDevice, unlock,
-  parseSettings, toLockPolicy, type AccountCryptoPort, type CredentialStorePort, type DeviceLabelPort, type DeviceSettings, type DeviceSettingsPort, type EnrolCryptoPort, type Id, type LockPolicy, type QuickUnlockCryptoPort, type QuickUnlockStorePort,
+  createAccount, createCategoryCommands, recoverAccount, createMaterialiser, createDeviceManager, createEmailVerification, createFoldCommands, createQuickUnlock, createRefreshRates, createSession, describeFoldDeletion, DEFAULT_LOCK_POLICY, newIdV4, registerExisting, signInOnNewDevice, unlock,
+  parseSettings, toLockPolicy, type AccountCryptoPort, type CredentialChangeCryptoPort, type CredentialStorePort, type MigrationCryptoPort, type RecoveryCryptoPort, type DeviceLabelPort, type DeviceSettings, type DeviceSettingsPort, type EnrolCryptoPort, type Id, type LockPolicy, type QuickUnlockCryptoPort, type QuickUnlockStorePort,
   type AccountIdentity, type RatesSourcePort, type RegisterExistingCryptoPort, type RegistrationPort, type RelayAuthPort, type Session, type SessionPort, type UnlockCryptoPort,
 } from '@cashfold/core';
 import { SecretBuf } from '@cashfold/crypto';
 import { createWebSession } from '../adapters/sqlite-opfs/web-session';
 import type { SqliteRuntime } from '../adapters/sqlite-opfs/runtime';
+import { createAccountHandlers } from './account-handlers';
 import { createLedgerHandlers } from './ledger-handlers';
 import { createSharingHandlers } from './sharing-handlers';
 import { createFoldGrantPort } from '../adapters/transport/fold-grants';
@@ -33,6 +34,8 @@ export interface AppHandlerDeps {
   readonly registration?: RegistrationPort;
   readonly enrolCrypto?: EnrolCryptoPort;
   readonly registerCrypto?: RegisterExistingCryptoPort;
+  /** Changing credentials, moving to another service and the Recovery Key (US9). */
+  readonly credentialCrypto?: { readonly credentialChange: CredentialChangeCryptoPort; readonly migration: MigrationCryptoPort; readonly recovery: RecoveryCryptoPort };
   readonly deviceLabels?: DeviceLabelPort;
   readonly ratesSource?: (server: string) => RatesSourcePort;
   readonly confirmEmail?: (server: string, token: string) => Promise<{ ok: true } | { ok: false; kind: string }>;
@@ -119,6 +122,19 @@ export function createAppHandlers(deps: AppHandlerDeps): AppRuntime {
     if (done?.ok === true && done.value.created > 0) (deps.publish ?? (() => undefined))({ type: 'RemoteChanged', fold });
   };
 
+  /** Erases what this device holds: credentials, quick unlock, the database file. Then locks. */
+  async function eraseEverything(): Promise<void> {
+    await deps.credentials.clear().catch(() => undefined);
+    await deps.quickStore.clear().catch(() => undefined);
+    try {
+      webSession?.current()?.db.destroy();
+    } catch {
+      // The file is removed by eraseLocalData below if it is still there.
+    }
+    await deps.eraseLocalData?.().catch(() => undefined);
+    await session.lock();
+  }
+
   const grants = createFoldGrantPort({ keyring: () => webSession?.current()?.keyring, rng: deps.rng });
   const publish = deps.publish ?? (() => undefined);
   if (deps.relayAuth !== undefined) {
@@ -147,17 +163,7 @@ export function createAppHandlers(deps: AppHandlerDeps): AppRuntime {
         publish(event);
         if (event.type === 'RemoteChanged' && typeof event['fold'] === 'string') void materialise(event['fold'] as Id);
         // A device that has been removed from the account erases what it holds (FR-010): nothing more syncs, and nothing stays.
-        if (event.type === 'DeviceRemoved') void (async () => {
-          await deps.credentials.clear().catch(() => undefined);
-          await deps.quickStore.clear().catch(() => undefined);
-          try {
-            webSession?.current()?.db.destroy();
-          } catch {
-            // The file is removed by eraseLocalData below if it is still there.
-          }
-          await deps.eraseLocalData?.().catch(() => undefined);
-          await session.lock();
-        })();
+        if (event.type === 'DeviceRemoved') void eraseEverything();
       },
     });
   }
@@ -189,6 +195,17 @@ export function createAppHandlers(deps: AppHandlerDeps): AppRuntime {
     }) as typeof original;
   }
 
+  const accountHandlers = createAccountHandlers({
+    open, session, credentials: deps.credentials, relayAuth: deps.relayAuth, registration: deps.registration, crypto: deps.credentialCrypto, grants, rng: deps.rng,
+    identity: () => identity,
+    restartSync: (next) => {
+      sync?.stop();
+      startSync(next, 'done');
+    },
+    eraseEverything,
+    syncNow: () => void sync?.syncNow().catch(() => undefined),
+  });
+
   const needLabels = (): DeviceLabelPort => {
     if (deps.deviceLabels === undefined) throw new RpcError('RpcError', 'sync_unavailable');
     return deps.deviceLabels;
@@ -201,6 +218,7 @@ export function createAppHandlers(deps: AppHandlerDeps): AppRuntime {
   const handlers: Handlers = {
     ...ledger,
     ...sharingHandlers,
+    ...accountHandlers,
     async status() {
       const stored = await deps.credentials.load();
       const phase: Phase = stored === undefined ? 'no_account' : webSession?.current() !== undefined && session.state() === 'unlocked' ? 'unlocked' : 'locked';
@@ -304,6 +322,23 @@ export function createAppHandlers(deps: AppHandlerDeps): AppRuntime {
       const stored = await deps.credentials.load();
       if (stored !== undefined) startSync({ email: stored.email, accountId: result.value.accountId, server: stored.server, ...result.value.sync }, 'done');
       return { ok: true, value: { accountId: result.value.accountId, folds: result.value.folds } };
+    },
+
+    /** Gets back into an account with its Recovery Key when the password or Secret Key is lost; sets a new password and Secret Key (FR-009). */
+    async 'account.recover'(args: { email: string; server: string; recoveryKeyText: string; newPassword: Uint8Array }) {
+      if (deps.relayAuth === undefined || deps.enrolCrypto === undefined || deps.credentialCrypto === undefined) throw new RpcError('RpcError', 'sync_unavailable');
+      const relayAuth = deps.relayAuth;
+      const enrolCrypto = deps.enrolCrypto;
+      const sessionPort = await newWebSession();
+      const result = await recoverAccount({
+        crypto: deps.credentialCrypto.recovery, relay: relayAuth, credentials: deps.credentials, random: deps.rng,
+        signIn: (input) => signInOnNewDevice({ relay: relayAuth, enrolCrypto, grants, credentials: deps.credentials, sessionPort, session, random: deps.rng })(input),
+      })({ email: args.email, server: args.server, recoveryKeyText: args.recoveryKeyText, newPassword: secretFrom(args.newPassword) });
+      if (!result.ok) return result;
+      await applySettings();
+      const stored = await deps.credentials.load();
+      if (stored !== undefined) startSync({ email: stored.email, accountId: result.value.accountId, server: stored.server, ...result.value.sync }, 'done');
+      return { ok: true, value: { accountId: result.value.accountId, folds: result.value.folds, secretKeyText: result.value.secretKeyText } };
     },
 
     /** Registers an account made offline (or before sync existed) with a service, then starts syncing it (T200). */

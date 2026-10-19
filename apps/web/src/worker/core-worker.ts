@@ -54,6 +54,7 @@ const app = createAppHandlers({
   registration: createWebRegistration(),
   enrolCrypto: accountCrypto,
   registerCrypto: accountCrypto,
+  credentialCrypto: accountCrypto,
   deviceLabels: createDeviceLabels(rng),
   ratesSource: (server) => createWebRatesSource(server),
   confirmEmail: createEmailConfirm(),

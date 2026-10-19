@@ -1,7 +1,8 @@
 import type { Id } from '../../shared-kernel/id';
 import { err, ok, type DomainError, type Result } from '../../shared-kernel/result';
 import { baselineDrafts } from '../../sharing/application/history-scope';
-import { SETTINGS_TABLE } from '../../sharing/domain/fold';
+import { FOLD_SETTINGS_FIELDS, SETTINGS_TABLE } from '../../sharing/domain/fold';
+import type { RecordState } from '../domain/merge';
 import type { ProjectionStore } from '../ports/index';
 import type { SnapshotCodecPort } from './snapshot';
 import type { OpDraft, WritePath } from './write-path';
@@ -26,7 +27,34 @@ const BATCH = 100;
 
 export function createBackupService(deps: { projections: ProjectionStore; writePath: WritePath; codec: SnapshotCodecPort; crypto: BackupCryptoPort }) {
   const { projections, writePath, codec, crypto } = deps;
+
+  /** Opens a backup and returns its records, or the reason it cannot be read. */
+  async function open(file: Uint8Array, secret: BackupSecret): Promise<Result<ReadonlyMap<Id, RecordState>, BackupError>> {
+    let plain: Uint8Array;
+    try {
+      plain = await crypto.open(file, secret);
+    } catch (e) {
+      const name = (e as { name?: string }).name;
+      return name === 'AeadError' ? err('wrong_secret', 'That is not the passphrase or key this backup was made with') : err('not_a_backup', 'That file is not a backup of this kind');
+    }
+    try {
+      return ok(codec.decode(plain).records);
+    } catch {
+      return err('corrupt', 'The backup could not be read');
+    }
+  }
+
   return {
+    /** What a backup holds, so the Fold it is restored into can be made to match: its name and base currency, and how many records. */
+    async inspect(file: Uint8Array, secret: BackupSecret): Promise<Result<{ name: string | undefined; baseCurrency: string | undefined; records: number }, BackupError>> {
+      const opened = await open(file, secret);
+      if (!opened.ok) return opened;
+      const settings = [...opened.value.values()].find((s) => s.table === SETTINGS_TABLE);
+      const name = settings?.fields.get(FOLD_SETTINGS_FIELDS.name)?.value;
+      const currency = settings?.fields.get(FOLD_SETTINGS_FIELDS.baseCurrency)?.value;
+      return ok({ name: typeof name === 'string' ? name : undefined, baseCurrency: typeof currency === 'string' ? currency : undefined, records: opened.value.size });
+    },
+
     /** The encrypted file for a Fold. */
     async create(fold: Id, secret: BackupSecret): Promise<Uint8Array> {
       const records = await projections.listRecords(fold);
@@ -35,19 +63,9 @@ export function createBackupService(deps: { projections: ProjectionStore; writeP
 
     /** Writes a backup's state into `into`, a Fold that holds nothing but its settings. Returns how many records came back. */
     async restore(file: Uint8Array, secret: BackupSecret, into: Id): Promise<Result<{ records: number }, BackupError>> {
-      let plain: Uint8Array;
-      try {
-        plain = await crypto.open(file, secret);
-      } catch (e) {
-        const name = (e as { name?: string }).name;
-        return name === 'AeadError' ? err('wrong_secret', 'That is not the passphrase or key this backup was made with') : err('not_a_backup', 'That file is not a backup of this kind');
-      }
-      let state;
-      try {
-        state = codec.decode(plain).records;
-      } catch {
-        return err('corrupt', 'The backup could not be read');
-      }
+      const opened = await open(file, secret);
+      if (!opened.ok) return opened;
+      const state = opened.value;
       const existing = await projections.listRecords(into);
       if ([...existing.values()].some((s) => s.table !== SETTINGS_TABLE)) return err('not_empty', 'Restore into a new, empty Fold');
       const drafts: OpDraft[] = [];

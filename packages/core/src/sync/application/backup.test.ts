@@ -95,4 +95,12 @@ describe('encrypted backup and restore (FR-091)', () => {
     expect(await service().restore(file, { kind: 'foldKey', key, fold: FROM }, TO)).toMatchObject({ ok: true });
     expect(await service().restore(file, pass('p'), TO)).toMatchObject({ ok: false });
   });
+
+  it('tells what a backup holds without restoring anything, so the new Fold can match it', async () => {
+    const file = await service().create(FROM, pass('p'));
+    expect(await service().inspect(file, pass('p'))).toEqual({ ok: true, value: { name: 'Home', baseCurrency: 'USD', records: expect.any(Number) } });
+    expect(await service().inspect(file, pass('wrong'))).toMatchObject({ ok: false, error: { code: 'wrong_secret' } });
+    expect(await service().inspect(new Uint8Array([1, 2, 3]), pass('p'))).toMatchObject({ ok: false, error: { code: 'not_a_backup' } });
+    expect((await alice.projections.listRecords(TO)).size).toBe(0);
+  });
 });

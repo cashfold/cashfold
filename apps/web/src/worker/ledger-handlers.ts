@@ -1,6 +1,6 @@
 import {
   createAccountCommands, createAdjustBalance, createBudgetCommands, createBudgetQueries, createGoalCommands, createGoalQueries, createMaterialiser, createScheduleCommands, createScheduleQueries, createTransferCommands, createCategoryCommands, createLabelCommands, createRateCommands, createRevalue,
-  createTransactionCommands, labelUsage, newIdV4, purgeExpired, type ClockPort, type CommandDef, type DomainError, type Id,
+  createImportCommands, createTransactionCommands, importBatches, labelUsage, newIdV4, parseCsv, previewImport, purgeExpired, type ImportOptions, type ClockPort, type CommandDef, type DomainError, type Id,
 } from '@cashfold/core';
 import type { OpenSession } from '../adapters/sqlite-opfs/web-session';
 import type { Handlers } from './rpc';
@@ -34,6 +34,7 @@ export function createLedgerHandlers({ open, clock, rng }: LedgerHandlerDeps): H
   const goals = createGoalCommands();
   const schedules = createScheduleCommands({ clock });
   const materialiser = createMaterialiser({ clock });
+  const imports = createImportCommands({ clock });
 
   /** Commands whose record is new get an id from the worker unless the caller supplies one. */
   const mint = true;
@@ -157,6 +158,28 @@ export function createLedgerHandlers({ open, clock, rng }: LedgerHandlerDeps): H
     const ids = [...view.ledger.transactions.values()].filter((t) => t.currency !== base).map((t) => t.id);
     return session.commandBus.execute(revalue as unknown as CommandDef<{ fold: Id; ids: Id[]; asOfUtcS?: number }, unknown, DomainError>, { fold: args.fold, ids, ...(args.asOfUtcS !== undefined && { asOfUtcS: args.asOfUtcS }) });
   });
+
+  // CSV import (FR-090): read the file, look at what would come in, import it as one batch, take a batch back.
+  const PREVIEW_ROWS = 200;
+  query('csv.preview', async (session, args: { fold: Id; text: string; delimiter?: ',' | ';' | '\t'; options?: ImportOptions }) => {
+    const parsed = parseCsv(args.text, args.delimiter);
+    const header = parsed.rows[0] ?? [];
+    if (args.options === undefined) return { ok: true, value: { delimiter: parsed.delimiter, rows: parsed.rows.length, header, sample: parsed.rows.slice(0, 6) } };
+    const view = await session.views.get(args.fold, session.projections);
+    const p = previewImport(view.ledger, parsed.rows, args.options);
+    // Rows with a problem come first: they are what needs attention, and the page cannot show 20,000 rows.
+    const shown = [...p.rows.filter((r) => r.problem !== undefined), ...p.rows.filter((r) => r.problem === undefined)].slice(0, PREVIEW_ROWS);
+    return { ok: true, value: { delimiter: parsed.delimiter, rows: parsed.rows.length, ok: p.ok, problems: p.problems, duplicates: p.duplicates, shown } };
+  });
+  handlers['csv.import'] = (async (args: { fold: Id; text: string; delimiter?: ',' | ';' | '\t'; source: string; options: ImportOptions; includeDuplicates?: boolean }) => {
+    const session = open();
+    const parsed = parseCsv(args.text, args.delimiter);
+    return session.commandBus.execute(imports.importCsv as unknown as CommandDef<unknown, unknown, DomainError>, {
+      fold: args.fold, batch: newIdV4((n) => rng.bytes(n)), source: args.source, table: parsed.rows, options: args.options, ...(args.includeDuplicates === true && { includeDuplicates: true }),
+    });
+  }) as Handlers[string];
+  handlers['csv.undo'] = (async (args: { fold: Id; batch: Id }) => open().commandBus.execute(imports.undoImport as unknown as CommandDef<unknown, unknown, DomainError>, args)) as Handlers[string];
+  query('csv.batches', async (session, args: { fold: Id }) => ({ ok: true, value: importBatches(await session.projections.listRecords(args.fold)) }));
 
   /** Runs the retention job now (it also runs when a session starts). */
   query('ledger.purge', async (session, args: { fold: Id }) => purgeExpired({ oplog: session.oplog, projections: session.projections }, args.fold, clock.nowMs()));
