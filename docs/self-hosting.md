@@ -62,6 +62,7 @@ All settings are environment variables; [`deploy/example.config.yml`](../deploy/
 | `REGISTRATION` | `open`, or `invite` to require a code from `INVITE_CODES`. Prefer `invite` on a public address. |
 | `MAIL` | `smtp` sends confirmation links and lock-out notices; `none` turns email off (the app then says addresses are not confirmed); `log` writes messages to the log. |
 | `RATES_URL` | A URL returning `{"rates": {"EUR": "0.91"}}` (units per US dollar, as text). The relay fetches it and publishes one table at `GET /rates`. `disabled` turns it off. |
+| `RATE_LIMIT_SCALE` | Multiplies every rate limit (default 1). Leave it at 1 on a real service; test setups that sign in many accounts from one address raise it. |
 | `ALLOWED_ORIGINS` | Web-app origins allowed to call the relay from a browser. |
 
 ## Backups and upgrades
