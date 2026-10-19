@@ -200,6 +200,8 @@ export interface RelayAuthPort {
     server: string;
     email: string;
     deviceId: Id;
+    /** Sign in with the Recovery Key credential instead of the password (FR-009). */
+    credential?: 'recovery';
     deriveX(hello: { authSalt: Uint8Array; kdf: KdfOffer }): Promise<Secret>;
   }): Promise<{ readonly ok: true; readonly accountId: string; readonly link: RelayLink } | { readonly ok: false; readonly kind: RelayErrorKind }>;
 }
@@ -307,4 +309,34 @@ export interface MigrationHandle {
 export interface MigrationCryptoPort {
   /** Checks the password against this device's credentials. Consumes `password`. */
   begin(args: { password: Secret; credentials: DeviceCredentials }): Promise<MigrationHandle | 'wrong_password'>;
+}
+
+// ---------------------------------------------------------------- the Recovery Key
+
+/** What the service keeps for a Recovery Key: a second verifier and the key set's private keys wrapped under it. */
+export interface RecoveryPayload {
+  readonly uuid: Uint8Array;
+  readonly authSalt: Uint8Array;
+  readonly srpVerifier: Uint8Array;
+  readonly wrapped: Uint8Array;
+}
+
+export interface RecoveryHandle {
+  /** SRP-x for the recovery credential. */
+  srpX(hello: { authSalt: Uint8Array; kdf: KdfOffer }): Promise<Secret>;
+  /**
+   * Opens the wrapped keys with the Recovery Key and seals them again under a new Secret Key and `newPassword`, which is
+   * not consumed here. Resolves `wrong_key` when the wrapped keys do not open or are not this account's.
+   */
+  restore(args: { recovery: { uuid: Uint8Array; wrapped: Uint8Array }; keySet: Uint8Array; newPassword: Secret }): Promise<
+    'wrong_key' | { readonly rotation: PreparedRotation['rotation']; readonly secretKeyText: string }
+  >;
+  wipe(): void;
+}
+
+export interface RecoveryCryptoPort {
+  /** A new Recovery Key for the account whose keys are open. The text is shown once; the service gets only the payload. */
+  create(args: { account: AccountSecrets }): Promise<{ readonly recoveryKeyText: string; readonly payload: RecoveryPayload }>;
+  /** Reads what the person typed. `invalid_recovery_key` for anything that is not a Recovery Key. */
+  begin(args: { recoveryKeyText: string; email: string }): Promise<RecoveryHandle | 'invalid_recovery_key'>;
 }
