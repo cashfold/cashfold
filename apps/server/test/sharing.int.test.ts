@@ -2,6 +2,7 @@ import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testconta
 import pg from 'pg';
 import { afterAll, beforeAll } from 'vitest';
 import { createPgStore } from '../src/store/pg-store.js';
+import { describeDeleteAccount } from './support/delete-account-suite.js';
 import { describeSharing } from './support/sharing-suite.js';
 
 // The same sharing scenarios as the unit suite, against a real PostgreSQL.
@@ -14,7 +15,7 @@ afterAll(async () => {
 });
 
 let counter = 0;
-describeSharing('postgresql', async () => {
+const freshStore = async () => {
   const schema = `s${Date.now().toString(36)}_${counter++}`;
   const admin = new pg.Client({ connectionString: container.getConnectionUri() });
   await admin.connect();
@@ -23,4 +24,6 @@ describeSharing('postgresql', async () => {
   const url = new URL(container.getConnectionUri());
   url.searchParams.set('options', `-c search_path=${schema}`);
   return createPgStore(url.toString());
-});
+};
+describeSharing('postgresql', freshStore);
+describeDeleteAccount('postgresql', freshStore);
