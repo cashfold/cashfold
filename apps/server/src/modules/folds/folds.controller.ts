@@ -115,6 +115,8 @@ export class FoldsController {
     const id = foldIdOf(fold);
     const role = await this.store.folds.roleOf(id, caller.accountId);
     if (role === undefined || role > 2) fail(403, 'forbidden');
+    // A snapshot stands in for the log below it. One made by a member who cannot see the early history would erase it for the others.
+    if ((await this.store.folds.member(id, caller.accountId))!.fromEpoch !== 1) fail(403, 'forbidden');
     const b = parseValue(inner, SnapshotBody);
     if (Buffer.from(b.fold).compare(id) !== 0) fail(400, 'bad_request');
     if (b.at_seq > (await this.store.ops.head(id))) fail(400, 'bad_request'); // a snapshot cannot be ahead of the log

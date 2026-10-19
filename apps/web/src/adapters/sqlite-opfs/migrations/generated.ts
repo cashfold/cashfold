@@ -26,5 +26,10 @@ export const MIGRATIONS: readonly Migration[] = [
     "version": 4,
     "name": "sync_state",
     "sql": "-- 0004: what sync needs beyond the op log. `device` holds the signing keys of the account's devices (learned from the service),\n-- which is how ops signed by another device are verified. `fold.snapshot_base` records that the log below the pull cursor was\n-- replaced by a verified snapshot, and `last_synced_at` is when a sync last finished cleanly.\nCREATE TABLE device (\n  dev_id     BLOB PRIMARY KEY CHECK (length(dev_id)=16),\n  sig_pk     BLOB NOT NULL CHECK (length(sig_pk)=32),\n  revoked    INTEGER NOT NULL DEFAULT 0,\n  label      TEXT,\n  created_at INTEGER NOT NULL DEFAULT 0\n) STRICT, WITHOUT ROWID;\n\nALTER TABLE fold ADD COLUMN snapshot_base INTEGER NOT NULL DEFAULT 0;\nALTER TABLE fold ADD COLUMN last_synced_at INTEGER;\n"
+  },
+  {
+    "version": 5,
+    "name": "membership",
+    "sql": "-- 0005: sharing. The membership log of each Fold, kept as the signed entries the members wrote (ARCH 7.3, 8.2). It has no foreign key\n-- to `fold`: an invitation is read, and its log verified, before the Fold is joined; leaving or being removed clears it with the Fold.\nCREATE TABLE fold_log (\n  fold_id BLOB NOT NULL CHECK (length(fold_id)=16),\n  idx     INTEGER NOT NULL CHECK (idx >= 0),\n  entry   BLOB NOT NULL,\n  PRIMARY KEY (fold_id, idx)\n) STRICT, WITHOUT ROWID;\n"
   }
 ];

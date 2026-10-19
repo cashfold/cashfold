@@ -2,6 +2,7 @@ import type { Id } from '../../shared-kernel/id';
 import { createRepair, type Repair, type RepairReport } from '../../sync/application/repair';
 import type { EventBus, ProjectionReader } from '../../sync/application/buses';
 import { ledgerRepairRules } from './repair-rules';
+import type { HistoryWindow } from '../../sharing/domain/checkpoint';
 import { buildLedger, type Ledger } from './projections/ledger';
 
 /** The ledger of a Fold with the repair verdicts applied: what every screen and report reads. */
@@ -21,7 +22,7 @@ export interface LedgerViews {
  * (local command, remote op, rebuild) drops it, and the next read builds it again. A view that was being built
  * while an event arrived is returned to its caller but not kept.
  */
-export function createLedgerViews(events: EventBus, repair: Repair = createRepair(ledgerRepairRules)): LedgerViews {
+export function createLedgerViews(events: EventBus, repair: Repair = createRepair(ledgerRepairRules), history?: () => HistoryWindow | undefined): LedgerViews {
   const cache = new Map<Id, Promise<LedgerView>>();
   const versions = new Map<Id, number>();
   const versionOf = (fold: Id): number => versions.get(fold) ?? 0;
@@ -45,7 +46,7 @@ export function createLedgerViews(events: EventBus, repair: Repair = createRepai
       const startedAt = versionOf(fold);
       const building = reader.listRecords(fold).then((records): LedgerView => {
         const report = repair.run(records);
-        return { ledger: buildLedger(records, report), report };
+        return { ledger: buildLedger(records, report, history?.()), report };
       });
       cache.set(fold, building);
       const forget = (): void => {

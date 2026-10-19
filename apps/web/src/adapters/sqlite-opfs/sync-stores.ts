@@ -1,4 +1,4 @@
-import { idToBytes, type Id, type SyncCursorPort } from '@cashfold/core';
+import { idFromBytes, idToBytes, type Id, type SyncCursorPort } from '@cashfold/core';
 import type { EncryptedDatabase } from './database';
 
 /** Where this device has got to in each Fold's relay log (`fold.pull_cursor`), and whether a snapshot supplied the history below it. */
@@ -25,6 +25,8 @@ export interface DeviceKeyStore {
   /** Replaces what is stored with the service's current list. */
   replaceAll(rows: readonly DeviceKeyRow[], nowMs: number): void;
   publicKey(dev: Id): Uint8Array | undefined;
+  /** Every device the service has listed for this account, removed ones included. */
+  list(): readonly DeviceKeyRow[];
 }
 
 export function createSqliteDeviceKeys(db: EncryptedDatabase): DeviceKeyStore {
@@ -41,6 +43,9 @@ export function createSqliteDeviceKeys(db: EncryptedDatabase): DeviceKeyStore {
     publicKey(dev) {
       const v = db.value('SELECT sig_pk FROM device WHERE dev_id = ?', [idToBytes(dev)]);
       return v instanceof Uint8Array ? v : undefined;
+    },
+    list() {
+      return db.rows('SELECT dev_id, sig_pk, revoked FROM device ORDER BY created_at, dev_id').map((r) => ({ id: idFromBytes(r[0] as Uint8Array), sigPk: r[1] as Uint8Array, revoked: r[2] === 1n }));
     },
   };
 }

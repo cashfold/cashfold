@@ -152,7 +152,8 @@ async function genesis(entry: MembershipEntry, crypto: LogCrypto): Promise<Resul
   if (!(await crypto.verify(entry, keys.sig))) return fail('bad_signature', 'The first entry is not signed by its creator');
   const creator: Member = {
     account: entry.subject, role: 1, status: 'active', pubkeys: { enc: keys.enc, sig: keys.sig }, scope: 'full', fromEpoch: 1, addedIdx: 0, addedTs: entry.ts,
-    roles: [{ atTs: entry.ts, role: 1 }], invitedBy: entry.subject,
+    // The creator owned the Fold before its log was started (a Fold is private until it is first shared), so their role reaches back to the beginning.
+    roles: [{ atTs: 0, role: 1 }], invitedBy: entry.subject,
   };
   return ok({ ...emptyMembership(), length: 1, head: await crypto.hash(entry), lastTs: entry.ts, members: new Map([[creator.account, creator]]), owners: 1 });
 }

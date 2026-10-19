@@ -1,5 +1,5 @@
 import {
-  composeKdf, createAesGcm, createArgon2Kdf, createEd25519Signer, createHkdf, createKeySetService, createPbkdf2, createTwoSkd, generateSecretKey,
+  composeKdf, createAesGcm, createArgon2Kdf, createEd25519Signer, createHkdf, createKeySetService, createPbkdf2, createSharingCrypto, createTwoSkd, generateSecretKey,
   KdfBelowFloor, normalisePassword, parseSecretKey, SecretBuf, type KdfParams, type Pake, type Rng, type SecretKey,
 } from '@cashfold/crypto';
 import {
@@ -61,6 +61,7 @@ export function createAccountCrypto(options: AccountCryptoOptions): WebAccountCr
   const aead = createAesGcm();
   const signer = createEd25519Signer();
   const keySets = createKeySetService({ aead, signer, rng });
+  const sharing = createSharingCrypto({ rng });
   const copyOf = (s: Secret): SecretBuf => SecretBuf.from(s.use((b) => b));
   const fresh = (n: number) => Uint8Array.from(rng.bytes(n));
 
@@ -170,6 +171,8 @@ export function createAccountCrypto(options: AccountCryptoOptions): WebAccountCr
           encSk: made.encSk.use((b) => Uint8Array.from(b)), sigSk: made.sigSk.use((b) => Uint8Array.from(b)), encPk: made.keySet.enc.pk, sigPk: made.keySet.sig.pk,
         });
 
+        // The signed public key bundle others will be given to invite this account (FR-106).
+        const bundle = await sharing.signBundle({ accountId: secretKey.accountId, encPk: made.keySet.enc.pk, sigSk: made.sigSk });
         const sessionKey = await databaseKey(lvk, deviceId);
         const material: NewAccountMaterial = {
           accountId: secretKey.accountId,
@@ -178,6 +181,7 @@ export function createAccountCrypto(options: AccountCryptoOptions): WebAccountCr
           registration: {
             accountId: secretKey.accountId, deviceId, keySet: encode(made.keySet as never), deviceSigPk: device.publicKey, authSalt,
             kdf: { mKib: params.mKib, t: params.t, p: params.p, encSalt },
+            bundleSig: bundle.selfSig,
             ...(verifier !== undefined && { srpVerifier: verifier }),
           },
           credentials: { deviceId, accountId: secretKey.accountId, sealed },
@@ -235,10 +239,11 @@ export function createAccountCrypto(options: AccountCryptoOptions): WebAccountCr
         const sealed = await sealCredentials(lvk, credentials.deviceId, deviceSalt, accountParams, {
           ...fields, encSk: made.encSk.use((b) => Uint8Array.from(b)), sigSk: made.sigSk.use((b) => Uint8Array.from(b)), encPk: made.keySet.enc.pk, sigPk: made.keySet.sig.pk,
         });
+        const bundle = await sharing.signBundle({ accountId: credentials.accountId, encPk: made.keySet.enc.pk, sigSk: made.sigSk });
         const result = {
           registration: {
             accountId: credentials.accountId, deviceId: credentials.deviceId, keySet: encode(made.keySet as never), deviceSigPk: devicePk, authSalt: fields.authSalt,
-            kdf: { mKib: accountParams.mKib, t: accountParams.t, p: accountParams.p, encSalt: fields.encSalt }, srpVerifier: verifier,
+            kdf: { mKib: accountParams.mKib, t: accountParams.t, p: accountParams.p, encSalt: fields.encSalt }, srpVerifier: verifier, bundleSig: bundle.selfSig,
             email: credentials.email, discoverable: true, server: credentials.server,
           },
           sealed,

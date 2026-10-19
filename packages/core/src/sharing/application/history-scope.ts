@@ -1,5 +1,5 @@
 import type { Id } from '../../shared-kernel/id';
-import type { LocalDate } from '../../shared-kernel/local-date';
+import { addDays, type LocalDate } from '../../shared-kernel/local-date';
 import { err, ok, type Result } from '../../shared-kernel/result';
 import { buildBudgets, envelopeCheckpointValue } from '../../budgeting/application/budget-period';
 import { accountBalance } from '../../ledger/application/balance';
@@ -17,15 +17,18 @@ import type { SharingError } from './membership-log-service';
 // History scope for a new member (ARCH 7.6, FR-102). With "from now on" history the Fold moves to a new key epoch and the
 // newcomer is given only that key, so nothing written earlier opens for them. Two things make the new epoch usable on its own:
 //
-//  * a baseline: the structure of the Fold (accounts, categories, payees, tags, budgets, goals, schedules, settings, rates)
-//    written again under the new key. Each field keeps the clock that last wrote it, and each set member keeps its tag, so the
-//    baseline changes nothing for members who already have it, and later edits by anyone merge exactly as before;
-//  * checkpoints: where each account and each budget stood on the joining day, for this member only.
+//  * a baseline: the structure of the Fold (accounts, categories, payees, tags, budgets, goals, schedules, settings, rates) and
+//    every entry dated on or after the joining day, written again under the new key. Each field keeps the clock that last wrote
+//    it, and each set member keeps its tag, so the baseline changes nothing for members who already have it, and later edits by
+//    anyone merge exactly as before;
+//  * checkpoints: where each account and each budget stood at the end of the day before the joining day, for this member only.
+//    The newcomer's numbers are the checkpoint plus the entries they can see, which are the ones dated from the joining day on.
 
 const STRUCTURAL: ReadonlySet<number> = new Set([
   TABLE.account, TABLE.accountGroup, TABLE.category, TABLE.payee, TABLE.tag, TABLE.budget, TABLE.goal, TABLE.schedule, TABLE.exchangeRate, TABLE.settings,
 ]);
 
+const ENTRIES: ReadonlySet<number> = new Set([TABLE.transaction, TABLE.transfer]);
 const BATCH = 100;
 const clockKey = (h: Hlc): string => `${h.wallMs}:${h.ctr}`;
 
@@ -63,9 +66,27 @@ export function baselineDrafts(fold: Id, rec: Id, state: RecordState): OpDraft[]
   return ordered.filter((b) => b.fields.size > 0 || b.sets.size > 0).map((b) => ({ fold, rec, table: state.table, fields: b.fields, sets: b.sets, hlc: b.hlc }));
 }
 
-/** Where each account and each budget stood on the joining day, written for one member (FR-102). */
-export function checkpointDrafts(fold: Id, records: FoldState, joiner: string, joined: LocalDate): OpDraft[] {
+/** The structure of the Fold and every live entry dated from the joining day on: what a member who joins "from now on" is given to start from. */
+export function baselineAll(fold: Id, records: FoldState, joined: LocalDate): OpDraft[] {
   const ledger = buildLedger(records);
+  const datedFromJoin = (rec: Id): boolean => {
+    const t = ledger.transactions.get(rec);
+    if (t !== undefined) return t.localDate >= joined;
+    const x = ledger.transfers.get(rec);
+    return x !== undefined && x.localDate >= joined;
+  };
+  const drafts: OpDraft[] = [];
+  for (const [rec, state] of records) {
+    if (!isVisible(state)) continue; // a deleted record stays out: the newcomer has no use for it, and a restore of it will find no base to land on
+    if (STRUCTURAL.has(state.table) || (ENTRIES.has(state.table) && datedFromJoin(rec))) drafts.push(...baselineDrafts(fold, rec, state));
+  }
+  return drafts;
+}
+
+/** Where each account and each budget stood at the end of the day before the joining day, written for one member (FR-102). */
+export function checkpointDrafts(fold: Id, records: FoldState, joiner: string, joinDay: LocalDate): OpDraft[] {
+  const ledger = buildLedger(records);
+  const joined = addDays(joinDay, -1); // the balance at the end of the day before; the newcomer sees everything from the joining day on
   const none = new Map<number, SetDelta>();
   const drafts: OpDraft[] = [];
   for (const account of ledger.accounts.values()) {
@@ -77,7 +98,7 @@ export function checkpointDrafts(fold: Id, records: FoldState, joiner: string, j
     });
   }
   for (const budget of buildBudgets(records).values()) {
-    const value = envelopeCheckpointValue(ledger, budget, joined);
+    const value = envelopeCheckpointValue(ledger, budget, joinDay);
     if (value === undefined) continue;
     drafts.push({
       fold, rec: checkpointId(fold, 'envelope_carry', budget.id, joiner), table: TABLE.checkpoint, sets: none,
@@ -92,15 +113,8 @@ export function createHistoryWriter(deps: { projections: ProjectionStore; writeP
   return {
     async baseline({ fold, joiner, joinedLocalDate }): Promise<Result<{ records: number; checkpoints: number }, SharingError>> {
       const records = await projections.listRecords(fold);
-      const drafts: OpDraft[] = [];
-      let restated = 0;
-      for (const [rec, state] of records) {
-        if (!STRUCTURAL.has(state.table) || !isVisible(state)) continue;
-        // A record that is deleted stays out: the newcomer has no use for it, and a restore of it will find no base to land on.
-        const own = baselineDrafts(fold, rec, state);
-        if (own.length > 0) restated += 1;
-        drafts.push(...own);
-      }
+      const drafts: OpDraft[] = baselineAll(fold, records, joinedLocalDate as LocalDate);
+      const restated = new Set(drafts.map((d) => d.rec)).size;
 
       const cp = checkpointDrafts(fold, records, joiner, joinedLocalDate as LocalDate);
       drafts.push(...cp);

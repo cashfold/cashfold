@@ -70,6 +70,14 @@ export interface SyncServiceDeps {
   /** Told whenever the status changes or other devices' changes were applied. */
   readonly publish: (event: { readonly type: string; readonly [key: string]: unknown }) => void;
   readonly ratesSource?: (server: string) => RatesSourcePort;
+  /** Sharing (US7): the membership log is brought up to date before each Fold is synced, and a Fold this account is no longer in is forgotten. */
+  readonly sharing?: {
+    upkeep(fold: Id): Promise<'ok' | 'wiped'>;
+    /** Joins Folds this account accepted on another of its devices. */
+    adopt(): Promise<void>;
+    /** Whether this account sees the whole history; only then may it publish a snapshot, which stands in for the log below it. */
+    mayPublishSnapshot(fold: Id): Promise<boolean>;
+  };
   readonly openStream?: typeof openFoldStream;
   readonly timers?: { set(fn: () => void, ms: number): unknown; clear(handle: unknown): void };
   readonly pollMs?: number;
@@ -227,6 +235,7 @@ export function createSyncService(deps: SyncServiceDeps): SyncService {
     if (!ensured.ok && ensured.kind === 'gone') return void gone();
     if (!live(g)) return;
     await receiveFolds({ link: l, grants: deps.grants, services, account: id.account, publicKeys: id.publicKeys });
+    await deps.sharing?.adopt().catch(() => undefined);
 
     setConnection('online');
     await syncAll();
@@ -321,6 +330,11 @@ export function createSyncService(deps: SyncServiceDeps): SyncService {
     });
     for (const summary of await s.directory.list()) {
       if (!live(g)) return;
+      // The membership log first: it says who may write, brings new keys, and tells this account if it has been taken out.
+      if ((await deps.sharing?.upkeep(summary.id).catch(() => 'ok' as const)) === 'wiped') {
+        deps.publish({ type: 'FoldRemoved', fold: summary.id });
+        continue;
+      }
       status.begin(summary.id);
       changed();
       const client = createSyncClient({
@@ -349,6 +363,7 @@ export function createSyncService(deps: SyncServiceDeps): SyncService {
         // A device was added since this one last asked: learn it, then run the round again.
         signerRetries++;
         await refreshDevices();
+        await deps.sharing?.upkeep(summary.id).catch(() => undefined); // another member's device is learned from the log
         again = true;
         continue;
       }
@@ -365,7 +380,7 @@ export function createSyncService(deps: SyncServiceDeps): SyncService {
         s.syncMarks.markSynced(summary.id, deps.nowMs());
         await snapshots.acknowledge(summary.id).catch(() => undefined);
         const at = (await s.cursors.get(summary.id)).serverSeq;
-        if (at - (lastPublished.get(summary.id) ?? 0n) >= BigInt(snapshotEvery)) {
+        if (at - (lastPublished.get(summary.id) ?? 0n) >= BigInt(snapshotEvery) && (await deps.sharing?.mayPublishSnapshot(summary.id)) !== false) {
           if ((await snapshots.publish(summary.id)) === 'published') lastPublished.set(summary.id, at);
         }
       } else if (report.failure === 'offline') {

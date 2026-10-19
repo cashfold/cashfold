@@ -1,12 +1,13 @@
 import {
   createAccount, createCategoryCommands, createMaterialiser, createDeviceManager, createEmailVerification, createFoldCommands, createQuickUnlock, createRefreshRates, createSession, describeFoldDeletion, DEFAULT_LOCK_POLICY, newIdV4, registerExisting, signInOnNewDevice, unlock,
   parseSettings, toLockPolicy, type AccountCryptoPort, type CredentialStorePort, type DeviceLabelPort, type DeviceSettings, type DeviceSettingsPort, type EnrolCryptoPort, type Id, type LockPolicy, type QuickUnlockCryptoPort, type QuickUnlockStorePort,
-  type RatesSourcePort, type RegisterExistingCryptoPort, type RegistrationPort, type RelayAuthPort, type Session, type SessionPort, type UnlockCryptoPort,
+  type AccountIdentity, type RatesSourcePort, type RegisterExistingCryptoPort, type RegistrationPort, type RelayAuthPort, type Session, type SessionPort, type UnlockCryptoPort,
 } from '@cashfold/core';
 import { SecretBuf } from '@cashfold/crypto';
 import { createWebSession } from '../adapters/sqlite-opfs/web-session';
 import type { SqliteRuntime } from '../adapters/sqlite-opfs/runtime';
 import { createLedgerHandlers } from './ledger-handlers';
+import { createSharingHandlers } from './sharing-handlers';
 import { createFoldGrantPort } from '../adapters/transport/fold-grants';
 import { createSyncService, type SyncIdentity, type SyncService, type SyncSession } from './sync-service';
 import { RpcError, type Handlers } from './rpc';
@@ -61,9 +62,13 @@ export function createAppHandlers(deps: AppHandlerDeps): AppRuntime {
   const quickHolder: { quick?: ReturnType<typeof createQuickUnlock> } = {};
   let sync: SyncService | undefined;
   let identity: SyncIdentity | undefined;
+  /** This account's keys for sharing: valid only while unlocked (the secrets are wiped with the session). */
+  let sharingIdentity: AccountIdentity | undefined;
+  const publishEvent = (event: { readonly type: string; readonly [key: string]: unknown }): void => (deps.publish ?? (() => undefined))(event);
   const session = createSession({
     closeDatabase: async () => {
       sync?.stop();
+      sharingIdentity = undefined;
       await webSession?.stop();
       await quickHolder.quick?.markLocked().catch(() => undefined); // the inactivity period for quick unlock runs from here
     },
@@ -73,7 +78,10 @@ export function createAppHandlers(deps: AppHandlerDeps): AppRuntime {
   });
 
   async function newWebSession() {
-    webSession = createWebSession({ runtime: await deps.runtime(), rng: deps.rng, nowMs: deps.nowMs, isUnlocked: () => session.state() === 'unlocked' });
+    webSession = createWebSession({
+      runtime: await deps.runtime(), rng: deps.rng, nowMs: deps.nowMs, isUnlocked: () => session.state() === 'unlocked',
+      sharing: { identity: () => sharingIdentity, link: () => sync?.link(), announce: (e) => publishEvent({ type: e.type, fold: e.fold }) },
+    });
     return webSession;
   }
 
@@ -117,6 +125,24 @@ export function createAppHandlers(deps: AppHandlerDeps): AppRuntime {
     sync = createSyncService({
       auth: deps.relayAuth, grants, session: () => webSession?.current() as SyncSession | undefined, nowMs: deps.nowMs,
       ...(deps.ratesSource && { ratesSource: deps.ratesSource }), ...(deps.syncTimers && { timers: deps.syncTimers }),
+      sharing: {
+        async upkeep(fold) {
+          const result = await webSession?.current()?.sharing.upkeep(fold);
+          return result?.ok === true && result.value.outcome === 'wiped' ? 'wiped' : 'ok';
+        },
+        async adopt() {
+          const joined = await webSession?.current()?.sharing.adoptAccepted();
+          if (joined?.ok === true && joined.value.length > 0) publishEvent({ type: 'RemoteChanged', fold: joined.value[0] });
+        },
+        async mayPublishSnapshot(fold) {
+          const current = webSession?.current();
+          const me = sharingIdentity?.accountId;
+          if (current === undefined || me === undefined) return true;
+          const state = await current.membership.state(fold);
+          const mine = state.ok ? state.value.members.get(me) : undefined;
+          return mine === undefined || mine.scope === 'full';
+        },
+      },
       publish: (event) => {
         publish(event);
         if (event.type === 'RemoteChanged' && typeof event['fold'] === 'string') void materialise(event['fold'] as Id);
@@ -137,6 +163,8 @@ export function createAppHandlers(deps: AppHandlerDeps): AppRuntime {
   }
   const startSync = (next: SyncIdentity, registration: 'done' | 'pending'): void => {
     identity = next;
+    sharingIdentity = { accountId: next.accountId, email: next.email, encPk: next.publicKeys.enc, sigPk: next.publicKeys.sig, encSk: next.account.encSk, sigSk: next.account.sigSk };
+    webSession?.current()?.views.invalidate(); // the view of each Fold depends on whose checkpoints apply
     sync?.start(next, registration);
   };
   const needSync = (): { sync: SyncService; identity: SyncIdentity } => {
@@ -150,6 +178,16 @@ export function createAppHandlers(deps: AppHandlerDeps): AppRuntime {
   };
 
   const ledger = createLedgerHandlers({ open, clock: { nowMs: deps.nowMs }, rng: deps.rng });
+  const sharingHandlers: Record<string, Handlers[string]> = { ...createSharingHandlers({ open, identity: () => sharingIdentity, rng: deps.rng, nowMs: deps.nowMs }) };
+  // A change to who is in a Fold, or an invitation taken up, is worth telling the service about at once rather than at the next poll.
+  for (const method of ['sharing.invite', 'sharing.accept', 'sharing.decline', 'sharing.changeRole', 'sharing.remove', 'sharing.transfer', 'sharing.leave']) {
+    const original = sharingHandlers[method]!;
+    sharingHandlers[method] = (async (...args: Parameters<typeof original>) => {
+      const result = (await original(...args)) as { ok?: boolean };
+      if (result?.ok === true) void sync?.syncNow().catch(() => undefined);
+      return result;
+    }) as typeof original;
+  }
 
   const needLabels = (): DeviceLabelPort => {
     if (deps.deviceLabels === undefined) throw new RpcError('RpcError', 'sync_unavailable');
@@ -162,6 +200,7 @@ export function createAppHandlers(deps: AppHandlerDeps): AppRuntime {
 
   const handlers: Handlers = {
     ...ledger,
+    ...sharingHandlers,
     async status() {
       const stored = await deps.credentials.load();
       const phase: Phase = stored === undefined ? 'no_account' : webSession?.current() !== undefined && session.state() === 'unlocked' ? 'unlocked' : 'locked';

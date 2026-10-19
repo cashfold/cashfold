@@ -29,6 +29,13 @@ describe('membership log: genesis and chain', () => {
     expect(s.members.get('ALICE1')!.pubkeys.sig).toEqual(alice.sig.publicKey);
   });
 
+  it('lets the creator own what was written before the log began, since a Fold is private until it is first shared', async () => {
+    const s = await must();
+    expect(roleAt(s, 'ALICE1', 1)).toBe(1);
+    expect(roleAt(s, 'ALICE1', s.members.get('ALICE1')!.addedTs - 500)).toBe(1);
+    expect(roleAt(s, 'BOB222', 1)).toBeUndefined();
+  });
+
   it('refuses an empty log, a first entry that is not a self-signed owner entry, and a bad first signature', async () => {
     await rejects('empty_log', []);
     const other = new LogBuilder();

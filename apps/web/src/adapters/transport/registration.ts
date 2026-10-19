@@ -11,7 +11,7 @@ export function bodyOf(p: RegistrationPayload): Uint8Array {
   return encode({
     account_id: p.accountId, email: p.email, auth_salt: p.authSalt,
     kdf: { kdf: 'argon2id', m_kib: BigInt(p.kdf.mKib), t: BigInt(p.kdf.t), p: BigInt(p.kdf.p), enc_salt: p.kdf.encSalt },
-    srp_verifier: p.srpVerifier, keyset: p.keySet, discoverable: p.discoverable, device: { dev_id: idToBytes(p.deviceId), sig_pk: p.deviceSigPk },
+    srp_verifier: p.srpVerifier, keyset: p.keySet, discoverable: p.discoverable, ...(p.bundleSig !== undefined && { bundle_sig: p.bundleSig }), device: { dev_id: idToBytes(p.deviceId), sig_pk: p.deviceSigPk },
   } as never);
 }
 

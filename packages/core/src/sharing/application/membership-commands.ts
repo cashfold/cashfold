@@ -26,6 +26,11 @@ export interface CommandsDeps {
   readonly today: () => number;
   /** Removes everything this device holds for the Fold (rows, op log, keys, attachments, the log copy). */
   readonly wipe: (fold: Id) => Promise<void>;
+  /**
+   * Called when this device joins a Fold. A member who sees history only from joining is never sent the earlier ops, so the first
+   * op they see from each device does not start at sequence 1: the sync must accept that, as it does after a snapshot.
+   */
+  readonly joined?: (fold: Id, scope: HistoryScope) => Promise<void>;
 }
 
 export interface InviteInput {
@@ -204,6 +209,8 @@ export function createMembershipCommands(deps: CommandsDeps) {
       if (!s.ok || mine === undefined || mine.status !== 'active') continue;
       const inviter = s.value.members.get(mine.invitedBy);
       if (inviter === undefined) continue;
+      // An invitation this account already accepted on another device is not pending: that device's account is acting in the Fold.
+      if ([...s.value.devices.values()].some((d) => d.account === identity.accountId && d.certifiedTs >= mine.addedTs)) continue;
       out.push({
         fold, inviter: inviter.account, inviterFingerprint: crypto.fingerprint(inviter.pubkeys.enc, inviter.pubkeys.sig), role: mine.role, scope: mine.scope,
         invitedAtMs: mine.addedTs, status: log.deps.clock.nowMs() - mine.addedTs > INVITATION_LIFETIME_MS ? 'expired' : 'pending',
@@ -259,14 +266,55 @@ export function createMembershipCommands(deps: CommandsDeps) {
     }
     if (log.deps.clock.nowMs() - mine.addedTs > INVITATION_LIFETIME_MS) return fail('invitation_expired', 'This invitation has expired; ask for a new one');
 
+    // The Fold's entry comes first: the keys stored for it belong to it. Taken back if the keys do not check out.
+    const placeholder: FoldSummary = { id: input.fold, name: 'Shared Fold', baseCurrency: 'USD', epoch: mine.fromEpoch, role: ROLE_NAME[mine.role] };
+    await directory.add(placeholder);
     const imported = await importGrants(input.fold, s, identity.accountId);
-    if (!imported.ok) return imported;
+    if (!imported.ok) {
+      await directory.remove(input.fold);
+      return imported;
+    }
     const current = imported.value;
-    const summary: FoldSummary = { id: input.fold, name: 'Shared Fold', baseCurrency: 'USD', epoch: current, role: ROLE_NAME[mine.role] };
+    const summary: FoldSummary = { ...placeholder, epoch: current };
     await directory.add(summary);
+    await deps.joined?.(input.fold, mine.scope);
     const certified = await certifyDevices(input.fold);
     if (!certified.ok && certified.error.code !== 'offline') return certified;
     return ok(summary);
+  };
+
+  /**
+   * Folds this account accepted on another of its devices: the service lists them and the log shows this account already acting
+   * in them (certifying a device), so this device joins without asking again. Returns the Folds joined.
+   */
+  const adoptAccepted = async (): Promise<Result<Id[], SharingError>> => {
+    const identity = me();
+    if (identity === undefined) return fail('no_identity', 'This device cannot sign: the account is locked');
+    const listed = await remote.folds();
+    if (!listed.ok) return fail(listed.error.code, listed.error.message);
+    const joined: Id[] = [];
+    for (const fold of listed.value) {
+      if ((await directory.get(fold)) !== undefined) continue;
+      if (!(await log.refresh(fold)).ok) continue;
+      const stateResult = await log.state(fold);
+      if (!stateResult.ok) continue;
+      const s = stateResult.value;
+      const mine = s.members.get(identity.accountId);
+      const acted = mine?.status === 'active' && [...s.devices.values()].some((d) => d.account === identity.accountId && d.certifiedTs >= mine.addedTs);
+      // A creator's own Fold made on another device has no add_member from someone else; the owner's grant path handles that one.
+      if (!acted || mine.invitedBy === identity.accountId) continue;
+      await directory.add({ id: fold, name: 'Shared Fold', baseCurrency: 'USD', epoch: mine.fromEpoch, role: ROLE_NAME[mine.role] });
+      const imported = await importGrants(fold, s, identity.accountId);
+      if (!imported.ok) {
+        await directory.remove(fold);
+        continue;
+      }
+      await directory.add({ id: fold, name: 'Shared Fold', baseCurrency: 'USD', epoch: imported.value, role: ROLE_NAME[mine.role] });
+      await deps.joined?.(fold, mine.scope);
+      await certifyDevices(fold);
+      joined.push(fold);
+    }
+    return ok(joined);
   };
 
   /** Turns an invitation down: leaves the Fold before ever opening it. */
@@ -379,7 +427,7 @@ export function createMembershipCommands(deps: CommandsDeps) {
 
   return {
     inviteMember, pendingInvitations, acceptInvitation, declineInvitation, changeRole, transferOwnership, removeMember, leaveFold,
-    completeRotation, certifyDevices, upkeep,
+    completeRotation, certifyDevices, upkeep, adoptAccepted,
   };
 }
 

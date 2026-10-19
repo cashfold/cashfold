@@ -9,7 +9,7 @@ import { addDays, type LocalDate } from '../../shared-kernel/local-date';
 import { applyOp, emptyFold, isVisible, visibleMembers, type FieldValue, type FoldState, type Op } from '../../sync/domain/merge';
 import { LedgerFixture, date } from '../../testing/index';
 import { id } from '../../testing/world';
-import { baselineDrafts, checkpointDrafts } from './history-scope';
+import { baselineAll, baselineDrafts, checkpointDrafts } from './history-scope';
 
 const JOINER = 'JOINER';
 const STRUCTURAL = new Set<number>([TABLE.account, TABLE.accountGroup, TABLE.category, TABLE.payee, TABLE.tag, TABLE.budget, TABLE.goal, TABLE.schedule, TABLE.exchangeRate, TABLE.settings]);
@@ -17,10 +17,7 @@ const STRUCTURAL = new Set<number>([TABLE.account, TABLE.accountGroup, TABLE.cat
 /** What the newcomer ends up with: the baseline and the checkpoints, applied to an empty replica as the relay would deliver them. */
 function newcomerFrom(full: FoldState, joined: LocalDate): FoldState {
   const fold = id(0xf0);
-  const drafts = [
-    ...[...full].filter(([, s]) => STRUCTURAL.has(s.table) && isVisible(s)).flatMap(([rec, s]) => baselineDrafts(fold, rec, s)),
-    ...checkpointDrafts(fold, full, JOINER, joined),
-  ];
+  const drafts = [...baselineAll(fold, full, joined), ...checkpointDrafts(fold, full, JOINER, joined)];
   let state = emptyFold();
   drafts.forEach((d, n) => {
     const op: Op = { id: id(0x9000 + n), rec: d.rec, dev: id(0xdd), hlc: d.hlc ?? { wallMs: 50_000_000 + n, ctr: 0 }, table: d.table, fields: d.fields, sets: d.sets };
@@ -99,18 +96,21 @@ describe('baseline republish (FR-102)', () => {
 describe('checkpoints give a from_join member the same numbers as the full history (FR-102)', () => {
   const day = fc.integer({ min: 0, max: 400 });
   const amount = fc.integer({ min: 1, max: 90_000 });
-  const entry = fc.record({ on: day, cents: amount, kind: fc.constantFrom('expense', 'expense', 'income', 'transfer'), account: fc.integer({ min: 0, max: 1 }) });
+  // `existing`: made before the invitation (whatever its date, so it may be dated after the joining day); otherwise made afterwards.
+  const entry = fc.record({ on: day, cents: amount, kind: fc.constantFrom('expense', 'expense', 'income', 'transfer'), account: fc.integer({ min: 0, max: 1 }), existing: fc.boolean() });
   const START = date(2026, 1, 1);
 
-  function build(entries: ReturnType<typeof entry['generate']> extends never ? never : Array<{ on: number; cents: number; kind: string; account: number }>, joined: LocalDate) {
+  function build(entries: Array<{ on: number; cents: number; kind: string; account: number; existing: boolean }>, joined: LocalDate) {
     const f = new LedgerFixture();
     const accounts = [f.account({ name: 'A', openingBalanceMinor: 1_234n, openingDate: date(2020, 1, 1) }), f.account({ name: 'B', openingBalanceMinor: 0n, openingDate: date(2020, 1, 1) })];
     const budgets = (['none', 'carry_positive', 'carry_all'] as const).map((rollover, i) => f.budget({ name: `B${i}`, rollover, limitMinor: 30_000n, anchorLocalDate: date(2026, 1, 1) }));
     const before: Array<() => void> = [];
     const later: Array<() => void> = [];
     for (const e of entries) {
-      const localDate = addDays(START, e.on);
-      const sink = localDate <= joined ? before : later;
+      // Entries made after the invitation are dated from the joining day on (a backdated one would be outside what the newcomer counts).
+      const made = addDays(START, e.on);
+      const localDate = e.existing || made >= joined ? made : joined;
+      const sink = e.existing ? before : later;
       const target = accounts[e.account]!;
       sink.push(() => {
         if (e.kind === 'transfer') f.transfer(target, accounts[1 - e.account]!, { from: BigInt(e.cents), to: BigInt(e.cents), localDate });
@@ -175,7 +175,7 @@ describe('checkpoints give a from_join member the same numbers as the full histo
 
   it('without its checkpoints the newcomer would have the wrong numbers (the checkpoints are what makes them right)', () => {
     const joined = date(2026, 2, 1);
-    const { f, accounts, before, later } = build([{ on: 5, cents: 700, kind: 'expense', account: 0 }, { on: 60, cents: 100, kind: 'expense', account: 0 }], joined);
+    const { f, accounts, before, later } = build([{ on: 5, cents: 700, kind: 'expense', account: 0, existing: true }, { on: 60, cents: 100, kind: 'expense', account: 0, existing: false }], joined);
     before.forEach((run) => run());
     const newcomer = newcomerFrom(f.fold, joined);
     const history = f.ops.length;
@@ -189,7 +189,7 @@ describe('checkpoints give a from_join member the same numbers as the full histo
   });
 
   it('members with the full history ignore checkpoints', () => {
-    const { f, accounts, before } = build([{ on: 5, cents: 700, kind: 'expense', account: 0 }], date(2026, 2, 1));
+    const { f, accounts, before } = build([{ on: 5, cents: 700, kind: 'expense', account: 0, existing: true }], date(2026, 2, 1));
     before.forEach((run) => run());
     const withCheckpoint = newcomerFrom(f.fold, date(2026, 2, 1));
     for (const [rec, s] of withCheckpoint) if (s.table === TABLE.checkpoint) f.apply(rec, TABLE.checkpoint, new Map([...s.fields].map(([k, v]) => [k, v.value])));

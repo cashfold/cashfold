@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { ACCOUNT_KINDS } from '@cashfold/core';
 import { MESSAGES_EN } from '../errors/catalogue';
 import en from '../i18n/messages/en.json' with { type: 'json' };
+import { SHARING_ERROR_CODES } from '../sharing/errors';
 import { COLOR_COUNT, ICON_KEYS } from './palette';
 
 const messages: Record<string, string> = { ...MESSAGES_EN, ...en };
@@ -54,6 +55,9 @@ describe('the ledger screens only use words that exist', () => {
       ...['day', 'week', 'month', 'year'].flatMap((u) => [`schedules.unit.${u}`, `schedules.every.${u}`]),
       ...['none', '0', '60', '1440'].map((r) => `schedules.reminder.${r}`),
       ...['active', 'achieved', 'overdue'].map((x) => `goals.status.${x}`),
+      ...['owner', 'editor', 'viewer'].flatMap((r) => [`sharing.role.${r}`, `sharing.role.${r}.long`]),
+      ...['full', 'from_join'].map((x) => `sharing.scope.${x}.short`),
+      ...SHARING_ERROR_CODES.map((c) => `sharing.error.${c}`),
       ...['none', 'carry_positive', 'carry_all'].map((r) => `budgets.rollover.${r}`),
       ...['spent', 'limit', 'available', 'ratio'].map((m) => `budgets.mode.${m}`),
       ...['payee', 'tag'].flatMap((x) => ['title', 'new', 'edit', 'empty'].map((s) => `ledger.${x}.${s}`)),
@@ -72,6 +76,21 @@ describe('the ledger screens only use words that exist', () => {
     }
     expect(codes.size).toBeGreaterThan(40);
     expect([...codes].filter((c) => messages[`ledger.error.${c}`] === undefined).sort()).toEqual([]);
+  });
+
+  it('every refusal sharing can give has a sentence in the sharing words', () => {
+    const codes = new Set<string>();
+    const core = resolve(here, '../../../../../packages/core/src/sharing');
+    const mine = (f: string) => /membership-|lookup-member|history-scope|local-wipe|op-authorisation/.test(f);
+    for (const file of [...sources(core)].filter(mine)) {
+      const text = readFileSync(file, 'utf8');
+      for (const m of text.matchAll(/\berr\(\s*'([a-z_]+)'/g)) codes.add(m[1]!);
+      for (const m of text.matchAll(/\bfail\(\s*'([a-z_]+)'/g)) codes.add(m[1]!);
+      for (const m of text.matchAll(/DomainError<([^>]+)>/g)) for (const c of m[1]!.matchAll(/'([a-z_]+)'/g)) codes.add(c[1]!);
+    }
+    codes.delete('code'); // the type `LogError['code']`, not a code
+    expect(codes.size).toBeGreaterThan(20);
+    expect([...codes].filter((c) => messages[`sharing.error.${c}`] === undefined).sort()).toEqual([]);
   });
 
   it('every repair finding and every reason an op can be set aside has a message for Needs attention', () => {

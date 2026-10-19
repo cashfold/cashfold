@@ -1,7 +1,7 @@
 import type { CurrencyCode } from '../../shared-kernel/currency';
 import { convert } from '../../shared-kernel/fx';
 import type { Id } from '../../shared-kernel/id';
-import type { LocalDate } from '../../shared-kernel/local-date';
+import { addDays, type LocalDate } from '../../shared-kernel/local-date';
 import { PIVOT_RATE } from '../../shared-kernel/rate';
 import { isVisible, type FoldState } from '../../sync/domain/merge';
 import { nearestPrior, PIVOT_CURRENCY } from '../../ledger/domain/exchange-rate';
@@ -143,7 +143,8 @@ function spentByPeriod(ledger: Ledger, budget: Budget, lastIndex: number, after?
 export function budgetPeriodAt(ledger: Ledger, budget: Budget, index: number): BudgetPeriodView {
   const checkpoint = ledger.checkpoints.get(budget.id);
   const joined = checkpoint?.kind === 'envelope_carry' ? checkpoint : undefined;
-  const first = joined === undefined ? 0 : (periodContaining(budget, joined.asOf)?.index ?? 0);
+  // The checkpoint stands for everything up to the end of `asOf`; the member's first day is the next one, and its period is where they start.
+  const first = joined === undefined ? 0 : (periodContaining(budget, addDays(joined.asOf, 1))?.index ?? 0);
   const last = budget.periodUnit === 'custom' ? 0 : maxOf([first], index);
   const { spent, missing } = spentByPeriod(ledger, budget, last, joined?.asOf);
   let carryIn = joined?.valueMinor ?? 0n;
@@ -163,15 +164,17 @@ export function budgetPeriodAt(ledger: Ledger, budget: Budget, index: number): B
   return view!;
 }
 
-/** What a joining member's checkpoint for a budget must hold: the carry-in of the period holding the day, less what was spent in it up to that day. */
-export function envelopeCheckpointValue(ledger: Ledger, budget: Budget, joined: LocalDate): bigint | undefined {
-  const span = periodContaining(budget, joined);
+/**
+ * What a joining member's checkpoint for a budget must hold: the carry-in of the period that holds their first day, less what was
+ * already spent in it before that day. Their own numbers then add the entries dated from that day on.
+ */
+export function envelopeCheckpointValue(ledger: Ledger, budget: Budget, firstDay: LocalDate): bigint | undefined {
+  const span = periodContaining(budget, firstDay);
   if (span === undefined) return undefined; // the budget has not started; nothing to carry
   const whole = budgetPeriodAt({ ...ledger, checkpoints: new Map() }, budget, span.index);
-  // Spent in the period on or before the joining day = spent in the whole period minus spent after it.
-  const after = spentAfter(ledger, budget, span.index, joined);
-  const spentUpTo = whole.spentMinor - after;
-  return whole.carryInMinor - spentUpTo;
+  // Spent in the period before the first day = spent in the whole period minus spent from the first day on.
+  const fromFirstDay = spentAfter(ledger, budget, span.index, addDays(firstDay, -1));
+  return whole.carryInMinor - (whole.spentMinor - fromFirstDay);
 }
 
 function spentAfter(ledger: Ledger, budget: Budget, index: number, joined: LocalDate): bigint {

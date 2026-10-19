@@ -29,6 +29,8 @@ export interface RegistrationPayload {
   readonly authSalt?: Uint8Array;
   /** The password-stretching settings, with the salt for the key-set key. The service enforces the floors again. */
   readonly kdf?: { readonly mKib: number; readonly t: number; readonly p: number; readonly encSalt: Uint8Array };
+  /** The account's signature over its public key bundle, which the service hands to people who invite it (FR-106). */
+  readonly bundleSig?: Uint8Array;
 }
 
 export type RegistrationResult = { readonly ok: true } | { readonly ok: false; readonly reason: 'offline' | 'rejected' | 'email_taken' | 'invite_required' | 'rate_limited' };

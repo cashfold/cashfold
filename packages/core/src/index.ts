@@ -96,3 +96,4 @@ export * from './sharing/application/lookup-member';
 export * from './sharing/domain/checkpoint';
 export * from './sharing/application/history-scope';
 export * from './sharing/application/op-authorisation';
+export * from './ledger/application/export-csv';
