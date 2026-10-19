@@ -63,6 +63,7 @@ export * from './identity/application/enrol-device';
 export * from './identity/application/register-existing';
 export * from './identity/application/credential-change';
 export * from './identity/application/delete-account';
+export * from './identity/application/migrate-server';
 export * from './identity/application/email-verification';
 export * from './sync/application/sync-client';
 export * from './sync/application/snapshot';

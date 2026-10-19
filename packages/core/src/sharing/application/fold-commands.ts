@@ -1,3 +1,4 @@
+import { normaliseServerAddress } from '../../identity/domain/server-address';
 import type { Id } from '../../shared-kernel/id';
 import { err, ok, type DomainError } from '../../shared-kernel/result';
 import type { Role } from '../../shared-kernel/role';
@@ -84,5 +85,19 @@ export function createFoldCommands({ directory, foldKeys }: { directory: FoldDir
     },
   };
 
-  return { createFold, renameFold, deleteFold };
+  /** Records where the Fold now lives, in its settings, signed like every other op (FR-100). Owners only. */
+  const announceServer: CommandDef<{ fold: Id; server: string }, string, DomainError<'invalid_server'>> = {
+    name: 'announceServer',
+    requires: 'owner',
+    foldOf: (c) => c.fold,
+    async handle(c, ctx) {
+      const server = normaliseServerAddress(c.server);
+      if (!server.ok) return server;
+      const written = await ctx.submit([{ fold: c.fold, rec: settingsRecordId(c.fold), sets: new Map(), ...foldSettingsPatch({ server: server.value }) }]);
+      if (!written.ok) return written as never;
+      return ok(server.value);
+    },
+  };
+
+  return { createFold, renameFold, deleteFold, announceServer };
 }

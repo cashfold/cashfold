@@ -290,3 +290,21 @@ export interface CredentialChangeCryptoPort {
   /** Checks the password against this device's credentials. Consumes `password`. */
   begin(args: { password: Secret; credentials: DeviceCredentials }): Promise<CredentialChangeHandle | 'wrong_password'>;
 }
+
+// ---------------------------------------------------------------- moving to another service
+
+export interface MigrationHandle {
+  /** SRP-x for proving the current credentials to a service. Remembers the salt and settings it was given. */
+  srpX(hello: { authSalt: Uint8Array; kdf: KdfOffer }): Promise<Secret>;
+  /**
+   * The registration for the new service: the same key set, salts, settings and SRP verifier, so the password and Secret Key
+   * work there unchanged. `hello` is what the old service offered.
+   */
+  registration(args: { keySet: Uint8Array; email: string; server: string; discoverable: boolean }): Promise<RegistrationPayload>;
+  wipe(): void;
+}
+
+export interface MigrationCryptoPort {
+  /** Checks the password against this device's credentials. Consumes `password`. */
+  begin(args: { password: Secret; credentials: DeviceCredentials }): Promise<MigrationHandle | 'wrong_password'>;
+}

@@ -5,6 +5,7 @@ import { createCommandBus, createEventBus } from '../../sync/application/buses';
 import { createReplica, createWorld, id, type Replica, type World } from '../../testing/index';
 import { settingsRecordId } from '../domain/fold';
 import type { FoldDirectory, FoldKeyPort, FoldSummary } from '../ports/index';
+import { foldServerOf } from './fold-settings';
 import { createFoldCommands, describeFoldDeletion, roleResolver } from './fold-commands';
 
 function memoryDirectory(): FoldDirectory & { removed: Id[] } {
@@ -103,6 +104,26 @@ describe('renameFold', () => {
       await directory.add({ ...(await directory.get(FOLD))!, role });
       expect(await bus.execute(commands.renameFold, { fold: FOLD, name: 'Nope' }), role).toEqual({ ok: false, error: expect.objectContaining({ code: 'permission_denied', roleRequired: 'owner' }) });
     }
+  });
+});
+
+describe('announceServer (FR-100)', () => {
+  it('records where the Fold now lives in its settings, normalised, and members can read it back', async () => {
+    const { bus, commands, replica } = await setup();
+    await bus.execute(commands.createFold, { fold: FOLD, name: 'Home', baseCurrency: 'USD' });
+    expect(foldServerOf(await replica.projections.getRecord(FOLD, settingsRecordId(FOLD)))).toBeUndefined();
+    expect(await bus.execute(commands.announceServer, { fold: FOLD, server: 'https://NEW.example/' })).toEqual({ ok: true, value: 'https://new.example' });
+    const settings = await replica.projections.getRecord(FOLD, settingsRecordId(FOLD));
+    expect(foldServerOf(settings)).toBe('https://new.example');
+    expect(settings?.fields.get(1)?.value).toBe('Home'); // the rest of the settings are untouched
+  });
+
+  it('rejects an address that is not one, and is for owners only', async () => {
+    const { bus, commands, directory } = await setup();
+    await bus.execute(commands.createFold, { fold: FOLD, name: 'Home', baseCurrency: 'USD' });
+    expect(await bus.execute(commands.announceServer, { fold: FOLD, server: 'nonsense' })).toEqual({ ok: false, error: expect.objectContaining({ code: 'invalid_server' }) });
+    await directory.add({ ...(await directory.get(FOLD))!, role: 'editor' });
+    expect(await bus.execute(commands.announceServer, { fold: FOLD, server: 'https://new.example' })).toEqual({ ok: false, error: expect.objectContaining({ code: 'permission_denied' }) });
   });
 });
 

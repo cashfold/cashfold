@@ -8,7 +8,7 @@ import type { FieldValue } from '../../sync/domain/merge';
 
 export const MAX_FOLD_NAME = 80;
 export const SETTINGS_TABLE = 13;
-export const FOLD_SETTINGS_FIELDS = { name: 1, baseCurrency: 2 } as const;
+export const FOLD_SETTINGS_FIELDS = { name: 1, baseCurrency: 2, server: 3 } as const;
 
 export type FoldError = DomainError<'invalid_fold_name' | 'unknown_currency'>;
 
@@ -37,9 +37,10 @@ export function validateNewFold(input: NewFold): Result<NewFold, FoldError> {
 /** The settings record has a fixed, derived id so that every device addresses the same record. */
 export const settingsRecordId = (fold: Id): Id => uuidV5(fold, 'cashfold.fold.settings');
 
-export function foldSettingsPatch(settings: { name?: string; baseCurrency?: string }): { table: number; fields: ReadonlyMap<number, FieldValue> } {
+export function foldSettingsPatch(settings: { name?: string; baseCurrency?: string; server?: string }): { table: number; fields: ReadonlyMap<number, FieldValue> } {
   const fields = new Map<number, FieldValue>();
   if (settings.name !== undefined) fields.set(FOLD_SETTINGS_FIELDS.name, settings.name);
   if (settings.baseCurrency !== undefined) fields.set(FOLD_SETTINGS_FIELDS.baseCurrency, settings.baseCurrency);
+  if (settings.server !== undefined) fields.set(FOLD_SETTINGS_FIELDS.server, settings.server);
   return { table: SETTINGS_TABLE, fields };
 }
