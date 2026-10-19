@@ -62,9 +62,10 @@ export class SecretKey {
   }
 }
 
-export function generateSecretKey(rng: Rng): SecretKey {
+/** A fresh Secret Key. With `accountId`, a new secret for an existing account (recovery, rotation): the account does not change. */
+export function generateSecretKey(rng: Rng, accountId?: string): SecretKey {
   const bytes = rng.bytes(ID_BYTES + SECRET_BYTES);
-  const accountId = encodeBits(bytes.subarray(0, ID_BYTES), ID_CHARS);
+  accountId ??= encodeBits(bytes.subarray(0, ID_BYTES), ID_CHARS);
   const secret = SecretBuf.take(new TextEncoder().encode(encodeBits(bytes.subarray(ID_BYTES), SECRET_CHARS)));
   if (bytes instanceof Uint8Array) bytes.fill(0);
   return new SecretKey(accountId, secret);

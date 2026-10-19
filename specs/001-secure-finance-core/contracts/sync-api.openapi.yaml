@@ -124,6 +124,41 @@ paths:
             schema: { $ref: '#/components/schemas/CredentialRotation' }
       responses:
         '204': { description: Rotated; all other sessions are invalidated }
+  /accounts/me/recovery:
+    put:
+      tags: [auth]
+      summary: Set or replace the Recovery Key credential (FR-009)
+      description: |
+        A second SRP verifier, with its own salt, and the key set's private keys wrapped under a key only the Recovery Key can
+        derive. The service cannot open the wrapped keys. Setting it again replaces it. A password change leaves it in place.
+      requestBody:
+        required: true
+        content:
+          application/cbor:
+            schema: { $ref: '#/components/schemas/RecoveryCredential' }
+      responses:
+        '204': { description: Stored }
+    get:
+      tags: [auth]
+      summary: Fetch the wrapped keys and the key set (used after signing in with the Recovery Key)
+      responses:
+        '200':
+          description: Recovery material
+          content:
+            application/cbor:
+              schema:
+                type: object
+                required: [uuid, wrapped, keyset]
+                properties:
+                  uuid: { $ref: '#/components/schemas/Bytes16' }
+                  wrapped: { type: string, contentEncoding: base64url }
+                  keyset: { $ref: '#/components/schemas/KeySetBlob' }
+        '404': { description: No Recovery Key is set }
+    delete:
+      tags: [auth]
+      summary: Remove the Recovery Key credential
+      responses:
+        '204': { description: Removed }
   /accounts/me:
     delete:
       tags: [auth]
@@ -574,6 +609,12 @@ components:
       properties:
         email: { type: string, format: email }
         device_id: { $ref: '#/components/schemas/Bytes16' }
+        credential:
+          type: string
+          enum: [recovery]
+          description: |
+            Sign in with the Recovery Key credential instead of the password. An account without one answers exactly as an
+            unknown address does.
     HelloReply:
       type: object
       required: [account_id, auth_salt, kdf, session_id]
@@ -611,6 +652,14 @@ components:
             64 bytes. The account's Ed25519 signature over its public key bundle:
             "cashfold.bundle.v1" || len16(account_id) || account_id || enc.pk || sig.pk. Checked against the key set at
             registration and handed out unchanged with the bundle.
+    RecoveryCredential:
+      type: object
+      required: [uuid, auth_salt, srp_verifier, wrapped]
+      properties:
+        uuid: { $ref: '#/components/schemas/Bytes16' }
+        auth_salt: { $ref: '#/components/schemas/Bytes16' }
+        srp_verifier: { type: string, contentEncoding: base64url, description: 512 bytes }
+        wrapped: { type: string, contentEncoding: base64url, description: AES-256-GCM of the two private keys under RK_enc }
     CredentialRotation:
       type: object
       required: [auth_salt, kdf, srp_verifier, keyset]

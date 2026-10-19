@@ -33,6 +33,15 @@ export interface AccountRow {
 
 export type NewAccount = Omit<AccountRow, 'failCount' | 'lockedUntilMs' | 'emailVerifiedAtMs' | 'createdAtMs' | 'bundleSig'> & { readonly createdAtMs: number; readonly bundleSig?: Bytes | null };
 
+/** The optional second way into an account (ARCH 6.8): a verifier for the Recovery Key and the key set's private keys wrapped under it. */
+export interface RecoveryRow {
+  /** Names the credential; derived from the Recovery Key, reveals nothing. */
+  readonly uuid: Bytes;
+  readonly authSalt: Bytes;
+  readonly srpVerifier: Bytes;
+  readonly wrapped: Bytes;
+}
+
 export interface MemberRow {
   /** 1 owner, 2 editor, 3 viewer. */
   readonly role: number;
@@ -103,6 +112,12 @@ export interface Store {
     /** Removes the account, its devices and grants, and records a tombstone so devices learn of it (410). */
     remove(accountId: string, atMs: number): Promise<void>;
     isTombstoned(accountId: string): Promise<boolean>;
+  };
+  /** At most one recovery credential per account; it goes with the account. */
+  readonly recovery: {
+    get(accountId: string): Promise<RecoveryRow | undefined>;
+    put(accountId: string, row: RecoveryRow): Promise<void>;
+    remove(accountId: string): Promise<void>;
   };
   readonly devices: {
     add(row: DeviceRow): Promise<'ok' | 'exists'>;

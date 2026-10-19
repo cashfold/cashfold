@@ -3,6 +3,7 @@ import pg from 'pg';
 import { afterAll, beforeAll } from 'vitest';
 import { createPgStore } from '../src/store/pg-store.js';
 import { describeDeleteAccount } from './support/delete-account-suite.js';
+import { describeRecovery } from './support/recovery-suite.js';
 import { describeSharing } from './support/sharing-suite.js';
 
 // The same sharing scenarios as the unit suite, against a real PostgreSQL.
@@ -27,3 +28,4 @@ const freshStore = async () => {
 };
 describeSharing('postgresql', freshStore);
 describeDeleteAccount('postgresql', freshStore);
+describeRecovery('postgresql', freshStore);

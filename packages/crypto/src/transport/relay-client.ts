@@ -141,8 +141,8 @@ export function createRelayClient({ send, pake, aead, hkdf, nowMs = Date.now }: 
      * SRP-6a sign-in. `deriveX` gets the salt and key-derivation parameters the server sent (already checked against the
      * floors) and returns this device's SRP-x; it is wiped here as soon as the exchange needs it no more.
      */
-    async signIn({ email, deviceId, deriveX }: { email: string; deviceId: Uint8Array; deriveX: (authSalt: Uint8Array, kdf: KdfWire) => Promise<SecretBuf> }): Promise<SignedIn> {
-      const hello = (await plain('POST', '/auth/hello', { email, device_id: deviceId })).body;
+    async signIn({ email, deviceId, deriveX, credential }: { email: string; deviceId: Uint8Array; credential?: 'recovery'; deriveX: (authSalt: Uint8Array, kdf: KdfWire) => Promise<SecretBuf> }): Promise<SignedIn> {
+      const hello = (await plain('POST', '/auth/hello', { email, device_id: deviceId, ...(credential !== undefined && { credential }) })).body;
       const h = hello instanceof Map ? (hello as Map<string, unknown>) : undefined;
       const [accountId, authSalt, kdf, sessionId] = [h?.get('account_id'), asBytes(h?.get('auth_salt')), readKdf(h?.get('kdf')), asBytes(h?.get('session_id'))];
       if (typeof accountId !== 'string' || authSalt?.length !== 16 || kdf === undefined || sessionId?.length !== 16) throw new RelayError('protocol');

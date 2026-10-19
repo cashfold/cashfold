@@ -34,6 +34,8 @@ export interface KeySetService {
    * The same keys sealed under a different AUK (password or Secret Key change, recovery). Public keys and uuid stay, so
    * grants and bundles already issued remain valid. The caller wipes the returned private keys.
    */
+  /** Seals already-open keys under `to`, keeping the identity of `keySet` (recovery, where the old AUK is gone). */
+  reseal(args: { keySet: KeySet; keys: KeySetPrivate; to: SecretBuf; kdf: KdfRecord }): Promise<KeySet>;
   rewrap(args: { keySet: KeySet; from: SecretBuf; to: SecretBuf; kdf: KdfRecord }): Promise<{ keySet: KeySet } & KeySetPrivate>;
 }
 
@@ -74,13 +76,15 @@ export function createKeySetService({ aead, signer, rng }: { aead: Aead; signer:
       }
     },
 
+    async reseal({ keySet, keys, to, kdf }) {
+      if (!sameBytes(x25519PublicKey(keys.encSk), keySet.enc.pk) || !sameBytes(await signer.publicKey(keys.sigSk), keySet.sig.pk)) throw new KeySetError('public_key_mismatch');
+      return { ...keySet, kdf, enc: { ...keySet.enc, sk_ct: await seal(to, keySet.uuid, 'enc', keys.encSk) }, sig: { ...keySet.sig, sk_ct: await seal(to, keySet.uuid, 'sig', keys.sigSk) } };
+    },
+
     async rewrap({ keySet, from, to, kdf }) {
       const keys = await service.open(keySet, from);
       try {
-        return {
-          keySet: { ...keySet, kdf, enc: { ...keySet.enc, sk_ct: await seal(to, keySet.uuid, 'enc', keys.encSk) }, sig: { ...keySet.sig, sk_ct: await seal(to, keySet.uuid, 'sig', keys.sigSk) } },
-          ...keys,
-        };
+        return { keySet: await service.reseal({ keySet, keys, to, kdf }), ...keys };
       } catch (e) {
         keys.encSk.wipe();
         keys.sigSk.wipe();

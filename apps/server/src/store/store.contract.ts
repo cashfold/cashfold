@@ -80,6 +80,30 @@ export function describeStoreContract(label: string, make: () => Promise<Store>)
       });
     });
 
+    describe('recovery credential', () => {
+      const row = { uuid: b(7), authSalt: b(8), srpVerifier: b(9, 512), wrapped: b(10, 92) };
+      const same = (r: Awaited<ReturnType<Store['recovery']['get']>>) => ({ uuid: Buffer.from(r!.uuid), authSalt: Buffer.from(r!.authSalt), srpVerifier: Buffer.from(r!.srpVerifier), wrapped: Buffer.from(r!.wrapped) });
+
+      it('stores one per account, replaces it, removes it, and drops it with the account', async () => {
+        await store.accounts.create(account('ABCDEF', 1));
+        expect(await store.recovery.get('ABCDEF')).toBeUndefined();
+        await store.recovery.put('ABCDEF', row);
+        expect(same(await store.recovery.get('ABCDEF'))).toEqual(row);
+        await store.recovery.put('ABCDEF', { ...row, uuid: b(1), wrapped: b(2, 92) });
+        expect(same(await store.recovery.get('ABCDEF'))).toMatchObject({ uuid: b(1), wrapped: b(2, 92) });
+        await store.recovery.remove('ABCDEF');
+        expect(await store.recovery.get('ABCDEF')).toBeUndefined();
+        await store.recovery.put('ABCDEF', row);
+        await store.accounts.remove('ABCDEF', 5);
+        expect(await store.recovery.get('ABCDEF')).toBeUndefined();
+      });
+
+      it('does not store one for an account that does not exist', async () => {
+        await store.recovery.put('NOPE12', row);
+        expect(await store.recovery.get('NOPE12')).toBeUndefined();
+      });
+    });
+
     describe('devices', () => {
       beforeEach(async () => {
         await store.accounts.create(account('ABCDEF', 1));

@@ -111,4 +111,13 @@ describe('parsing', () => {
   it('never echoes the rejected text in the error', () => {
     try { parseSecretKey('C1-SECRETSECRET-LEAK'); } catch (e) { expect(String((e as Error).message)).not.toMatch(/SECRETSECRET|LEAK/); }
   });
+
+  it('can make a new secret for an existing account, keeping its id', () => {
+    const rng = { bytes: (n: number) => crypto.getRandomValues(new Uint8Array(n)) };
+    const a = generateSecretKey(rng, 'ABCDEF');
+    const b = generateSecretKey(rng, 'ABCDEF');
+    expect(a.accountId).toBe('ABCDEF');
+    expect(a.format().startsWith('C1-ABCDEF-')).toBe(true);
+    expect(a.format()).not.toBe(b.format());
+  });
 });

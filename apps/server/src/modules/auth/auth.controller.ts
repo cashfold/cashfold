@@ -11,7 +11,7 @@ export class AuthController {
   @Public() @Post('hello') @HttpCode(200)
   async hello(@Payload() raw: unknown, @ClientIp() ip: string): Promise<unknown> {
     const b = parseBody(raw, HelloBody);
-    const r = await this.auth.hello({ email: b.email, deviceId: b.device_id, ip });
+    const r = await this.auth.hello({ email: b.email, deviceId: b.device_id, ip, credential: b.credential });
     return { account_id: r.accountId, auth_salt: r.authSalt, kdf: kdfToWire(r.kdf), session_id: r.sessionId };
   }
 

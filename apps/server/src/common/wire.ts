@@ -29,7 +29,8 @@ export const kdfToWire = (k: KdfRecord): Record<string, unknown> =>
     ? { kdf: k.kdf, m_kib: BigInt(k.mKib ?? 0), t: BigInt(k.t ?? 0), p: BigInt(k.p ?? 0), enc_salt: k.encSalt }
     : { kdf: k.kdf, iter: BigInt(k.iter ?? 0), enc_salt: k.encSalt };
 
-export const HelloBody = textMap({ email, device_id: uuid16 });
+export const HelloBody = textMap({ email, device_id: uuid16, credential: z.literal('recovery').optional() });
+export const RecoveryBody = textMap({ uuid: uuid16, auth_salt: uuid16, srp_verifier: bytes(512), wrapped: anyBytes.refine((b) => b.length >= 28 && b.length <= 256) });
 export const ProofABody = textMap({ session_id: uuid16, A: bytes(512) });
 export const ProofM1Body = textMap({ session_id: uuid16, M1: bytes(32) });
 

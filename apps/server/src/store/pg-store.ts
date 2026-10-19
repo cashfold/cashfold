@@ -117,6 +117,22 @@ export async function createPgStore(databaseUrl: string, options: { migrations?:
         return (await q('SELECT 1 FROM tombstone_account WHERE account_id = $1', [id])).length > 0;
       },
     },
+    recovery: {
+      async get(id) {
+        const r = await q('SELECT * FROM account_recovery WHERE account_id = $1', [id]);
+        return r[0] === undefined ? undefined : { uuid: r[0]['uuid'] as Buffer, authSalt: r[0]['auth_salt'] as Buffer, srpVerifier: r[0]['srp_v'] as Buffer, wrapped: r[0]['wrapped'] as Buffer };
+      },
+      async put(id, row) {
+        await q(
+          `INSERT INTO account_recovery(account_id, uuid, auth_salt, srp_v, wrapped) SELECT $1,$2,$3,$4,$5 WHERE EXISTS (SELECT 1 FROM account WHERE account_id = $1)
+           ON CONFLICT (account_id) DO UPDATE SET uuid = EXCLUDED.uuid, auth_salt = EXCLUDED.auth_salt, srp_v = EXCLUDED.srp_v, wrapped = EXCLUDED.wrapped`,
+          [id, buf(row.uuid), buf(row.authSalt), buf(row.srpVerifier), buf(row.wrapped)],
+        );
+      },
+      async remove(id) {
+        await q('DELETE FROM account_recovery WHERE account_id = $1', [id]);
+      },
+    },
     devices: {
       async add(d) {
         try {

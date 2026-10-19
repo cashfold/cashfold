@@ -3,7 +3,7 @@ import type { FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { Auth, ClientIp, ALLOW_UNREGISTERED_DEVICE, Payload, Public, type Caller } from '../../common/http.js';
 import { T } from '../../common/tokens.js';
-import { kdfToWire, CredentialRotationBody, DiscoverableBody, parseBody, parseValue, RegistrationBody, textMap, VerifyEmailBody } from '../../common/wire.js';
+import { kdfToWire, CredentialRotationBody, DiscoverableBody, parseBody, parseValue, RecoveryBody, RegistrationBody, textMap, VerifyEmailBody } from '../../common/wire.js';
 import type { AccountsService } from './accounts.service.js';
 import { SetMetadata, HttpException } from '@nestjs/common';
 
@@ -50,6 +50,23 @@ export class AccountsController {
   async rotate(@Auth() caller: Caller, @Payload() inner: unknown): Promise<void> {
     const b = parseValue(inner, CredentialRotationBody);
     await this.accounts.rotate(caller.accountId, Buffer.from(caller.sessionId).toString('hex'), { authSalt: b.auth_salt, kdf: b.kdf, srpVerifier: b.srp_verifier, keyset: b.keyset });
+  }
+
+  @Put('me/recovery') @HttpCode(204)
+  async setRecovery(@Auth() caller: Caller, @Payload() inner: unknown): Promise<void> {
+    const b = parseValue(inner, RecoveryBody);
+    await this.accounts.setRecovery(caller.accountId, { uuid: b.uuid, authSalt: b.auth_salt, srpVerifier: b.srp_verifier, wrapped: b.wrapped });
+  }
+
+  @Get('me/recovery')
+  async recovery(@Auth() caller: Caller): Promise<unknown> {
+    const r = await this.accounts.recovery(caller.accountId);
+    return r === undefined ? fail(404, 'not_found') : { uuid: r.uuid, wrapped: r.wrapped, keyset: r.keyset };
+  }
+
+  @Delete('me/recovery') @HttpCode(204)
+  async clearRecovery(@Auth() caller: Caller): Promise<void> {
+    await this.accounts.clearRecovery(caller.accountId);
   }
 
   @Put('me/discoverable') @HttpCode(204)

@@ -51,25 +51,29 @@ export function createAuthService(deps: AuthDeps) {
   };
 
   return {
-    async hello({ email, deviceId, ip }: { email: string; deviceId: Uint8Array; ip: string }): Promise<HelloReply> {
+    async hello({ email, deviceId, ip, credential }: { email: string; deviceId: Uint8Array; ip: string; credential?: 'recovery' | undefined }): Promise<HelloReply> {
       const mac = emailMac(secret, email);
       limit(`hello:ip:${ip}`, 30, 60_000);
       limit(`hello:email:${hex(mac)}`, 10, 60_000);
 
-      const real = await store.accounts.byEmailHmac(mac);
-      const stand = fakeAccount(secret, email, deps.defaultKdf);
+      const account = await store.accounts.byEmailHmac(mac);
+      // The Recovery Key is a second credential for the same account. An account without one answers exactly as an unknown
+      // address does, so asking reveals nothing about whether a Recovery Key was ever set up.
+      const recovery = credential === 'recovery' && account !== undefined ? await store.recovery.get(account.accountId) : undefined;
+      const real = credential === 'recovery' ? (recovery === undefined ? undefined : account) : account;
+      const stand = fakeAccount(secret, credential === 'recovery' ? `recovery:${email}` : email, deps.defaultKdf);
       const accountId = real?.accountId ?? stand.accountId;
-      const subject = `acct:${real === undefined ? hex(mac) : real.accountId}`;
+      const subject = `acct:${account === undefined ? hex(mac) : account.accountId}`;
       const wait = failures.waitMs(subject);
       if (wait > 0) throw new AuthError('rate_limited', Math.ceil(wait / 1000));
 
       const sessionId = randomBytes(16);
       const kdf: KdfRecord = real?.kdf ?? { ...stand.kdf, encSalt: stand.encSalt };
       sessions.startHandshake(hex(sessionId), {
-        stage: 'salt_sent', expiresAt: clock.now() + HANDSHAKE_MS, accountId, real: real !== undefined, authSalt: real?.authSalt ?? stand.authSalt,
-        deviceId, subject, ip, verifier: real?.srpVerifier ?? srp.verifierFrom(stand.verifierSeed),
+        stage: 'salt_sent', expiresAt: clock.now() + HANDSHAKE_MS, accountId, real: real !== undefined, authSalt: recovery?.authSalt ?? real?.authSalt ?? stand.authSalt,
+        deviceId, subject, ip, verifier: recovery?.srpVerifier ?? real?.srpVerifier ?? srp.verifierFrom(stand.verifierSeed),
       });
-      return { accountId, authSalt: real?.authSalt ?? stand.authSalt, kdf, sessionId };
+      return { accountId, authSalt: recovery?.authSalt ?? real?.authSalt ?? stand.authSalt, kdf, sessionId };
     },
 
     async proofA({ sessionId, A, ip }: { sessionId: Uint8Array; A: Uint8Array; ip: string }): Promise<{ B: Uint8Array }> {

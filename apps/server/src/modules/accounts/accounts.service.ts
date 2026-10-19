@@ -82,6 +82,20 @@ export function createAccountsService(deps: {
       sessions.endAll(accountId, undefined, currentSession);
     },
 
+    /** The Recovery Key credential: a second verifier and the wrapped keys, replaced as a whole. */
+    async setRecovery(accountId: string, row: { uuid: Uint8Array; authSalt: Uint8Array; srpVerifier: Uint8Array; wrapped: Uint8Array }): Promise<void> {
+      await store.recovery.put(accountId, row);
+    },
+
+    async recovery(accountId: string) {
+      const [r, a] = await Promise.all([store.recovery.get(accountId), store.accounts.byId(accountId)]);
+      return r === undefined || a === undefined ? undefined : { uuid: r.uuid, wrapped: r.wrapped, keyset: a.keyset };
+    },
+
+    async clearRecovery(accountId: string): Promise<void> {
+      await store.recovery.remove(accountId);
+    },
+
     async setDiscoverable(accountId: string, value: boolean): Promise<void> {
       await store.accounts.setDiscoverable(accountId, value);
     },

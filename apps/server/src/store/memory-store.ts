@@ -1,4 +1,4 @@
-import type { AccountRow, Bytes, DeviceRow, OpRow, PushOutcome, RateTableRow, SnapshotRow, Store, StoredOp } from './store.js';
+import type { AccountRow, Bytes, DeviceRow, OpRow, PushOutcome, RecoveryRow, RateTableRow, SnapshotRow, Store, StoredOp } from './store.js';
 
 const hex = (b: Bytes): string => Buffer.from(b).toString('hex');
 
@@ -19,6 +19,7 @@ interface FoldState {
 /** A complete in-memory store. Same behaviour as PostgreSQL, checked by the shared contract tests. */
 export function createMemoryStore(): Store {
   const accounts = new Map<string, AccountRow>();
+  const recoveries = new Map<string, RecoveryRow>();
   const byEmail = new Map<string, string>();
   const tombstones = new Set<string>();
   const devices = new Map<string, DeviceRow>();
@@ -70,6 +71,7 @@ export function createMemoryStore(): Store {
         const a = accounts.get(id);
         if (a === undefined) return;
         accounts.delete(id);
+        recoveries.delete(id);
         byEmail.delete(hex(a.emailHmac));
         for (const [k, d] of devices) if (d.accountId === id) devices.delete(k);
         for (const f of folds.values()) f.members.delete(id);
@@ -78,6 +80,17 @@ export function createMemoryStore(): Store {
       },
       async isTombstoned(id) {
         return tombstones.has(id);
+      },
+    },
+    recovery: {
+      async get(id) {
+        return recoveries.get(id);
+      },
+      async put(id, row) {
+        if (accounts.has(id)) recoveries.set(id, row);
+      },
+      async remove(id) {
+        recoveries.delete(id);
       },
     },
     devices: {
@@ -255,6 +268,7 @@ export function createMemoryStore(): Store {
     },
     async close() {
       accounts.clear();
+      recoveries.clear();
     },
   };
 }

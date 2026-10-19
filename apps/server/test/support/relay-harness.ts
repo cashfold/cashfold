@@ -105,10 +105,10 @@ export async function register(h: Harness, over: { email?: string; accountId?: s
   return { accountId, email, x, device, authSalt, ...(keys !== undefined && { keys }) };
 }
 
-export async function signIn(h: Harness, a: TestAccount, device: TestDevice = a.device, x: Buffer = a.x): Promise<SignedIn> {
+export async function signIn(h: Harness, a: TestAccount, device: TestDevice = a.device, x: Buffer = a.x, credential?: 'recovery'): Promise<SignedIn> {
   const pake = await testPake();
   const client = createRelayClient({ send: h.send, pake, aead: createAesGcm(), hkdf: createHkdf(), nowMs: () => h.clock.now });
-  return client.signIn({ email: a.email, deviceId: device.devId, deriveX: async () => SecretBuf.from(x) });
+  return client.signIn({ email: a.email, deviceId: device.devId, deriveX: async () => SecretBuf.from(x), ...(credential !== undefined && { credential }) });
 }
 
 export async function signedOp(foldId: Uint8Array, device: TestDevice, seq: bigint, over: { blob?: Uint8Array; opId?: Uint8Array; key?: SecretBuf } = {}): Promise<Uint8Array> {

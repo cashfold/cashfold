@@ -92,4 +92,14 @@ describe('personal key set', () => {
     await expect(service.open(again.keySet, auk())).rejects.toBeInstanceOf(AeadError);
     await expect(service.rewrap({ keySet: made.keySet, from: next, to: auk(), kdf })).rejects.toBeInstanceOf(AeadError);
   });
+
+  it('reseals open keys under a new AUK without the old one, and refuses keys that are not this key set\'s', async () => {
+    const made = await service.create({ auk: auk(), kdf });
+    const next = SecretBuf.from(new Uint8Array(32).fill(5));
+    const sealed = await service.reseal({ keySet: made.keySet, keys: made, to: next, kdf });
+    expect(toHex(sealed.uuid)).toBe(toHex(made.keySet.uuid));
+    expect(toHex((await service.open(sealed, next)).sigSk.use((b) => b))).toBe(toHex(made.sigSk.use((b) => b)));
+    const other = await service.create({ auk: auk(), kdf });
+    await expect(service.reseal({ keySet: made.keySet, keys: other, to: next, kdf })).rejects.toBeInstanceOf(KeySetError);
+  });
 });
