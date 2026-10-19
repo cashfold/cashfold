@@ -543,6 +543,10 @@ paths:
     put:
       tags: [attachments]
       summary: Upload one encrypted chunk (≤ 64 KiB plaintext, padded)
+      description: |
+        Owners and editors only. The body is the sealed frame as a CBOR byte string inside the sealed request frame. A chunk is
+        written once: the same bytes again are accepted, different bytes at the same place are refused with 409. Index 0–4095.
+        A Fold holds at most 16,384 chunks; beyond that, 413.
       parameters:
         - $ref: '#/components/parameters/FoldId'
         - { name: attId, in: path, required: true, schema: { $ref: '#/components/schemas/Bytes16' } }
@@ -554,6 +558,9 @@ paths:
             schema: { type: string, format: binary }
       responses:
         '204': { description: Stored }
+        '403': { description: Not an owner or editor of the Fold }
+        '409': { description: A different chunk is already stored here }
+        '413': { description: The Fold's chunk quota is used up }
     get:
       tags: [attachments]
       summary: Download one encrypted chunk

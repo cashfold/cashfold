@@ -2,6 +2,7 @@ import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testconta
 import pg from 'pg';
 import { afterAll, beforeAll } from 'vitest';
 import { createPgStore } from '../src/store/pg-store.js';
+import { describeAttachments } from './support/attachments-suite.js';
 import { describeDeleteAccount } from './support/delete-account-suite.js';
 import { describeRecovery } from './support/recovery-suite.js';
 import { describeSharing } from './support/sharing-suite.js';
@@ -29,3 +30,4 @@ const freshStore = async () => {
 describeSharing('postgresql', freshStore);
 describeDeleteAccount('postgresql', freshStore);
 describeRecovery('postgresql', freshStore);
+describeAttachments('postgresql', freshStore);

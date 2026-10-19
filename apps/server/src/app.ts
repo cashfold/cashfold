@@ -10,6 +10,7 @@ import { T } from './common/tokens.js';
 import type { ServerConfig } from './config.js';
 import { AccountsController } from './modules/accounts/accounts.controller.js';
 import { createAccountsService } from './modules/accounts/accounts.service.js';
+import { AttachmentsController } from './modules/attachments/attachments.controller.js';
 import { AuthController } from './modules/auth/auth.controller.js';
 import { createAuthService } from './modules/auth/auth.service.js';
 import { FrameGuard } from './modules/auth/frame.guard.js';
@@ -50,7 +51,7 @@ class RelayModule {
   static register(providers: Array<{ provide: symbol; useValue: unknown }>): DynamicModule {
     return {
       module: RelayModule,
-      controllers: [HealthController, AuthController, AccountsController, DevicesController, FoldsController, MembershipController, RatesController],
+      controllers: [HealthController, AuthController, AccountsController, DevicesController, FoldsController, AttachmentsController, MembershipController, RatesController],
       providers: [
         ...providers,
         FrameGuard,

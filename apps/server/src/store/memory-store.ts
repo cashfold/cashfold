@@ -14,6 +14,7 @@ interface FoldState {
   acks: Map<string, bigint>;
   grants: Map<string, { epoch: number; grant: Uint8Array }>;
   snapshot?: SnapshotRow;
+  chunks: Map<string, Uint8Array>;
 }
 
 /** A complete in-memory store. Same behaviour as PostgreSQL, checked by the shared contract tests. */
@@ -133,7 +134,7 @@ export function createMemoryStore(): Store {
     folds: {
       async create(foldId, owner, atMs) {
         if (fold(foldId) !== undefined) return 'exists';
-        folds.set(hex(foldId), { createdAtMs: atMs, headSeq: 0n, members: new Map([[owner, { role: 1, fromEpoch: 1, removedAtMs: null }]]), log: [], ops: [], byOpId: new Map(), lastSeq: new Map(), acks: new Map(), grants: new Map() });
+        folds.set(hex(foldId), { createdAtMs: atMs, headSeq: 0n, members: new Map([[owner, { role: 1, fromEpoch: 1, removedAtMs: null }]]), log: [], ops: [], byOpId: new Map(), lastSeq: new Map(), acks: new Map(), grants: new Map(), chunks: new Map() });
         return 'ok';
       },
       async list(accountId) {
@@ -256,6 +257,23 @@ export function createMemoryStore(): Store {
         for (const o of f.ops) if (o.serverSeq <= at) f.byOpId.delete(hex(o.opId));
         f.ops = keep;
         return removed;
+      },
+    },
+    attachments: {
+      async putChunk(foldId, attId, index, data) {
+        const f = fold(foldId);
+        if (f === undefined) return 'conflict';
+        const key = `${hex(attId)}:${index}`;
+        const had = f.chunks.get(key);
+        if (had !== undefined) return Buffer.from(had).equals(Buffer.from(data)) ? 'ok' : 'conflict';
+        f.chunks.set(key, Uint8Array.from(data));
+        return 'ok';
+      },
+      async getChunk(foldId, attId, index) {
+        return fold(foldId)?.chunks.get(`${hex(attId)}:${index}`);
+      },
+      async chunkCount(foldId) {
+        return fold(foldId)?.chunks.size ?? 0;
       },
     },
     rates: {

@@ -311,6 +311,35 @@ export function describeStoreContract(label: string, make: () => Promise<Store>)
       });
     });
 
+    describe('attachment pieces', () => {
+      const FOLD = b(40);
+      const ATT = b(41);
+      beforeEach(async () => {
+        await store.accounts.create(account('ABCDEF', 1));
+        await store.folds.create(FOLD, 'ABCDEF', 1);
+      });
+
+      it('stores a piece once, accepts the same bytes again, refuses different ones, and reads it back', async () => {
+        expect(await store.attachments.getChunk(FOLD, ATT, 0)).toBeUndefined();
+        expect(await store.attachments.putChunk(FOLD, ATT, 0, b(7, 300))).toBe('ok');
+        expect(await store.attachments.putChunk(FOLD, ATT, 0, b(7, 300))).toBe('ok');
+        expect(await store.attachments.putChunk(FOLD, ATT, 0, b(8, 300))).toBe('conflict');
+        expect(Buffer.from((await store.attachments.getChunk(FOLD, ATT, 0))!)).toEqual(b(7, 300));
+        expect(await store.attachments.getChunk(FOLD, ATT, 1)).toBeUndefined();
+        expect(await store.attachments.getChunk(FOLD, b(42), 0)).toBeUndefined();
+      });
+
+      it('counts pieces across attachments and drops them with the Fold', async () => {
+        await store.attachments.putChunk(FOLD, ATT, 0, b(1, 50));
+        await store.attachments.putChunk(FOLD, ATT, 1, b(2, 50));
+        await store.attachments.putChunk(FOLD, b(42), 0, b(3, 50));
+        expect(await store.attachments.chunkCount(FOLD)).toBe(3);
+        await store.folds.remove(FOLD);
+        expect(await store.attachments.getChunk(FOLD, ATT, 0)).toBeUndefined();
+        expect(await store.attachments.chunkCount(FOLD)).toBe(0);
+      });
+    });
+
     describe('snapshots and pruning', () => {
       const dev = b(50);
       beforeEach(async () => {

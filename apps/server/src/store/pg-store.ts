@@ -331,6 +331,21 @@ export async function createPgStore(databaseUrl: string, options: { migrations?:
         });
       },
     },
+    attachments: {
+      async putChunk(foldId, attId, index, data) {
+        const made = await q('INSERT INTO attachment_chunk(fold_id, att_id, idx, data) VALUES ($1,$2,$3,$4) ON CONFLICT DO NOTHING RETURNING 1', [buf(foldId), buf(attId), index, buf(data)]);
+        if (made.length > 0) return 'ok';
+        const had = await q('SELECT data FROM attachment_chunk WHERE fold_id = $1 AND att_id = $2 AND idx = $3', [buf(foldId), buf(attId), index]);
+        return had[0] !== undefined && (had[0]['data'] as Buffer).equals(buf(data)) ? 'ok' : 'conflict';
+      },
+      async getChunk(foldId, attId, index) {
+        const r = await q('SELECT data FROM attachment_chunk WHERE fold_id = $1 AND att_id = $2 AND idx = $3', [buf(foldId), buf(attId), index]);
+        return r[0] === undefined ? undefined : (r[0]['data'] as Buffer);
+      },
+      async chunkCount(foldId) {
+        return num((await q('SELECT count(*) AS n FROM attachment_chunk WHERE fold_id = $1', [buf(foldId)]))[0]!['n']);
+      },
+    },
     rates: {
       async put(r: RateTableRow) {
         await q('INSERT INTO rate_table(as_of, base, rates, source) VALUES ($1,$2,$3,$4) ON CONFLICT (as_of) DO NOTHING', [r.asOfMs, r.base, JSON.stringify(r.rates), r.source]);
