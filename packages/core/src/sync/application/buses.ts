@@ -161,7 +161,7 @@ export function createCommandBus(deps: BusDeps): CommandBus {
       const ctx: CommandContext = {
         reader: readerOf(deps.projections),
         async submit(drafts) {
-          const result = await deps.writePath.submitMany(drafts);
+          const result = await deps.writePath.submitMany(drafts, { held: true });
           if (result.ok) applied.push(...result.value);
           return result;
         },
@@ -171,14 +171,18 @@ export function createCommandBus(deps: BusDeps): CommandBus {
       const failure: { result?: Result<R, E> } = {};
       let result: Result<R, E>;
       try {
-        result = await deps.projections.transaction(async () => {
-          const r = await def.handle(command, ctx);
-          if (!r.ok) {
-            failure.result = r;
-            throw new Rollback();
-          }
-          return r;
-        });
+        // Exclusive: nothing else writes between the first step of the command and its commit (a remote op would otherwise open its
+        // transaction inside this one while the command waits on a seal, and the two would commit or roll back as one).
+        result = await deps.writePath.exclusive(() =>
+          deps.projections.transaction(async () => {
+            const r = await def.handle(command, ctx);
+            if (!r.ok) {
+              failure.result = r;
+              throw new Rollback();
+            }
+            return r;
+          }),
+        );
       } catch (e) {
         if (e instanceof Rollback && failure.result !== undefined) return failure.result;
         throw e;

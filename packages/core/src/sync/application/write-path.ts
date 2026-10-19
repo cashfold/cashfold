@@ -68,11 +68,22 @@ export interface WritePathDeps {
   readonly authorise?: (op: WireOp) => Promise<'ok' | 'unauthorised' | 'unknown_signer'>;
 }
 
+export interface SubmitOptions {
+  /** The caller is inside `exclusive`: do not queue behind it (that would wait for the caller itself). */
+  readonly held?: boolean;
+}
+
 export interface WritePath {
   /** Local command -> op: stamp, validate, seal, append and project in one transaction. */
   submit(draft: OpDraft): Promise<Result<Applied, WriteError>>;
   /** Several drafts in one atomic transaction: all are written or none. Stamped in order. */
-  submitMany(drafts: readonly OpDraft[]): Promise<Result<readonly Applied[], WriteError>>;
+  submitMany(drafts: readonly OpDraft[], options?: SubmitOptions): Promise<Result<readonly Applied[], WriteError>>;
+  /**
+   * Runs `fn` with the write path to itself: no remote op, local write or rebuild runs between its first and last step. A command
+   * wraps its whole transaction in this, so a remote op arriving while it waits cannot open a transaction inside the command's and
+   * be committed (or lost) with it. Writes made inside it pass `{ held: true }`.
+   */
+  exclusive<T>(fn: () => Promise<T>): Promise<T>;
   /** Remote op -> verify, decrypt, validate, append and project, through the same code as `submit`. */
   applyRemote(sealed: SealedOp): Promise<Result<RemoteOutcome, never>>;
   /** Replays the op log into empty projections. */
@@ -116,8 +127,10 @@ export function createWritePath(deps: WritePathDeps): WritePath {
   }
 
   return {
-    submitMany: (drafts) =>
-      serial(async () => {
+    exclusive: (fn) => serial(fn),
+
+    submitMany: (drafts, options) =>
+      (options?.held === true ? (fn: () => Promise<Result<readonly Applied[], WriteError>>) => fn() : serial)(async () => {
         const result = await projections.transaction(async (): Promise<Result<{ applied: Applied[]; clocks: Map<Id, Hlc> }, WriteError>> => {
           const next = new Map<Id, Hlc>();
           const applied: Applied[] = [];

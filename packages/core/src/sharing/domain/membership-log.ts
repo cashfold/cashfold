@@ -129,6 +129,7 @@ const ownersAfter = (members: ReadonlyMap<string, Member>): number => [...member
  * the entry's own type.
  */
 export async function applyEntry(state: MembershipState, entry: MembershipEntry, crypto: LogCrypto): Promise<Result<MembershipState, LogError>> {
+  if (!wellFormed(entry)) return fail('invalid_entry', 'The entry is not a log entry');
   if (entry.idx !== state.length) return fail('chain_broken', 'The entry is not the next one in the log');
   if (state.length === 0) return genesis(entry, crypto);
   if (entry.prev.length !== 32 || state.head === undefined || !same(entry.prev, state.head)) return fail('chain_broken', 'The entry does not follow the one before it');
@@ -141,6 +142,25 @@ export async function applyEntry(state: MembershipState, entry: MembershipEntry,
   const rule = await applyRule(state, entry);
   if (!rule.ok) return rule;
   return ok({ ...rule.value, length: state.length + 1, head: await crypto.hash(entry), lastTs: entry.ts });
+}
+
+const isBytes = (v: unknown, length?: number): boolean => v instanceof Uint8Array && (length === undefined || v.length === length);
+const isCount = (v: unknown): boolean => typeof v === 'number' && Number.isSafeInteger(v) && v >= 0;
+const LOG_TYPES: ReadonlySet<string> = new Set(['add_member', 'remove_member', 'leave', 'change_role', 'add_device', 'revoke_device', 'rotate_epoch', 'set_server']);
+
+/**
+ * Whether every field has the kind of value an entry's field has. Entries arrive from the service and from other members; a verifier
+ * that is handed something else must refuse it, not fail on it.
+ */
+function wellFormed(e: MembershipEntry): boolean {
+  if (typeof e !== 'object' || e === null) return false;
+  return (
+    isCount(e.idx) && isBytes(e.prev) && typeof e.type === 'string' && LOG_TYPES.has(e.type) && typeof e.subject === 'string' && typeof e.signer === 'string' &&
+    typeof e.ts === 'number' && Number.isFinite(e.ts) && isBytes(e.sig, 64) &&
+    (e.role === undefined || e.role === 1 || e.role === 2 || e.role === 3) && (e.scope === undefined || e.scope === 'full' || e.scope === 'from_join') &&
+    (e.fromEpoch === undefined || isCount(e.fromEpoch)) && (e.epoch === undefined || isCount(e.epoch)) && (e.server === undefined || typeof e.server === 'string') &&
+    (e.pubkeys === undefined || (typeof e.pubkeys === 'object' && e.pubkeys !== null && isBytes(e.pubkeys.sig) && (e.pubkeys.enc === undefined || isBytes(e.pubkeys.enc))))
+  );
 }
 
 async function genesis(entry: MembershipEntry, crypto: LogCrypto): Promise<Result<MembershipState, LogError>> {
