@@ -1097,5 +1097,22 @@
   "ledger.error.too_large": "That file is too large.",
   "ledger.error.offline": "The service cannot be reached.",
   "ledger.error.unavailable": "The file is not available.",
-  "ledger.error.damaged": "The file has been changed or cut short."
+  "ledger.error.damaged": "The file has been changed or cut short.",
+  "storage.notice.label": "Storage and backups",
+  "storage.refused.local": "Your browser may clear this app's data when it runs short of space, and nothing else holds a copy of yours.",
+  "storage.refused.service": "Your browser may clear this app's data when it runs short of space. Your data is also on the service, so you can sign in again and get it back.",
+  "storage.backup.strong": "Your data is only on this device. Make an encrypted backup so you do not lose it.",
+  "storage.backup.gentle": "A backup keeps your data safe even if you lose access to the service.",
+  "storage.backup.link": "Make a backup",
+  "storage.backup.later": "Remind me in a week",
+  "storage.backup.dismiss": "Not now",
+  "storage.settings.title": "Storage",
+  "storage.settings.kept": "Your browser has agreed to keep this app's data.",
+  "storage.settings.notKept": "Your browser has not agreed to keep this app's data, so it may clear it when space is short.",
+  "storage.settings.unknown": "Your browser cannot say whether it will keep this app's data.",
+  "storage.settings.use": "{used} of {quota} in use.",
+  "storage.settings.ask": "Ask the browser to keep my data",
+  "storage.settings.asked": "The browser was asked again.",
+  "storage.settings.lastBackup": "Last backup: {when}.",
+  "storage.settings.noBackup": "No backup has been made on this device."
 }

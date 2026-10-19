@@ -10,6 +10,7 @@ import { AccountSection } from './AccountSection';
 import { CredentialsSection } from './CredentialsSection';
 import { QuickUnlockSection } from './QuickUnlockSection';
 import { RecoverySection } from './RecoverySection';
+import { StorageSection } from './StorageSection';
 import { SyncSection } from './SyncSection';
 
 const IDLE_MINUTES = [1, 2, 5, 10, 15, 30, 60];
@@ -71,6 +72,8 @@ export function SettingsScreen() {
       </section>
 
       {settings ? <QuickUnlockSection enabled={settings.quickUnlock.enabled} onChange={reload} /> : null}
+
+      <StorageSection />
 
       <SyncSection />
 

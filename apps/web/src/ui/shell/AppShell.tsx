@@ -7,6 +7,7 @@ import { buttonClass } from '../forms/TextField';
 import { useI18n } from '../i18n/I18nProvider';
 import { SyncIndicator } from '../sync/SyncIndicator';
 import { PrivacyCover } from './PrivacyCover';
+import { StorageNotice } from './StorageNotice';
 
 const NAV = [
   ['/dashboard/', 'nav.dashboard'],
@@ -52,6 +53,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           {t('removed.notice')} <Link className="underline" href="/add/">{t('removed.addAgain')}</Link>
         </p>
       ) : null}
+      <StorageNotice />
       {core.covered ? <PrivacyCover /> : null}
       <div className="mx-auto max-w-4xl p-4" inert={core.covered}>{children}</div>
     </>

@@ -219,6 +219,8 @@ export function createAppHandlers(deps: AppHandlerDeps): AppRuntime {
     },
     eraseEverything,
     syncNow: () => void sync?.syncNow().catch(() => undefined),
+    settings: deps.settings,
+    nowMs: deps.nowMs,
   });
 
   const needLabels = (): DeviceLabelPort => {
@@ -389,6 +391,21 @@ export function createAppHandlers(deps: AppHandlerDeps): AppRuntime {
       session.track(result.value.account.srpX);
       startSync({ email: stored.email, accountId: stored.accountId, server: result.value.server, account: result.value.account, publicKeys: result.value.publicKeys }, 'done');
       return { ok: true, value: { server: result.value.server } };
+    },
+
+    /** What the backup reminder needs: whether there is anything to lose, when a backup was last made, and whether the account is on a service. */
+    async 'storage.status'() {
+      const s = open();
+      let hasData = false;
+      for (const fold of await s.directory.list()) {
+        for (const state of (await s.projections.listRecords(fold.id)).values()) {
+          if (state.table === 1 || state.table === 6 || state.table === 7) hasData = true; // an account, a transaction or a transfer
+        }
+        if (hasData) break;
+      }
+      const settings = await deps.settings.load();
+      const stored = await deps.credentials.load();
+      return { hasData, onService: stored?.registration === 'done', lastBackupAtMs: settings.lastBackupAtMs, dismissedAtMs: settings.backupNagDismissedAtMs };
     },
 
     async 'sync.status'() {

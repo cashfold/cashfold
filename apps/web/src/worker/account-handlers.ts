@@ -1,7 +1,7 @@
 import {
   changeCredentials, createBackupService, createFoldCommands, deleteAccount, exportLedgerCsv, migrateToServer, newIdV4, removeRecoveryKey, setRecoveryKey,
   type AccountSecrets, type CredentialChangeCryptoPort, type CredentialStorePort, type DeletableFold, type FoldGrantPort, type Id, type MigrationCryptoPort, type RecoveryCryptoPort, type RegistrationPort,
-  type RelayAuthPort, type Secret, type Session,
+  type RelayAuthPort, type Secret, type Session, type DeviceSettingsPort, parseSettings,
 } from '@cashfold/core';
 import { composeKdf, createAesGcm, createArgon2Kdf, createBackupCrypto, createHkdf, createPbkdf2, SecretBuf, type BackupSecret as CryptoBackupSecret } from '@cashfold/crypto';
 import type { OpenSession } from '../adapters/sqlite-opfs/web-session';
@@ -30,6 +30,8 @@ export interface AccountHandlerDeps {
   /** Erases everything on this device (database, keys, credentials) and locks. */
   readonly eraseEverything: () => Promise<void>;
   readonly syncNow: () => void;
+  readonly settings: DeviceSettingsPort;
+  readonly nowMs: () => number;
 }
 
 const secretFrom = (bytes: unknown): SecretBuf => {
@@ -153,7 +155,10 @@ export function createAccountHandlers(deps: AccountHandlerDeps): Handlers {
       try {
         if (passphrase.length === 0) return { ok: false, error: { code: 'empty_passphrase' } };
         const service = createBackupService({ projections: s.projections, writePath: s.writePath, codec: snapshotCodec, crypto: backupPort });
-        return { ok: true, value: { file: await service.create(args.fold, { kind: 'passphrase', passphrase }) } };
+        const file = await service.create(args.fold, { kind: 'passphrase', passphrase });
+        // The reminder to make a backup rests on this (decideBackupNag).
+        await deps.settings.save(parseSettings({ ...(await deps.settings.load()), lastBackupAtMs: deps.nowMs() }));
+        return { ok: true, value: { file } };
       } finally {
         passphrase.wipe();
       }

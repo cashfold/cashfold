@@ -4,7 +4,7 @@ import { DEFAULT_SETTINGS, parseSettings, toLockPolicy, type DeviceSettings } fr
 
 describe('device settings (FR-006, FR-007)', () => {
   it('start with the documented defaults: 5 minutes idle, 1 minute hidden, quick unlock off', () => {
-    expect(DEFAULT_SETTINGS).toEqual({ autoLockMinutes: 5, hiddenGraceSeconds: 60, quickUnlock: { enabled: false, maxIdleMinutes: 30 }, kitReminderDismissed: false });
+    expect(DEFAULT_SETTINGS).toEqual({ autoLockMinutes: 5, hiddenGraceSeconds: 60, quickUnlock: { enabled: false, maxIdleMinutes: 30 }, kitReminderDismissed: false, lastBackupAtMs: 0, backupNagDismissedAtMs: 0 });
   });
 
   it('turn into the lock controller policy in milliseconds', () => {
@@ -14,12 +14,18 @@ describe('device settings (FR-006, FR-007)', () => {
 
   describe('parseSettings accepts whatever was stored and always returns something safe', () => {
     it('keeps valid values', () => {
-      const s: DeviceSettings = { autoLockMinutes: 15, hiddenGraceSeconds: 30, quickUnlock: { enabled: true, maxIdleMinutes: 10 }, kitReminderDismissed: true };
+      const s: DeviceSettings = { autoLockMinutes: 15, hiddenGraceSeconds: 30, quickUnlock: { enabled: true, maxIdleMinutes: 10 }, kitReminderDismissed: true, lastBackupAtMs: 1_800_000_000_000, backupNagDismissedAtMs: 1_800_000_100_000 };
       expect(parseSettings(s)).toEqual(s);
     });
 
     it('falls back to defaults for missing, wrong-typed or garbage input', () => {
       for (const bad of [undefined, null, 'x', 5, [], {}, { autoLockMinutes: 'soon' }, { quickUnlock: 'yes' }]) expect(parseSettings(bad)).toEqual(DEFAULT_SETTINGS);
+    });
+
+    it('keeps the backup times as whole non-negative times, and ignores anything else', () => {
+      expect(parseSettings({ lastBackupAtMs: -5, backupNagDismissedAtMs: 'yesterday' })).toMatchObject({ lastBackupAtMs: 0, backupNagDismissedAtMs: 0 });
+      expect(parseSettings({ lastBackupAtMs: 1.9e12 + 0.5 }).lastBackupAtMs).toBe(1.9e12);
+      expect(parseSettings({ lastBackupAtMs: Number.NaN }).lastBackupAtMs).toBe(0);
     });
 
     it('clamps out-of-range numbers so a bad value can never disable locking', () => {
@@ -45,7 +51,7 @@ describe('device settings (FR-006, FR-007)', () => {
     });
 
     it('ignores unknown fields instead of carrying them along', () => {
-      expect(Object.keys(parseSettings({ autoLockMinutes: 5, evil: 'x' })).sort()).toEqual(['autoLockMinutes', 'hiddenGraceSeconds', 'kitReminderDismissed', 'quickUnlock']);
+      expect(Object.keys(parseSettings({ autoLockMinutes: 5, evil: 'x' })).sort()).toEqual(['autoLockMinutes', 'backupNagDismissedAtMs', 'hiddenGraceSeconds', 'kitReminderDismissed', 'lastBackupAtMs', 'quickUnlock']);
     });
   });
 });
