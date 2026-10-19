@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { createFakeBus, createFakeLocks } from './fakes';
 import { acquire, type Leadership } from './leader';
-import { channelEndpoint, createRpcClient, RpcError, serveRpc, type Endpoint } from './rpc';
+import { channelEndpoint, createRpcClient, createRpcServer, RpcError, serveRpc, type Endpoint } from './rpc';
 import { createCoreRuntime } from './runtime';
 
 /** A pair of connected in-memory endpoints (a MessageChannel without the browser). */
@@ -191,5 +191,24 @@ describe('core runtime', () => {
     x.postMessage({ rpc: true, to: 'y', from: 'x', body: 2 });
     await new Promise((r) => setTimeout(r, 5));
     expect(got).toEqual([2]);
+  });
+});
+
+describe('a write that cannot be saved because the device is full', () => {
+  it('is reported as storage_full, whatever way the engine words it, and as nothing else', async () => {
+    const { isStorageFull } = await import('./rpc');
+    for (const e of [
+      Object.assign(new Error('SQLITE_FULL: sqlite3 result code 13: database or disk is full'), { resultCode: 13 }),
+      Object.assign(new Error('x'), { name: 'QuotaExceededError' }),
+      new Error('The quota has been exceeded.'),
+      new Error('database or disk is full'),
+    ]) expect(isStorageFull(e), String(e)).toBe(true);
+    for (const e of [new Error('SQLITE_CONSTRAINT'), new TypeError('x'), 'full', null, undefined, { resultCode: 1 }]) expect(isStorageFull(e), String(e)).toBe(false);
+
+    const server = createRpcServer({ save: async () => { throw Object.assign(new Error('SQLITE_FULL: database or disk is full'), { resultCode: 13 }); } });
+    const replies: unknown[] = [];
+    server.handle({ rpc: 'req', id: 1, method: 'save', args: {} }, (r) => replies.push(r));
+    await new Promise((r) => setTimeout(r, 0));
+    expect(replies).toEqual([{ rpc: 'res', id: 1, ok: false, error: { kind: 'RpcError', code: 'storage_full' } }]);
   });
 });

@@ -24,6 +24,8 @@ export interface Core {
   lock(): void;
   /** Marks the app unlocked after a successful sign-up or unlock. */
   markUnlocked(): Promise<void>;
+  /** True after a write failed because the device is out of space. Nothing was lost; the person is told to make room. */
+  readonly storageFull: boolean;
   /** True after this device was removed from the account from another device: its data was erased. */
   readonly removed: boolean;
   /** Hears the worker's events (sync status, changes from other devices). Returns the way to stop listening. */
@@ -53,6 +55,7 @@ export function CoreProvider({ children, makeWorker }: { children: ReactNode; ma
   const [blurred, setBlurred] = useState(false);
   const [epoch, setEpoch] = useState(0);
   const [removed, setRemoved] = useState(false);
+  const [storageFull, setStorageFull] = useState(false);
 
   const client = useCallback((): CoreClient => {
     clientRef.current ??= createCoreClient(makeWorker ?? (() => new Worker(new URL('../../worker/core-worker.ts', import.meta.url), { type: 'module', name: 'cashfold-core' })), { timeoutMs: 60_000 });
@@ -143,7 +146,15 @@ export function CoreProvider({ children, makeWorker }: { children: ReactNode; ma
       account,
       covered: hidden || blurred,
       epoch,
-      call: (method, args) => client().call(method, args),
+      storageFull,
+      call: async (method, args) => {
+        try {
+          return await client().call(method, args);
+        } catch (e) {
+          if ((e as { code?: unknown } | null)?.code === 'storage_full') setStorageFull(true);
+          throw e;
+        }
+      },
       refresh,
       lock() {
         setPhase('locked');
@@ -156,7 +167,7 @@ export function CoreProvider({ children, makeWorker }: { children: ReactNode; ma
       removed,
       subscribe: (listener) => client().onEvent(listener),
     }),
-    [phase, account, hidden, blurred, epoch, removed, client, refresh],
+    [phase, account, hidden, blurred, epoch, removed, storageFull, client, refresh],
   );
 
   return <Context.Provider value={value}>{children}</Context.Provider>;

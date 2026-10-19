@@ -10,6 +10,7 @@ import { secondaryButtonClass } from '../forms/TextField';
 import { useI18n } from '../i18n/I18nProvider';
 
 interface Status {
+  recovery?: { reason: 'unreadable' | 'damaged'; incomplete: string[]; rebuilt: number; refetch: number; blocked: number; atMs: number };
   hasData: boolean;
   onService: boolean;
   lastBackupAtMs: number;
@@ -26,6 +27,7 @@ export function StorageNotice() {
   const [persistence, setPersistence] = useState<PersistenceState | undefined>();
   const [status, setStatus] = useState<Status | undefined>();
   const [hidden, setHidden] = useState(false);
+  const [recoveryRead, setRecoveryRead] = useState(false);
   const pathname = usePathname(); // what there is to lose changes as the person works: ask again when they move to another screen
 
   useEffect(() => {
@@ -38,7 +40,19 @@ export function StorageNotice() {
     };
   }, [core, core.phase, core.epoch, pathname]);
 
-  if (core.phase !== 'unlocked' || persistence === undefined || status === undefined || hidden) return null;
+  if (core.phase !== 'unlocked' || persistence === undefined || status === undefined) return null;
+  if (status.recovery !== undefined && !recoveryRead) {
+    return (
+      <aside role="alert" aria-label={t('storage.recovery.label')} data-testid="recovery-notice" className="border-b border-border-strong bg-surface px-4 py-3">
+        <p className="font-medium">{t('storage.recovery.title')}</p>
+        <p className="mt-1">{t(status.onService ? 'storage.recovery.service' : 'storage.recovery.local')}</p>
+        {status.recovery.blocked > 0 ? <p className="mt-1">{t('storage.recovery.blocked', { count: status.recovery.blocked })}</p> : null}
+        {!status.onService ? <p className="mt-1"><Link className="underline" href="/data/">{t('storage.recovery.restore')}</Link></p> : null}
+        <button type="button" className={`${secondaryButtonClass} mt-2`} onClick={() => setRecoveryRead(true)}>{t('storage.recovery.ok')}</button>
+      </aside>
+    );
+  }
+  if (hidden) return null;
   const level: NagLevel = decideBackupNag({ persisted: persistence.persisted, onService: status.onService, hasData: status.hasData, lastBackupAtMs: status.lastBackupAtMs, dismissedAtMs: status.dismissedAtMs, nowMs: Date.now() });
   const refused = persistence.persisted !== true && status.hasData;
   if (level === 'none' && !refused) return null;

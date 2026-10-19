@@ -405,7 +405,12 @@ export function createAppHandlers(deps: AppHandlerDeps): AppRuntime {
       }
       const settings = await deps.settings.load();
       const stored = await deps.credentials.load();
-      return { hasData, onService: stored?.registration === 'done', lastBackupAtMs: settings.lastBackupAtMs, dismissedAtMs: settings.backupNagDismissedAtMs };
+      const r = s.recovery;
+      return {
+        hasData, onService: stored?.registration === 'done', lastBackupAtMs: settings.lastBackupAtMs, dismissedAtMs: settings.backupNagDismissedAtMs,
+        // Told once per session, and never anything that could be read from the file: only what was done.
+        ...(r !== undefined && { recovery: { reason: r.reason, incomplete: r.incomplete, rebuilt: r.rebuilt, refetch: r.refetch.length, blocked: r.blocked.length, atMs: r.atMs } }),
+      };
     },
 
     async 'sync.status'() {

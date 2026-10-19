@@ -98,19 +98,27 @@ export class EncryptedDatabase {
 
   /** Reads all rows. INTEGER columns are bigint; REAL stays number; TEXT string; BLOB Uint8Array. */
   rows(sql: string, bind: readonly Bind[] = []): SqlValue[][] {
+    const out: SqlValue[][] = [];
+    this.forEachRow(sql, bind, (row) => void out.push(row));
+    return out;
+  }
+
+  /**
+   * Reads rows one at a time and hands each to `fn`. If reading fails part-way (a damaged page), the rows already handed over stay
+   * with the caller and the error is thrown: this is how a damaged table is salvaged (recovery.ts).
+   */
+  forEachRow(sql: string, bind: readonly Bind[], fn: (row: SqlValue[]) => void): void {
     const stmt = this.db.prepare(sql);
     try {
       if (bind.length > 0) stmt.bind(bind.map(toBind) as never);
-      const out: SqlValue[][] = [];
       const capi = this.runtime.sqlite3.capi;
       while (stmt.step()) {
         const row: SqlValue[] = [];
         for (let i = 0; i < stmt.columnCount; i++) {
           row.push(capi.sqlite3_column_type(stmt.pointer!, i) === SQLITE_INTEGER ? BigInt(capi.sqlite3_column_int64(stmt.pointer!, i)) : (stmt.get(i) as SqlValue));
         }
-        out.push(row);
+        fn(row);
       }
-      return out;
     } finally {
       (stmt as PreparedStatement).finalize();
     }
@@ -150,11 +158,11 @@ export class EncryptedDatabase {
     if (this.db.isOpen()) this.db.close();
   }
 
-  /** Closes and permanently deletes the database file and its journal. */
+  /** Closes and permanently deletes the database, every older generation left beside it by a recovery, and their journals. */
   destroy(): void {
     this.close();
-    for (const name of [this.file, `${this.file}-journal`]) {
-      if (this.runtime.pool.getFileNames().includes(name)) this.runtime.pool.unlink(name);
-    }
+    const stem = this.file.replace(/(?:\.g\d+)?\.db$/, '');
+    const mine = new RegExp(`^${stem.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?:\\.g\\d+)?\\.db(?:-journal)?$`);
+    for (const name of this.runtime.pool.getFileNames()) if (name === this.file || name === `${this.file}-journal` || mine.test(name)) this.runtime.pool.unlink(name);
   }
 }

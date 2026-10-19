@@ -8,6 +8,7 @@ import { migrate, MigrationError } from './migrate';
 import type { Migration } from './migrations/generated';
 import { loadRuntime, type SqliteRuntime } from './runtime';
 import { createSqliteAttachmentStore } from './attachment-store';
+import { openOrRecover } from './recovery';
 import { createSqliteOpLog, createSqliteProjections } from './sqlite-stores';
 import { createAccount, createSession, parseSettings, unlock, type CredentialStorePort, type DeviceCredentials, type RegistrationResult } from '@cashfold/core';
 import { createAccountCrypto } from '../account-crypto';
@@ -443,6 +444,80 @@ export const scenarios = {
       const tooNew = await throws(() => migrate(db));
       return { first, again, version, tables, failure, afterFailure, tooNew, isMigrationError: tooNew.startsWith(MigrationError.name) };
     });
+  },
+
+  async recovery(ctx: ScenarioContext) {
+    const rt = await runtimeFor(ctx);
+    const schema = async (db: EncryptedDatabase) => {
+      db.exec(`CREATE TABLE IF NOT EXISTS fold(fold_id BLOB PRIMARY KEY, name TEXT NOT NULL, pull_cursor INTEGER NOT NULL DEFAULT 0, last_synced_at INTEGER) STRICT;
+               CREATE TABLE IF NOT EXISTS op_log(id INTEGER PRIMARY KEY, fold_id BLOB NOT NULL, body BLOB NOT NULL) STRICT;
+               CREATE TABLE IF NOT EXISTS txn(id INTEGER PRIMARY KEY, note TEXT NOT NULL) STRICT`);
+    };
+    const make = async (file: string, rows: number) => {
+      const db = EncryptedDatabase.open(rt, file, key(1));
+      await schema(db);
+      db.run("INSERT INTO fold VALUES (?, 'Home', 77, 123)", [new Uint8Array(16).fill(1)]);
+      await db.transaction(() => {
+        for (let i = 0; i < rows; i++) db.run('INSERT INTO op_log VALUES (?, ?, ?)', [i, new Uint8Array(16).fill(1), new Uint8Array(300).fill(i & 255)]);
+        for (let i = 0; i < 50; i++) db.run('INSERT INTO txn VALUES (?, ?)', [i, `derived ${i}`]);
+      });
+      db.close();
+    };
+    const out: Record<string, unknown> = {};
+
+    // 1. a healthy database is opened as it is
+    await make('/ok.db', 300);
+    const healthy = await openOrRecover(rt, '/ok.db', key(1), 1_000, schema);
+    out['healthy'] = { recovered: healthy.report !== undefined, ops: healthy.db.value('SELECT count(*) FROM op_log'), cursor: healthy.db.value('SELECT pull_cursor FROM fold') };
+    healthy.db.close();
+
+    // 2. a page in the middle is damaged: what comes before and after it is kept as far as it can be read
+    await make('/hurt.db', 3000);
+    const before = (await rt.pool.exportFile('/hurt.db')).length;
+    await rawEdit(rt, ctx.dir, '/hurt.db', (sah) => {
+      const at = 4096 + 4096 * 200;
+      sah.write(crypto.getRandomValues(new Uint8Array(512)), { at });
+    });
+    const hurt = await openOrRecover(rt, '/hurt.db', key(1), 2_000, schema);
+    const names = rt.pool.getFileNames();
+    out['damaged'] = {
+      reason: hurt.report?.reason,
+      damagedFile: hurt.report?.damagedFile,
+      newFile: hurt.report?.newFile,
+      usingFile: hurt.db.file,
+      damagedStillThere: names.includes('/hurt.db'),
+      damagedSize: names.includes('/hurt.db') ? (await rt.pool.exportFile('/hurt.db')).length : 0,
+      originalSize: before,
+      folds: hurt.db.value('SELECT count(*) FROM fold'),
+      cursor: hurt.db.value('SELECT pull_cursor FROM fold'),
+      syncedAt: hurt.db.value('SELECT last_synced_at FROM fold'),
+      opsKept: Number(hurt.db.value('SELECT count(*) FROM op_log')),
+      derivedKept: hurt.db.value('SELECT count(*) FROM txn'),
+      copied: hurt.report?.copied,
+      incomplete: hurt.report?.incomplete,
+      usableAfterwards: (() => { hurt.db.run('INSERT INTO op_log VALUES (?, ?, ?)', [999_999, new Uint8Array(16), new Uint8Array(4)]); return hurt.db.value('SELECT count(*) FROM op_log WHERE id = 999999'); })(),
+    };
+    hurt.db.close();
+
+    // 3. the first page is damaged: nothing can be read, the old file is still kept as it was, and the new database starts empty
+    await make('/gone.db', 200);
+    await rawEdit(rt, ctx.dir, '/gone.db', (sah) => sah.write(crypto.getRandomValues(new Uint8Array(200)), { at: 4096 + 16 }));
+    const gone = await openOrRecover(rt, '/gone.db', key(1), 3_000, schema);
+    out['unreadable'] = { reason: gone.report?.reason, file: gone.db.file, ops: gone.db.value('SELECT count(*) FROM op_log'), folds: gone.db.value('SELECT count(*) FROM fold'), oldThere: rt.pool.getFileNames().includes('/gone.db') };
+    gone.db.close();
+
+    // 4. a second time, the newer file is the one set aside, and only that one is kept besides the new database
+    await rawEdit(rt, ctx.dir, '/gone.g2.db', (sah) => sah.write(crypto.getRandomValues(new Uint8Array(200)), { at: 4096 + 16 }));
+    const again = await openOrRecover(rt, '/gone.db', key(1), 4_000, schema);
+    out['second'] = { file: again.db.file, damaged: again.report?.damagedFile };
+    again.db.close();
+    out['kept'] = rt.pool.getFileNames().filter((n) => n.startsWith('/gone')).sort();
+
+    // 5. wiping a device removes every generation
+    const wipe = EncryptedDatabase.open(rt, again.db.file, key(1));
+    wipe.destroy();
+    out['afterWipe'] = rt.pool.getFileNames().filter((n) => n.startsWith('/gone'));
+    return out;
   },
 
   async attachmentStore(ctx: ScenarioContext) {

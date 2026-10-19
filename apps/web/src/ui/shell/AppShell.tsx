@@ -53,6 +53,9 @@ export function AppShell({ children }: { children: ReactNode }) {
           {t('removed.notice')} <Link className="underline" href="/add/">{t('removed.addAgain')}</Link>
         </p>
       ) : null}
+      {core.storageFull ? (
+        <p role="alert" data-testid="storage-full" className="border-b border-border-strong bg-surface px-4 py-3">{t('storage.full')}</p>
+      ) : null}
       <StorageNotice />
       {core.covered ? <PrivacyCover /> : null}
       <div className="mx-auto max-w-4xl p-4" inert={core.covered}>{children}</div>

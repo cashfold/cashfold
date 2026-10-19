@@ -73,6 +73,32 @@ describe('encryption at rest (FR-016)', () => {
   });
 });
 
+describe('a damaged database (FR-072)', () => {
+  it('sets the damaged file aside whole, keeps what can be read, drops what is derived, and starts again from the start of the sync', async () => {
+    const r = await run('recovery');
+    expect(r.healthy).toEqual({ recovered: false, ops: 300n, cursor: 77n });
+
+    const d = r.damaged as Record<string, unknown> & { opsKept: number; incomplete: string[] };
+    expect(d['reason']).toBe('damaged');
+    expect([d['damagedFile'], d['newFile'], d['usingFile']]).toEqual(['/hurt.db', '/hurt.g2.db', '/hurt.g2.db']);
+    expect(d['damagedStillThere']).toBe(true);
+    expect(d['damagedSize']).toBe(d['originalSize']); // the damaged file is kept, as it was
+    expect(d['folds']).toBe(1n);
+    expect(d['cursor']).toBe(0n); // fetch again from the service what can no longer be vouched for
+    expect(d['syncedAt']).toBeNull();
+    expect(d['derivedKept']).toBe(0n); // projections are rebuilt from the operation log, not copied
+    expect(d.opsKept).toBeGreaterThan(0);
+    expect(d.opsKept).toBeLessThan(3000);
+    expect(d.incomplete).toContain('op_log');
+    expect(d['usableAfterwards']).toBe(1n);
+
+    expect(r.unreadable).toEqual({ reason: 'unreadable', file: '/gone.g2.db', ops: 0n, folds: 0n, oldThere: true });
+    expect(r.second).toEqual({ file: '/gone.g3.db', damaged: '/gone.g2.db' });
+    expect(r.kept).toEqual(['/gone.g2.db', '/gone.g3.db']); // the first, older one was dropped; the newest damaged one and the new one remain
+    expect(r.afterWipe).toEqual([]);
+  });
+});
+
 describe('attachment pieces', () => {
   it('keeps sealed pieces, lists the ones not sent yet, and drops them with the Fold', async () => {
     const r = await run('attachmentStore');

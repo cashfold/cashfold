@@ -1114,5 +1114,13 @@
   "storage.settings.ask": "Ask the browser to keep my data",
   "storage.settings.asked": "The browser was asked again.",
   "storage.settings.lastBackup": "Last backup: {when}.",
-  "storage.settings.noBackup": "No backup has been made on this device."
+  "storage.settings.noBackup": "No backup has been made on this device.",
+  "storage.recovery.label": "Damaged data",
+  "storage.recovery.title": "Part of the data on this device could not be read.",
+  "storage.recovery.service": "A copy of the damaged file was kept, and what could be read was saved. Your data is held on the service too, so it is being fetched again and will reappear in a moment.",
+  "storage.recovery.local": "A copy of the damaged file was kept, and what could be read was saved. Changes that were only on this device may be missing.",
+  "storage.recovery.blocked": "{count, plural, one {# Fold holds} other {# Folds hold}} changes that exist nowhere else and could not be opened. {count, plural, one {It was} other {They were}} left as they are.",
+  "storage.recovery.restore": "If you have a backup, restore it here.",
+  "storage.recovery.ok": "I have read this",
+  "storage.full": "This device has run out of space. Your last change was not saved, and nothing that was already saved was touched. Free some space and try again."
 }

@@ -24,7 +24,15 @@ interface Cancel { rpc: 'cancel'; id: number }
 
 const isObject = (m: unknown): m is Record<string, unknown> => typeof m === 'object' && m !== null;
 
+/** A write that failed because the device has no room left. Nothing was saved, and nothing already saved is touched. */
+export const isStorageFull = (e: unknown): boolean => {
+  const name = (e as { name?: unknown } | null)?.name;
+  const message = String((e as { message?: unknown } | null)?.message ?? '');
+  return name === 'QuotaExceededError' || (e as { resultCode?: unknown } | null)?.resultCode === 13 || /SQLITE_FULL|database or disk is full|quota/i.test(message);
+};
+
 function describe(e: unknown): { kind: string; code?: string } {
+  if (isStorageFull(e)) return { kind: 'RpcError', code: 'storage_full' };
   if (e instanceof RpcError) return e.code === undefined ? { kind: e.kind } : { kind: e.kind, code: e.code };
   const code = (e as { code?: unknown } | null)?.code;
   const kind = e instanceof Error ? e.name : 'Error';

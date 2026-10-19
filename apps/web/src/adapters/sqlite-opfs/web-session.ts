@@ -9,9 +9,9 @@ import { createWebMembershipRemote } from '../transport/membership-remote';
 import { createSqliteAttachmentStore, type SqliteAttachmentStore } from './attachment-store';
 import { createSqliteMembershipStore } from './membership-store';
 import type { EncryptedDatabase } from './database';
-import { EncryptedDatabase as Database } from './database';
 import { createFoldKeyring, createSqliteFoldDirectory, type FoldKeyring } from './fold-store';
 import { migrate } from './migrate';
+import { openOrRecover, type RecoveryReport } from './recovery';
 import type { SqliteRuntime } from './runtime';
 import { createSqliteOpLog, createSqliteProjections } from './sqlite-stores';
 import { createSqliteCursors, createSqliteDeviceKeys, createSqliteSyncMarks, type DeviceKeyStore } from './sync-stores';
@@ -57,6 +57,8 @@ export interface OpenSession extends SessionServices {
   readonly sharingCrypto: SharingCrypto;
   /** The sealed pieces of attachments kept on this device. */
   readonly attachmentStore: SqliteAttachmentStore;
+  /** Set when the database on this device was damaged and was rebuilt from what could be read. */
+  readonly recovery: (RecoveryReport & { readonly rebuilt: number; readonly refetch: readonly Id[]; readonly blocked: readonly Id[] }) | undefined;
 }
 
 async function purgeAllFolds(stores: { oplog: OpLogStore; projections: ProjectionStore }, directory: FoldDirectory, now: number): Promise<void> {
@@ -70,9 +72,10 @@ export function createWebSession(options: WebSessionOptions): SessionPort & { cu
   let open: OpenSession | undefined;
 
   async function start(secrets: SessionSecrets): Promise<OpenSession> {
-    const db = Database.open(runtime, options.file ?? '/cashfold.db', secrets.sessionKey as SecretBuf);
+    // A damaged database is not an error the person can fix: it is set aside, a new one is built from what can be read, and the report says what.
+    const opened = await openOrRecover(runtime, options.file ?? '/cashfold.db', secrets.sessionKey as SecretBuf, nowMs(), migrate);
+    const db = opened.db;
     try {
-      await migrate(db);
       const signer = createEd25519Signer();
       const deviceKey = secrets.deviceSigningKey as SecretBuf;
       const devicePk = await signer.publicKey(deviceKey);
@@ -140,9 +143,29 @@ export function createWebSession(options: WebSessionOptions): SessionPort & { cu
         today: () => { const d = new Date(nowMs()); return d.getFullYear() * 10_000 + (d.getMonth() + 1) * 100 + d.getDate(); },
       });
       const queries = createLedgerQueries({ views, clock: { nowMs }, quarantined: (fold) => oplog.listQuarantined(fold) });
+      // Everything derived is rebuilt from the operation log; a Fold whose key was lost is fetched again from the service when nothing of it is
+      // only here, and is left alone (and reported) when it holds changes that exist nowhere else.
+      let recovery: OpenSession['recovery'];
+      if (opened.report !== undefined) {
+        const refetch: Id[] = [];
+        const blocked: Id[] = [];
+        let rebuilt = 0;
+        for (const fold of await directory.list()) {
+          if ((await keyring.epochs(fold.id)).length === 0) {
+            if ((await oplog.listPending(fold.id)).length === 0) {
+              await directory.remove(fold.id);
+              refetch.push(fold.id);
+            } else blocked.push(fold.id);
+            continue;
+          }
+          await writePath.rebuild(fold.id);
+          rebuilt++;
+        }
+        recovery = { ...opened.report, rebuilt, refetch, blocked };
+      }
       open = {
         db, oplog, projections, writePath, events, keyring, commandBus, queryBus, queries, views, directory, foldKeys: keyring, keyImport: keyring, deviceId: secrets.deviceId as Id,
-        cursors, deviceKeys, syncMarks: createSqliteSyncMarks(db), snapshotSealer, membership, sharing, sharingCrypto, attachmentStore,
+        cursors, deviceKeys, syncMarks: createSqliteSyncMarks(db), snapshotSealer, membership, sharing, sharingCrypto, attachmentStore, recovery,
       };
 
       // Deleted records older than 30 days are removed for good (FR-052). Done at every start, which is when a
