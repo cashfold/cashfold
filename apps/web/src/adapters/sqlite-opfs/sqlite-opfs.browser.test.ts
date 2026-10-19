@@ -76,10 +76,10 @@ describe('encryption at rest (FR-016)', () => {
 describe('schema migrations', () => {
   it('applies the ARCH 8.2 schema in order, idempotently, and refuses a newer database', async () => {
     const r = await run('migrations');
-    expect(r.first).toBe(3);
-    expect(r.again).toBe(3);
-    expect(r.version).toBe(3);
-    expect(r.tables).toEqual(expect.arrayContaining(['fold', 'op_log', 'sync_quarantine', 'record_meta', 'field_clock', 'set_add', 'set_removed', 'account', 'txn', 'transfer', 'category', 'payee', 'tag', 'budget', 'goal', 'schedule', 'fx_rate', 'import_batch', 'checkpoint', 'purged_record', 'ledger_entry', 'account_balance']));
+    expect(r.first).toBe(4);
+    expect(r.again).toBe(4);
+    expect(r.version).toBe(4);
+    expect(r.tables).toEqual(expect.arrayContaining(['fold', 'op_log', 'sync_quarantine', 'record_meta', 'field_clock', 'set_add', 'set_removed', 'account', 'txn', 'transfer', 'category', 'payee', 'tag', 'budget', 'goal', 'schedule', 'fx_rate', 'import_batch', 'checkpoint', 'purged_record', 'device', 'ledger_entry', 'account_balance']));
     expect(r.tooNew).toMatch(/^MigrationError/);
   });
 
