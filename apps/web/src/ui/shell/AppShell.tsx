@@ -14,6 +14,7 @@ const NAV = [
   ['/transactions/', 'nav.transactions'],
   ['/transfers/', 'nav.transfers'],
   ['/budgets/', 'nav.budgets'],
+  ['/schedules/', 'nav.schedules'],
   ['/categories/', 'nav.categories'],
   ['/folds/', 'nav.folds'],
   ['/devices/', 'nav.devices'],

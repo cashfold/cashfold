@@ -1,5 +1,5 @@
 import {
-  createAccount, createCategoryCommands, createDeviceManager, createEmailVerification, createFoldCommands, createQuickUnlock, createRefreshRates, createSession, describeFoldDeletion, DEFAULT_LOCK_POLICY, newIdV4, registerExisting, signInOnNewDevice, unlock,
+  createAccount, createCategoryCommands, createMaterialiser, createDeviceManager, createEmailVerification, createFoldCommands, createQuickUnlock, createRefreshRates, createSession, describeFoldDeletion, DEFAULT_LOCK_POLICY, newIdV4, registerExisting, signInOnNewDevice, unlock,
   parseSettings, toLockPolicy, type AccountCryptoPort, type CredentialStorePort, type DeviceLabelPort, type DeviceSettings, type DeviceSettingsPort, type EnrolCryptoPort, type Id, type LockPolicy, type QuickUnlockCryptoPort, type QuickUnlockStorePort,
   type RatesSourcePort, type RegisterExistingCryptoPort, type RegistrationPort, type RelayAuthPort, type Session, type SessionPort, type UnlockCryptoPort,
 } from '@cashfold/core';
@@ -102,6 +102,15 @@ export function createAppHandlers(deps: AppHandlerDeps): AppRuntime {
     await current.commandBus.execute(createCategoryCommands().seedDefaultCategories, { fold }).catch(() => undefined);
   };
 
+  // Occurrences that fell due while this device was away, or arrived with another device's changes, are created now.
+  const materialiser = createMaterialiser({ clock: { nowMs: deps.nowMs } });
+  const materialise = async (fold: Id): Promise<void> => {
+    const current = webSession?.current();
+    if (current === undefined) return;
+    const done = await current.commandBus.execute(materialiser.materialiseDue, { fold, tzOffsetMin: -new Date().getTimezoneOffset() }).catch(() => undefined);
+    if (done?.ok === true && done.value.created > 0) (deps.publish ?? (() => undefined))({ type: 'RemoteChanged', fold });
+  };
+
   const grants = createFoldGrantPort({ keyring: () => webSession?.current()?.keyring, rng: deps.rng });
   const publish = deps.publish ?? (() => undefined);
   if (deps.relayAuth !== undefined) {
@@ -110,6 +119,7 @@ export function createAppHandlers(deps: AppHandlerDeps): AppRuntime {
       ...(deps.ratesSource && { ratesSource: deps.ratesSource }), ...(deps.syncTimers && { timers: deps.syncTimers }),
       publish: (event) => {
         publish(event);
+        if (event.type === 'RemoteChanged' && typeof event['fold'] === 'string') void materialise(event['fold'] as Id);
         // A device that has been removed from the account erases what it holds (FR-010): nothing more syncs, and nothing stays.
         if (event.type === 'DeviceRemoved') void (async () => {
           await deps.credentials.clear().catch(() => undefined);

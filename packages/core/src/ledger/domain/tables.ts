@@ -47,12 +47,26 @@ export const BUDGET_FIELD = {
   sortOrder: 17,
 } as const;
 
+export const SCHEDULE_FIELD = {
+  name: 1, kind: 2, beginLocalDate: 3, endLocalDate: 4, unit: 5, interval: 6, requiresConfirmation: 7, reminderMin: 8, completedUtcMs: 9,
+  direction: 10, accountId: 11, amountMinor: 12, categoryId: 13, payeeId: 14, note: 15, tagIds: 16, placeName: 17, latE7: 18, lonE7: 19,
+  fromAccountId: 20, toAccountId: 21, fromAmountMinor: 22, toAmountMinor: 23,
+} as const;
+
 export const RATE_FIELD = { quote: 1, asOfUtcS: 2, rateE12: 3, source: 4 } as const;
 
 /** Fields that must be written together (merged atomically, FR-032). */
 /** A transfer is one record; these fields merge atomically (FR-045). */
 export const TRANSFER_GROUP: readonly number[] = [
   TRANSFER_FIELD.fromAccountId, TRANSFER_FIELD.toAccountId, TRANSFER_FIELD.fromAmountMinor, TRANSFER_FIELD.toAmountMinor, TRANSFER_FIELD.fxRateId,
+];
+
+/** A scheduled transaction's template: the account, direction and amount are merged together (FR-032). */
+export const SCHEDULE_TXN_GROUP: readonly number[] = [SCHEDULE_FIELD.direction, SCHEDULE_FIELD.accountId, SCHEDULE_FIELD.amountMinor];
+
+/** A scheduled transfer's template: both accounts and both amounts are merged together (FR-045). */
+export const SCHEDULE_TRANSFER_GROUP: readonly number[] = [
+  SCHEDULE_FIELD.fromAccountId, SCHEDULE_FIELD.toAccountId, SCHEDULE_FIELD.fromAmountMinor, SCHEDULE_FIELD.toAmountMinor,
 ];
 
 export const TXN_AMOUNT_GROUP: readonly number[] = [

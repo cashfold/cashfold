@@ -53,7 +53,12 @@ export function timestampOfV7(id: Id): number {
 
 /** Name-based UUIDv5 (RFC 4122, SHA-1). Used only to derive stable identifiers, never for security. */
 export function uuidV5(namespace: Id, name: string): Id {
-  const input = new Uint8Array([...idToBytes(namespace), ...utf8(name)]);
+  return uuidV5Bytes(namespace, new Uint8Array(utf8(name)));
+}
+
+/** The same with a name that is raw bytes, for names that are not text (a counter as 4 big-endian bytes). */
+export function uuidV5Bytes(namespace: Id, name: Uint8Array): Id {
+  const input = new Uint8Array([...idToBytes(namespace), ...name]);
   return stamp(sha1(input).slice(0, 16), 5);
 }
 

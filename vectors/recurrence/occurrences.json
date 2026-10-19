@@ -1,0 +1,216 @@
+{
+  "description": "Occurrence dates anchored to the begin date (ARCH 4.4), computed by an independent Python reference, and occurrence record ids UUIDv5(schedule_id, n as u32 big-endian).",
+  "cases": [
+    {
+      "name": "monthly on the 31st clamps and returns",
+      "begin": 20260131,
+      "unit": "month",
+      "interval": 1,
+      "occurrences": [
+        20260131,
+        20260228,
+        20260331,
+        20260430,
+        20260531,
+        20260630,
+        20260731,
+        20260831,
+        20260930,
+        20261031,
+        20261130,
+        20261231,
+        20270131,
+        20270228
+      ]
+    },
+    {
+      "name": "monthly on the 30th through a leap February",
+      "begin": 20231130,
+      "unit": "month",
+      "interval": 1,
+      "occurrences": [
+        20231130,
+        20231230,
+        20240130,
+        20240229,
+        20240330,
+        20240430
+      ]
+    },
+    {
+      "name": "every 2 months on the 31st",
+      "begin": 20260131,
+      "unit": "month",
+      "interval": 2,
+      "occurrences": [
+        20260131,
+        20260331,
+        20260531,
+        20260731,
+        20260930,
+        20261130,
+        20270131,
+        20270331
+      ]
+    },
+    {
+      "name": "yearly on 29 Feb",
+      "begin": 20240229,
+      "unit": "year",
+      "interval": 1,
+      "occurrences": [
+        20240229,
+        20250228,
+        20260228,
+        20270228,
+        20280229,
+        20290228,
+        20300228,
+        20310228,
+        20320229,
+        20330228
+      ]
+    },
+    {
+      "name": "every 4 years on 29 Feb",
+      "begin": 20240229,
+      "unit": "year",
+      "interval": 4,
+      "occurrences": [
+        20240229,
+        20280229,
+        20320229,
+        20360229
+      ]
+    },
+    {
+      "name": "weekly",
+      "begin": 20261228,
+      "unit": "week",
+      "interval": 1,
+      "occurrences": [
+        20261228,
+        20270104,
+        20270111,
+        20270118,
+        20270125,
+        20270201,
+        20270208,
+        20270215
+      ]
+    },
+    {
+      "name": "every 3 weeks across a year end",
+      "begin": 20261201,
+      "unit": "week",
+      "interval": 3,
+      "occurrences": [
+        20261201,
+        20261222,
+        20270112,
+        20270202,
+        20270223,
+        20270316
+      ]
+    },
+    {
+      "name": "daily across February in a leap year",
+      "begin": 20280225,
+      "unit": "day",
+      "interval": 1,
+      "occurrences": [
+        20280225,
+        20280226,
+        20280227,
+        20280228,
+        20280229,
+        20280301,
+        20280302,
+        20280303
+      ]
+    },
+    {
+      "name": "every 10 days",
+      "begin": 20260101,
+      "unit": "day",
+      "interval": 10,
+      "occurrences": [
+        20260101,
+        20260111,
+        20260121,
+        20260131,
+        20260210,
+        20260220,
+        20260302,
+        20260312
+      ]
+    },
+    {
+      "name": "monthly on the 1st",
+      "begin": 20261201,
+      "unit": "month",
+      "interval": 1,
+      "occurrences": [
+        20261201,
+        20270101,
+        20270201,
+        20270301
+      ]
+    },
+    {
+      "name": "every 13 months on the 31st",
+      "begin": 20260131,
+      "unit": "month",
+      "interval": 13,
+      "occurrences": [
+        20260131,
+        20270228,
+        20280331,
+        20290430,
+        20300531,
+        20310630
+      ]
+    }
+  ],
+  "ids": {
+    "schedule": "00000000-0000-4000-8000-0000000000a1",
+    "vectors": [
+      {
+        "n": 0,
+        "id": "d0927e5e-5547-5f3e-872a-da868eabc22b"
+      },
+      {
+        "n": 1,
+        "id": "61879e91-dc26-540d-a044-9f7b57190c11"
+      },
+      {
+        "n": 2,
+        "id": "a6cd725b-20e0-5613-8da1-7ea768024f27"
+      },
+      {
+        "n": 127,
+        "id": "755c61cf-e07a-5ea1-9710-9507826bb562"
+      },
+      {
+        "n": 128,
+        "id": "31dc3f94-3033-52f7-b339-89316f45322f"
+      },
+      {
+        "n": 255,
+        "id": "c3240103-96a4-591b-9f1a-f1aee50b3c50"
+      },
+      {
+        "n": 256,
+        "id": "6c0ce86a-c2c1-5891-a6bb-6b5fb53ed7e9"
+      },
+      {
+        "n": 65535,
+        "id": "eb80cf51-4169-5f9d-a498-8494d2e2037a"
+      },
+      {
+        "n": 4294967295,
+        "id": "623b7147-1016-58ae-bd34-2921f19ee739"
+      }
+    ]
+  }
+}

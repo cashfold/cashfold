@@ -1,5 +1,5 @@
 import {
-  createAccountCommands, createAdjustBalance, createBudgetCommands, createBudgetQueries, createTransferCommands, createCategoryCommands, createLabelCommands, createRateCommands, createRevalue,
+  createAccountCommands, createAdjustBalance, createBudgetCommands, createBudgetQueries, createMaterialiser, createScheduleCommands, createScheduleQueries, createTransferCommands, createCategoryCommands, createLabelCommands, createRateCommands, createRevalue,
   createTransactionCommands, labelUsage, newIdV4, purgeExpired, type ClockPort, type CommandDef, type DomainError, type Id,
 } from '@cashfold/core';
 import type { OpenSession } from '../adapters/sqlite-opfs/web-session';
@@ -18,6 +18,9 @@ export interface LedgerHandlerDeps {
 
 type AnyCommand = CommandDef<never, unknown, DomainError>;
 
+/** Minutes east of UTC for this device right now. */
+const deviceOffsetMin = (): number => -new Date().getTimezoneOffset();
+
 export function createLedgerHandlers({ open, clock, rng }: LedgerHandlerDeps): Handlers {
   const accounts = createAccountCommands();
   const categories = createCategoryCommands();
@@ -28,6 +31,8 @@ export function createLedgerHandlers({ open, clock, rng }: LedgerHandlerDeps): H
   const { adjustBalance } = createAdjustBalance({ clock });
   const { revalue } = createRevalue({ clock });
   const budgets = createBudgetCommands();
+  const schedules = createScheduleCommands({ clock });
+  const materialiser = createMaterialiser({ clock });
 
   /** Commands whose record is new get an id from the worker unless the caller supplies one. */
   const mint = true;
@@ -68,6 +73,13 @@ export function createLedgerHandlers({ open, clock, rng }: LedgerHandlerDeps): H
     'budgets.create': { def: budgets.createBudget as unknown as AnyCommand, mint },
     'budgets.update': { def: budgets.updateBudget as unknown as AnyCommand },
     'budgets.delete': { def: budgets.deleteBudget as unknown as AnyCommand },
+    'schedules.create': { def: schedules.createSchedule as unknown as AnyCommand, mint },
+    'schedules.update': { def: schedules.updateSchedule as unknown as AnyCommand },
+    'schedules.finish': { def: schedules.finishSchedule as unknown as AnyCommand },
+    'schedules.delete': { def: schedules.deleteSchedule as unknown as AnyCommand },
+    'schedules.confirm': { def: materialiser.confirmOccurrence as unknown as AnyCommand },
+    'schedules.skip': { def: materialiser.skipOccurrence as unknown as AnyCommand },
+    'schedules.materialise': { def: materialiser.materialiseDue as unknown as AnyCommand },
   };
 
   const handlers: Record<string, Handlers[string]> = {};
@@ -75,7 +87,14 @@ export function createLedgerHandlers({ open, clock, rng }: LedgerHandlerDeps): H
     handlers[method] = (async (args: Record<string, unknown>) => {
       const session = open();
       const command = needsId === true && args['id'] === undefined ? { ...args, id: newIdV4((n) => rng.bytes(n)) } : args;
-      return session.commandBus.execute(def as CommandDef<unknown, unknown, DomainError>, command);
+      // Dates are the device's own: a schedule falls due on the day the person's calendar says.
+      const dated = method.startsWith('schedules.') && args['tzOffsetMin'] === undefined ? { ...command, tzOffsetMin: deviceOffsetMin() } : command;
+      const result = await session.commandBus.execute(def as CommandDef<unknown, unknown, DomainError>, dated);
+      // A schedule that is already due when it is created or edited makes its occurrences at once, not at the next visit.
+      if (result.ok && (method === 'schedules.create' || method === 'schedules.update')) {
+        await session.commandBus.execute(materialiser.materialiseDue as unknown as CommandDef<unknown, unknown, DomainError>, { fold: args['fold'], tzOffsetMin: deviceOffsetMin() }).catch(() => undefined);
+      }
+      return result;
     }) as Handlers[string];
   }
 
@@ -112,6 +131,15 @@ export function createLedgerHandlers({ open, clock, rng }: LedgerHandlerDeps): H
     const queries = createBudgetQueries({ views: session.views, clock });
     return session.queryBus.execute(queries.budgetDetail as never, args as never);
   });
+
+  const scheduleQueries = (session: OpenSession) => createScheduleQueries({ views: session.views, clock });
+  const scheduleQuery = <A extends { fold: Id }>(method: string, pick: (q: ReturnType<typeof createScheduleQueries>) => unknown): void =>
+    query(method, async (session, args: A) => session.queryBus.execute(pick(scheduleQueries(session)) as never, { tzOffsetMin: deviceOffsetMin(), ...args } as never));
+  scheduleQuery('schedules.list', (q) => q.listSchedules);
+  scheduleQuery('schedules.upcoming', (q) => q.upcoming);
+  scheduleQuery('schedules.pending', (q) => q.pendingConfirmations);
+  scheduleQuery('schedules.projectedBalance', (q) => q.projectedBalance);
+  scheduleQuery('schedules.reminders', (q) => q.reminders);
 
   /** Re-snapshots every transaction that is not in the Fold's base currency, with the rates known now (FR-041). */
   query('ledger.revalueAll', async (session, args: { fold: Id; asOfUtcS?: number }) => {
