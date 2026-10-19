@@ -342,16 +342,16 @@ The spec covers the whole v1 product, so this list is large. Recommended first r
 - [ ] T187 [P] Add the headless-browser benchmark with 50,000 transactions and enforce dashboard ≤ 2 s and add-transaction ≤ 200 ms (SC-008) in `e2e/bench/dashboard-50k.spec.ts`; assert query plans for indexes in ARCH §8.2 on the reference device profile (Chromium with 4× CPU throttling, recorded in research.md R-12) — Refs: FR-096, SC-008
 - [ ] T188 [P] Implement storage persistence request, eviction warning and backup nagging, and multi-tab behaviour tests, in `apps/web/src/adapters/storage-persistence.ts` and `e2e/multitab.spec.ts` (ARCH §8.1a) — Refs: FR-072
 - [ ] T189 [P] Verify CSP, SRI, service worker asset pinning, `Referrer-Policy`, `Permissions-Policy` against the built export and add an automated header test in `e2e/security-headers.spec.ts` — Refs: Constitution VIII
-- [ ] T190 [P] Extend the SBOM and provenance steps of T009 with the release workflow: reproducible-build check and published asset hashes in `.github/workflows/release.yml` and `scripts/build-verify.mjs` — Refs: Constitution VIII
+- [X] T190 [P] Extend the SBOM and provenance steps of T009 with the release workflow: reproducible-build check and published asset hashes in `.github/workflows/release.yml` and `scripts/build-verify.mjs` — Refs: Constitution VIII
 - [ ] T191 [P] Add fuzzing for the SRP message parsers, CSV importer and membership-log parser, and coverage-guided fuzzing of WASM modules, in `packages/*/src/**/*.fuzz.test.ts` — Refs: Constitution Quality Gates
 - [X] T192 [P] Write the threat model including the JavaScript memory-erasure limit and web code-delivery residual risk in `docs/threat-model.md`, and review the generated protocol/API reference `docs/protocol.md` — Refs: Constitution VIII
 - [X] T193 [P] Write the privacy statement listing exactly the routing metadata visible to the service (FR-012) in `docs/privacy.md` — Refs: FR-012
 - [X] T194 Load-test the relay (push/pull throughput, per-Fold sequence strategy decision) and record the outcome in `docs/adr/0007-fold-sequence.md` — Refs: R-13
-- [ ] T195 Verify the gates configured in T007, T009 and T010 are required status checks on `main`, and maintain the third-party notices file (`THIRD_PARTY_NOTICES.md`) — Refs: Constitution Quality Gates
-- [ ] T196 Prepare the external security review package (scope, protocol docs, vectors, threat model) in `docs/security-review/` — Refs: Constitution Workflow
+- [X] T195 Verify the gates configured in T007, T009 and T010 are required status checks on `main`, and maintain the third-party notices file (`THIRD_PARTY_NOTICES.md`) — Refs: Constitution Quality Gates
+- [X] T196 Prepare the external security review package (scope, protocol docs, vectors, threat model) in `docs/security-review/` — Refs: Constitution Workflow
 - [ ] T197 Execute every scenario in `specs/001-secure-finance-core/quickstart.md` and record results — Refs: All SC
 - [ ] T202 [P] Implement and test recovery from disk-full, interrupted writes and a corrupted database: detect, keep a quarantined copy, rebuild projections from the op log or offer restore from backup, never lose acknowledged data silently, in `apps/web/src/adapters/sqlite-opfs/recovery.ts` and `e2e/storage-corruption.spec.ts` — Refs: FR-072, FR-016, Edge cases
-- [ ] T203 Add the external security review as a release gate: `docs/security-review/status.md` recording the reviewer, scope and findings, and a required release-workflow check that fails until the review is marked complete (Constitution Workflow) — Refs: Constitution Workflow
+- [X] T203 Add the external security review as a release gate: `docs/security-review/status.md` recording the reviewer, scope and findings, and a required release-workflow check that fails until the review is marked complete (Constitution Workflow) — Refs: Constitution Workflow
 
 ---
 

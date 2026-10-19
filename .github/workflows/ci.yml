@@ -32,6 +32,10 @@ jobs:
       - run: pnpm check:bundle
       - run: pnpm check:licenses
       - run: pnpm check:no-float
+      - name: Third-party notices are up to date
+        run: node scripts/gen-third-party-notices.mjs --check
+      - name: Reproducible build (two clean builds are identical)
+        run: node scripts/build-verify.mjs
       - run: pnpm check:sqlite3mc
       - run: pnpm audit --audit-level=high
       - name: Install browsers

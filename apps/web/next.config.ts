@@ -6,6 +6,8 @@ const config: NextConfig = {
   images: { unoptimized: true },
   trailingSlash: true,
   reactStrictMode: true,
+  // A fixed build id, so building the same source twice gives the same files (scripts/build-verify.mjs). Releases set BUILD_ID to the commit.
+  generateBuildId: async () => process.env['BUILD_ID'] ?? 'cashfold',
   transpilePackages: ['@cashfold/core', '@cashfold/crypto', '@cashfold/protocol'],
 };
 
