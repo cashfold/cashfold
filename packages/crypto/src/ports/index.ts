@@ -60,10 +60,3 @@ export interface Hpke {
   open(args: { recipientSecretKey: SecretBuf; enc: Uint8Array; info: Uint8Array; aad: Uint8Array; ct: Uint8Array }): Promise<Uint8Array>;
 }
 
-/**
- * Password-authenticated key exchange (SRP-6a, ARCH §6). The method set is finalised with the
- * relay sign-in work (US4: T103, T108-T112); it is declared here so adapters have a stable home.
- */
-export interface Pake {
-  readonly name: 'srp-6a-4096-sha256';
-}

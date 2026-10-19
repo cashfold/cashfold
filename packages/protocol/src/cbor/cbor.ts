@@ -182,7 +182,7 @@ function readArg(r: Reader, ai: number): bigint | null {
   if (ai === 31) return null;
   if (ai > 27) throw new CborError('reserved', `reserved additional information ${ai}`);
   const size = 1 << (ai - 24);
-  const view = new DataView(r.take(size).slice().buffer);
+  const view = new DataView(Uint8Array.from(r.take(size)).buffer); // a real copy: Buffer#slice is a view
   const arg = size === 1 ? BigInt(view.getUint8(0)) : size === 2 ? BigInt(view.getUint16(0)) : size === 4 ? BigInt(view.getUint32(0)) : view.getBigUint64(0);
   const min = size === 1 ? 24n : size === 2 ? 0x100n : size === 4 ? 0x10000n : 0x100000000n;
   if (arg < min) throw new CborError('non_shortest');
@@ -219,7 +219,7 @@ function decodeValue(r: Reader, depth: number): CborValue {
       if (arg === null) throw new CborError('indefinite');
       return -1n - arg;
     case 2:
-      return r.take(readLength(r, arg, 1)).slice();
+      return Uint8Array.from(r.take(readLength(r, arg, 1)));
     case 3: {
       try {
         return textDecoder.decode(r.take(readLength(r, arg, 1)));

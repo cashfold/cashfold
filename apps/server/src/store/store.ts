@@ -1,0 +1,136 @@
+// The relay's persistence port. It holds ciphertext and routing metadata only (ARCH 9.7): nothing here can decrypt
+// an op, a snapshot or a key set. Two implementations satisfy the same contract tests: memory (unit tests and quick local
+// runs) and PostgreSQL (production, integration tests).
+
+export type Bytes = Uint8Array;
+
+export interface KdfRecord {
+  readonly kdf: 'argon2id' | 'pbkdf2-hmac-sha256';
+  readonly mKib?: number;
+  readonly t?: number;
+  readonly p?: number;
+  readonly iter?: number;
+  readonly encSalt: Bytes;
+}
+
+export interface AccountRow {
+  readonly accountId: string;
+  readonly emailHmac: Bytes;
+  /** Kept only to deliver mail (verification, invitations). Never used to look an account up. */
+  readonly email: string;
+  readonly authSalt: Bytes;
+  readonly kdf: KdfRecord;
+  readonly srpVerifier: Bytes;
+  readonly keyset: Bytes;
+  readonly failCount: number;
+  readonly lockedUntilMs: number | null;
+  readonly emailVerifiedAtMs: number | null;
+  readonly discoverable: boolean;
+  readonly createdAtMs: number;
+}
+
+export type NewAccount = Omit<AccountRow, 'failCount' | 'lockedUntilMs' | 'emailVerifiedAtMs' | 'createdAtMs'> & { readonly createdAtMs: number };
+
+export interface DeviceRow {
+  readonly devId: Bytes;
+  readonly accountId: string;
+  readonly sigPk: Bytes;
+  readonly labelCt: Bytes | null;
+  readonly createdAtMs: number;
+  readonly revokedAtMs: number | null;
+}
+
+export interface OpRow {
+  readonly opId: Bytes;
+  readonly recId: Bytes;
+  readonly devId: Bytes;
+  readonly devSeq: bigint;
+  readonly hlcWall: number;
+  readonly hlcCtr: number;
+  readonly epoch: number;
+  readonly schemaVer: number;
+  readonly blob: Bytes;
+  readonly sig: Bytes;
+}
+
+export interface StoredOp extends OpRow {
+  readonly serverSeq: bigint;
+}
+
+export type PushOutcome =
+  | { readonly op: Bytes; readonly status: 'stored'; readonly serverSeq: bigint }
+  | { readonly op: Bytes; readonly status: 'duplicate'; readonly serverSeq: bigint }
+  | { readonly op: Bytes; readonly status: 'seq_gap' | 'seq_conflict' };
+
+export interface SnapshotRow {
+  readonly foldId: Bytes;
+  readonly atSeq: bigint;
+  readonly blob: Bytes;
+  readonly sig: Bytes;
+}
+
+export interface RateTableRow {
+  readonly asOfMs: number;
+  readonly base: string;
+  readonly source: string;
+  /** Currency code to decimal string, exactly as published. */
+  readonly rates: Readonly<Record<string, string>>;
+}
+
+export interface Store {
+  readonly accounts: {
+    /** `email_taken` when the address (by MAC) is registered, `id_taken` when the account id is. */
+    create(row: NewAccount): Promise<'ok' | 'email_taken' | 'id_taken'>;
+    byEmailHmac(hmac: Bytes): Promise<AccountRow | undefined>;
+    byId(accountId: string): Promise<AccountRow | undefined>;
+    /** Replaces verifier, salt, KDF and key set in one step (password or Secret Key change). */
+    replaceCredentials(accountId: string, next: Pick<AccountRow, 'authSalt' | 'kdf' | 'srpVerifier' | 'keyset'>): Promise<void>;
+    recordFailure(accountId: string, lockedUntilMs: number | null): Promise<number>;
+    clearFailures(accountId: string): Promise<void>;
+    setEmailVerified(accountId: string, atMs: number): Promise<void>;
+    setDiscoverable(accountId: string, value: boolean): Promise<void>;
+    /** Removes the account, its devices and grants, and records a tombstone so devices learn of it (410). */
+    remove(accountId: string, atMs: number): Promise<void>;
+    isTombstoned(accountId: string): Promise<boolean>;
+  };
+  readonly devices: {
+    add(row: DeviceRow): Promise<'ok' | 'exists'>;
+    list(accountId: string): Promise<readonly DeviceRow[]>;
+    get(devId: Bytes): Promise<DeviceRow | undefined>;
+    revoke(accountId: string, devId: Bytes, atMs: number): Promise<boolean>;
+  };
+  readonly emailVerification: {
+    put(accountId: string, tokenHash: Bytes, expiresAtMs: number): Promise<void>;
+    /** Marks a live, unused token used and returns the account it belongs to. */
+    consume(tokenHash: Bytes, nowMs: number): Promise<string | undefined>;
+  };
+  readonly folds: {
+    create(foldId: Bytes, owner: string, atMs: number): Promise<'ok' | 'exists'>;
+    list(accountId: string): Promise<ReadonlyArray<{ foldId: Bytes; headSeq: bigint }>>;
+    /** The caller's role (1 owner, 2 editor, 3 viewer), or undefined if not a current member. */
+    roleOf(foldId: Bytes, accountId: string): Promise<number | undefined>;
+    members(foldId: Bytes): Promise<readonly string[]>;
+    remove(foldId: Bytes): Promise<void>;
+  };
+  readonly ops: {
+    /** Atomic: assigns server_seq in order, enforces the per-device sequence, answers each op. Idempotent on op id. */
+    push(foldId: Bytes, ops: readonly OpRow[]): Promise<readonly PushOutcome[]>;
+    pull(foldId: Bytes, after: bigint, limit: number): Promise<{ ops: readonly StoredOp[]; head: bigint; more: boolean }>;
+    head(foldId: Bytes): Promise<bigint>;
+    /** Highest device sequence stored for the device in this Fold, or 0. */
+    lastDevSeq(foldId: Bytes, devId: Bytes): Promise<bigint>;
+  };
+  readonly snapshots: {
+    put(row: SnapshotRow): Promise<void>;
+    get(foldId: Bytes): Promise<SnapshotRow | undefined>;
+    /** A device confirms it holds everything up to `seq`. */
+    acknowledge(foldId: Bytes, devId: Bytes, seq: bigint): Promise<void>;
+    /** Deletes ops at or below the snapshot once every active device has acknowledged at least that far. Returns how many. */
+    prune(foldId: Bytes): Promise<number>;
+  };
+  readonly rates: {
+    put(row: RateTableRow): Promise<void>;
+    latest(): Promise<RateTableRow | undefined>;
+  };
+  close(): Promise<void>;
+}

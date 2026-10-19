@@ -162,3 +162,19 @@ describe('properties', () => {
     );
   });
 });
+
+describe('decoding Node Buffers (views into a shared pool)', () => {
+  it('reads the same values, and returns copies that do not alias the input', () => {
+    const value = new Map<bigint, unknown>([[1n, new Uint8Array([1, 2, 3])], [300n, 'text'], [70_000n, 2n ** 40n]]);
+    const encoded = encode(value as never);
+    const pooled = Buffer.from(encoded); // small Buffers share a slab, so byteOffset is not zero
+    expect(pooled.byteOffset).toBeGreaterThanOrEqual(0);
+    const decoded = decode(pooled) as Map<bigint, unknown>;
+    expect(decoded.get(300n)).toBe('text');
+    expect(decoded.get(70_000n)).toBe(2n ** 40n);
+    const bytes = decoded.get(1n) as Uint8Array;
+    pooled.fill(0);
+    expect(Array.from(bytes)).toEqual([1, 2, 3]);
+    expect(Buffer.isBuffer(bytes)).toBe(false);
+  });
+});

@@ -12,3 +12,8 @@ export * from './hpke/hpke';
 export * from './secret-key/secret-key';
 export * from './two-skd/two-skd';
 export * from './keyset/keyset';
+export * from './pake/group';
+export * from './pake/srp-client';
+export * from './transport/frame';
+export * from './adapters/srp-wasm/index';
+export * from './transport/relay-client';

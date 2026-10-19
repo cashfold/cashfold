@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# Rebuilds the SRP big-integer WASM module from packages/crypto/wasm/srp-bigint and installs it, with its SHA-256, next to
+# the TypeScript adapter. The crate is pinned (Cargo.lock, crypto-bigint =0.7.5) and built with --locked, so the output is
+# reproducible for a given Rust toolchain; CI rebuilds and compares (docs/adr/0006-srp-wasm.md).
+set -euo pipefail
+cd "$(dirname "$0")/.."
+export PATH="/opt/homebrew/opt/rustup/bin:$HOME/.cargo/bin:$PATH"
+crate=packages/crypto/wasm/srp-bigint
+out=packages/crypto/src/adapters/srp-wasm
+(cd "$crate" && RUSTFLAGS="--remap-path-prefix=$HOME=~ --remap-path-prefix=$PWD=." cargo build --release --target wasm32-unknown-unknown --locked)
+cp "$crate/target/wasm32-unknown-unknown/release/cashfold_srp_bigint.wasm" "$out/srp-bigint.wasm"
+shasum -a 256 "$out/srp-bigint.wasm" | cut -d' ' -f1 > "$out/srp-bigint.wasm.sha256"
+echo "srp-bigint.wasm $(wc -c < "$out/srp-bigint.wasm") bytes, sha256 $(cat "$out/srp-bigint.wasm.sha256")"
