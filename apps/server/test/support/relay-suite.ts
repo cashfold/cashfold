@@ -1,5 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import { KdfBelowFloor, SecretBuf, createAesGcm, createHkdf, createRelayClient } from '@cashfold/crypto';
+import { encodeFoldKeyGrant } from '@cashfold/protocol';
 import { decode, encode } from '@cashfold/protocol/cbor';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Store } from '../../src/store/store.js';
@@ -213,9 +214,38 @@ export function describeRelay(label: string, makeStore: () => Promise<Store>): v
 
         expect((await first.request('DELETE', `/devices/${b64u(second.devId)}`)).status).toBe(204);
         await expect(other.request('GET', '/accounts/me')).rejects.toBeDefined(); // its session ended at once
-        await expect(signIn(h, a, second)).rejects.toMatchObject({ kind: 'rejected' }); // and it is refused at the first message
+        await expect(signIn(h, a, second)).rejects.toMatchObject({ kind: 'revoked' }); // and, once it proves the password, it is told it was removed
+        await expect(signIn(h, a, second, randomX())).rejects.toMatchObject({ kind: 'rejected' }); // without the password it learns nothing
         expect((await first.request('GET', '/accounts/me')).status).toBe(200); // the other device is unaffected
         await expect(first.request('DELETE', `/devices/${b64u(second.devId)}`)).rejects.toMatchObject({ kind: 'not_found' });
+      });
+    });
+
+    describe('device labels', () => {
+      it('stores an encrypted label for any of the account\'s devices, and lists it back', async () => {
+        const h = await start();
+        const a = await register(h);
+        const { session } = await signIn(h, a);
+        const label = randomBytes(40);
+        expect((await session.request('PUT', `/devices/${b64u(a.device.devId)}`, { label_ct: label })).status).toBe(204);
+        const [d] = (await session.request('GET', '/devices')).body as Array<Map<string, unknown>>;
+        expect(Buffer.from(d!.get('label_ct') as Uint8Array)).toEqual(label);
+        await session.request('PUT', `/devices/${b64u(a.device.devId)}`, { label_ct: null });
+        expect(((await session.request('GET', '/devices')).body as Array<Map<string, unknown>>)[0]!.has('label_ct')).toBe(false);
+      });
+
+      it('refuses an unknown device, another account\'s device, a revoked device and an oversized label', async () => {
+        const h = await start();
+        const [a, b] = [await register(h), await register(h)];
+        const { session } = await signIn(h, a);
+        await expect(session.request('PUT', `/devices/${b64u(randomBytes(16))}`, { label_ct: null })).rejects.toMatchObject({ kind: 'not_found' });
+        await expect(session.request('PUT', `/devices/${b64u(b.device.devId)}`, { label_ct: null })).rejects.toMatchObject({ kind: 'not_found' });
+        await expect(session.request('PUT', `/devices/${b64u(a.device.devId)}`, { label_ct: randomBytes(300) })).rejects.toMatchObject({ status: 400 });
+        const second = await newDevice();
+        const other = (await signIn(h, a, second)).session;
+        await other.request('POST', '/devices', { dev_id: second.devId, sig_pk: second.sigPk });
+        await session.request('DELETE', `/devices/${b64u(second.devId)}`);
+        await expect(session.request('PUT', `/devices/${b64u(second.devId)}`, { label_ct: null })).rejects.toMatchObject({ kind: 'not_found' });
       });
     });
 
@@ -392,6 +422,44 @@ export function describeRelay(label: string, makeStore: () => Promise<Store>): v
         const opsAfter = (await session.request('GET', `/folds/${foldPath}/ops?after=0`)).body as Map<string, unknown>;
         expect((opsAfter.get('ops') as unknown[]).length).toBeLessThanOrEqual(3);
         expect(opsAfter.get('head')).toBe(3n);
+      });
+
+      it('stores the owner\'s grant with the Fold and returns it to the owner\'s devices, oldest epoch first', async () => {
+        const h = await start();
+        const a = await register(h);
+        const { session } = await signIn(h, a);
+        const dev2 = await newDevice();
+        const second = (await signIn(h, a, dev2)).session;
+        await second.request('POST', '/devices', { dev_id: dev2.devId, sig_pk: dev2.sigPk });
+        const fold = randomBytes(16);
+        const grant = (epoch: number, f = fold, member = a.accountId) => encodeFoldKeyGrant({ fold: f, epoch, member: Buffer.from(member), role: 1, enc: randomBytes(32), ct: randomBytes(48), granted_by: Buffer.from(a.accountId), sig: randomBytes(64) });
+        const g1 = grant(1);
+        await session.request('POST', '/folds', { fold, grant: g1 });
+        const got = (await second.request('GET', `/folds/${b64u(fold)}/grants?member=me`)).body as Uint8Array[];
+        expect(got.map((g) => Buffer.from(g))).toEqual([Buffer.from(g1)]);
+      });
+
+      it('refuses a grant for someone else, for another Fold, or that is not a grant', async () => {
+        const h = await start();
+        const a = await register(h);
+        const { session } = await signIn(h, a);
+        const fold = randomBytes(16);
+        const mk = (f: Uint8Array, member: string) => encodeFoldKeyGrant({ fold: f, epoch: 1, member: Buffer.from(member), role: 1, enc: randomBytes(32), ct: randomBytes(48), granted_by: Buffer.from(a.accountId), sig: randomBytes(64) });
+        await expect(session.request('POST', '/folds', { fold, grant: mk(fold, 'ZZZZZZ') })).rejects.toMatchObject({ status: 400 });
+        await expect(session.request('POST', '/folds', { fold, grant: mk(randomBytes(16), a.accountId) })).rejects.toMatchObject({ status: 400 });
+        await expect(session.request('POST', '/folds', { fold, grant: randomBytes(20) })).rejects.toMatchObject({ status: 400 });
+        expect(((await session.request('GET', '/folds')).body as unknown[]).length).toBe(0); // nothing half-created
+      });
+
+      it('only returns grants to a member of the Fold', async () => {
+        const h = await start();
+        const [a, b] = [await register(h), await register(h)];
+        const { session } = await signIn(h, a);
+        const fold = randomBytes(16);
+        await session.request('POST', '/folds', { fold });
+        const other = (await signIn(h, b)).session;
+        await expect(other.request('GET', `/folds/${b64u(fold)}/grants?member=me`)).rejects.toMatchObject({ kind: 'forbidden' });
+        await expect(session.request('GET', `/folds/${b64u(fold)}/grants?member=someone`)).rejects.toMatchObject({ status: 400 });
       });
 
       it('tells a connected device to pull when another device pushes', async () => {

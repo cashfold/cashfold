@@ -98,6 +98,8 @@ export interface Store {
     list(accountId: string): Promise<readonly DeviceRow[]>;
     get(devId: Bytes): Promise<DeviceRow | undefined>;
     revoke(accountId: string, devId: Bytes, atMs: number): Promise<boolean>;
+    /** Replaces the encrypted label of one of the account's live devices. */
+    setLabel(accountId: string, devId: Bytes, labelCt: Bytes | null): Promise<boolean>;
   };
   readonly emailVerification: {
     put(accountId: string, tokenHash: Bytes, expiresAtMs: number): Promise<void>;
@@ -111,6 +113,12 @@ export interface Store {
     roleOf(foldId: Bytes, accountId: string): Promise<number | undefined>;
     members(foldId: Bytes): Promise<readonly string[]>;
     remove(foldId: Bytes): Promise<void>;
+  };
+  readonly grants: {
+    /** Keeps the newest write for `(fold, member, epoch)`; a grant is replaced only by another for the same epoch. */
+    put(foldId: Bytes, member: string, epoch: number, grant: Bytes): Promise<void>;
+    /** Every grant addressed to `member`, oldest epoch first. */
+    forMember(foldId: Bytes, member: string): Promise<readonly Bytes[]>;
   };
   readonly ops: {
     /** Atomic: assigns server_seq in order, enforces the per-device sequence, answers each op. Idempotent on op id. */

@@ -23,7 +23,7 @@ export interface HttpResponse {
 }
 export type Send = (request: HttpRequest) => Promise<HttpResponse>;
 
-export type RelayErrorKind = 'rejected' | 'rate_limited' | 'offline' | 'protocol' | 'gone' | 'forbidden' | 'not_found' | 'conflict' | 'server';
+export type RelayErrorKind = 'rejected' | 'revoked' | 'rate_limited' | 'offline' | 'protocol' | 'gone' | 'forbidden' | 'not_found' | 'conflict' | 'server';
 
 export class RelayError extends Error {
   constructor(readonly kind: RelayErrorKind, readonly status = 0, readonly retryAfterSec?: number) {
@@ -94,6 +94,16 @@ function readKdf(v: unknown): KdfWire | undefined {
   return { kdf, ...(mKib !== undefined && { mKib }), ...(t !== undefined && { t }), ...(p !== undefined && { p }), ...(iter !== undefined && { iter }), encSalt };
 }
 
+function errorCode(body: Uint8Array): string | undefined {
+  try {
+    const v = decode(body);
+    const code = v instanceof Map ? (v as Map<string, unknown>).get('error') : undefined;
+    return typeof code === 'string' ? code : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 function statusKind(status: number): RelayErrorKind {
   return status === 410 ? 'gone' : status === 403 ? 'forbidden' : status === 404 ? 'not_found' : status === 409 ? 'conflict' : status === 401 ? 'rejected' : status === 429 ? 'rate_limited' : status >= 500 ? 'server' : 'protocol';
 }
@@ -107,7 +117,11 @@ export function createRelayClient({ send, pake, aead, hkdf, nowMs = Date.now }: 
       throw new RelayError('offline');
     }
     const retry = Number(res.headers['retry-after']);
-    if (res.status >= 400) throw new RelayError(statusKind(res.status), res.status, Number.isFinite(retry) ? retry : undefined);
+    if (res.status >= 400) {
+      // The one named refusal on the public routes: the proof was right but this device was removed (see auth.service.ts).
+      if (res.status === 403 && path === '/auth/proof-m1' && errorCode(res.body) === 'device_revoked') throw new RelayError('revoked', 403);
+      throw new RelayError(statusKind(res.status), res.status, Number.isFinite(retry) ? retry : undefined);
+    }
     let decoded: unknown = null;
     if (res.body.length > 0) {
       try {

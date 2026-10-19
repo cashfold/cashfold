@@ -11,6 +11,7 @@ interface FoldState {
   /** Highest device sequence ever stored, kept after pruning so the sequence check survives it. */
   lastSeq: Map<string, bigint>;
   acks: Map<string, bigint>;
+  grants: Map<string, { epoch: number; grant: Uint8Array }>;
   snapshot?: SnapshotRow;
 }
 
@@ -97,6 +98,12 @@ export function createMemoryStore(): Store {
         devices.set(hex(devId), { ...d, revokedAtMs: atMs });
         return true;
       },
+      async setLabel(accountId, devId, labelCt) {
+        const d = devices.get(hex(devId));
+        if (d === undefined || d.accountId !== accountId || d.revokedAtMs !== null) return false;
+        devices.set(hex(devId), { ...d, labelCt });
+        return true;
+      },
     },
     emailVerification: {
       async put(accountId, tokenHash, expiresAtMs) {
@@ -112,7 +119,7 @@ export function createMemoryStore(): Store {
     folds: {
       async create(foldId, owner, atMs) {
         if (fold(foldId) !== undefined) return 'exists';
-        folds.set(hex(foldId), { createdAtMs: atMs, headSeq: 0n, members: new Map([[owner, 1]]), ops: [], byOpId: new Map(), lastSeq: new Map(), acks: new Map() });
+        folds.set(hex(foldId), { createdAtMs: atMs, headSeq: 0n, members: new Map([[owner, 1]]), ops: [], byOpId: new Map(), lastSeq: new Map(), acks: new Map(), grants: new Map() });
         return 'ok';
       },
       async list(accountId) {
@@ -126,6 +133,15 @@ export function createMemoryStore(): Store {
       },
       async remove(foldId) {
         folds.delete(hex(foldId));
+      },
+    },
+    grants: {
+      async put(foldId, member, epoch, grant) {
+        const f = fold(foldId);
+        if (f !== undefined) f.grants.set(`${member}:${epoch}`, { epoch, grant });
+      },
+      async forMember(foldId, member) {
+        return [...(fold(foldId)?.grants.entries() ?? [])].filter(([k]) => k.startsWith(`${member}:`)).map(([, v]) => v).sort((a, b) => a.epoch - b.epoch).map((v) => v.grant);
       },
     },
     ops: {

@@ -137,6 +137,9 @@ export async function createPgStore(databaseUrl: string, options: { migrations?:
       async revoke(accountId, devId, atMs) {
         return (await q('UPDATE device SET revoked_at = $3 WHERE dev_id = $2 AND account_id = $1 AND revoked_at IS NULL RETURNING 1', [accountId, buf(devId), atMs])).length > 0;
       },
+      async setLabel(accountId, devId, labelCt) {
+        return (await q('UPDATE device SET label_ct = $3 WHERE dev_id = $2 AND account_id = $1 AND revoked_at IS NULL RETURNING 1', [accountId, buf(devId), labelCt === null ? null : buf(labelCt)])).length > 0;
+      },
     },
     emailVerification: {
       async put(accountId, tokenHash, expiresAtMs) {
@@ -172,6 +175,17 @@ export async function createPgStore(databaseUrl: string, options: { migrations?:
       },
       async remove(foldId) {
         await q('DELETE FROM fold WHERE fold_id = $1', [buf(foldId)]);
+      },
+    },
+    grants: {
+      async put(foldId, member, epoch, grant) {
+        await q(
+          'INSERT INTO fold_grant(fold_id, member, epoch, grant_bytes) VALUES ($1,$2,$3,$4) ON CONFLICT (fold_id, member, epoch) DO UPDATE SET grant_bytes = EXCLUDED.grant_bytes',
+          [buf(foldId), member, epoch, buf(grant)],
+        );
+      },
+      async forMember(foldId, member) {
+        return (await q('SELECT grant_bytes FROM fold_grant WHERE fold_id = $1 AND member = $2 ORDER BY epoch', [buf(foldId), member])).map((r) => r['grant_bytes'] as Buffer);
       },
     },
     ops: {

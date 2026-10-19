@@ -7,7 +7,7 @@ import { T } from '../../common/tokens.js';
 import { AckBody, CreateFoldBody, parseValue, SnapshotBody } from '../../common/wire.js';
 import type { Store, StoredOp } from '../../store/store.js';
 import { PULL_LIMIT, type FoldsService } from './folds.service.js';
-import { encodeOpEnvelope } from '@cashfold/protocol';
+import { decodeFoldKeyGrant, encodeOpEnvelope } from '@cashfold/protocol';
 
 const fail = (status: number, code: string): never => {
   throw new HttpException({ code }, status);
@@ -29,7 +29,29 @@ export class FoldsController {
   @Post() @HttpCode(201)
   async create(@Auth() caller: Caller, @Payload() inner: unknown): Promise<void> {
     const b = parseValue(inner, CreateFoldBody);
+    // The owner's own grant of the first key arrives with the Fold, so a new device of the same account can open it.
+    // The relay checks its shape and addressee, never its content: it cannot open it, and clients check the signature.
+    let grant: { epoch: number; bytes: Uint8Array } | undefined;
+    if (b.grant !== undefined) {
+      try {
+        const g = decodeFoldKeyGrant(b.grant);
+        if (Buffer.from(g.member).toString('utf8') !== caller.accountId || Buffer.compare(g.fold, b.fold) !== 0) return fail(400, 'bad_request');
+        grant = { epoch: g.epoch, bytes: b.grant };
+      } catch {
+        return fail(400, 'bad_request');
+      }
+    }
     if ((await this.folds.create(b.fold, caller.accountId, this.clock.now())) === 'exists') fail(409, 'exists');
+    if (grant !== undefined) await this.store.grants.put(b.fold, caller.accountId, grant.epoch, grant.bytes);
+  }
+
+  /** The grants addressed to the caller, one per epoch the caller may read. */
+  @Get(':fold/grants')
+  async grants(@Auth() caller: Caller, @Param('fold') fold: string, @Query('member') member?: string): Promise<unknown> {
+    const id = foldIdOf(fold);
+    if (member !== 'me') fail(400, 'bad_request');
+    if ((await this.store.folds.roleOf(id, caller.accountId)) === undefined) fail(403, 'forbidden');
+    return [...(await this.store.grants.forMember(id, caller.accountId))];
   }
 
   @Get()

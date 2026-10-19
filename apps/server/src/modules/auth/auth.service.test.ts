@@ -123,13 +123,15 @@ describe('sign-in', () => {
     await expect(auth.proofM1({ sessionId: replayHello.sessionId, M1: first.done.M1, ip: '10.0.0.7' })).rejects.toMatchObject({ kind: 'rejected' });
   });
 
-  it('refuses a revoked device at the first message (AUTH-7)', async () => {
-    const { auth, store } = await world();
+  it('tells a revoked device so only after it has proved the password (AUTH-7)', async () => {
+    const { auth, store, sessions } = await world();
     await store.devices.add({ devId: Buffer.from(DEVICE), accountId: 'ABCDEF', sigPk: randomBytes(32), labelCt: null, createdAtMs: 1, revokedAtMs: null });
     await signIn(auth);
     await store.devices.revoke('ABCDEF', DEVICE, 5);
-    await expect(auth.hello({ email: 'alice@example.com', deviceId: DEVICE, ip: '10.0.0.8' })).rejects.toMatchObject({ kind: 'rejected' });
-    await expect(auth.hello({ email: 'alice@example.com', deviceId: randomBytes(16), ip: '10.0.0.8' })).resolves.toBeDefined(); // another device is fine
+    await expect(signIn(auth, { ip: '10.0.0.9' })).rejects.toMatchObject({ kind: 'device_revoked' });
+    await expect(signIn(auth, { ip: '10.0.0.10', x: randomBytes(32) })).rejects.toMatchObject({ kind: 'rejected' }); // a wrong password learns nothing
+    expect(sessions.get(Buffer.from(DEVICE).toString('hex'))).toBeUndefined();
+    await expect(signIn(auth, { ip: '10.0.0.11', device: randomBytes(16) })).resolves.toBeDefined(); // another device is fine
   });
 });
 

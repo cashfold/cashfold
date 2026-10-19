@@ -133,6 +133,30 @@ export function describeStoreContract(label: string, make: () => Promise<Store>)
       });
     });
 
+    describe('grants', () => {
+      beforeEach(async () => {
+        await store.accounts.create(account('ABCDEF', 1));
+        await store.accounts.create(account('GHJKLM', 2));
+        await store.folds.create(b(1), 'ABCDEF', 10);
+      });
+
+      it('keeps grants per member and epoch, oldest first, and replaces one for the same epoch', async () => {
+        await store.grants.put(b(1), 'ABCDEF', 2, b(2, 40));
+        await store.grants.put(b(1), 'ABCDEF', 1, b(1, 40));
+        await store.grants.put(b(1), 'GHJKLM', 1, b(9, 40));
+        expect((await store.grants.forMember(b(1), 'ABCDEF')).map((g) => g[0])).toEqual([1, 2]);
+        await store.grants.put(b(1), 'ABCDEF', 1, b(7, 40));
+        expect((await store.grants.forMember(b(1), 'ABCDEF')).map((g) => g[0])).toEqual([7, 2]);
+        expect(await store.grants.forMember(b(1), 'NOBODY')).toEqual([]);
+      });
+
+      it('goes with the fold', async () => {
+        await store.grants.put(b(1), 'ABCDEF', 1, b(1, 40));
+        await store.folds.remove(b(1));
+        expect(await store.grants.forMember(b(1), 'ABCDEF')).toEqual([]);
+      });
+    });
+
     describe('ops', () => {
       const dev = b(50);
       beforeEach(async () => {

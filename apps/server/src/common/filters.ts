@@ -21,8 +21,8 @@ export class RelayExceptionFilter implements ExceptionFilter {
       status = error.status;
       code = error.status === 410 ? 'gone' : 'refused';
     } else if (error instanceof AuthError) {
-      status = error.kind === 'rate_limited' ? 429 : 401;
-      code = error.kind === 'rate_limited' ? 'rate_limited' : 'rejected';
+      status = error.kind === 'rate_limited' ? 429 : error.kind === 'device_revoked' ? 403 : 401;
+      code = error.kind === 'rate_limited' ? 'rate_limited' : error.kind === 'device_revoked' ? 'device_revoked' : 'rejected';
       retryAfterSec = error.retryAfterSec;
     } else if (error instanceof BadRequest) {
       status = 400;

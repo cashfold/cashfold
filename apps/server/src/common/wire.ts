@@ -33,6 +33,7 @@ export const HelloBody = textMap({ email, device_id: uuid16 });
 export const ProofABody = textMap({ session_id: uuid16, A: bytes(512) });
 export const ProofM1Body = textMap({ session_id: uuid16, M1: bytes(32) });
 
+export const DeviceLabelBody = textMap({ label_ct: anyBytes.refine((b) => b.length <= 256).nullable() });
 export const DeviceBody = textMap({ dev_id: uuid16, sig_pk: bytes(32), label_ct: anyBytes.optional() });
 
 export const RegistrationBody = textMap({

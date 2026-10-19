@@ -7,7 +7,7 @@ import { HANDSHAKE_MS, type SessionStore } from './sessions.js';
 import type { SrpServer } from './srp-server.js';
 
 export class AuthError extends Error {
-  constructor(readonly kind: 'rejected' | 'rate_limited', readonly retryAfterSec?: number) {
+  constructor(readonly kind: 'rejected' | 'rate_limited' | 'device_revoked', readonly retryAfterSec?: number) {
     super(kind);
   }
 }
@@ -63,12 +63,6 @@ export function createAuthService(deps: AuthDeps) {
       const wait = failures.waitMs(subject);
       if (wait > 0) throw new AuthError('rate_limited', Math.ceil(wait / 1000));
 
-      if (real !== undefined) {
-        const device = await store.devices.get(deviceId);
-        // A revoked device is refused at the first message, and a device registered to someone else is treated as unknown.
-        if (device !== undefined && device.accountId === real.accountId && device.revokedAtMs !== null) throw new AuthError('rejected');
-      }
-
       const sessionId = randomBytes(16);
       const kdf: KdfRecord = real?.kdf ?? { ...stand.kdf, encSalt: stand.encSalt };
       sessions.startHandshake(hex(sessionId), {
@@ -113,6 +107,10 @@ export function createAuthService(deps: AuthDeps) {
       }
       failures.succeed(h.subject);
       await store.accounts.clearFailures(h.accountId);
+      // The proof was right, so this is the account's owner (or someone holding every secret): only now is it safe to say that
+      // this device was removed. Until then a revoked device looks exactly like a wrong password.
+      const device = await store.devices.get(h.deviceId);
+      if (device !== undefined && device.accountId === h.accountId && device.revokedAtMs !== null) throw new AuthError('device_revoked');
       sessions.authenticate(id, {
         accountId: h.accountId, deviceId: h.deviceId, authenticatedAt: clock.now(), m1: Uint8Array.from(M1),
         transport: createServerTransport({ sessionId, sessionKey: done.key, transcript: done.transcript, nowMs: () => clock.now() }),

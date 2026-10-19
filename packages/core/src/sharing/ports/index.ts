@@ -28,3 +28,10 @@ export interface FoldKeyPort {
   /** Forgets every key of the Fold on this device. */
   dropFoldKeys(fold: Id): Promise<void>;
 }
+
+/** Stores a Fold key that arrived from outside (a grant from the service). The port takes ownership of `key`. */
+export interface FoldKeyImportPort {
+  importFoldKey(fold: Id, epoch: number, key: { readonly use: <T>(fn: (bytes: Uint8Array) => T) => T; wipe(): void }): Promise<void>;
+  /** The epochs this device holds a key for, ascending. */
+  epochs(fold: Id): Promise<readonly number[]>;
+}
