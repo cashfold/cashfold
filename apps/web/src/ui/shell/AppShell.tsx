@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import type { ReactNode } from 'react';
 import { useCore } from '../core/CoreProvider';
 import { buttonClass } from '../forms/TextField';
@@ -27,6 +28,7 @@ const NAV = [
 export function AppShell({ children }: { children: ReactNode }) {
   const { t } = useI18n();
   const core = useCore();
+  const path = usePathname().replace(/\/?$/, '/');
   return (
     <>
       <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:start-2 focus:top-2 focus:rounded-ui focus:bg-primary focus:px-3 focus:py-2 focus:text-on-primary">
@@ -38,7 +40,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <ul className="flex flex-wrap gap-x-4 gap-y-1">
             {NAV.map(([href, key]) => (
               <li key={href}>
-                <Link href={href} className="underline-offset-4 hover:underline">{t(key)}</Link>
+                <Link href={href} aria-current={path === href ? 'page' : undefined} className={`underline-offset-4 hover:underline${path === href ? ' font-semibold underline' : ''}`}>{t(key)}</Link>
               </li>
             ))}
           </ul>

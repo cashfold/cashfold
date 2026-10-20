@@ -337,8 +337,8 @@ The spec covers the whole v1 product, so this list is large. Recommended first r
 
 **Purpose**: Hardening, accessibility, performance, documentation and release readiness.
 
-- [ ] T185 [P] Run and fix axe checks and keyboard-only and screen-reader flows for all primary tasks (WCAG 2.2 AA; SC-016) in `e2e/a11y.spec.ts` — Refs: FR-094, SC-016
-- [ ] T186 [P] Add right-to-left layout verification and locale-correct number, currency and date formatting using integer-to-decimal-string helpers (no money-to-`number` conversion) in `apps/web/src/ui/i18n/` and `e2e/i18n.spec.ts` (FR-095) — Refs: FR-095
+- [X] T185 [P] Run and fix axe checks and keyboard-only and screen-reader flows for all primary tasks (WCAG 2.2 AA; SC-016) in `e2e/a11y.spec.ts` — Refs: FR-094, SC-016
+- [X] T186 [P] Add right-to-left layout verification and locale-correct number, currency and date formatting using integer-to-decimal-string helpers (no money-to-`number` conversion) in `apps/web/src/ui/i18n/` and `e2e/i18n.spec.ts` (FR-095) — Refs: FR-095
 - [X] T187 [P] Add the headless-browser benchmark with 50,000 transactions and enforce dashboard ≤ 2 s and add-transaction ≤ 200 ms (SC-008) in `e2e/bench/dashboard-50k.spec.ts`; assert query plans for indexes in ARCH §8.2 on the reference device profile (Chromium with 4× CPU throttling, recorded in research.md R-12) — Refs: FR-096, SC-008
 - [X] T188 [P] Implement storage persistence request, eviction warning and backup nagging, and multi-tab behaviour tests, in `apps/web/src/adapters/storage-persistence.ts` and `e2e/multitab.spec.ts` (ARCH §8.1a) — Refs: FR-072
 - [X] T189 [P] Verify CSP, SRI, service worker asset pinning, `Referrer-Policy`, `Permissions-Policy` against the built export and add an automated header test in `e2e/security-headers.spec.ts` — Refs: Constitution VIII

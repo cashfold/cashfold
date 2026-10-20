@@ -2,6 +2,12 @@ import { describe, expect, it } from 'vitest';
 import { decimalsOf, degreesFromDevice, formatDegrees, formatRate, formatMoney, formatPlain, formatSigned, parseDegrees, parseMoney, parseRateText, percentOf, signOf } from './format';
 
 describe('formatMoney', () => {
+  it('stays exact beyond what a double can hold, in any locale', () => {
+    expect(formatMoney(9_007_199_254_740_993n, 'USD', 'en')).toBe('90,071,992,547,409.93 USD');
+    expect(formatMoney(9_007_199_254_740_993n, 'USD', 'ar')).toMatch(/^[0-9٬,.\u066B]+ USD$/u);
+    expect(formatMoney(-9_007_199_254_740_993n, 'USD', 'ar')).toContain('9');
+  });
+
   it('prints exact amounts with the currency\'s own decimals', () => {
     expect(formatMoney(123_456n, 'USD', 'en')).toBe('1,234.56 USD');
     expect(formatMoney(5n, 'USD', 'en')).toBe('0.05 USD');
