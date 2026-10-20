@@ -106,7 +106,7 @@ const LOCAL_CHANGES: ReadonlySet<string> = new Set(['RecordCreated', 'RecordChan
 export function createSyncService(deps: SyncServiceDeps): SyncService {
   const timers = deps.timers ?? { set: (fn, ms) => setTimeout(fn, ms), clear: (h) => clearTimeout(h as ReturnType<typeof setTimeout>) };
   const pollMs = deps.pollMs ?? 30_000;
-  const retry = deps.retryMs ?? { first: 2_000, max: 5 * 60_000 };
+  const retry = deps.retryMs ?? { first: 2_000, max: 30_000 };
   const ratesEvery = deps.ratesEveryMs ?? 6 * 3_600_000;
   const snapshotEvery = deps.snapshotEvery ?? 200;
   const status = createSyncStatus();
@@ -267,8 +267,11 @@ export function createSyncService(deps: SyncServiceDeps): SyncService {
         }
       },
     }).catch(() => undefined);
-    if (stream !== undefined && live(g) && link === l) streams.set(fold, stream);
-    else stream?.close();
+    if (stream !== undefined && live(g) && link === l) {
+      streams.set(fold, stream);
+      // A change made between the last round and the stream coming up was announced to nobody: look once now rather than at the next poll.
+      schedule(0);
+    } else stream?.close();
   }
 
   function scheduleStreamReopen(g: number, fold: Id): void {
