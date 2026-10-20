@@ -27,7 +27,7 @@ Run on 2026-10-20, branch `001-secure-finance-core`, Apple-silicon laptop, Chrom
 
 ## Full Chromium suite
 
-73 end-to-end tests. Two full runs: 72 passed, 1 failed each time, and the failing test was a different two-device sync test each time (`us4-sync`: the 100-change latency test, then the offline-clash test). Both pass on their own.
+74 end-to-end tests (1 skipped by design). Two full runs: 72 passed, 1 failed each time, and the failing test was a different two-device sync test each time (`us4-sync`: the 100-change latency test, then the offline-clash test). Both pass on their own.
 
 ## Found and fixed while running this
 
