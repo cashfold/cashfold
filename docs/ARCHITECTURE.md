@@ -1,6 +1,6 @@
 # Cashfold — Architectural Blueprint & Technical Specification
 
-**Status:** Draft 0.1 · **Date:** 2026-10-18 · **Audience:** engineers implementing the Cashfold client core, sync server and mobile/desktop shells.
+**Status:** Draft 0.2 (aligned with constitution v1.0.1) · **Date:** 2026-10-18 · **Audience:** engineers implementing the Cashfold TypeScript core, the web client (Phase 1), the NestJS relay server, and later the Tauri desktop/mobile shells.
 
 Cashfold is a local-first, end-to-end encrypted (E2EE) personal-finance engine: an exact-arithmetic ledger, envelope budgeting, recurring transactions and multi-currency support, synchronised across devices and users through an untrusted relay server.
 
@@ -20,11 +20,67 @@ Normative keywords (MUST, SHOULD, MAY) follow RFC 2119.
 1. **Budgets** are envelope-based with explicit rollover policy and spend velocity (§3.7). Balances and availability are always derived, never stored.
 2. **Accounts** have an explicit `AccountKind` (§3.3).
 3. **Money** is signed 64-bit integer minor units. FX rates are scaled integers (§3.1, §3.8).
-4. **Password hashing** is Argon2id with a PBKDF2-HMAC-SHA256 fallback for environments without a native/WASM core (§5.3).
+4. **Password hashing** is Argon2id (vetted WASM build) with a PBKDF2-HMAC-SHA256 (WebCrypto) fallback (§5.3).
 5. **Asymmetric cryptography** is X25519 (sealing via HPKE) and Ed25519 (signatures) (§5.1).
 6. **SRP** is SRP-6a with SHA-256 over the 4096-bit RFC 3526 group, with a fully pinned message format (§6).
 7. **Cashfold defines its own protocols.** Interoperability with any other product is not a goal.
+8. **Stack**: TypeScript throughout; Next.js static export + Tailwind for the web client; NestJS + PostgreSQL for the relay; web first, Tauri 2 shells later (§0.3). This follows the project constitution (`.specify/memory/constitution.md`), which prevails over this document on technology.
+9. **Software architecture**: DDD, Clean/Hexagonal architecture, CQRS, and event sourcing adapted to CRDT sync, all inside the client `core` package; the server holds no domain model (§0.3).
 8. AES-256-GCM, HKDF-SHA256 and a Secret Key of at least 128 bits of entropy are fixed requirements.
+
+### 0.3 Software architecture (normative)
+
+**Packages (pnpm monorepo)**
+
+| Package | Responsibility | May import |
+|---|---|---|
+| `packages/core` | Domain + application layers: aggregates, value objects, commands, queries, projections, merge, repair, sync engine logic. Framework-agnostic. | `protocol`, ports only |
+| `packages/crypto` | All cryptography behind narrow interfaces (`Aead`, `Kdf`, `Hpke`, `Signer`, `Pake`, `Rng`, `Cbor`). Adapters: WebCrypto, `@noble/*`, Argon2id WASM, SRP WASM. | none of `core` |
+| `packages/protocol` | Wire types and schemas (zod + generated OpenAPI/CDDL docs) shared by client and server. | none |
+| `apps/web` | Next.js App Router + Tailwind, **client-only static export**. UI, worker bootstrap, storage adapters. | `core`, `crypto`, `protocol` |
+| `apps/server` | NestJS + PostgreSQL relay. Thin adapters only. | `protocol` (never `core` domain) |
+
+`core` MUST NOT import React, Next, Nest, the DOM or Node-only modules. Dependency direction is enforced in CI with boundary lint rules.
+
+**Layers inside `core`** (dependencies point inward)
+
+```text
+domain        entities/aggregates, value objects (Money, CurrencyCode, LocalDate, Rate), domain services, invariants. No I/O.
+application   command handlers, query handlers, projection builders, sync use cases. Defines ports.
+adapters      implementations of ports: OpLogStore (SQLite), ProjectionStore (SQLite), CryptoPort, TransportPort,
+              KeyStorePort, ClockPort, RandomPort. Live in apps/web or in dedicated adapter packages, not in domain/application.
+```
+
+**Bounded contexts**: Identity & Access, Ledger (accounts, transactions, transfers, categories, payees, tags, FX), Budgeting (envelopes, goals), Scheduling (recurrence), Sharing & Membership (folds, membership log, envelopes), Sync (op log, HLC, merge, transport). Contexts talk through application-level interfaces and ids; aggregates reference each other by id only.
+
+**CQRS and event sourcing mapping**
+
+1. A **command** (intent-named, validated, authorised against the member's role) is handled by an application service.
+2. The handler rehydrates the target aggregate from the read model, calls domain behaviour, and receives the resulting **field patches** (per-field LWW writes, set deltas, tombstones).
+3. The handler turns the patches into a signed, encrypted **operation** (§9.3) and appends it to the local **op log** in the same SQLite transaction that updates the projections. The op log is the event store and the source of truth.
+4. **Projections** (SQLite read models, §8.2 tables and views) are produced by a single pure `apply(op)` function from merged field state. Local and remote operations follow the identical path (§8.2 rule). Projections are rebuildable by replaying the log.
+5. **Domain events** (for example `TransactionRecorded`, `BudgetOverspent`) are derived by diffing projection state before and after `apply`, and are used only locally (UI refresh, notifications, derived recomputation). They are not replicated; the replicated form is the operation.
+6. **Queries** read projections only and never mutate. Derived values (balances, envelope availability, goal progress) are computed from projections (§4).
+7. Operation and payload schemas are versioned (`schema` field). Every schema change ships an **upcaster** and a replay test over frozen fixtures.
+
+**Runtime topology (web)**
+
+```text
+UI thread (React/Next client components)  ⇄ typed RPC ⇄  Core Worker (dedicated)
+                                                          ├─ core (domain/application)
+                                                          ├─ SQLite WASM on OPFS (encrypted, §8)
+                                                          ├─ keys (non-extractable CryptoKey / in-memory buffers)
+                                                          └─ sync client (fetch / WebSocket)
+```
+
+- The UI thread holds no key material, only opaque session handles and read-model results.
+- **Offline app shell.** A service worker precaches the hashed static export (HTML, JS, CSS, WASM, fonts) and serves it cache-first, so the app opens and runs after a reload or browser restart with no network. The service worker handles only same-origin static assets: it never sees API traffic bodies, keys or user data. Cache updates are atomic (new version activates only after full precache) and every asset is checked against the published hash manifest (§10.9). Offline reload is covered by an end-to-end test.
+- One Core Worker owns the database. Multiple tabs coordinate with the Web Locks API (single writer) and are notified of changes through a `BroadcastChannel`; non-leader tabs proxy through the leader worker (a `SharedWorker` is used where available).
+- Next.js is used as a build tool and router. The application routes are statically exported and contain no server components, server actions or API routes touching user data. Marketing and documentation routes MAY be server-rendered.
+
+**Server (NestJS) shape**: modules `auth`, `devices`, `folds`, `membership`, `ops`, `snapshots`, `attachments`, `rates`, `mail`. Each module is controller → application service → repository (PostgreSQL). Request/response schemas come from `protocol`. The server verifies signatures and structural rules only (§9.6); it has no domain entities.
+
+**Later platforms**: Tauri 2 desktop and mobile shells load the same static export. They MAY supply hardware-backed key storage through Tauri plugins behind `KeyStorePort`. They MUST NOT require changes to `core`, `crypto` or `protocol`.
 
 ---
 
@@ -51,9 +107,10 @@ Normative keywords (MUST, SHOULD, MAY) follow RFC 2119.
 | A2 | Active network / replay | Modifies or replays messages | Counter-bound AEAD, signed ops, per-device sequence numbers |
 | A3 | Honest-but-curious server | Reads DB and logs | E2EE; verifier uncrackable without Secret Key (2SKD) |
 | A4 | Malicious server | Reorders, drops, forges ops, serves wrong keys | Signed ops, signed membership log, AAD binding, fingerprint verification (§7.4) |
-| A5 | Stolen device (locked) | Disk image | SQLCipher, Keychain/Secure Enclave wrapping |
+| A5 | Stolen device (locked) | Browser profile / disk image | Encrypted database (§8.1); Secret Key encrypted at rest (§5.2); keys never stored in the clear |
 | A6 | Revoked member | Retains old keys | Key epoch rotation (§7.5). Past data seen is not recallable. |
-| A7 | Malware on unlocked device | Out of scope | Mitigation limited to memory hygiene (§10) |
+| A7 | Malware or hostile extension on unlocked device | Out of scope | Mitigation limited to client hardening (§10) |
+| A8 | Compromised web host, CDN or dependency (code-delivery attack) | Serves modified JavaScript that exfiltrates keys | Strict CSP, SRI, pinned and provenance-checked builds, SBOM, no third-party scripts, reproducible builds with published hashes; residual risk is inherent to web delivery and is the main reason for the later Tauri shells (bundled, signed code). The app states this limit in its threat model. |
 
 ---
 
@@ -85,8 +142,8 @@ Normative keywords (MUST, SHOULD, MAY) follow RFC 2119.
 - `Amount` = signed 64-bit integer count of **minor units** of an ISO 4217 currency (or a Cashfold-registered asset code). **No `Decimal`, `Double` or `Float` type appears in the schema, wire format or API.**
 - Currency exponents come from a bundled table: `USD 2`, `JPY 0`, `BHD 3`, `CLF 4`, `BTC 8`, and so on. Exponents 0–8 are needed to cover fiat and `BTC`. Exponents above 8 are unsupported in v1.
 - Range: `|amount| ≤ 2^63−1`. At exponent 8 this is ≈ 9.2×10^10 whole units, which is sufficient.
-- Language bindings: Rust `i64` (intermediate `i128`), Swift `Int64`, TypeScript `bigint`. **JavaScript `number` MUST NOT be used for amounts.**
-- Aggregation: all sums use `i128` (Rust) or SQLite `SUM()`. SQLite raises "integer overflow" rather than wrapping. The ledger layer MUST treat that error as fatal for the query.
+- Representation: TypeScript `bigint` everywhere in `core` (a branded `Money` value object). **JavaScript `number` MUST NOT be used for amounts**, enforced by lint. Values are range-checked against `[-2^63, 2^63−1]` on construction and after every operation.
+- Aggregation: sums are computed in SQLite (`SUM()` raises "integer overflow" rather than wrapping) or with `bigint`. The SQLite WASM adapter MUST read and bind 64-bit integers as `bigint`; reading them as JavaScript `number` silently loses precision above 2^53 and is forbidden. A test inserts and sums values above 2^53 to prove this. The ledger layer treats an overflow error as fatal for the query.
 - User input is parsed from the decimal string by exact string arithmetic (split on the locale decimal separator, reject more fractional digits than the exponent, with no intermediate float).
 - Rounding, when unavoidable (FX, budget velocity, splits): **round-half-to-even**, applied once at the end of the computation, on integers.
 
@@ -189,7 +246,7 @@ EnvelopePeriod (derived, never stored or synced) per (envelope, period index p):
 
 ```
 burn_per_day_minor = round_half_even(spent / d_elapsed)
-projected_minor    = round_half_even(spent * d_total / d_elapsed)     -- i128 intermediate
+projected_minor    = round_half_even(spent * d_total / d_elapsed)     -- bigint intermediate
 overspend_flag     = projected_minor > carry_in + allocation_minor
 ```
 
@@ -198,12 +255,14 @@ overspend_flag     = projected_minor > carry_in + allocation_minor
 - A rate record: `Rate { id, base: "USD", quote, as_of_utc_s: i64, rate_e12: i64, source }`.
   - `rate_e12` = round(units of `quote` per 1 `base` × 10^12). USD is the pivot currency; no floats are involved. Example: `BTC 9.846849e-6` ⇒ `9846849`, `AED 3.67298` ⇒ `3672980000000`, and a ~16 000-per-USD currency fits in `i64` (1.6×10^16).
   - Ingest from float JSON by **parsing the decimal string**, not via `f64`.
+  - **Source.** Rates are published by the user's Cashfold service as a single non-personalised table (`GET /v1/rates`, §9.6), identical for every caller, so the request discloses nothing about holdings. The app MUST NOT contact third-party rate providers. The operator configures the upstream source and MAY disable publication, in which case only user-entered (`source = custom`) rates exist.
+  - The table is unauthenticated data. A dishonest server can only mislead *new* entries: stored amounts, user-confirmed transfer amounts and frozen `base_amount_minor` snapshots are never altered by a rate update. The UI shows each rate's source and `as_of`.
 - Conversion of `a` minor units of currency X (exponent `eX`) to currency Y (exponent `eY`) through USD:
 
 ```
 y_minor = round_half_even( a * 10^eY * R_Y  /  ( 10^eX * R_X ) )       with R_* = rate_e12, R_USD = 10^12
 ```
-  A single division on `i128`/BigInt avoids double rounding. Intermediate magnitude bound: `|a| < 2^63`, `10^eY ≤ 10^8`, `R ≤ 2^63` ⇒ numerator < 2^63·2^27·2^63 = 2^153, which exceeds `i128`. Implementations MUST therefore use arbitrary precision (Rust `num-bigint`/`ruint::U256`, TS `bigint`) for the multiplication, and narrow after division. Overflow of the narrowed result is an error.
+  A single division on `bigint` avoids double rounding. Intermediate magnitude bound: `|a| < 2^63`, `10^eY ≤ 10^8`, `R ≤ 2^63` ⇒ numerator < 2^63·2^27·2^63 = 2^153; native `bigint` is arbitrary precision, so the multiplication needs no special handling. Narrow after division and range-check; overflow of the narrowed result is an error. (Money arithmetic is not secret-dependent, so non-constant-time `bigint` is acceptable here.)
 - `base_amount_minor` is computed once at entry/edit using the rate current at `occurred_at` (nearest prior `as_of`), and the used `fx_rate_id` is stored. Historic values are therefore never silently restated; an explicit "revalue" action re-snapshots.
 - Net worth sums `base_amount` equivalents of balances converted with the latest rate.
 
@@ -283,17 +342,17 @@ occurrence(n) for n ≥ 0:
 
 | Purpose | Cashfold primitive | Source |
 |---|---|---|
-| CSPRNG | OS CSPRNG: `SecRandomCopyBytes` (Apple), `getrandom(2)` (Linux), `BCryptGenRandom` (Windows), `crypto.getRandomValues` (web) | §Randomness lists these |
-| Symmetric AEAD | **AES-256-GCM**, 96-bit random nonce, 128-bit tag | |
-| KDF (key extraction/expansion) | **HKDF-SHA256** (RFC 5869) | |
-| Password hash (primary) | **Argon2id** (RFC 9106), output 32 B | Memory-hard; requires a native or WASM core. |
-| Password hash (fallback) | **PBKDF2-HMAC-SHA256, 650,000 iterations** | |
-| PAKE | **SRP-6a**, RFC 5054 conventions, SHA-256, 4096-bit group | 4096-bit group from RFC 3526. |
-| Key agreement / sealing | **X25519** inside **HPKE** (RFC 9180): DHKEM(X25519, HKDF-SHA256), HKDF-SHA256, AES-256-GCM | |
-| Signatures | **Ed25519** (RFC 8032) | |
-| Local DB | SQLCipher 4 (AES-256-CBC + HMAC-SHA512 per page) | |
-| Hardware key | Secure Enclave P-256 (the only curve the SE supports) | |
-| Serialization | Deterministic CBOR (RFC 8949 §4.2.1) | |
+| CSPRNG | `crypto.getRandomValues` (web, Workers, Node); Tauri shells use the same API in their webview | The only randomness source permitted |
+| Symmetric AEAD | **AES-256-GCM** via WebCrypto, 96-bit random nonce, 128-bit tag | |
+| KDF (key extraction/expansion) | **HKDF-SHA256** (RFC 5869) via WebCrypto | |
+| Password hash (primary) | **Argon2id** (RFC 9106), output 32 B, vetted WASM build run in the Core Worker | Memory-hard. |
+| Password hash (fallback) | **PBKDF2-HMAC-SHA256, 650,000 iterations** via WebCrypto | Used only if WASM is unavailable |
+| PAKE | **SRP-6a**, RFC 5054 conventions, SHA-256, 4096-bit group | 4096-bit group from RFC 3526. Secret-exponent modular exponentiation MUST be constant-time (§6.9); native `BigInt` is forbidden for it. |
+| Key agreement / sealing | **X25519** inside **HPKE** (RFC 9180): DHKEM(X25519, HKDF-SHA256), HKDF-SHA256, AES-256-GCM. `@noble/curves` (and `@noble/hashes`); WebCrypto X25519 where available | |
+| Signatures | **Ed25519** (RFC 8032): WebCrypto where supported (allows non-extractable device keys), otherwise `@noble/curves`. Strict verification. | |
+| Local DB | SQLite WASM on OPFS with whole-file encryption (§8.1) | |
+| Hardware-backed key | Not available on the web. WebAuthn PRF MAY unlock a wrapping key from a platform authenticator (§5.2). Tauri shells add OS keychain / Secure Enclave later behind `KeyStorePort`. | |
+| Serialization | Deterministic CBOR (RFC 8949 §4.2.1), TypeScript encoder with frozen byte vectors | |
 
 Rationale: Argon2id is memory-hard, which raises GPU/ASIC cost far above PBKDF2 at equal latency. X25519/Ed25519 give 128-bit security with 32-byte keys, constant-time implementations are ubiquitous. SRP's 4096-bit group exceeds the commonly required ≥2048-bit minimum at a cost of one extra modular exponentiation per login.
 
@@ -307,13 +366,15 @@ Format `C1-AAAAAA-SSSSSSSSSSS-SSSSS-SSSSS-SSSSS`, where:
 
 **Generation:** 26 × 5 = 130 bits are read from the CSPRNG (17 bytes, 4 bits discarded). The account id is read the same way (30 bits from 4 bytes, 2 bits discarded).
 
-**Storage on a device:**
-1. Generate an AES-256 *Device Unlock Key* `DUK` (CSPRNG).
-2. Create a Secure Enclave P-256 key `SE_k` with access control `kSecAccessControlBiometryCurrentSet | kSecAccessControlPrivateKeyUsage`, `kSecAttrTokenIDSecureEnclave`, `kSecAttrAccessibleWhenUnlockedThisDeviceOnly`.
-3. Wrap `DUK` with `SE_k` via `SecKeyCreateEncryptedData(.eciesEncryptionStandardVariableIVX963SHA256AESGCM)`; store the blob in the Keychain with the same accessibility class and `kSecAttrSynchronizable = false`.
-4. Encrypt the secret Secret Key and the cached `SRP-x` under `DUK` with AES-256-GCM, AAD `"cashfold.dukblob.v1"`, and store it in the app container.
+**Storage on a device (web):** the browser has no hardware-backed key store for arbitrary secrets, so the design keeps the at-rest secret protected by something the user knows, with an optional device-bound convenience layer.
+1. A random 16-byte `device_salt` is generated per device and stored in the clear.
+2. `LVK = Argon2id(NFKD(trim(password)), device_salt, params)` (32 bytes) is the *Local Vault Key*. It is derived at unlock and never stored.
+3. The Secret Key and cached `SRP-x` are stored as `AES-256-GCM(LVK, nonce, aad = "cashfold.dukblob.v1", …)` in IndexedDB.
+4. **Quick unlock (optional):** where the browser supports WebAuthn with the PRF extension, the app registers a platform credential (biometric or device PIN). The PRF output wraps a random `DUK`; `LVK` is stored encrypted under `DUK`. Without PRF support, the user types the password at every unlock. After a browser restart, a password is always required.
+5. The device signing key (§7.1) is generated as a non-extractable WebCrypto key where Ed25519 is supported. Otherwise it is stored encrypted under `LVK`.
+6. The database key `DBK` (§8.1) is derived from `LVK` (or `DUK`) and held in the Core Worker only while unlocked.
 
-Platforms without SE (Linux/Windows/Android without StrongBox): keystore-backed AES key (TPM, DPAPI, Android Keystore); web: not stored (the user retypes the Secret Key or uses a passkey-style device credential).
+Consequence: on a stolen browser profile an attacker needs the password to reach the Secret Key, so a weak password weakens the two-secret protection *on that device only*. The UI MUST say so and MUST show a password-strength meter at sign-up. Tauri shells later bind `DUK` to the OS keychain or Secure Enclave, restoring hardware-backed protection.
 
 **Emergency Kit** (PDF/QR) contains: account id, email, server URL, and the Secret Key. It deliberately has a blank field for the password and warns not to store both together. The QR encodes an add-device URL (§6.6).
 
@@ -353,7 +414,7 @@ password ──┐
 Secret Key ┘                          │
                                       └── HPKE-opens ──► Fold Key  FK[fold_id, epoch]  (32 B, one per Fold per epoch)
                                                           └─ HKDF ──► record key RK = f(FK, record_id)
-                                                          └─ HKDF ──► SQLCipher key (per device; derived from DUK, not FK)
+                                                          └─ HKDF ──► database key DBK (per device; derived from LVK/DUK, not FK)
 SRP-x ──► verifier v  (server)
 ```
 
@@ -372,7 +433,7 @@ The server stores the KeySet and `kdf`/salts. It never sees the AUK or the priva
 
 ### 5.5 Fold = Vault
 - A **Fold** is the isolation unit for a budget context (*Personal*, *Family*, *Business*). Each Fold has its own random **Fold Key** `FK` = 32 bytes from the CSPRNG and a monotone `epoch: u32` starting at 1.
-- `FK` is stored **only** as per-member HPKE envelopes (§7.2). A Fold's owner has an envelope for their own `enc.pk`.
+- `FK` is stored **only** as per-member HPKE grants (§7.2). A Fold's owner has a grant for their own `enc.pk`.
 - Folds share no key material. Compromise or revocation of one Fold does not affect the others.
 - Records of different Folds MUST NOT be co-mingled in one DB table without `fold_id` in every primary key (§8).
 
@@ -498,14 +559,14 @@ frame = AES-256-GCM( K_dir, nonce, aad = CBOR["cashfold.frame.v1", session_id, d
 - Sessions expire (default 30 min idle, 24 h absolute). Re-auth reuses the cached `SRP-x`, so it needs only a local unlock and no password re-entry.
 
 ### 6.6 Enrolling a new device
-1. The user scans/pastes the add-device URL from an existing device or the Emergency Kit: `cashfold://add?email=…&server=…&key=C1-…` (the Secret Key travels only through a user-controlled channel: QR, paste, paper).
+1. The user scans/pastes the add-device URL from an existing device or the Emergency Kit: `https://<app-host>/add#email=…&server=…&key=C1-…`. The data is in the URL **fragment**, which browsers never send to any server, and the page removes it from the address bar and history immediately after reading it. The Secret Key travels only through a user-controlled channel: QR, paste, paper.
 2. The new device asks for the password, fetches `{auth_salt16, enc_salt16, kdf_params}`, and derives `SRP-x` and `AUK`.
 3. SRP login (§6.3). The client fetches the KeySet and decrypts the private keys with `AUK`.
 4. The client generates a device Ed25519 key, registers it, and the owner (or the user's other device) signs the registration in the membership log (§7.3).
-5. Fold envelopes are fetched and opened (§7.2). The device then begins sync.
+5. Fold grants are fetched and opened (§7.2). The device then begins sync.
 
 ### 6.7 Password / Secret Key change
-Both change `AUK` (and `SRP-x`). The client re-wraps the KeySet's private keys under the new AUK, re-computes `v`, and uploads atomically `{v, auth_salt16', KeySet', kdf'}` in a single authenticated request. Fold envelopes are unaffected because they are HPKE-wrapped to the unchanged X25519 public key.
+Both change `AUK` (and `SRP-x`). The client re-wraps the KeySet's private keys under the new AUK, re-computes `v`, and uploads atomically `{v, auth_salt16', KeySet', kdf'}` in a single authenticated request. Fold grants are unaffected because they are HPKE-wrapped to the unchanged X25519 public key.
 
 ### 6.8 Account recovery
 There is **no server-side recovery**. Offered mechanisms:
@@ -513,14 +574,21 @@ There is **no server-side recovery**. Offered mechanisms:
 - **Recovery Key** (optional): 32 random bytes `RKm`; `RK_auth = HKDF(RKm, "CASHFOLD_RECOVERY_KEY_AUTH_v1")`, `RK_enc = HKDF(RKm, "CASHFOLD_RECOVERY_KEY_ENC_v1")`, `RK_uuid = HKDF(RKm, "CASHFOLD_RECOVERY_KEY_UUID")[0:16]`. `RK_enc` AES-256-GCM-wraps the KeySet private keys; `RK_auth` is used as a second SRP-x for the recovery credential. The server stores only the second verifier and the wrapped KeySet.
 - **Family recovery** via a Fold co-member re-sealing the FK to a new public key (§7).
 
+### 6.9 SRP implementation notes (constant-time requirement)
+SRP uses secret exponents (`a` on the client, `b` on the server) and the long-term secret `x`. Variable-time big-integer exponentiation can leak these through timing. Therefore:
+- **Server (NestJS):** exponentiation with the secret `b` MUST use OpenSSL's constant-time Montgomery routines through Node's `crypto.createDiffieHellman(N, g)` API: `g^b` via key generation with `setPrivateKey(b)`, and `S = (A·v^u)^b` via `computeSecret()`. Results are left-padded to 512 bytes because DH output strips leading zeros. Operations on public values only (`k·v`, hashing, padding) may use `bigint`. **VERIFY** that the Node/OpenSSL versions in use take the constant-time path and accept a 4096-bit custom prime with the safe-prime check enabled.
+- **Client (Core Worker):** `A = g^a`, `g^x` and `(B − k·g^x)^(a + u·x)` MUST run in a vetted WASM big-integer module with constant-time modular exponentiation, exposed only through `Pake` in `packages/crypto`. Native `bigint` is forbidden for these operations. **VERIFY** the chosen WASM module (for example a build of a constant-time Rust big-integer crate) with differential tests against the OpenSSL path.
+- Both sides reject degenerate values (`A mod N = 0`, `B mod N = 0`, `u = 0`).
+- Known-answer and 100-exchange differential tests (client WASM ↔ server OpenSSL ↔ reference) are required (§11).
+
 ---
 
 ## 7. Sharing and access control
 
 ### 7.1 Principals and keys
-Each user has the KeySet from §5.4: an X25519 key (`enc`) and an Ed25519 key (`sig`). Each device additionally has its own Ed25519 *device signing key* (stored in Keychain, never exported). Device keys are certified by the user's `sig` key in the membership log.
+Each user has the KeySet from §5.4: an X25519 key (`enc`) and an Ed25519 key (`sig`). Each device additionally has its own Ed25519 *device signing key* (non-extractable where the platform allows, otherwise encrypted at rest per §5.2; never exported). Device keys are certified by the user's `sig` key in the membership log.
 
-### 7.2 Fold Key envelope (HPKE, RFC 9180 base mode)
+### 7.2 Fold Key grant (HPKE, RFC 9180 base mode)
 To grant member `m` access to Fold `F` at epoch `e`:
 
 ```
@@ -528,15 +596,15 @@ To grant member `m` access to Fold `F` at epoch `e`:
                        info = CBOR["cashfold.foldkey.v1", fold_id, e, m.account_id],
                        aad  = CBOR["cashfold.foldkey.v1", fold_id, e, role],
                        pt   = FK[e] (32 B) )
-envelope  = { fold_id, epoch: e, member: m.account_id, role, enc: bytes32, ct: bytes48, granted_by, sig: Ed25519(granter.sig, canonical(envelope_without_sig)) }
+grant     = { fold_id, epoch: e, member: m.account_id, role, enc: bytes32, ct: bytes48, granted_by, sig: Ed25519(granter.sig, canonical(grant_without_sig)) }
 ```
-Only the member's X25519 secret key opens the envelope. The server stores envelopes opaquely. Envelopes are individually signed, so a server cannot swap one in or out unnoticed.
+Only the member's X25519 secret key opens the grant. The server stores grants opaquely. Grants are individually signed, so a server cannot swap one in or out unnoticed.
 
 ### 7.3 Membership log
 Each Fold has an append-only, hash-chained, signed **membership log**. Entry types:
 
 ```
-Entry { idx: u64, prev_hash: bytes32, type: add_member | remove_member | change_role | add_device | revoke_device | rotate_epoch,
+Entry { idx: u64, prev_hash: bytes32, type: add_member | remove_member | leave | change_role | add_device | revoke_device | rotate_epoch,
         subject: account_id|device_id, role?, pubkeys?, epoch?, signer: account_id, sig: Ed25519 over canonical(entry), ts: utc_ms }
 hash = SHA-256(canonical(entry))
 ```
@@ -545,30 +613,64 @@ hash = SHA-256(canonical(entry))
 - Clients verify the full chain from the genesis entry (signed by the Fold creator, whose public key was pinned when the Fold was created locally or when first invited).
 
 ### 7.4 Inviting a user
-1. Inviter obtains the invitee's *public key bundle* `{account_id, enc.pk, sig.pk, self_signature}` from the server.
-2. **Fingerprint check (mandatory for Family/Business Folds).** Both sides compute `fp = SHA-256("cashfold.fp.v1" ‖ enc.pk ‖ sig.pk)` truncated to 20 bytes, shown as 8 groups of 5 digits, compared out-of-band or by QR. Without it the server could substitute its own key (adversary A4).
-3. The inviter signs an `add_member` entry and uploads the envelope (§7.2) for the current epoch.
-4. The invitee verifies the log chain and envelope signature, opens the envelope, and starts syncing.
+1. Inviter obtains the invitee's *public key bundle* `{account_id, enc.pk, sig.pk, self_signature}` in one of two ways:
+   - **Email lookup** (`POST /v1/accounts/lookup`, FR-106): available only to signed-in, email-verified callers, rate-limited per account (default 20 lookups per day, configurable). It returns a bundle only for a verified, *discoverable* account. Unknown and non-discoverable addresses return the same `404`, so a lookup reveals only accounts that opted in. Accounts are discoverable by default, shown at sign-up, and changeable at any time (`PUT /v1/accounts/me/discoverable`).
+   - **Invitation code.** The invitee exports a code (or link/QR) that contains their public key bundle and gives it to the inviter out-of-band. This needs no lookup and works for non-discoverable accounts and for services with verification disabled.
+2. **Fingerprint check (mandatory for every shared Fold).** Both sides compute `fp = SHA-256("cashfold.fp.v1" ‖ enc.pk ‖ sig.pk)` truncated to 20 bytes, shown as 8 groups of 5 digits, compared out-of-band or by QR. Without it the server could substitute its own key (adversary A4).
+3. The inviter chooses a **history scope** (`full` or `from_join`) and the invitee is shown it before accepting (FR-102).
+4. The inviter signs an `add_member` entry carrying `scope` and `from_epoch`, and uploads the grant(s) (§7.2); see §7.6 for which epochs are sealed.
+5. The inviter's client posts the invitation (`POST /v1/folds/{fold}/invitations`, FR-107). The service sends the invitee an email that names the sender only: no Fold name, member list or financial content.
+6. The invitee verifies the log chain and grant signatures, opens the grant(s), and starts syncing.
 
 ### 7.5 Revocation and key rotation
 Cryptographic revocation requires a new key:
 1. An owner appends `remove_member` and `rotate_epoch(e+1)`.
-2. Generate `FK[e+1]` (CSPRNG) and seal it to every remaining member (new envelopes at epoch e+1).
+2. Generate `FK[e+1]` (CSPRNG) and seal it to every remaining member (new grants at epoch e+1).
 3. All *new* ops are encrypted under epoch `e+1`. Old records remain readable via `FK[e]`, which remaining members retain.
 4. Optional background re-encryption of old records to `e+1` (a pure re-key op carrying the same field timestamps), after which `FK[e]` can be discarded.
 
 The removed member may already have copied data from epoch ≤ e. This cannot be undone; the UI MUST say so.
 
+### 7.6 History scope for new members (FR-102)
+
+| Scope | Epochs sealed to the new member | Effect |
+|---|---|---|
+| `full` | Grants for **every** epoch `1..e` (the inviter holds them all) | Member can decrypt all existing records |
+| `from_join` | Owner first appends `rotate_epoch(e+1)`; only `FK[e+1]` is sealed to the new member (`from_epoch = e+1`) | Member can never decrypt records written under epochs ≤ e |
+
+`from_join` mechanics:
+1. **Rotation on invite.** All existing members receive `FK[e+1]` as in §7.5. New ops use epoch `e+1`.
+2. **Baseline republish.** Because the new member cannot read earlier records, the owner's client republishes under `e+1` the *structural* current state needed to make sense of new data: accounts (without history), categories, payees, tags, budgets, goals, schedules. Those ops carry the **original field clocks**, so they merge as no-ops for existing members.
+3. **Checkpoints.** For each account and each rollover envelope the client also writes a `checkpoint` record (table code 14) `{kind: account_balance | envelope_carry, subject, as_of_local_date, value_minor}` capturing the value on the join date. For a `from_join` member, `balance(acct) = checkpoint + Σ entries after as_of` and the first visible budget period starts at the checkpoint's carry-in. Members with full history ignore checkpoints.
+4. **Hidden history.** Records whose creating op is in an epoch the member lacks are not displayed. A later-epoch patch that targets such a record is stored but invisible (no base record).
+5. **Server delivery.** The server MAY withhold ops with `epoch < from_epoch` from that member to save bandwidth. This is an optimisation, not a security boundary; confidentiality comes from the missing key.
+6. The scope cannot be widened later. Widening requires a new invitation, because granting older epochs is a new disclosure the owner must approve.
+
+### 7.7 Local copy on removal or departure (FR-104)
+1. On every sync the client replays the membership log. If the log shows that this account is `removed` or has `left`, the client deletes the Fold's rows, `fold_key`, `op_log` and attachments, and zeroizes cached keys.
+2. A voluntary leaver is offered an export before the leave entry is appended.
+3. If the account itself is deleted (§9.9), the server answers every request with `410 Gone` and the client wipes all local data for that account.
+4. Deletion on the device cannot recall data already seen, exported or copied; the UI says so.
+
 ---
 
-## 8. Local storage — SQLite / SQLCipher
+## 8. Local storage — SQLite WASM on OPFS
 
 ### 8.1 Encryption at rest
-- SQLCipher 4, `PRAGMA key = "x'<64 hex DBK><32 hex salt>'"` (raw key form, so no PBKDF2 is applied to a key that is already uniform).
-- `DBK = HKDF-SHA256( IKM = DUK, salt = device_id, info = "cashfold.sqlcipher.v1", L = 32 )`.
-- Settings: `cipher_page_size = 4096`, `cipher_hmac_algorithm = HMAC_SHA512`, `cipher_memory_security = ON`, `cipher_use_hmac = ON`, `journal_mode = WAL`, `secure_delete = ON`, `foreign_keys = ON`, `temp_store = MEMORY`.
-- WAL, journal and temp files are covered by SQLCipher. The DB file carries `NSFileProtectionComplete` on iOS and is excluded from iCloud/iTunes backups.
+- Engine: official SQLite WASM build running in the Core Worker, using an OPFS VFS (the SyncAccessHandle pool VFS, which needs no cross-origin isolation headers).
+- **Requirement:** the main database file, journal/WAL and any temp files MUST be encrypted; no plaintext page may reach OPFS. Two acceptable implementations, in order of preference (**VERIFY** and decide in ADR-0002):
+  1. A SQLite build with a built-in cipher (for example SQLite3 Multiple Ciphers compiled to WASM) configured for AES-256 or ChaCha20-Poly1305 with per-page authentication, using a raw 256-bit key.
+  2. A custom VFS wrapper that encrypts each page with AES-256-GCM using a key derived per page: `HKDF(DBK, salt = page_no ‖ file_id, info = "cashfold.page.v1")`, a random 96-bit nonce stored with the page, and `AAD = file_id ‖ page_no ‖ write_counter`. Page swapping and rollback of individual pages are detected by the AAD and a per-file Merkle/epoch counter kept in the encrypted header.
+- `DBK = HKDF-SHA256( IKM = LVK or DUK, salt = device_id, info = "cashfold.db.v1", L = 32 )`.
+- Pragmas: `foreign_keys = ON`, `secure_delete = ON`, `temp_store = MEMORY`, `journal_mode` as supported by the chosen VFS (`DELETE` or `WAL`).
 - The database holds **decrypted, queryable data** (the local trust boundary is the unlocked device) plus the encrypted op log used to talk to the server.
+- Locking the app closes the database, zeroizes `DBK` in the Core Worker and terminates the worker, which discards its heap.
+
+### 8.1a Durability and multi-tab (web specifics)
+- **Eviction risk.** Browsers may evict site storage under pressure. The app MUST call `navigator.storage.persist()` at first run, show a warning when persistence is denied, and nag for an encrypted backup (§5.8). Because every change is also uploaded as an op, a signed-in user can always rebuild from the server; a never-synced user cannot, so the backup nag is stronger for them.
+- **Single writer.** Exactly one Core Worker may open the database at a time, arbitrated with the Web Locks API; other tabs use RPC to the leader and receive change notifications over a `BroadcastChannel`.
+- **Crash safety.** Every command is one SQLite transaction (op log + projections). On start-up the worker verifies the encrypted header and replays any unapplied ops.
+- **Capacity and speed.** The 50,000-transaction target (SC-008) is validated by a benchmark in CI using a headless browser; query plans for the indexes in §8.2 are asserted.
 
 ### 8.2 Schema (DDL)
 
@@ -620,7 +722,7 @@ CREATE TABLE field_clock (
   PRIMARY KEY (fold_id, rec_id, field_id)
 ) STRICT, WITHOUT ROWID;
 
--- ===== Domain tables (plaintext inside SQLCipher) =====
+-- ===== Domain tables (plaintext inside the encrypted database) =====
 CREATE TABLE account (
   fold_id BLOB NOT NULL, id BLOB NOT NULL,
   kind INTEGER NOT NULL CHECK (kind BETWEEN 1 AND 6),
@@ -775,7 +877,7 @@ OpEnvelope {                                  -- what the server stores and rela
   sig:        bytes64                          -- Ed25519(dev_sig_sk, "cashfold.op.v1" ‖ canonical(all fields above except sig))
 }
 Payload (inside blob, CBOR) {
-  t: u8,                                      -- table: 1 account 2 group 3 category 4 payee 5 tag 6 txn 7 transfer 8 budget 9 goal 10 schedule 11 fx_rate 12 import 13 membership-adjacent settings
+  t: u8,                                      -- table: 1 account 2 group 3 category 4 payee 5 tag 6 txn 7 transfer 8 budget 9 goal 10 schedule 11 fx_rate 12 import 13 settings 14 checkpoint
   f: { <field_id:u16>: <value> , … }          -- only fields written by this op; each takes the op's hlc
   fx: { <field_id:u16>: { add: [ids], rem: [[id, add-op-id]…] } }     -- set-valued fields (OR-Set deltas)
 }
@@ -792,7 +894,7 @@ Payload (inside blob, CBOR) {
 | Scalar field (name, amount, date, FKs…) | LWW register. Winner = max `(wall, ctr, dev_id)`. Equal full stamps are impossible (device id is part of the stamp). |
 | **Record as a unit** (transfer, transaction amount+currency+base snapshot) | Fields that must change together are written in **one op** with the same stamp, so concurrent edits resolve to *one* whole version per field group. For `transfer`, the fields `{from_account_id, to_account_id, from_amount_minor, to_amount_minor, fx_rate_id}` form a **field group** `G_amounts`. The group has a single register, so partial application of a transfer is impossible. For `txn`, `{amount_minor, currency, base_amount_minor, base_currency, fx_rate_id, direction}` form a group. |
 | Set (tag ids, group membership, budget scope) | **Add-wins OR-Set.** Adds carry the op id as a unique tag. A remove names the add-tags it observed. A concurrent add survives. |
-| Delete | `deleted` register (LWW). A later-stamped `deleted=false` is an explicit undelete. Field writes arriving after a delete are stored but the record stays invisible. A delete does not cascade in the CRDT; cascades are derived (§4.2-8). |
+| Delete | `deleted` register (LWW); retention: a record deleted for more than 30 days is purged (rows, field clocks, history) on every device by a deterministic local job keyed on the tombstone's HLC wall time, and the service may drop its history once every active device has acknowledged a snapshot taken after the purge point (FR-052). A restore inside the window clears the register on every device, including devices that were offline during the delete. A later-stamped `deleted=false` is an explicit undelete. Field writes arriving after a delete are stored but the record stays invisible. A delete does not cascade in the CRDT; cascades are derived (§4.2-8). |
 | Ordering fields (`sort_order`) | LWW integer. Collisions are tolerated and resolved by `(sort_order, name, id)` at read time. |
 | Derived data (balances, counts, envelope availability, tag/payee usage) | **Never stored in ops.** |
 
@@ -823,12 +925,16 @@ PULL   GET  /v1/folds/{fold}/ops?after={server_seq}&limit=500
          resp:  { ops: [{server_seq, OpEnvelope}…], head: u64, more: bool }
 STREAM WS   /v1/folds/{fold}/stream           -- server pushes {head}; client PULLs
 MEMBERSHIP  GET/POST /v1/folds/{fold}/log?after={idx}
-ENVELOPES   GET /v1/folds/{fold}/envelopes?member=me
+GRANTS      GET /v1/folds/{fold}/grants?member=me
 SNAPSHOT    PUT/GET /v1/folds/{fold}/snapshot  -- client-encrypted state snapshot at server_seq N (§9.7)
+RATES       GET /v1/rates                       -- shared non-personalised rate table (§3.8); no authentication needed
+EMAIL       POST /v1/accounts/verify-email      -- one-time token; PUT /v1/accounts/me/discoverable; POST /v1/accounts/lookup (§7.4)
+INVITE      POST /v1/folds/{fold}/invitations   -- records an invitation and sends the notification (FR-107)
+ACCOUNT     DELETE /v1/accounts/me              -- account deletion (§9.9), requires fresh SRP proof
 ```
 - Client loop: apply local ops to `op_log` immediately (offline), PUSH pending ops in `dev_seq` order, PULL from `pull_cursor`, apply remote ops in `server_seq` order, advance the cursor in the same transaction.
 - Idempotency: `(fold_id, op_id)` is unique. A re-delivered op is a no-op.
-- Per-op failure policy: bad signature / unauthorised signer / tag failure / unknown `v` ⇒ quarantine, continue. An unknown `epoch` ⇒ wait for the envelope and retry.
+- Per-op failure policy: bad signature / unauthorised signer / tag failure / unknown `v` ⇒ quarantine, continue. An unknown `epoch` ⇒ wait for the grant and retry.
 
 ### 9.7 Server schema (PostgreSQL; ciphertext and routing metadata only)
 
@@ -846,7 +952,7 @@ CREATE TABLE account (
 CREATE TABLE device (dev_id bytea PRIMARY KEY, account_id bytea REFERENCES account, sig_pk bytea NOT NULL, label_ct bytea, created_at timestamptz, revoked_at timestamptz);
 CREATE TABLE fold (fold_id bytea PRIMARY KEY, created_at timestamptz, head_seq bigint NOT NULL DEFAULT 0);
 CREATE TABLE fold_log (fold_id bytea REFERENCES fold, idx bigint, entry bytea NOT NULL, hash bytea NOT NULL, PRIMARY KEY (fold_id, idx));
-CREATE TABLE fold_envelope (fold_id bytea REFERENCES fold, epoch int, member bytea REFERENCES account, envelope bytea NOT NULL, PRIMARY KEY (fold_id, epoch, member));
+CREATE TABLE fold_grant (fold_id bytea REFERENCES fold, epoch int, member bytea REFERENCES account, grant bytea NOT NULL, PRIMARY KEY (fold_id, epoch, member));
 CREATE TABLE op (
   fold_id bytea NOT NULL REFERENCES fold, server_seq bigint NOT NULL, op_id bytea NOT NULL,
   rec_id bytea NOT NULL, dev_id bytea NOT NULL, dev_seq bigint NOT NULL,
@@ -855,6 +961,11 @@ CREATE TABLE op (
   PRIMARY KEY (fold_id, server_seq), UNIQUE (fold_id, op_id), UNIQUE (fold_id, dev_id, dev_seq)
 );
 CREATE TABLE snapshot (fold_id bytea PRIMARY KEY REFERENCES fold, at_seq bigint NOT NULL, blob bytea NOT NULL, sig bytea NOT NULL);
+CREATE TABLE fold_member (fold_id bytea REFERENCES fold, member bytea REFERENCES account, role smallint NOT NULL, from_epoch int NOT NULL DEFAULT 1, removed_at timestamptz, PRIMARY KEY (fold_id, member));
+CREATE TABLE rate_table (as_of timestamptz PRIMARY KEY, base text NOT NULL DEFAULT 'USD', rates jsonb NOT NULL, source text NOT NULL);   -- rates as decimal strings; one shared table, no per-user data
+ALTER TABLE account ADD COLUMN email_verified_at timestamptz, ADD COLUMN discoverable boolean NOT NULL DEFAULT true;
+CREATE TABLE email_verification (account_id bytea REFERENCES account, token_hash bytea NOT NULL, expires_at timestamptz NOT NULL, used_at timestamptz, PRIMARY KEY (account_id, token_hash));
+CREATE TABLE tombstone_account (account_id bytea PRIMARY KEY, deleted_at timestamptz NOT NULL);   -- lets devices learn of deletion (410) without storing content
 ```
 The server holds no key material that can decrypt `blob`, `keyset`, or `snapshot.blob`. Compaction: after a signed snapshot at `at_seq = N` exists and every registered, non-revoked device has acknowledged ≥ N, ops ≤ N MAY be deleted.
 
@@ -866,26 +977,55 @@ The server sees: account/fold/device ids, record ids, op counts and timing, HLC 
 - The record id is random, so it does not disclose entity type or order.
 - HLC `wall_ms` leaks activity times. This is an accepted trade-off because it is needed for LWW. Clients MAY coarsen it to 1 s plus the counter.
 
+### 9.9 Account deletion and service migration (FR-100, FR-101)
+
+**Deletion.**
+1. Client verifies a fresh unlock and explicit confirmation.
+2. Client checks the membership logs of all Folds. If the account is `owner` of any Fold with other active members, the client blocks and offers *transfer ownership* (§7.3 `change_role`) or *delete Fold*.
+3. Client sends `DELETE /v1/accounts/me` with a fresh SRP proof. The server deletes the account, devices, key sets, recovery blob, sessions, grants, and every Fold in which the account was the only member; for other Folds it appends a `remove_member` for this account (signed by the account's last device key, supplied in the request) and removes its grants. It records a `tombstone_account` row.
+4. Other devices of the account receive `410 Gone` and wipe local data (§7.7).
+
+**Migration between services.** The Secret Key, password and key sets are service-independent, so migration is client-driven:
+1. On the new service the client registers using the same credentials (new `auth_salt` and verifier).
+2. For each Fold the client re-creates the Fold, replays the membership log (entries are self-verifying), uploads grants, and pushes its full local `op_log` (preserving `dev`, `seq`, HLC). The new service assigns fresh `server_seq`.
+3. Other members and devices are re-pointed via a signed `set_server` settings record in each Fold; they then perform the same registration on the new service. Until then they remain on the old one (the old service stays read-write; devices reconcile through the op log).
+4. After success the client calls `DELETE /v1/accounts/me` on the old service.
+
+
+### 9.10 Server implementation notes (NestJS)
+- Modules map to the endpoint groups in §9.6: `auth` (SRP handshake, sessions, frames), `devices`, `folds`, `membership` (log, grants), `ops` (push/pull/stream), `snapshots`, `attachments`, `rates`.
+- Pipeline: a global guard verifies the transport frame (counter, AEAD) and resolves the session; a per-route guard checks membership role and device authorisation from the signed log; DTOs are validated with schemas imported from `packages/protocol` (the same schemas the client uses).
+- Persistence: PostgreSQL through a repository layer; the per-Fold `server_seq` is assigned inside the push transaction (a locked counter row, revisited after load tests).
+- Storage of attachments and snapshots: S3-compatible object storage behind a port; the server stores ciphertext only.
+- `mail` module: a port with SMTP and log-only adapters. Sends verification and invitation notices only, with no financial or Fold information. If no mail transport is configured, verification is disabled by configuration and the app tells users that invitations then depend on out-of-band checks (FR-105).
+- Lookup abuse control: the lookup endpoint requires a verified session, is rate-limited per account and per IP, and returns uniform `404` for unknown and non-discoverable addresses (FR-106).
+- Rate source: a scheduled job fetches the configured upstream table, parses decimal strings (no floats), stores one row in `rate_table`, and serves it at `GET /v1/rates` (§3.8).
+- Rate limiting and lockout counters are server-side (Redis or PostgreSQL). The "fake salt" for unknown emails is a keyed MAC (§6.3).
+- Observability: structured logs with type-based redaction; metrics and traces carry ids and counts only.
+- Self-hosting: container image and Compose file (server + PostgreSQL); configuration through environment variables or a config file; identical build for the hosted instance.
+
 ---
 
 ## 10. Client hardening and memory hygiene
 
-JavaScript offers very limited ability to clear data from memory, so the rules below apply to all clients, and the web build adds extra constraints.
+JavaScript cannot guarantee that secrets are erased from memory: the garbage collector may copy buffers, and engines may keep strings alive. The rules below reduce exposure; they do not eliminate it, and the threat model states this limit.
 
-1. **Core in a memory-safe native language** (Rust) exposed to UI shells via FFI/WASM. The UI layer never holds raw key bytes, only opaque handles.
-2. **Secret types:** `Secret<[u8; N]>` wrapping memory that is `zeroize`d on drop, with `Debug`/`Display`/`Serialize` deliberately not implemented. The compiler barrier `zeroize` uses volatile writes plus a fence to prevent dead-store elimination.
-3. **Locked pages:** allocate key material from `mlock`ed (`VirtualLock` on Windows) pages marked `MADV_DONTDUMP` where available, excluded from core dumps. On iOS, rely on `kSecAttrAccessible…ThisDeviceOnly`; never place secrets in `NSUserDefaults`, pasteboard, logs or crash reports.
-4. **Lifetime:**
-   - The password buffer is zeroed immediately after 2SKD, even on error paths.
-   - `K_pw`, `K_sk`, the SRP `a`/`S`/`K` and the transport keys are zeroed as soon as the next stage is derived.
-   - The `AUK` is zeroed after the KeySet is opened. The opened private keys live only while unlocked.
-   - `FK` is held in memory only while the Fold is open; the on-disk copy is wrapped (§8.2).
-5. **Auto-lock:** timeout (default 1 min on mobile, 5 min on desktop), immediate lock on app background (iOS `sceneDidEnterBackground`), screen lock, or system sleep. Locking zeroes all of 4 and closes the SQLCipher handle (`sqlite3_close_v2` plus `PRAGMA cipher_memory_security`).
-6. **UI leakage:** secure text fields; `isSecureTextEntry`; blur the app switcher snapshot; `UIScreen.isCaptured` detection; `.privacySensitive()` on balances; no autofill of the password into non-secure fields.
-7. **Clipboard:** the Secret Key and Recovery Key are copied only with `UIPasteboard.setItems(…, options: [.localOnly: true, .expirationDate: now + 60 s])`.
-8. **Web build:** because JS cannot reliably clear memory, hold keys as non-extractable `CryptoKey` objects where possible, run Argon2id in a WASM module with an explicit memset, keep the Secret Key out of `localStorage`, and use a strict CSP (`default-src 'self'; script-src 'self' 'wasm-unsafe-eval'`).
-9. **Logging:** a structured logger with a redaction type; amounts, names and notes MUST NOT be logged at any level. Crash reporters MUST be configured to drop breadcrumbs for the finance domain.
-10. **Constant-time:** comparisons of MACs, SRP proofs and tags use constant-time functions (`subtle`).
+1. **Isolation.** All key material lives in the Core Worker. The UI thread never receives key bytes, passwords after submission, or decrypted private keys, only opaque handles and read-model results.
+2. **Key objects.** Use non-extractable `CryptoKey` objects wherever the algorithm is supported (AES-GCM, HKDF base keys, Ed25519 device key). Raw key bytes exist only where a library requires them (Argon2id, SRP, `@noble`).
+3. **Secret buffers.** Secrets are held in `Uint8Array`s (never strings) wrapped in a `Secret` type that has no `toString`/`toJSON`/serialisation and exposes `use(fn)` and `wipe()`. `wipe()` overwrites with zeros. Passwords are read from the input element into a `Uint8Array` and the input is cleared.
+4. **Lifetime.**
+   - The password buffer is wiped immediately after key derivation, including on error paths.
+   - `K_pw`, `K_sk`, the SRP `a`/`S`/`K` and the transport keys are wiped as soon as the next stage is derived.
+   - `AUK` is wiped after the KeySet is opened. The opened private keys live only while unlocked.
+   - `FK` is held only while the Fold is open; the stored copy is wrapped (§8.2).
+5. **Auto-lock.** Timeout (default 5 min), `visibilitychange` to hidden for more than a configurable grace period (default 1 min), explicit lock, and `pagehide`. Locking wipes all secrets, closes the database and **terminates the Core Worker** so its heap is released.
+6. **Hiding content.** On `visibilitychange` to hidden, `blur`, `pagehide` and `freeze`, the UI immediately replaces financial content with a neutral cover (FR-007). Browsers expose no app-switcher or screenshot control, so these cannot be prevented and the product states this; native shells later add platform privacy screens.
+7. **UI leakage.** `autocomplete="off"`/`new-password` on the right fields; password and Secret Key fields use `type="password"` with a reveal control; balances use a "hide amounts" toggle; no sensitive data in URLs, titles, history state or `localStorage`; the add-device fragment is removed after reading (§6.6); screenshots cannot be prevented in a browser, and the product says so.
+8. **Clipboard.** The Secret Key and Recovery Key are copied only on explicit user action, and the app attempts to overwrite the clipboard after 60 seconds (best-effort; browsers may refuse).
+9. **Delivery integrity.** Strict CSP (`default-src 'none'`; `script-src 'self' 'wasm-unsafe-eval'`; `connect-src` limited to the configured service; `frame-ancestors 'none'`; `require-trusted-types-for 'script'`), Subresource Integrity for every script, no third-party scripts, no inline scripts, HSTS, `Referrer-Policy: no-referrer`, `Permissions-Policy` denying unused features, a service worker that serves only the pinned, hashed asset set, published build hashes, an SBOM, and reproducible builds. Self-hosters can serve the static export from their own origin.
+10. **Logging.** A structured logger with a redaction type; amounts, names, notes and keys MUST NOT be logged at any level. Error reporting, if present, is self-hosted, opt-in and strips payloads.
+11. **Constant-time.** Comparisons of MACs, proofs and tags use constant-time helpers. Secret-dependent big-integer arithmetic follows §6.9.
+12. **Supply chain.** Pinned dependencies with lockfile enforcement, provenance verification, automated vulnerability scanning, a minimal dependency set, and review of any dependency that touches key material.
 
 ---
 
@@ -895,12 +1035,22 @@ An implementation is conformant only if it ships with:
 
 1. **Known-answer tests:** HKDF-SHA256 (RFC 5869 A.1–A.3), Argon2id (RFC 9106 §5.3), PBKDF2-HMAC-SHA256, AES-256-GCM (NIST SP 800-38D vectors), X25519 (RFC 7748 §6.1), Ed25519 (RFC 8032 §7.1), HPKE (RFC 9180 A.1), and an SRP-6a exchange with fixed `a`, `b` against the 4096-bit RFC 3526 group.
 2. **2SKD cross-implementation vector** (to be generated once and frozen in the repo): fixed `password`, `email`, `secret_key`, `salt16`, `kdf_params` ⇒ expected `AUK` and `SRP-x`. Includes a non-ASCII password (`"Å"` as U+212B, U+00C5 and U+0041 U+030A MUST all produce the same bytes under NFKD).
-3. **Money:** property tests (`proptest`/`fast-check`) for `balance(a) = opening + Σ entries`; sign invariants; FX round-trip bounds (`|convert(convert(a, X→Y), Y→X) − a| ≤ 1` minor unit at the same date for `rate_e12 ≥ 10^6`); half-even rounding on `.5` ties; overflow rejection; absence of `f32/f64/Number` in money paths (lint rule plus a CI grep gate).
+3. **Money:** property tests (`fast-check`) for `balance(a) = opening + Σ entries`; sign invariants; FX round-trip bounds (`|convert(convert(a, X→Y), Y→X) − a| ≤ 1` minor unit at the same date for `rate_e12 ≥ 10^6`); half-even rounding on `.5` ties; overflow rejection; 64-bit values above 2^53 survive a round trip through the SQLite WASM adapter; absence of `number` and floating-point operations in money paths (lint rule plus a CI gate).
 4. **Recurrence:** month-end clamping vectors (31 Jan monthly ⇒ 28/29 Feb, 31 Mar), leap-year yearly (29 Feb), DST boundaries (`local_date` stable), and convergence of two devices generating the same occurrence.
 5. **CRDT:** randomised convergence test. Apply the same op multiset in 1 000 random permutations with random duplication ⇒ identical resulting state and identical `repair()` output.
 6. **Sync adversary tests:** server swaps blobs between records/folds, drops an op, replays a frame, reorders ops, serves a forged membership entry, serves a downgraded KDF ⇒ client rejects each with a specific error.
-7. **Storage:** opening the DB with a wrong key fails; no plaintext money/name strings appear in the DB file, WAL or any temp file (`strings` scan in CI).
-8. **Fuzzing:** CBOR decoder, op envelope parser, SRP message parser.
+7. **Storage:** opening the DB with a wrong key fails; no plaintext money or name strings appear in the OPFS files, IndexedDB, logs or network captures (leak scan in CI using Playwright).
+8. **Fuzzing:** CBOR decoder, op envelope parser, SRP message parser (fast-check structured fuzzing, plus a coverage-guided fuzzer for the WASM modules).
+9. **Architecture fitness:** dependency-boundary lint passes (`core` imports nothing from React, Next, Nest, DOM or Node-only modules; `apps/server` does not import `core` domain); a test replays the op log into empty projections and compares them to the live projections.
+10. **Cross-implementation SRP:** client WASM, server OpenSSL path and an independent reference produce identical `A`, `B`, `S`, `K`, `M1`, `M2` for 100 random exchanges.
+11. **End-to-end:** Playwright scenarios for each P1/P2 story, including offline operation and two-browser sync.
+12. **Accessibility:** axe checks and keyboard-only flows meet WCAG 2.2 AA; axe runs as a blocking CI check on every pull request from the first UI task onward.
+13. **Offline reload:** with the network disabled after one successful load, reloading or reopening the app works and all offline functions run.
+14. **Secret lifetime:** tests assert that password buffers are wiped after key derivation (including error paths), derived keys are wiped after use, and lock wipes all secrets and terminates the worker.
+15. **Fold isolation:** a record encrypted for Fold A cannot be decrypted with any key of Fold B, and no table query without `fold_id` returns cross-Fold rows.
+16. **User-facing errors:** every error message in the catalogue is plain language and a leak test proves no amount, name, note or key material appears in error text, logs or telemetry.
+17. **Invitation lookup:** unknown and non-discoverable addresses return identical responses and timing within measurement noise; lookups are rate-limited; notification emails contain no Fold information.
+18. **Retention:** deleted records are restorable for 30 days on every device (including one offline during the delete) and are purged afterwards.
 
 ---
 
@@ -909,5 +1059,16 @@ An implementation is conformant only if it ships with:
 | # | Item | Why it matters | How to resolve |
 |---|---|---|---|
 | 1 | Importer for third-party CSV/backup formats: date formats, enum meanings, list encodings. | Import fidelity. | Define per-source mappers against real sample files. |
-| 2 | Argon2id memory on low-end Android. | UX vs security. | Benchmark; the floor in §5.3 is the hard limit. |
+| 2 | Argon2id memory on low-end devices and in mobile browsers. | UX vs security. | Benchmark; the floor in §5.3 is the hard limit. |
 | 3 | Final SRP message encoding (padding, `k`, M1 composition). | Interoperability between Cashfold clients and server. | §6.1/§6.3 are normative; freeze with test vectors (§11). |
+| 4 | Encrypted SQLite on OPFS: built-in cipher WASM build vs custom VFS (§8.1). | Core at-rest guarantee and performance. | Prototype both; benchmark at 50,000 transactions; record ADR-0002. |
+| 5 | WebAuthn PRF availability and behaviour across browsers (§5.2). | Quick unlock feasibility. | Feature-detect; document the password-only fallback. |
+| 6 | WebCrypto X25519/Ed25519 support matrix vs `@noble` fallback (§5.1). | Non-extractable device keys. | Feature tests per target browser; fallback paths covered by tests. |
+| 7 | Vetted constant-time big-integer WASM module for client-side SRP (§6.9). | Side-channel safety of login. | Select, review and differential-test against OpenSSL; record ADR. |
+| 8 | Node/OpenSSL constant-time path for 4096-bit custom-prime DH on the server (§6.9). | Server-side side-channel safety. | Verify behaviour on the supported Node versions; add a regression test. |
+| 9 | TypeScript deterministic-CBOR library choice (§5.1). | Byte-stable signatures and AAD. | Evaluate against frozen vectors; fall back to a small in-house encoder with a fuzzed test suite. |
+| 10 | Browser storage eviction and quota policy differences (§8.1a). | Local-first durability. | Test on target browsers; refine the backup prompts. |
+| 11 | Upstream source for the rate table and its redistribution terms (§3.8). | Legal and availability. | Choose a source; document in the self-hosting guide. |
+| 12 | Lookup rate limits and the discoverable-by-default choice (§7.4). | Account-enumeration exposure versus convenience. | Review after the first hosted pilot; the default is configurable per service. |
+| 13 | Mail transport for hosted and self-hosted services (§9.10). | Verification and invitation delivery. | Choose a provider for the hosted instance; document SMTP setup for self-hosters. |
+| 14 | Service-worker update strategy (§0.3). | Stale-code risk versus offline guarantee. | Define cache versioning and update prompt; test upgrade while offline. |

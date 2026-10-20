@@ -1,0 +1,50 @@
+import type { Reminder } from '@cashfold/core';
+
+// Reminders (FR-062) are shown by the page while the app is open, from the schedules on this device. Nothing about
+// them is sent anywhere. A notification can appear on a locked screen, so by default it names the schedule and the
+// day and shows no amount; the person can allow amounts (device preference, never synced).
+
+export interface NotificationText {
+  readonly title: string;
+  readonly body: string;
+}
+
+export interface ReminderCopy {
+  readonly title: (name: string) => string;
+  readonly body: (date: string) => string;
+  readonly bodyWithAmount: (date: string, amount: string) => string;
+}
+
+export interface NotifyDeps {
+  readonly permission: () => 'granted' | 'denied' | 'default' | 'unsupported';
+  readonly show: (text: NotificationText & { tag: string }) => Promise<void> | void;
+  readonly alreadyShown: () => ReadonlySet<string>;
+  readonly remember: (keys: readonly string[]) => void;
+  readonly copy: ReminderCopy;
+  readonly showAmounts: boolean;
+  readonly formatDate: (date: Reminder['localDate']) => string;
+  readonly formatAmount: (minor: bigint, currency: string) => string;
+  /** The currency of an account, for the amount text. */
+  readonly currencyOf: (account: string) => string | undefined;
+}
+
+export function textFor(r: Reminder, deps: Pick<NotifyDeps, 'copy' | 'showAmounts' | 'formatDate' | 'formatAmount' | 'currencyOf'>): NotificationText {
+  const when = deps.formatDate(r.localDate);
+  const title = deps.copy.title(r.name);
+  if (!deps.showAmounts) return { title, body: deps.copy.body(when) };
+  const t = r.template;
+  const account = t.kind === 'transaction' ? t.accountId : t.fromAccountId;
+  const currency = deps.currencyOf(account);
+  const minor = t.kind === 'transaction' ? (t.amountMinor < 0n ? -t.amountMinor : t.amountMinor) : t.fromAmountMinor;
+  return currency === undefined ? { title, body: deps.copy.body(when) } : { title, body: deps.copy.bodyWithAmount(when, deps.formatAmount(minor, currency)) };
+}
+
+/** Shows each due reminder once. Returns how many were shown; nothing is shown, or remembered, without permission. */
+export async function showDueReminders(reminders: readonly Reminder[], deps: NotifyDeps): Promise<number> {
+  if (deps.permission() !== 'granted') return 0;
+  const seen = deps.alreadyShown();
+  const fresh = reminders.filter((r) => !seen.has(r.key));
+  for (const r of fresh) await deps.show({ ...textFor(r, deps), tag: r.key });
+  if (fresh.length > 0) deps.remember(fresh.map((r) => r.key));
+  return fresh.length;
+}

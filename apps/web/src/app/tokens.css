@@ -1,0 +1,63 @@
+/* Design tokens. Colour pairs are held to WCAG 2.2 AA by src/ui/tokens.test.ts. */
+:root {
+  --bg: #ffffff;
+  --surface: #f4f5f7;
+  --text: #14161a;
+  --text-muted: #4b5563;
+  --primary: #0b57d0;
+  --on-primary: #ffffff;
+  --danger: #b3261e;
+  --on-danger: #ffffff;
+  --success: #146c2e;
+  --warning: #8a5100;
+  --focus: #0b57d0;
+  --border-strong: #6b7280;
+  --cue-gain: '+';
+  --cue-loss: '−';
+  --cue-warning: '!';
+  --radius: 0.5rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0f1115;
+    --surface: #181b21;
+    --text: #eceef2;
+    --text-muted: #a8b0bd;
+    --primary: #8ab4ff;
+    --on-primary: #0f1115;
+    --danger: #ffb4ab;
+    --on-danger: #0f1115;
+    --success: #7ddc96;
+    --warning: #ffc266;
+    --focus: #8ab4ff;
+    --border-strong: #8b93a1;
+  }
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-text: var(--text);
+  --color-muted: var(--text-muted);
+  --color-primary: var(--primary);
+  --color-on-primary: var(--on-primary);
+  --color-danger: var(--danger);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-border-strong: var(--border-strong);
+  --radius-ui: var(--radius);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@media (forced-colors: active) {
+  :focus-visible { outline: 2px solid Highlight; }
+}

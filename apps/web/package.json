@@ -1,0 +1,37 @@
+{
+  "name": "@cashfold/web",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build && node scripts/harden-html.mjs && node scripts/build-sw.mjs",
+    "typecheck": "tsc --noEmit",
+    "test:browser": "vitest run -c vitest.browser.config.ts",
+    "predev": "node scripts/copy-sqlite3mc.mjs && node scripts/copy-srp-wasm.mjs",
+    "prebuild": "node scripts/copy-sqlite3mc.mjs && node scripts/copy-srp-wasm.mjs",
+    "pretest:browser": "node scripts/copy-sqlite3mc.mjs && node scripts/copy-srp-wasm.mjs"
+  },
+  "dependencies": {
+    "@cashfold/core": "workspace:*",
+    "@cashfold/crypto": "workspace:*",
+    "@cashfold/protocol": "workspace:*",
+    "@tailwindcss/postcss": "4.3.3",
+    "intl-messageformat": "12.1.3",
+    "next": "16.4.2",
+    "postcss": "8.5.30",
+    "qrcode-generator": "2.0.4",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "tailwindcss": "4.3.3",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@aztec/sqlite3mc-wasm": "5.2.1",
+    "@sqlite.org/sqlite-wasm": "3.53.4-build2",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "esbuild": "0.28.2",
+    "jsqr": "1.4.0"
+  }
+}

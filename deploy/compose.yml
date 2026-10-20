@@ -1,0 +1,61 @@
+# Self-hosting the Cashfold relay: the relay and its PostgreSQL database.
+#
+#   cp deploy/example.env deploy/.env       # then edit it: at least SERVER_SECRET, POSTGRES_PASSWORD and ALLOWED_ORIGINS
+#   docker compose -f deploy/compose.yml --env-file deploy/.env up -d --build
+#
+# Put a TLS-terminating reverse proxy in front of port 8080 (the relay speaks plain HTTP and WebSocket). The web app is a
+# static site (apps/web/out) served from any host; see docs/self-hosting.md.
+services:
+  relay:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.server
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://cashfold:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@postgres:5432/cashfold
+      SERVER_SECRET: ${SERVER_SECRET:?set SERVER_SECRET (64 hex characters)}
+      PUBLIC_URL: ${PUBLIC_URL:-http://localhost:3000}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:?set ALLOWED_ORIGINS to the address of the web app}
+      REGISTRATION: ${REGISTRATION:-invite}
+      INVITE_CODES: ${INVITE_CODES:-}
+      MAIL: ${MAIL:-none}
+      SMTP_URL: ${SMTP_URL:-}
+      MAIL_FROM: ${MAIL_FROM:-}
+      RATES_URL: ${RATES_URL:-disabled}
+      RATES_EVERY_HOURS: ${RATES_EVERY_HOURS:-12}
+    ports:
+      - '${LISTEN:-127.0.0.1:8080}:8080'
+
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: cashfold
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      POSTGRES_DB: cashfold
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U cashfold -d cashfold']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  # Optional S3-compatible store for attachments, which arrive with a later release. Start it with --profile storage.
+  minio:
+    image: minio/minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: cashfold
+      MINIO_ROOT_PASSWORD: ${MINIO_PASSWORD:-}
+    volumes:
+      - miniodata:/data
+    profiles: ['storage']
+
+volumes:
+  pgdata:
+  miniodata:

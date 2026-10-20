@@ -1,0 +1,68 @@
+name: Release
+
+# A tag `vX.Y.Z` builds the web app twice and proves the two builds are identical, refuses to release while the external security
+# review is incomplete, and publishes the static export with the hashes of every file, an SBOM and a build-provenance attestation
+# (Constitution VIII, Workflow). Anyone can rebuild the tag and compare the tree digest.
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+  id-token: write
+  attestations: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      BUILD_ID: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      - name: The external security review is complete
+        run: node scripts/check-review-gate.mjs
+
+      - name: The same checks as every change
+        run: |
+          pnpm typecheck
+          pnpm lint
+          pnpm vitest run
+          pnpm check:licenses
+          pnpm check:no-float
+          node scripts/gen-third-party-notices.mjs --check
+
+      - name: Reproducible build (two clean builds must be identical)
+        run: node scripts/build-verify.mjs --out release
+
+      - name: Package the export
+        run: |
+          cd apps/web/out
+          tar --sort=name --mtime='1970-01-01 00:00:00' --owner=0 --group=0 --numeric-owner -czf "../../../cashfold-web-${GITHUB_REF_NAME}.tar.gz" .
+          cd ../../..
+          sha256sum "cashfold-web-${GITHUB_REF_NAME}.tar.gz" >> release/SHA256SUMS.archive
+
+      - name: SBOM
+        run: pnpm dlx @cyclonedx/cdxgen -o release/sbom.cdx.json
+
+      - uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: |
+            cashfold-web-*.tar.gz
+            release/SHA256SUMS
+            release/sbom.cdx.json
+
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" --verify-tag --generate-notes \
+            --notes-file <(printf 'Tree digest of the web export (sha256): %s\n\nRebuild: `BUILD_ID=%s node scripts/build-verify.mjs` must print the same digest.\n' "$(cat release/TREE_SHA256)" "${GITHUB_SHA}") \
+            "cashfold-web-${GITHUB_REF_NAME}.tar.gz" release/SHA256SUMS release/SHA256SUMS.archive release/TREE_SHA256 release/sbom.cdx.json

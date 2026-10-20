@@ -1,0 +1,64 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  id-token: write
+  attestations: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm lint
+      - name: Generated migrations are up to date
+        run: node scripts/gen-migrations.mjs && git diff --exit-code apps/web/src/adapters/sqlite-opfs/migrations/generated.ts
+      - name: Protocol docs are up to date
+        run: node scripts/gen-protocol-docs.mjs && git diff --exit-code docs/protocol.md
+      - run: pnpm vitest run --coverage   # unit + property tests, coverage floors
+      - run: pnpm build                   # static export and server
+      - run: pnpm check:bundle
+      - run: pnpm check:licenses
+      - run: pnpm check:no-float
+      - name: Third-party notices are up to date
+        run: node scripts/gen-third-party-notices.mjs --check
+      - name: Reproducible build (two clean builds are identical)
+        run: node scripts/build-verify.mjs
+      - run: pnpm check:sqlite3mc
+      - run: pnpm audit --audit-level=high
+      - name: Install browsers
+        run: pnpm exec playwright install --with-deps
+      - name: Browser adapter tests (OPFS, workers, WASM)
+        run: pnpm --filter @cashfold/web test:browser
+      - name: Playwright (includes blocking axe WCAG 2.2 AA assertions)
+        run: pnpm test:e2e
+      - name: Benchmark, 50,000 transactions (SC-008)
+        run: BENCH=1 pnpm exec playwright test -c e2e/playwright.config.ts e2e/bench --project=chromium
+      - name: Testcontainers (PostgreSQL: store contract and the relay's HTTP scenarios)
+        run: pnpm --filter @cashfold/server test:integration
+      - name: SRP module rebuilds to the committed bytes
+        run: |
+          rustup target add wasm32-unknown-unknown
+          bash scripts/build-srp-wasm.sh
+          git diff --exit-code packages/crypto/src/adapters/srp-wasm
+      - name: The relay image builds
+        run: docker build -f deploy/Dockerfile.server -t cashfold-relay .
+      - name: SBOM
+        run: pnpm dlx @cyclonedx/cdxgen -o sbom.cdx.json
+      - uses: actions/upload-artifact@v4
+        with: { name: sbom, path: sbom.cdx.json }
+      - uses: actions/attest-build-provenance@v2
+        if: github.ref == 'refs/heads/main'
+        with: { subject-path: 'apps/web/out/**' }

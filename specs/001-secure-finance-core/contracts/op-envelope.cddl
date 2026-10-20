@@ -1,0 +1,121 @@
+; Cashfold sync wire format (CBOR, RFC 8949 deterministic encoding, RFC 8610 CDDL)
+; Normative companion to docs/ARCHITECTURE.md §5.6, §7, §9.3.
+; All integers are CBOR integers. Floating-point values MUST NOT appear anywhere.
+
+uuid16   = bstr .size 16
+hash32   = bstr .size 32
+pk32     = bstr .size 32
+sig64    = bstr .size 64
+u8       = 0..255
+u16      = 0..65535
+u32      = 0..4294967295
+u48      = 0..281474976710655
+u64      = 0..18446744073709551615
+i64      = -9223372036854775808..9223372036854775807
+
+; ---------------------------------------------------------------- Operation
+
+hlc = [ wall_ms: u48, ctr: u16 ]
+
+op-envelope = {
+  1: 1,                ; v (format version)
+  2: uuid16,           ; fold
+  3: uuid16,           ; op (UUIDv7)
+  4: uuid16,           ; rec
+  5: uuid16,           ; dev
+  6: u64,              ; seq (per device, strictly increasing)
+  7: hlc,
+  8: u32,              ; epoch
+  9: u16,              ; schema
+  10: bstr,            ; blob = nonce(12) || ciphertext || tag(16)
+  11: sig64            ; Ed25519 over "cashfold.op.v1" || canonical(fields 1..10)
+}
+
+; Plaintext inside blob (before AEAD, padded to a multiple of 256 bytes by a 4-byte length prefix + zeros)
+op-payload = {
+  t: table-code,
+  ? f:  { * field-id => field-value },
+  ? fx: { * field-id => set-delta }
+}
+
+table-code = 1..14
+; 1 account 2 group 3 category 4 payee 5 tag 6 txn 7 transfer
+; 8 budget 9 goal 10 schedule 11 fx_rate 12 import 13 settings 14 checkpoint
+; checkpoint payload: { kind: "account_balance" / "envelope_carry", subject: uuid16, as_of: u32 (yyyymmdd), value: i64 }
+field-id = 0..65535
+; 65535 (0xFFFF) is the reserved tombstone register `deleted`.
+
+field-value = int / tstr / bstr / bool / null / uuid16 / [* field-value] / {* tstr => field-value}
+; `int` is restricted to i64 range for amounts; implementations MUST reject out-of-range values.
+
+set-delta = {
+  ? add: [* set-add],
+  ? rem: [* set-rem],
+  ? tagged: [* set-tagged]
+}
+set-add = uuid16            ; member id; the add's unique tag is the carrying op id
+set-rem = [ member: uuid16, observed-add-op: uuid16 ]
+set-tagged = [ member: uuid16, tag: uuid16 ]   ; an add that keeps an existing tag; only a baseline republished for a new member (ARCH 7.6) uses it
+
+; ---------------------------------------------------------------- Key material objects
+
+keyset = {
+  v: 1,
+  uuid: uuid16,
+  enc: { alg: "HPKE-X25519-HKDF-SHA256-AES256GCM", pk: pk32, sk_ct: aead-ct },
+  sig: { alg: "Ed25519", pk: pk32, sk_ct: aead-ct },
+  kdf: kdf-params,
+  encrypted_by: "mp"
+}
+
+aead-ct = bstr .size (28..)   ; nonce(12) || ct || tag(16)
+
+kdf-params = argon2id / pbkdf2
+argon2id = { kdf: "argon2id", m_kib: 32768..4294967295, t: 2..255, p: 1..255, v: 19, enc_salt: bstr .size 16 }
+pbkdf2   = { kdf: "pbkdf2-hmac-sha256", iter: 600000..4294967295, enc_salt: bstr .size 16 }
+
+fold-key-grant = {
+  fold: uuid16, epoch: u32, member: bstr,    ; member account id; one grant per epoch sealed to the member
+  role: 1..3,
+  enc: pk32,                                 ; HPKE encapsulated key
+  ct: bstr .size 48,                         ; AEAD(FK) = 32 + 16
+  granted_by: bstr,
+  sig: sig64
+}
+
+; ---------------------------------------------------------------- Membership log
+
+log-entry = {
+  idx: u64,
+  prev: hash32,
+  type: "add_member" / "remove_member" / "leave" / "change_role" / "add_device" / "revoke_device" / "rotate_epoch" / "set_server",
+  subject: bstr,
+  ? role: 1..3,
+  ? scope: "full" / "from_join",             ; add_member only (FR-102)
+  ? from_epoch: u32,                         ; first epoch the member can decrypt (1 for full)
+  ? server: tstr,                            ; set_server only (FR-100)
+  ? pubkeys: { enc: pk32, sig: pk32 },
+  ? epoch: u32,
+  signer: bstr,
+  ts: u64,                                   ; UTC milliseconds
+  sig: sig64
+}
+
+; ---------------------------------------------------------------- Snapshot
+
+snapshot = {
+  fold: uuid16,
+  at_seq: u64,
+  epoch: u32,
+  blob: bstr,                                ; AEAD of the full record state
+  sig: sig64
+}
+
+; ---------------------------------------------------------------- Transport frame (after sign-in)
+
+frame = {
+  1: bstr .size 16,                          ; session id
+  2: 0..1,                                   ; direction: 0 client->server, 1 server->client
+  3: u64,                                    ; counter (strictly increasing per direction)
+  4: bstr                                    ; AEAD ciphertext of request/response body
+}

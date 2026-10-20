@@ -1,0 +1,20 @@
+# The Cashfold relay. Build from the repository root:  docker build -f deploy/Dockerfile.server -t cashfold-relay .
+# The relay is one bundled file plus its SQL migrations; nothing else is needed at run time.
+# Pin both base images by digest before a release (docker buildx imagetools inspect node:22-slim).
+FROM node:22-slim AS build
+WORKDIR /repo
+RUN corepack enable
+COPY . .
+RUN pnpm install --frozen-lockfile --ignore-scripts --filter "@cashfold/server..." && pnpm --filter @cashfold/server build
+
+FROM node:22-slim
+WORKDIR /app
+ENV NODE_ENV=production \
+    MIGRATIONS_DIR=/app/migrations \
+    PORT=8080
+COPY --from=build /repo/apps/server/dist/main.js ./dist/main.js
+COPY --from=build /repo/apps/server/migrations ./migrations
+USER node
+EXPOSE 8080
+HEALTHCHECK --interval=30s --timeout=3s --start-period=20s CMD node -e "fetch('http://127.0.0.1:'+(process.env.PORT||8080)+'/healthz').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"
+CMD ["node", "dist/main.js"]
