@@ -83,6 +83,7 @@ export async function createNodeSession(secrets: Pick<SessionSecrets, 'deviceId'
         for (const r of rows) deviceKeyMap.set(r.id, r.sigPk);
       },
       publicKey: (dev) => deviceKeyMap.get(dev),
+      list: () => [...deviceKeyMap].map(([id, sigPk]) => ({ id: id as Id, sigPk, revoked: false })),
     },
     syncMarks: { lastSyncedAt: (f) => marks.get(f), markSynced: (f, at) => void marks.set(f, at) },
     snapshotSealer, deviceId: secrets.deviceId as Id, setNow: () => undefined,
