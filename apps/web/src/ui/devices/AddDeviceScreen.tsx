@@ -61,7 +61,7 @@ export function AddDeviceScreen() {
         setPassword('');
         setSecretKey('');
         await core.markUnlocked();
-        router.replace('/dashboard/');
+        router.replace('/overview/');
         return;
       }
       const key = ERROR_KEYS[result.error.code];
@@ -78,7 +78,7 @@ export function AddDeviceScreen() {
       <main id="main" tabIndex={-1}>
         <h1 className="text-2xl font-semibold">{t('page.addDevice.title')}</h1>
         <p className="mt-3">{t('adddevice.alreadyHasAccount')}</p>
-        <p className="mt-3"><Link className="underline" href="/devices/">{t('adddevice.goDevices')}</Link></p>
+        <p className="mt-3"><Link className="underline" href="/settings/sync/">{t('adddevice.goDevices')}</Link></p>
       </main>
     );
   }

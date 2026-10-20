@@ -45,8 +45,8 @@ test.describe('@us1 account', () => {
     await page.getByLabel('I have saved my Secret Key').check();
     await continueButton.click();
 
-    await expect(page).toHaveURL(/\/folds\/$/);
-    await expect(page.getByTestId('fold-name')).toHaveText('Personal');
+    await expect(page).toHaveURL(/\/overview\/$/);
+    await expect(page.getByTestId('current-fold')).toHaveText('Personal');
     await expectNoA11yViolations();
     await expect(page.getByText(secretKey)).toHaveCount(0); // the key is gone from the page
   });

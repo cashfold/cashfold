@@ -12,6 +12,7 @@ const EXCEPTIONS = new Set([
   'lightningcss-linux-x64-musl',
   'lightningcss-linux-arm64-gnu',
   'lightningcss-linux-arm64-musl',
+  '@fontsource/ubuntu', // UFL-1.0 font files, a devDependency copied unmodified into public/fonts/ with the licence text (apps/web/scripts/copy-fonts.mjs)
 ]);
 const out = execFileSync('pnpm', ['licenses', 'list', '--prod', '--json'], { encoding: 'utf8' });
 const byLicense = JSON.parse(out);

@@ -3,6 +3,7 @@ import { randomBytes } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import net from 'node:net';
 import { expect, test } from './fixtures/index.js';
+import { go } from './fixtures/nav.js';
 
 // User story 4: the same data on several devices, through a relay that sees only ciphertext (FR-004, FR-010, FR-072 to FR-082).
 // Two real browsers (separate contexts, so separate encrypted databases) and the real relay built from this checkout.
@@ -53,7 +54,6 @@ async function throttle(page: Page, browserName: string): Promise<void> {
   await cdp.send('Network.emulateNetworkConditions', { offline: false, latency: 75, downloadThroughput: (5 * 1024 * 1024) / 8, uploadThroughput: (5 * 1024 * 1024) / 8 });
 }
 
-const go = (page: Page, name: string) => page.getByRole('navigation').getByRole('link', { name, exact: true }).click();
 
 async function signUp(page: Page, email: string, server = RELAY): Promise<string> {
   await page.goto('/sign-up/');
@@ -67,7 +67,7 @@ async function signUp(page: Page, email: string, server = RELAY): Promise<string
   const key = (await secret.textContent())!.trim();
   await page.getByLabel('I have saved my Secret Key').check();
   await page.getByRole('button', { name: 'Continue' }).click();
-  await expect(page.getByTestId('fold-name')).toHaveText('Personal');
+  await expect(page.getByTestId('current-fold')).toHaveText('Personal');
   return key;
 }
 
@@ -104,7 +104,7 @@ async function enrol(browser: Browser, email: string, secretKey: string, server 
   expect(await page.evaluate(() => location.href + history.length)).not.toContain(secretKey);
   await page.getByLabel('Password', { exact: true }).fill(PASSWORD);
   await page.getByRole('button', { name: 'Add this device' }).click();
-  await expect(page).toHaveURL(/\/dashboard\/$/, { timeout: 90_000 });
+  await expect(page).toHaveURL(/\/overview\/$/, { timeout: 90_000 });
   return { context, page };
 }
 

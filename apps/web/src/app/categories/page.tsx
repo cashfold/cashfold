@@ -1,15 +1,5 @@
-'use client';
+import { RedirectStub } from '../../ui/shell/RedirectStub';
 
-import { RequireUnlocked } from '../../ui/core/RequireUnlocked';
-import { CategoriesScreen } from '../../ui/ledger/CategoriesScreen';
-import { LedgerProvider } from '../../ui/ledger/LedgerProvider';
-
-export default function Screen() {
-  return (
-    <RequireUnlocked titleKey="page.categories.title">
-      <LedgerProvider>
-        <CategoriesScreen />
-      </LedgerProvider>
-    </RequireUnlocked>
-  );
+export default function Page() {
+  return <RedirectStub from="/categories/" />;
 }

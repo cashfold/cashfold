@@ -3,6 +3,7 @@ import { defineConfig } from 'vitest/config';
 
 // Adapter tests that need a real browser (OPFS, Web Workers, WASM). Run with: pnpm --filter @cashfold/web test:browser
 export default defineConfig({
+  oxc: { jsx: { runtime: 'automatic' } },
   optimizeDeps: {
     // Workspace packages are linked source: never pre-bundle them, or edits and new exports go stale in the cache.
     exclude: ['@cashfold/core', '@cashfold/crypto', '@cashfold/protocol'],
@@ -10,7 +11,7 @@ export default defineConfig({
   },
   test: {
     name: 'web-browser',
-    include: ['src/**/*.browser.test.ts'],
+    include: ['src/**/*.browser.test.{ts,tsx}'],
     testTimeout: 120_000,
     browser: {
       enabled: true,

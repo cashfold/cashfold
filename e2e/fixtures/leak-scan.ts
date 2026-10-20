@@ -1,4 +1,6 @@
+import { isDeepStrictEqual } from 'node:util';
 import type { ConsoleMessage, Page, Request } from '@playwright/test';
+import { PREFS_KEY, parsePrefs } from '../../apps/web/src/ui/prefs/schema.js';
 
 // Plaintext-leak scan (SC-002, SC-015). Seed the app with recognisable names, notes and amounts, then search every
 // place the browser keeps or sends data for them: OPFS files, IndexedDB, Web Storage, Cache Storage, the console
@@ -70,6 +72,35 @@ function safeDecode(text: string): string {
   } catch {
     return text;
   }
+}
+
+/**
+ * The one localStorage key the app may use is the interface-preferences object (FR-051). Its value must be exactly what the parser keeps
+ * (so it holds only enumerated values, ids and dates, as contracts/preferences.schema.json says). Anything else is reported.
+ */
+export function checkLocalStorage(entriesJson: string): string[] {
+  const problems: string[] = [];
+  let entries: [string, string][];
+  try {
+    entries = JSON.parse(entriesJson) as [string, string][];
+  } catch {
+    return ['localStorage could not be read'];
+  }
+  for (const [key, value] of entries) {
+    if (key !== PREFS_KEY) {
+      problems.push(`unexpected localStorage key "${key}"`);
+      continue;
+    }
+    let stored: unknown;
+    try {
+      stored = JSON.parse(value);
+    } catch {
+      problems.push(`${PREFS_KEY} is not JSON`);
+      continue;
+    }
+    if (!isDeepStrictEqual(stored, parsePrefs(value))) problems.push(`${PREFS_KEY} does not match the preferences schema`);
+  }
+  return problems;
 }
 
 export function searchText(text: string, seed: Seed): string[] {
@@ -188,6 +219,7 @@ export async function scanForLeaks(page: Page, { seed, capture }: ScanOptions): 
   }
   for (const r of dump.indexeddb) add('indexeddb', `${r.db}/${r.store}`, searchText(r.json, seed));
   add('localstorage', 'localStorage', searchText(dump.localStorage, seed));
+  add('localstorage', 'localStorage', checkLocalStorage(dump.localStorage));
   add('sessionstorage', 'sessionStorage', searchText(dump.sessionStorage, seed));
   for (const c of dump.caches) add('cachestorage', `${c.cache} ${c.url}`, searchText(`${c.url}\n${c.body}`, seed));
   add('url', dump.url, searchText(safeDecode(dump.url), seed));

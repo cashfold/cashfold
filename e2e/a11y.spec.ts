@@ -1,11 +1,12 @@
 import type { Page } from '@playwright/test';
 import { expect, test } from './fixtures/index.js';
+import { go } from './fixtures/nav.js';
 
 // Accessibility of every primary task (FR-094, SC-016): axe at WCAG 2.2 AA on each screen and each dialog, the primary tasks done with the
 // keyboard alone, and the names, roles and live regions a screen reader announces.
 
 const PASSWORD = 'correct horse battery staple';
-const SCREENS = ['Dashboard', 'Accounts', 'Transactions', 'Transfers', 'Budgets', 'Schedules', 'Goals', 'Categories', 'Folds', 'Data', 'Devices', 'Settings'];
+const SCREENS = ['Overview', 'Accounts', 'Transactions', 'Budgets', 'Schedules', 'Goals', 'Categories', 'Folds', 'Data', 'Devices', 'Settings'];
 
 test.describe('@a11y primary tasks', () => {
   test.beforeEach(({ browserName }) => {
@@ -22,10 +23,9 @@ test.describe('@a11y primary tasks', () => {
     await expect(page.getByTestId('secret-key')).toBeVisible({ timeout: 60_000 });
     await page.getByLabel('I have saved my Secret Key').check();
     await page.getByRole('button', { name: 'Continue' }).click();
-    await expect(page.getByTestId('fold-name')).toHaveText('Personal');
+    await expect(page.getByTestId('current-fold')).toHaveText('Personal');
   }
 
-  const go = (page: Page, name: string) => page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name, exact: true }).click();
 
   test('the sign-up and unlock screens have no violations and a usable form', async ({ page, expectNoA11yViolations }) => {
     await page.goto('/sign-up/');
@@ -47,7 +47,8 @@ test.describe('@a11y primary tasks', () => {
       await expect(page.getByRole('heading', { level: 1 })).toHaveCount(1);
       await expect(page.getByRole('main')).toHaveCount(1);
       await expect(page.getByRole('navigation', { name: 'Main' })).toBeVisible();
-      await expect(page.getByRole('link', { name: screen, exact: true }).first()).toHaveAttribute('aria-current', 'page');
+      // The section the screen belongs to is the current entry of the navigation.
+      await expect(page.getByRole('navigation', { name: 'Main' }).locator('[aria-current=page]')).toHaveCount(1);
       await expectNoA11yViolations();
     }
   });

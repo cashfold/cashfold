@@ -95,7 +95,7 @@ export function BackupPanel({ folds }: { folds: readonly FoldSummary[] }) {
       </form>
       {restored ? (
         <p role="status" className="mt-3" data-testid="restored">
-          {t('data.restore.done', { name: restored.name, count: restored.records })} <Link className="underline" href="/folds/">{t('data.restore.goFolds')}</Link>
+          {t('data.restore.done', { name: restored.name, count: restored.records })} <Link className="underline" href="/settings/folds/">{t('data.restore.goFolds')}</Link>
         </p>
       ) : null}
     </section>

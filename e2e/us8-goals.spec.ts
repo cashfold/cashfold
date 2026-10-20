@@ -1,5 +1,6 @@
 import type { Page } from '@playwright/test';
 import { expect, test } from './fixtures/index.js';
+import { go } from './fixtures/nav.js';
 
 // User story 8: savings goals backed by goal accounts (FR-067, FR-068, FR-029), offline.
 
@@ -36,10 +37,9 @@ test.describe('@us8 goals', () => {
     await expect(page.getByTestId('secret-key')).toBeVisible({ timeout: 60_000 });
     await page.getByLabel('I have saved my Secret Key').check();
     await page.getByRole('button', { name: 'Continue' }).click();
-    await expect(page.getByTestId('fold-name')).toHaveText('Personal');
+    await expect(page.getByTestId('current-fold')).toHaveText('Personal');
   }
 
-  const go = (page: Page, name: string) => page.getByRole('navigation').getByRole('link', { name, exact: true }).click();
 
   async function addAccount(page: Page, name: string, opening: string, kind?: string): Promise<void> {
     await page.getByRole('button', { name: 'Add account', exact: true }).click();

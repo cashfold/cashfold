@@ -1,0 +1,4 @@
+// The script that sets `data-theme` before first paint, so there is no flash of the wrong theme (R-UX-05). It is injected inline in <head>;
+// harden-html.mjs puts its hash into each page's Content-Security-Policy. It sets an attribute and a CSSOM property, never a `style=` attribute.
+// It must stay self-contained: it runs before any bundle. Keep it equivalent to resolveTheme/parseStoredTheme (a test compares them).
+export const THEME_BOOTSTRAP = `(function(){try{var t='system';try{var p=JSON.parse(localStorage.getItem('cashfold.ui')||'null');if(p&&(p.theme==='light'||p.theme==='dark'||p.theme==='system'))t=p.theme}catch(e){}var d=t==='dark'||(t==='system'&&window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches);var r=d?'dark':'light';var h=document.documentElement;h.dataset.theme=r;h.style.colorScheme=r}catch(e){}})();`;

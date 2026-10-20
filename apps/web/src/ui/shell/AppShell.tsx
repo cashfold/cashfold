@@ -4,63 +4,151 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import type { ReactNode } from 'react';
 import { useCore } from '../core/CoreProvider';
-import { buttonClass } from '../forms/TextField';
 import { useI18n } from '../i18n/I18nProvider';
+import { LedgerProvider } from '../ledger/LedgerProvider';
+import {
+  ArrowsRightLeftIcon, BanknotesIcon, Button, Cog6ToothIcon, FlagIcon, HomeIcon, LockClosedIcon, Navbar, NavbarItem, NavbarSection, NavbarSpacer, PlusIcon,
+  Sidebar, SidebarBody, SidebarFooter, SidebarHeader, SidebarItem, SidebarLabel, SidebarLayout, SidebarSection,
+} from '../kit';
 import { SyncIndicator } from '../sync/SyncIndicator';
+import { AddSheetHost } from '../transactions/AddSheetHost';
+import { useAddSheet } from './add-context';
+import { OverlayHost } from './OverlayHost';
+import { FoldSwitcher } from './FoldSwitcher';
 import { PrivacyCover } from './PrivacyCover';
+import { PRIMARY_SECTIONS, matchSection, type Section } from './routes';
+import { StatusProvider } from './StatusProvider';
 import { StorageNotice } from './StorageNotice';
 
-const NAV = [
-  ['/dashboard/', 'nav.dashboard'],
-  ['/accounts/', 'nav.accounts'],
-  ['/transactions/', 'nav.transactions'],
-  ['/transfers/', 'nav.transfers'],
-  ['/budgets/', 'nav.budgets'],
-  ['/schedules/', 'nav.schedules'],
-  ['/goals/', 'nav.goals'],
-  ['/categories/', 'nav.categories'],
-  ['/folds/', 'nav.folds'],
-  ['/data/', 'nav.data'],
-  ['/devices/', 'nav.devices'],
-  ['/settings/', 'nav.settings'],
-] as const;
+const ICONS: Record<Section['icon'], typeof HomeIcon> = {
+  home: HomeIcon,
+  transactions: ArrowsRightLeftIcon,
+  accounts: BanknotesIcon,
+  plan: FlagIcon,
+  settings: Cog6ToothIcon,
+};
 
-export function AppShell({ children }: { children: ReactNode }) {
+function SkipLink() {
+  const { t } = useI18n();
+  return (
+    <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:start-2 focus:top-2 focus:z-50 focus:rounded-lg focus:bg-(--primary) focus:px-3 focus:py-2 focus:text-(--on-primary)">
+      {t('skip.main')}
+    </a>
+  );
+}
+
+function Banners() {
   const { t } = useI18n();
   const core = useCore();
-  const path = usePathname().replace(/\/?$/, '/');
   return (
     <>
-      <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:start-2 focus:top-2 focus:rounded-ui focus:bg-primary focus:px-3 focus:py-2 focus:text-on-primary">
-        {t('skip.main')}
-      </a>
-      <header className="flex flex-wrap items-center gap-x-6 gap-y-2 border-b border-border-strong bg-surface px-4 py-3">
-        <Link href="/" className="text-lg font-semibold">{t('app.name')}</Link>
-        <nav aria-label={t('nav.label')}>
-          <ul className="flex flex-wrap gap-x-4 gap-y-1">
-            {NAV.map(([href, key]) => (
-              <li key={href}>
-                <Link href={href} aria-current={path === href ? 'page' : undefined} className={`underline-offset-4 hover:underline${path === href ? ' font-semibold underline' : ''}`}>{t(key)}</Link>
-              </li>
-            ))}
-          </ul>
-        </nav>
-        {core.phase === 'unlocked' ? <SyncIndicator /> : null}
-        {core.phase === 'unlocked' ? (
-          <button type="button" className={`${buttonClass} ms-auto`} onClick={() => core.lock()}>{t('lock.button')}</button>
-        ) : null}
-      </header>
       {core.removed ? (
-        <p role="alert" className="border-b border-border-strong bg-surface px-4 py-3">
+        <p role="alert" className="mb-4 rounded-lg border border-(--border-strong) bg-(--surface) px-4 py-3">
           {t('removed.notice')} <Link className="underline" href="/add/">{t('removed.addAgain')}</Link>
         </p>
       ) : null}
       {core.storageFull ? (
-        <p role="alert" data-testid="storage-full" className="border-b border-border-strong bg-surface px-4 py-3">{t('storage.full')}</p>
+        <p role="alert" data-testid="storage-full" className="mb-4 rounded-lg border border-(--border-strong) bg-(--surface) px-4 py-3">{t('storage.full')}</p>
       ) : null}
       <StorageNotice />
+    </>
+  );
+}
+
+function NavigationSidebar() {
+  const { t } = useI18n();
+  const core = useCore();
+  const path = usePathname();
+  const { openAdd } = useAddSheet();
+  const current = matchSection(path);
+  return (
+    <Sidebar aria-label={t('nav.label')}>
+      <SidebarHeader>
+        <Link href="/" className="rounded-lg px-2 py-1 text-lg font-semibold text-zinc-950 dark:text-white">{t('app.name')}</Link>
+        <FoldSwitcher />
+        <Button className="mt-3" onClick={() => openAdd()}>
+          <PlusIcon data-slot="icon" aria-hidden="true" />
+          {t('shell.add')}
+        </Button>
+      </SidebarHeader>
+      <SidebarBody>
+        <SidebarSection>
+          {PRIMARY_SECTIONS.map((section) => {
+            const Icon = ICONS[section.icon];
+            return (
+              <SidebarItem key={section.id} href={section.href} current={current === section.id}>
+                <Icon data-slot="icon" aria-hidden="true" />
+                <SidebarLabel>{t(section.labelKey)}</SidebarLabel>
+              </SidebarItem>
+            );
+          })}
+        </SidebarSection>
+      </SidebarBody>
+      <SidebarFooter>
+        <SyncIndicator />
+        <SidebarSection className="mt-2">
+          <SidebarItem onClick={() => core.lock()}>
+            <LockClosedIcon data-slot="icon" aria-hidden="true" />
+            <SidebarLabel>{t('lock.button')}</SidebarLabel>
+          </SidebarItem>
+        </SidebarSection>
+      </SidebarFooter>
+    </Sidebar>
+  );
+}
+
+function MobileBar() {
+  const { t } = useI18n();
+  const { openAdd } = useAddSheet();
+  return (
+    <Navbar>
+      <NavbarSpacer />
+      <NavbarSection>
+        <NavbarItem onClick={() => openAdd()} aria-label={t('shell.add')}>
+          <PlusIcon aria-hidden="true" />
+        </NavbarItem>
+      </NavbarSection>
+    </Navbar>
+  );
+}
+
+/** The signed-in shell: persistent sidebar (a drawer on narrow screens), one `<main id="main">`, banners and the add sheet host. */
+function UnlockedShell({ children }: { children: ReactNode }) {
+  const { t } = useI18n();
+  return (
+    <LedgerProvider>
+      <StatusProvider>
+        <AddSheetHost>
+          <SidebarLayout navbar={<MobileBar />} sidebar={<NavigationSidebar />} openLabel={t('shell.menu')} closeLabel={t('shell.closeMenu')}>
+            <Banners />
+            {children}
+          </SidebarLayout>
+        </AddSheetHost>
+      </StatusProvider>
+    </LedgerProvider>
+  );
+}
+
+/** Before sign-in there is no navigation: a plain header with the brand, then the page (sign-up, unlock, recover, add device). */
+function PlainShell({ children }: { children: ReactNode }) {
+  const { t } = useI18n();
+  return (
+    <>
+      <header className="flex items-center gap-x-6 border-b border-(--border-strong) bg-(--surface) px-4 py-3">
+        <Link href="/" className="text-lg font-semibold">{t('app.name')}</Link>
+      </header>
+      <div className="mx-auto max-w-4xl p-4"><Banners />{children}</div>
+    </>
+  );
+}
+
+export function AppShell({ children }: { children: ReactNode }) {
+  const core = useCore();
+  return (
+    <>
+      <SkipLink />
+      <OverlayHost>{core.phase === 'unlocked' ? <UnlockedShell>{children}</UnlockedShell> : <PlainShell>{children}</PlainShell>}</OverlayHost>
       {core.covered ? <PrivacyCover /> : null}
-      <div className="mx-auto max-w-4xl p-4" inert={core.covered}>{children}</div>
     </>
   );
 }

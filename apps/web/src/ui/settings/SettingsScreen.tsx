@@ -46,7 +46,7 @@ export function SettingsScreen() {
   }
 
   return (
-    <main id="main" tabIndex={-1}>
+    <div>
       <h1 className="text-2xl font-semibold">{t('page.settings.title')}</h1>
 
       <section aria-labelledby="lock-heading" className="mt-6">
@@ -110,6 +110,6 @@ export function SettingsScreen() {
       </section>
 
       <AccountSection />
-    </main>
+    </div>
   );
 }

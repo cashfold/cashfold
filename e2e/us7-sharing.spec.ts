@@ -1,5 +1,6 @@
 import type { Browser, BrowserContext, Page } from '@playwright/test';
 import { expect, test } from './fixtures/index.js';
+import { chooseFold, go } from './fixtures/nav.js';
 
 // User story 7: share a Fold with other people (FR-083 to FR-089, FR-102, FR-104). Three real browsers on the real relay
 // built from this checkout: each has its own account, its own encrypted database and its own keys.
@@ -8,20 +9,11 @@ const PASSWORD = 'correct horse battery staple';
 const RELAY = `http://localhost:${Number(process.env['E2E_RELAY_PORT'] ?? 3200)}`;
 const unique = () => `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
 
-const go = (page: Page, name: string) => page.getByRole('navigation').getByRole('link', { name, exact: true }).click();
 
-/** A ledger screen on the shared Fold: people in two Folds choose which one they are looking at. */
+/** A ledger screen on the shared Fold: people in two Folds choose which one they are looking at, in the sidebar. */
 async function goIn(page: Page, name: string, fold = 'Household'): Promise<void> {
   await go(page, name);
-  await page.waitForURL(`**/${name.toLowerCase()}/`); // the picker must be the new screen's, not the one being left
-  const picker = page.locator('#ledger-fold');
-  await picker.waitFor({ state: 'attached', timeout: 15_000 }).catch(() => undefined);
-  if (await picker.count()) {
-    await expect(async () => {
-      await picker.selectOption({ label: fold });
-      expect(await picker.evaluate((el: HTMLSelectElement) => el.selectedOptions[0]?.textContent)).toBe(fold);
-    }).toPass({ timeout: 15_000 });
-  }
+  await chooseFold(page, fold);
 }
 
 async function signUp(page: Page, email: string): Promise<void> {
@@ -34,7 +26,7 @@ async function signUp(page: Page, email: string): Promise<void> {
   await expect(page.getByTestId('secret-key')).toBeVisible({ timeout: 90_000 });
   await page.getByLabel('I have saved my Secret Key').check();
   await page.getByRole('button', { name: 'Continue' }).click();
-  await expect(page.getByTestId('fold-name')).toHaveText('Personal');
+  await expect(page.getByTestId('current-fold')).toHaveText('Personal');
 }
 
 async function person(browser: Browser, prefix: string): Promise<{ context: BrowserContext; page: Page; email: string }> {
@@ -145,7 +137,7 @@ test.describe('@us7 sharing', () => {
     await page.getByRole('button', { name: 'Rename Personal' }).click();
     await page.getByLabel('Fold name').first().fill('Household');
     await page.getByRole('button', { name: 'Save name' }).click();
-    await expect(page.getByTestId('fold-name')).toHaveText('Household');
+    await expect(page.getByTestId('current-fold')).toHaveText('Household');
     await addAccount(page, 'Everyday', '1,000.00');
     await addExpense(page, 'Everyday', '25.00', 'Old coffee', 10);
     const alice = await myCode(page);
@@ -180,7 +172,7 @@ test.describe('@us7 sharing', () => {
     await goIn(bob.page, 'Accounts');
     await expect(balanceOf(page, 'Everyday')).toHaveText('960.00 USD');
     await expect(balanceOf(bob.page, 'Everyday')).toHaveText('960.00 USD').catch(async (e) => {
-      throw new Error(`${e}\n--- bob page ---\nselected=${await bob.page.locator('#ledger-fold').evaluate((el: HTMLSelectElement) => el.selectedOptions[0]?.textContent)}\n${await bob.page.locator('main').innerText()}`);
+      throw new Error(`${e}\n--- bob page ---\nselected=${await bob.page.getByTestId('current-fold').textContent()}\n${await bob.page.locator('main').innerText()}`);
     });
 
     // --- a viewer can look and not change: the owner changes Bob's role, and Bob's next contact brings it

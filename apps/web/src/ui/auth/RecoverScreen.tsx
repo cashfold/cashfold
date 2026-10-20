@@ -64,7 +64,7 @@ export function RecoverScreen() {
               <button type="button" className={secondaryButtonClass} onClick={() => printKit(kit)}>{t('secretkey.print')}</button>
             </>
           )}
-          onDone={() => void core.markUnlocked().then(() => router.replace('/dashboard/'))}
+          onDone={() => void core.markUnlocked().then(() => router.replace('/overview/'))}
         />
       </main>
     );

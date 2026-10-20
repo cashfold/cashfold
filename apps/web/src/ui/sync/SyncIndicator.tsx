@@ -22,7 +22,7 @@ export function SyncIndicator() {
 
   return (
     <p role="status" className="text-sm text-muted" data-sync-state={status.connection === 'online' ? status.overall : status.connection}>
-      <Link href="/devices/" className="underline-offset-4 hover:underline">{text}</Link>
+      <Link href="/settings/sync/" className="underline-offset-4 hover:underline">{text}</Link>
       {attention ? <span> · {t('sync.attention')}</span> : null}
     </p>
   );

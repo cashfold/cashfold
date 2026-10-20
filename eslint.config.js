@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url';
 import tseslint from 'typescript-eslint';
 import boundaries from 'eslint-plugin-boundaries';
 import noNumberInMoney from './eslint-rules/no-number-in-money.js';
+import uiKit from './eslint-rules/ui-kit-boundaries.js';
 
 const root = dirname(fileURLToPath(import.meta.url));
 
@@ -78,5 +79,12 @@ export default tseslint.config(
     ignores: ['**/*.test.ts'],
     plugins: { cashfold: { rules: { 'no-number-in-money': noNumberInMoney } } },
     rules: { 'cashfold/no-number-in-money': 'error' },
+  },
+  {
+    // The interface is built from the kit (R-UX-03). Warnings while screens migrate; T111 turns them into errors.
+    files: ['apps/web/src/ui/**/*.tsx', 'apps/web/src/app/**/*.tsx'],
+    ignores: ['apps/web/src/ui/kit/**', '**/*.test.tsx'],
+    plugins: { 'ui-kit': { rules: uiKit } },
+    rules: { 'ui-kit/no-headless-outside-kit': 'warn', 'ui-kit/no-raw-controls': 'warn', 'ui-kit/no-name-on-headless': 'warn' },
   },
 );

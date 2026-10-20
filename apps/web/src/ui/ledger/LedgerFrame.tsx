@@ -10,23 +10,12 @@ export function LedgerFrame({ titleKey, children, actions, withoutFold }: { titl
   const { t } = useI18n();
   const ledger = useLedger();
   return (
-    <main id="main" tabIndex={-1}>
+    <div>
       <KitReminder />
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold">{t(titleKey)}</h1>
         {actions}
       </div>
-      {ledger.folds.length > 1 ? (
-        <div className="mt-3">
-          <label htmlFor="ledger-fold" className="me-2 font-medium">{t('ledger.fold.label')}</label>
-          <select
-            id="ledger-fold" className="rounded-ui border border-border-strong bg-bg px-3 py-2" value={ledger.fold?.id}
-            onChange={(e) => ledger.selectFold(e.target.value)}
-          >
-            {ledger.folds.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
-          </select>
-        </div>
-      ) : null}
       {ledger.failed ? (
         <p role="alert" className="mt-4 text-danger">{t('ledger.error.load')}</p>
       ) : ledger.basics === undefined ? (
@@ -37,6 +26,6 @@ export function LedgerFrame({ titleKey, children, actions, withoutFold }: { titl
       ) : (
         children
       )}
-    </main>
+    </div>
   );
 }

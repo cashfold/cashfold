@@ -47,7 +47,7 @@ export function StorageNotice() {
         <p className="font-medium">{t('storage.recovery.title')}</p>
         <p className="mt-1">{t(status.onService ? 'storage.recovery.service' : 'storage.recovery.local')}</p>
         {status.recovery.blocked > 0 ? <p className="mt-1">{t('storage.recovery.blocked', { count: status.recovery.blocked })}</p> : null}
-        {!status.onService ? <p className="mt-1"><Link className="underline" href="/data/">{t('storage.recovery.restore')}</Link></p> : null}
+        {!status.onService ? <p className="mt-1"><Link className="underline" href="/settings/data/">{t('storage.recovery.restore')}</Link></p> : null}
         <button type="button" className={`${secondaryButtonClass} mt-2`} onClick={() => setRecoveryRead(true)}>{t('storage.recovery.ok')}</button>
       </aside>
     );
@@ -66,7 +66,7 @@ export function StorageNotice() {
       {refused ? <p role="status" data-testid="storage-warning">{t(status.onService ? 'storage.refused.service' : 'storage.refused.local')}</p> : null}
       {level !== 'none' ? (
         <div className="mt-1 flex flex-wrap items-center gap-3">
-          <p className="flex-1" data-testid="backup-nag">{t(level === 'strong' ? 'storage.backup.strong' : 'storage.backup.gentle')} <Link className="underline" href="/data/">{t('storage.backup.link')}</Link></p>
+          <p className="flex-1" data-testid="backup-nag">{t(level === 'strong' ? 'storage.backup.strong' : 'storage.backup.gentle')} <Link className="underline" href="/settings/data/">{t('storage.backup.link')}</Link></p>
           <button type="button" className={secondaryButtonClass} onClick={() => void dismiss()}>{t(level === 'strong' ? 'storage.backup.later' : 'storage.backup.dismiss')}</button>
         </div>
       ) : null}

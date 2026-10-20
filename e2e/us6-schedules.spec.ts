@@ -1,5 +1,6 @@
 import type { Page } from '@playwright/test';
 import { expect, test } from './fixtures/index.js';
+import { go } from './fixtures/nav.js';
 
 // User story 6: recurring transactions (FR-062 to FR-066), offline. Dates are relative to the device clock.
 
@@ -30,10 +31,9 @@ test.describe('@us6 schedules', () => {
     await expect(page.getByTestId('secret-key')).toBeVisible({ timeout: 60_000 });
     await page.getByLabel('I have saved my Secret Key').check();
     await page.getByRole('button', { name: 'Continue' }).click();
-    await expect(page.getByTestId('fold-name')).toHaveText('Personal');
+    await expect(page.getByTestId('current-fold')).toHaveText('Personal');
   }
 
-  const go = (page: Page, name: string) => page.getByRole('navigation').getByRole('link', { name, exact: true }).click();
   const balanceOf = (page: Page, account: string) => page.getByTestId('account-row').filter({ hasText: account }).getByTestId('account-balance');
   const projected = (page: Page) => page.getByTestId('projected-row').filter({ hasText: 'Everyday' }).getByTestId('projected-balance');
 

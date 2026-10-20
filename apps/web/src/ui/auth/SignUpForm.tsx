@@ -63,7 +63,7 @@ export function SignUpForm() {
         onDone={async () => {
           setCreated(undefined); // drops the Secret Key from memory
           await core.markUnlocked();
-          router.push('/folds/');
+          router.push('/overview/');
         }}
       />
     );

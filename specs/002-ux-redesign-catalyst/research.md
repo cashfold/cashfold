@@ -26,6 +26,8 @@ There were no `NEEDS CLARIFICATION` markers in the spec. The technical unknowns 
 4. **Phase 0 go/no-go (plan item WS0-1):** the project owner confirms (a) they hold a licence that covers every committer, and (b) the isolation scheme above is acceptable to Tailwind Labs. A short email to `support@tailwindcss.com` (the licence's own contact) is the recommended way to get written confirmation. The task cannot be completed by an engineer alone.
 5. **Fallback if refused:** author the same component set independently on Headless UI (MIT) and Tailwind, using the design tokens and the contracts in `contracts/ui-kit.md`, with no Catalyst source copied. This costs about 1.5× the kit work. The barrel boundary in step 3 is what makes this swap cheap.
 
+**Gate record (T001).** On 2026-10-20 the project owner confirmed in the implementation session that (a) their Tailwind Plus licence covers every committer and (b) the isolation scheme above is acceptable. This is the owner's statement relayed to the implementer; the written reply from Tailwind Labs (if one was obtained) is not attached here, and the owner should add its date and reference to this paragraph. The vendored-kit path (not the fallback) is in force.
+
 **Alternatives rejected.** Copying the kit throughout `src/ui` (no boundary, hard to remove). Keeping the kit out of git (breaks reproducible builds and the build-verify gate).
 
 **Not legal advice.** The above reads the licence text as shipped. It does not replace the confirmation in step 4.

@@ -120,7 +120,7 @@ function DeleteForm() {
           {owned.map((f) => <li key={f.id}>{f.name}</li>)}
         </ul>
       ) : null}
-      {owned.length > 0 ? <p className="mt-2"><Link className="underline" href="/folds/">{t('account.delete.goFolds')}</Link></p> : null}
+      {owned.length > 0 ? <p className="mt-2"><Link className="underline" href="/settings/folds/">{t('account.delete.goFolds')}</Link></p> : null}
       <button type="submit" className={`${buttonClass} mt-4`} disabled={busy || typed.trim().toLowerCase() !== email.toLowerCase()}>{t('account.delete.submit')}</button>
     </form>
   );

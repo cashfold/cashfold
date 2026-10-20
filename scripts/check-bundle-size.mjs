@@ -26,13 +26,26 @@ if (!existsSync(join(OUT, 'index.html'))) {
   process.exit(1);
 }
 const gz = (path) => gzipSync(readFileSync(path)).length;
+// Share of the kit: Headless UI writes `headlessui` into its data attributes and portal id, so a chunk that mentions it holds kit code. The
+// figure is an upper bound (the whole chunk is counted), printed so growth is visible; the budgets below are unchanged until T114.
+const KIT_MARKER = 'headlessui';
 const initialUrls = new Set([...readFileSync(join(OUT, 'index.html'), 'utf8').matchAll(/(?:src|href)="(\/_next\/static\/[^"]+\.js)"/g)].map((m) => m[1]));
-const all = [...walk(join(OUT, '_next/static'))].filter((f) => f.endsWith('.js')).map((f) => ({ url: `/${f.slice(OUT.length + 1)}`, size: gz(f) }));
+const all = [...walk(join(OUT, '_next/static'))]
+  .filter((f) => f.endsWith('.js'))
+  .map((f) => ({ url: `/${f.slice(OUT.length + 1)}`, size: gz(f), kit: readFileSync(f, 'utf8').includes(KIT_MARKER) }));
 
 const initial = all.filter((f) => initialUrls.has(f.url)).reduce((n, f) => n + f.size, 0);
 const worker = all.filter((f) => !initialUrls.has(f.url)).reduce((n, f) => n + f.size, 0);
 console.log(`initial JS: ${initial} bytes gzipped (budget ${INITIAL_BUDGET})`);
 console.log(`worker and lazy JS: ${worker} bytes gzipped (budget ${WORKER_BUDGET})`);
+const kitShare = (inInitial) => all.filter((f) => f.kit && initialUrls.has(f.url) === inInitial).reduce((n, f) => n + f.size, 0);
+console.log(`of which chunks holding the UI kit (Headless UI): initial ${kitShare(true)} bytes, lazy ${kitShare(false)} bytes gzipped (whole chunks, an upper bound)`);
+const fontsDir = join(OUT, 'fonts');
+if (existsSync(fontsDir)) {
+  const fonts = readdirSync(fontsDir).filter((f) => f.endsWith('.woff2'));
+  const bytes = fonts.reduce((n, f) => n + statSync(join(fontsDir, f)).size, 0);
+  console.log(`fonts shipped: ${fonts.length} woff2 files, ${bytes} bytes (loaded on demand by unicode-range; the service worker precaches them for offline use)`);
+}
 const problems = [];
 if (initial > INITIAL_BUDGET) problems.push('initial JS budget exceeded');
 if (worker > WORKER_BUDGET) problems.push('worker JS budget exceeded');

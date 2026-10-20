@@ -58,7 +58,7 @@ export function DevicesScreen() {
   const date = (ms: number) => new Intl.DateTimeFormat(locale, { dateStyle: 'medium' }).format(new Date(ms));
 
   return (
-    <main id="main" tabIndex={-1}>
+    <div>
       <h1 className="text-2xl font-semibold">{t('page.devices.title')}</h1>
       <SyncPanel status={status} onSyncNow={() => void syncNow()} />
 
@@ -117,7 +117,7 @@ export function DevicesScreen() {
           </ul>
         </section>
       ) : null}
-    </main>
+    </div>
   );
 }
 

@@ -127,6 +127,7 @@ Slices are ordered so that each merges green on its own (small, single-concern, 
 - All slices are small, single-concern PRs, squash-merged into the long-lived protected branch `002-ux-redesign-catalyst`, which has the same review and green-CI requirements as `main` (Constitution Workflow).
 - `main` keeps the old interface throughout. Because the Foundational skeleton changes the shell for everyone, no slice may go to `main` on its own.
 - When Phase 12 is complete, the branch is released to `main` by a rollup PR that contains no new changes, only the already-reviewed PRs. Since the constitution requires small PRs, the owner must explicitly accept the rollup as a release step (gate in tasks.md: *release rollup sign-off*), or amend the constitution in a separate change. The decision is recorded in `docs/adr/0008-catalyst-ui-kit.md`.
+- **Decision (T002, 2026-10-20):** the owner accepts the rollup PR from `002-ux-redesign-catalyst` to `main` as a release step; the constitution is not amended.
 - Rejected alternatives: a build-time "v2" flag on `main` (needs a second copy of each moved screen and doubles e2e runs, and FR-054 forbids a shipped flag); merging slices to `main` directly (ships a hybrid UI).
 
 ### Workstream 0 — Gates and baseline (blocks everything)

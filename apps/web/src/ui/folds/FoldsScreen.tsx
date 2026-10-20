@@ -89,7 +89,7 @@ export function FoldsScreen() {
   }
 
   return (
-    <main id="main" tabIndex={-1}>
+    <div>
       <KitReminder />
       <h1 className="text-2xl font-semibold">{t('page.folds.title')}</h1>
       <p className="mt-3 text-muted">{t('folds.lede')}</p>
@@ -171,6 +171,6 @@ export function FoldsScreen() {
           </form>
         ) : null}
       </dialog>
-    </main>
+    </div>
   );
 }

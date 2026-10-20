@@ -9,8 +9,10 @@ Cashfold includes the following third-party software. Each is used under its own
 | SQLite3 Multiple Ciphers (WebAssembly build, `@aztec/sqlite3mc-wasm`) | MIT / public domain | The database and its page cipher; verified against a pinned digest by `scripts/verify-sqlite3mc.mjs`. |
 | hash-wasm (Argon2id module) | MIT | Password stretching; checked against an independent implementation (ADR-0004). |
 | SRP-6a big-integer module (`packages/crypto/src/adapters/srp-wasm`) | Cashfold, built from Rust sources and the crates listed in its `Cargo.lock` | Rebuilt in CI and compared with the committed bytes (ADR-0006). |
+| Ubuntu font (`@fontsource/ubuntu`, woff2 files copied unmodified to `apps/web/public/fonts/`) | Ubuntu Font Licence 1.0 | Licence text shipped as `fonts/UFL.txt`; not covered by the repository's AGPL grant. |
+| Catalyst-derived UI components (`apps/web/src/ui/kit/`) | Tailwind Plus License | Isolated in one directory with its own licence notice (`LICENSE-TAILWIND-PLUS.md`); not covered by the repository's AGPL grant (ADR-0008). |
 
-## Production dependencies (146)
+## Production dependencies (167)
 
 | Package | Version | Licence | Home |
 | --- | --- | --- | --- |
@@ -26,10 +28,20 @@ Cashfold includes the following third-party software. Each is used under its own
 | @fastify/merge-json-schemas | 0.2.2 | MIT | https://github.com/fastify/merge-json-schemas#readme |
 | @fastify/middie | 9.3.5 | MIT | https://github.com/fastify/middie#readme |
 | @fastify/proxy-addr | 5.1.2 | MIT | https://github.com/fastify/proxy-addr#readme |
+| @floating-ui/core | 1.8.0 | MIT | https://floating-ui.com |
+| @floating-ui/dom | 1.8.0 | MIT | https://floating-ui.com |
+| @floating-ui/react | 0.26.28 | MIT | https://floating-ui.com/docs/react |
+| @floating-ui/react-dom | 2.1.9 | MIT | https://floating-ui.com/docs/react-dom |
+| @floating-ui/utils | 0.2.12 | MIT | https://floating-ui.com |
 | @formatjs/fast-memoize | 3.1.7 | MIT | https://github.com/formatjs/formatjs#readme |
 | @formatjs/icu-messageformat-parser | 3.5.21 | MIT | https://github.com/formatjs/formatjs#readme |
 | @formatjs/icu-skeleton-parser | 2.1.12 | MIT | https://github.com/formatjs/formatjs#readme |
+| @headlessui/react | 2.2.10 | MIT | https://github.com/tailwindlabs/headlessui#readme |
+| @heroicons/react | 2.2.0 | MIT | https://github.com/tailwindlabs/heroicons#readme |
 | @img/colour | 1.1.0 | MIT | https://github.com/lovell/colour#readme |
+| @internationalized/date | 3.12.4 | Apache-2.0 | https://github.com/adobe/react-spectrum/tree/main#readme |
+| @internationalized/number | 3.6.9 | Apache-2.0 | https://github.com/adobe/react-spectrum#readme |
+| @internationalized/string | 3.2.10 | Apache-2.0 | https://github.com/adobe/react-spectrum#readme |
 | @jridgewell/gen-mapping | 0.3.13 | MIT | https://github.com/jridgewell/sourcemaps/tree/main/packages/gen-mapping |
 | @jridgewell/remapping | 2.3.5 | MIT | https://github.com/jridgewell/sourcemaps/tree/main/packages/remapping |
 | @jridgewell/resolve-uri | 3.1.2 | MIT | https://github.com/jridgewell/resolve-uri#readme |
@@ -44,23 +56,30 @@ Cashfold includes the following third-party software. Each is used under its own
 | @noble/hashes | 2.4.0 | MIT | https://paulmillr.com/noble/ |
 | @pinojs/redact | 0.4.0 | MIT | https://github.com/pinojs/redact#readme |
 | @playwright/test | 1.64.1 | Apache-2.0 | https://playwright.dev |
+| @react-aria/focus | 3.22.1 | Apache-2.0 | https://github.com/adobe/react-spectrum#readme |
+| @react-aria/interactions | 3.28.1 | Apache-2.0 | https://github.com/adobe/react-spectrum#readme |
+| @react-types/shared | 3.37.0 | Apache-2.0 | https://github.com/adobe/react-spectrum#readme |
 | @standard-schema/spec | 1.1.0 | MIT | https://standardschema.dev |
 | @swc/helpers | 0.5.23 | Apache-2.0 | https://swc.rs |
 | @tailwindcss/node | 4.3.3 | MIT | https://tailwindcss.com |
 | @tailwindcss/oxide | 4.3.3 | MIT | https://github.com/tailwindlabs/tailwindcss#readme |
 | @tailwindcss/oxide-darwin-arm64 | 4.3.3 | MIT | https://github.com/tailwindlabs/tailwindcss#readme |
 | @tailwindcss/postcss | 4.3.3 | MIT | https://tailwindcss.com |
+| @tanstack/react-virtual | 3.14.21 | MIT | https://tanstack.com/virtual |
+| @tanstack/virtual-core | 3.19.6 | MIT | https://tanstack.com/virtual |
 | @tokenizer/inflate | 0.4.1 | MIT | https://github.com/Borewit/tokenizer-inflate#readme |
 | @tokenizer/token | 0.3.0 | MIT | https://github.com/Borewit/tokenizer-token#readme |
 | @types/node | 26.6.5 | MIT | https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/node |
 | abstract-logging | 2.0.1 | MIT | https://github.com/jsumners/abstract-logging#readme |
 | ajv | 8.20.0 | MIT | https://ajv.js.org |
 | ajv-formats | 3.0.1 | MIT | https://github.com/ajv-validator/ajv-formats#readme |
+| aria-hidden | 1.2.6 | MIT | https://github.com/theKashey/aria-hidden#readme |
 | atomic-sleep | 1.0.0 | MIT | https://github.com/davidmarkclements/atomic-sleep#readme |
 | avvio | 9.3.1 | MIT | https://github.com/fastify/avvio#readme |
 | baseline-browser-mapping | 2.11.29 | Apache-2.0 | https://github.com/web-platform-dx/baseline-browser-mapping#readme |
 | caniuse-lite | 1.0.30001816 | CC-BY-4.0 | https://github.com/browserslist/caniuse-lite#readme |
 | client-only | 0.0.1 | MIT | https://reactjs.org/ |
+| clsx | 2.1.1 | MIT | https://github.com/lukeed/clsx#readme |
 | cookie | 1.1.1 | MIT | https://github.com/jshttp/cookie#readme |
 | cookie | 2.0.1 | MIT | https://github.com/jshttp/cookie#readme |
 | debug | 4.4.3 | MIT | https://github.com/debug-js/debug#readme |
@@ -127,7 +146,9 @@ Cashfold includes the following third-party software. Each is used under its own
 | qrcode-generator | 2.0.4 | MIT | https://github.com/kazuhikoarase/qrcode-generator#readme |
 | quick-format-unescaped | 4.0.4 | MIT | https://github.com/davidmarkclements/quick-format#readme |
 | react | 19.3.1 | MIT | https://react.dev/ |
+| react-aria | 3.53.1 | Apache-2.0 | https://github.com/adobe/react-spectrum#readme |
 | react-dom | 19.3.1 | MIT | https://react.dev/ |
+| react-stately | 3.51.0 | Apache-2.0 | https://github.com/adobe/react-spectrum#readme |
 | real-require | 1.0.0 | MIT | https://github.com/pinojs/real-require |
 | reflect-metadata | 0.2.2 | Apache-2.0 | http://rbuckton.github.io/reflect-metadata |
 | require-from-string | 2.0.2 | MIT | https://github.com/floatdrop/require-from-string#readme |
@@ -148,6 +169,7 @@ Cashfold includes the following third-party software. Each is used under its own
 | split2 | 4.2.0 | ISC | https://github.com/mcollina/split2#readme |
 | strtok3 | 10.6.2 | MIT | https://github.com/Borewit/strtok3#readme |
 | styled-jsx | 5.1.6 | MIT | https://github.com/vercel/styled-jsx#readme |
+| tabbable | 6.5.0 | MIT | https://github.com/focus-trap/tabbable#readme |
 | tailwindcss | 4.3.3 | MIT | https://tailwindcss.com |
 | tapable | 2.3.3 | MIT | https://github.com/webpack/tapable |
 | thread-stream | 4.2.0 | MIT | https://github.com/mcollina/thread-stream#readme |
@@ -157,6 +179,7 @@ Cashfold includes the following third-party software. Each is used under its own
 | uid | 2.0.2 | MIT | https://github.com/lukeed/uid#readme |
 | uint8array-extras | 1.6.0 | MIT | https://github.com/sindresorhus/uint8array-extras#readme |
 | undici-types | 8.9.0 | MIT | https://undici.nodejs.org |
+| use-sync-external-store | 1.7.0 | MIT | https://github.com/react/react#readme |
 | ws | 8.22.0 | MIT | https://github.com/websockets/ws |
 | xtend | 4.0.2 | MIT | https://github.com/Raynos/xtend |
 | zod | 4.6.7 | MIT | https://zod.dev |

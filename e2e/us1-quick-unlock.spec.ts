@@ -24,7 +24,7 @@ test.describe('@us1 quick unlock', () => {
     await page.getByTestId('secret-key').waitFor({ timeout: 60_000 });
     await page.getByLabel('I have saved my Secret Key').check();
     await page.getByRole('button', { name: 'Continue' }).click();
-    await expect(page.getByTestId('fold-name')).toHaveText('Personal');
+    await expect(page.getByTestId('current-fold')).toHaveText('Personal');
     await page.getByRole('navigation').getByRole('link', { name: 'Settings' }).click();
   }
 
@@ -46,7 +46,7 @@ test.describe('@us1 quick unlock', () => {
     await expect(page.getByRole('heading', { name: 'Unlock Cashfold' })).toBeVisible();
     await page.getByRole('button', { name: 'Unlock with this device' }).click();
     await page.getByRole('navigation').getByRole('link', { name: 'Folds' }).click();
-    await expect(page.getByTestId('fold-name')).toHaveText('Personal', { timeout: 30_000 });
+    await expect(page.getByTestId('current-fold')).toHaveText('Personal', { timeout: 30_000 });
 
     // lock, reload in the same browser session: still offered
     await page.getByRole('button', { name: 'Lock', exact: true }).click();
