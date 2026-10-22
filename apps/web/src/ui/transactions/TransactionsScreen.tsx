@@ -2,7 +2,7 @@
 
 import type { LocalDate, NeedsAttentionItem, RecentlyDeleted, RecentlyDeletedTransfer, SearchFilter, TransactionRow, TransferRow } from '@cashfold/core';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { InputField, SelectField } from '../forms/Field';
 import { useI18n } from '../i18n/I18nProvider';
 import {
@@ -16,7 +16,7 @@ import { useAddSheet } from '../shell/add-context';
 import { useStatus } from '../shell/StatusProvider';
 import { AddSheet } from './AddSheet';
 import { ScheduleInboxBanner } from './ScheduleInboxBanner';
-import { groupByDay } from './day-groups';
+import { groupByDay, type DayGroup as DayGroupData, type DayRow } from './day-groups';
 import { useWindowedBlock } from './useWindowedRows';
 import { NO_FILTERS, appliedChips, filtersFromQuery, filtersToQuery, removeFilter, type Filters, type StatusFilter } from './filters';
 
@@ -44,7 +44,8 @@ function TransactionsBody() {
   const basics = ledger.basics!;
   const filters = useMemo(() => filtersFromQuery(new URLSearchParams(params.toString())), [params]);
   const [text, setText] = useState(filters.text);
-  const [limit, setLimit] = useState(PAGE);
+  // How many rows a full read asks for: one page, or as many as are loaded when the list is read again after a change.
+  const wanted = useRef(PAGE);
   const [rows, setRows] = useState<{ items: TransactionRow[]; count: number }>({ items: [], count: 0 });
   const [attention, setAttention] = useState<NeedsAttentionItem[]>([]);
   const [attentionShown, setAttentionShown] = useState(true);
@@ -63,7 +64,7 @@ function TransactionsBody() {
     (next: Filters) => {
       const query = filtersToQuery(next, new URLSearchParams(window.location.search)).toString();
       router.replace(query === '' ? pathname : `${pathname}?${query}`);
-      setLimit(PAGE);
+      wanted.current = PAGE;
     },
     [router, pathname],
   );
@@ -104,7 +105,7 @@ function TransactionsBody() {
     if ('error' in filter) return;
     try {
       const [list, needs, gone, moves, goneMoves] = await Promise.all([
-        ledger.read<{ items: TransactionRow[]; count: number }>('ledger.transactions', { filter, sort: 'date_desc', page: { limit, offset: 0 } }),
+        ledger.read<{ items: TransactionRow[]; count: number }>('ledger.transactions', { filter, sort: 'date_desc', page: { limit: wanted.current, offset: 0 } }),
         ledger.read<NeedsAttentionItem[]>('ledger.needsAttention'),
         ledger.read<RecentlyDeleted[]>('ledger.recentlyDeleted'),
         ledger.read<TransferRow[]>('ledger.transfers'),
@@ -119,7 +120,19 @@ function TransactionsBody() {
       setMessage(t('ledger.error.load'));
     }
     // `ledger.version` changes after every command, which is when the lists must be asked for again.
-  }, [filter, limit, ledger.version, t]);
+  }, [filter, ledger.version, t]);
+
+  // "Show more" reads only the next page and adds it, so paging through a long list does not read it all again each time.
+  async function showMore() {
+    if ('error' in filter) return;
+    try {
+      const next = await ledger.read<{ items: TransactionRow[]; count: number }>('ledger.transactions', { filter, sort: 'date_desc', page: { limit: PAGE, offset: rows.items.length } });
+      wanted.current = rows.items.length + next.items.length;
+      setRows((r) => ({ items: [...r.items, ...next.items], count: next.count }));
+    } catch {
+      setMessage(t('ledger.error.load'));
+    }
+  }
   useEffect(() => void load(), [load]);
 
   // Transfers sit in the same list as the transactions. They follow the filters that make sense for them, and while the list is still being paged
@@ -145,7 +158,9 @@ function TransactionsBody() {
     const entries: Entry[] = [
       ...rows.items.map((tx) => ({ id: tx.id, localDate: tx.localDate as number, amountMinor: tx.amountMinor, occurredUtcMs: tx.occurredUtcMs, tx })),
       ...visibleTransfers.map((xf) => ({ id: xf.id, localDate: xf.localDate as number, amountMinor: 0n, occurredUtcMs: xf.occurredUtcMs, xf })),
-    ].sort((a, b) => b.localDate - a.localDate || b.occurredUtcMs - a.occurredUtcMs);
+    ];
+    // The transactions arrive newest first already; only merging transfers in needs the order made again.
+    if (visibleTransfers.length > 0) entries.sort((a, b) => b.localDate - a.localDate || b.occurredUtcMs - a.occurredUtcMs);
     // More transactions exist than are loaded: the last day may be incomplete.
     return groupByDay(entries, entries.length + (rows.count - rows.items.length));
   }, [rows, visibleTransfers]);
@@ -296,10 +311,15 @@ function TransactionsBody() {
           ) : null}
 
           {groups.map((group, index) => (
-            <DayGroup key={group.date} group={group} eager={index < EAGER_GROUPS} currency={currencyByDate.get(group.date as number) ?? basics.baseCurrency ?? 'USD'} />
+            <DayGroup
+              key={group.date} group={group} eager={index < EAGER_GROUPS} currency={currencyByDate.get(group.date as number) ?? basics.baseCurrency ?? 'USD'}
+              renderEntry={(entry) => entry.tx
+                ? <Row key={entry.id} row={entry.tx} title={titleOf(entry.tx)} onEdit={() => setEditing(entry.tx)} onPin={() => void togglePin(entry.tx!)} onDelete={() => setRemoving(entry.tx)} />
+                : <TransferItem key={entry.id} x={entry.xf!} title={transferTitle(entry.xf!)} />}
+            />
           ))}
           {rows.count > rows.items.length ? (
-            <Button outline className="mt-4" onClick={() => setLimit((n) => n + PAGE)}>{t('ledger.tx.more', { shown: rows.items.length, count: rows.count })}</Button>
+            <Button outline className="mt-4" onClick={() => void showMore()}>{t('ledger.tx.more', { shown: rows.items.length, count: rows.count })}</Button>
           ) : null}
 
         </>
@@ -320,30 +340,6 @@ function TransactionsBody() {
       />
     </LedgerFrame>
   );
-
-  function DayGroup({ group, eager, currency }: { group: (typeof groups)[number]; eager: boolean; currency: string }) {
-    const { ref, rendered } = useWindowedBlock<HTMLElement>(eager, ROW_ESTIMATE_PX * group.items.length + HEADING_ESTIMATE_PX);
-    return (
-      <section ref={ref} className="mt-5" aria-labelledby={`day-${group.date}`}>
-        {rendered ? (
-          <>
-            <h2 id={`day-${group.date}`} className="sticky top-0 z-10 flex items-baseline justify-between bg-white/90 py-1 text-sm font-semibold text-zinc-600 backdrop-blur dark:bg-zinc-900/90 dark:text-zinc-400">
-              <span>{formatDate(group.date as LocalDate, locale)}</span>
-              <span className="font-normal">
-                {group.partial ? `${t('ledger.list.soFar')} ` : ''}
-                <Amount minor={group.netMinor} currency={currency} locale={locale} showSign />
-              </span>
-            </h2>
-            <ul className="divide-y divide-zinc-950/10 rounded-xl border border-zinc-950/10 dark:divide-white/10 dark:border-white/10">
-              {group.items.map((entry) => entry.tx
-                ? <Row key={entry.id} row={entry.tx} title={titleOf(entry.tx)} onEdit={() => setEditing(entry.tx)} onPin={() => void togglePin(entry.tx!)} onDelete={() => setRemoving(entry.tx)} />
-                : <TransferItem key={entry.id} x={entry.xf!} title={transferTitle(entry.xf!)} />)}
-            </ul>
-          </>
-        ) : null}
-      </section>
-    );
-  }
 
   function TransferItem({ x, title }: { x: TransferRow; title: string }) {
     const from = accountsById.get(x.fromAccountId);
@@ -447,5 +443,27 @@ function FiltersPanel({ open, onClose, filters, invalid, onApply }: { open: bool
         </div>
       </form>
     </Sheet>
+  );
+}
+
+/** One day of the list: the heading with the day's net and its entries, rendered only while it is near the viewport (a module-level component, so it keeps its state between renders of the list). */
+function DayGroup<E extends DayRow>({ group, eager, currency, renderEntry }: { group: DayGroupData<E>; eager: boolean; currency: string; renderEntry: (entry: E) => ReactNode }) {
+  const { t, locale } = useI18n();
+  const { ref, rendered } = useWindowedBlock<HTMLElement>(eager, ROW_ESTIMATE_PX * group.items.length + HEADING_ESTIMATE_PX);
+  return (
+    <section ref={ref} className="mt-5" aria-labelledby={`day-${group.date}`}>
+      {rendered ? (
+        <>
+          <h2 id={`day-${group.date}`} className="sticky top-0 z-10 flex items-baseline justify-between bg-white/90 py-1 text-sm font-semibold text-zinc-600 backdrop-blur dark:bg-zinc-900/90 dark:text-zinc-400">
+            <span>{formatDate(group.date as LocalDate, locale)}</span>
+            <span className="font-normal">
+              {group.partial ? `${t('ledger.list.soFar')} ` : ''}
+              <Amount minor={group.netMinor} currency={currency} locale={locale} showSign />
+            </span>
+          </h2>
+          <ul className="divide-y divide-zinc-950/10 rounded-xl border border-zinc-950/10 dark:divide-white/10 dark:border-white/10">{group.items.map(renderEntry)}</ul>
+        </>
+      ) : null}
+    </section>
   );
 }

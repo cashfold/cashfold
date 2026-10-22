@@ -37,12 +37,12 @@ On a wide screen the sidebar alone is 11 controls (skip link, brand, Add, five e
 
 `e2e/bench/list-10k.spec.ts` (`BENCH=1`; Chromium, page CPU slowed 4×; the worker runs at this machine's speed). Before windowing, loading the next 100 rows at 2,100 rows loaded took 12.3 s. With day groups rendered only while near the viewport (`useWindowedRows.ts`, with a browser test) and the per-group currency lookup done once:
 
-| Step at 10,000 rows | p95, 4× slowdown | p95, no slowdown | Target |
-|---|---|---|---|
-| Show more (next 100 rows on screen) | 586 ms | 181 ms | 200 ms |
-| Search (keystroke to narrowed list, less the 200 ms pause by design) | about 660 ms | about 200 ms | 200 ms |
+| Step at 10,000 rows | p95, 4× slowdown | Target |
+|---|---|---|
+| Show more (next 100 rows on screen) | 295 ms | 200 ms |
+| Search (keystroke to narrowed list, less the 200 ms pause by design) | 274 ms | 200 ms |
 
-SC-010 is **not met** at the reference slowdown. The remaining cost is that every "Show more" asks for all rows again (offset 0, growing limit) and the search runs over all rows in the worker. Fetching only the next page and appending, and measuring the worker query, are the next steps; T077 stays open.
+Further changes after windowing: "Show more" now reads only the next page and appends it; the day group is a module-level component (it was redefined on every render, which remounted every group); the transactions are no longer sorted again when no transfer is merged in. Each cut the figures (586 → 295 ms and about 660 → 274 ms), and they now level off. SC-010 is **not met** at the reference slowdown: the measurement includes a full re-read of the list's other data (needs-attention, transfers, recently deleted) on every search, and the worker's query, which the slowdown does not touch. T077 stays open.
 
 ## Not done
 
