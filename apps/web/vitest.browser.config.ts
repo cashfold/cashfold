@@ -9,7 +9,7 @@ export default defineConfig({
   optimizeDeps: {
     // Workspace packages are linked source: never pre-bundle them, or edits and new exports go stale in the cache.
     exclude: ['@cashfold/core', '@cashfold/crypto', '@cashfold/protocol'],
-    include: ['@cashfold/crypto > hash-wasm', '@cashfold/crypto > @noble/curves/ed25519.js', '@cashfold/crypto > @noble/hashes/hkdf.js', '@cashfold/crypto > @noble/hashes/sha2.js', '@cashfold/protocol > zod'],
+    include: ['@cashfold/crypto > hash-wasm', '@cashfold/crypto > @noble/curves/ed25519.js', '@cashfold/crypto > @noble/hashes/hkdf.js', '@cashfold/crypto > @noble/hashes/sha2.js', '@cashfold/protocol > zod', 'react/jsx-dev-runtime'],
   },
   test: {
     name: 'web-browser',
