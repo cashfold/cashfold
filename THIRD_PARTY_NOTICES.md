@@ -128,7 +128,7 @@ Cashfold includes the following third-party software. Each is used under its own
 | ms | 2.1.3 | MIT | https://github.com/vercel/ms#readme |
 | nanoid | 3.3.20 | MIT | https://github.com/ai/nanoid#readme |
 | next | 16.4.2 | MIT | https://nextjs.org |
-| nodemailer | 8.0.1 | MIT-0 | https://nodemailer.com/ |
+| nodemailer | 10.2.1 | MIT-0 | https://nodemailer.com/ |
 | on-exit-leak-free | 2.1.2 | MIT | https://github.com/mcollina/on-exit-or-gc#readme |
 | path-to-regexp | 8.4.2 | MIT | https://github.com/pillarjs/path-to-regexp#readme |
 | pg | 8.23.1 | MIT | https://github.com/brianc/node-postgres |
