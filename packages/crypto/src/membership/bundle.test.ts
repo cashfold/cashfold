@@ -1,3 +1,4 @@
+import { encode } from '@cashfold/protocol/cbor';
 import { describe, expect, it } from 'vitest';
 import { createEd25519Signer } from '../adapters/noble/ed25519';
 import { x25519PublicKey } from '../adapters/noble/x25519';
@@ -69,5 +70,24 @@ describe('invitation code', () => {
     const other = await make();
     const forged = decodeInvitationCode(encodeInvitationCode({ ...bundle, encPk: other.encPk }))!;
     expect(await verifyBundle(signer, forged)).toBe(false);
+  });
+});
+
+describe('invitation codes of the wrong shape', () => {
+  const code = (v: unknown) => `cf-invite1:${btoa(String.fromCharCode(...encode(v as never))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')}`;
+  const good = { a: 'acct', e: new Uint8Array(32), s: new Uint8Array(32), g: new Uint8Array(64) };
+
+  it('accepts the right shape and refuses every deviation from it', () => {
+    expect(decodeInvitationCode(code(good))).toBeDefined();
+    for (const bad of [
+      [1n, 2n],
+      { ...good, x: 1n },
+      { ...good, a: '' },
+      { ...good, a: 'x'.repeat(65) },
+      { ...good, a: 7n },
+      { ...good, e: new Uint8Array(31) },
+      { ...good, s: new Uint8Array(33) },
+      { ...good, g: new Uint8Array(63) },
+    ]) expect(decodeInvitationCode(code(bad))).toBeUndefined();
   });
 });
