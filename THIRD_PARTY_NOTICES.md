@@ -14,7 +14,7 @@ Cashfold includes the following third-party software. Each is used under its own
 | Chromium (inside Electron) | BSD-3-Clause and the licences of its many components | The full texts ship in every desktop installer as `LICENSES.chromium.html`. |
 | Catalyst-derived UI components (`apps/web/src/ui/kit/`) | Tailwind Plus License | Isolated in one directory with its own licence notice (`LICENSE-TAILWIND-PLUS.md`); not covered by the repository's AGPL grant (ADR-0008). |
 
-## Production dependencies (180)
+## Production dependencies (179)
 
 | Package | Version | Licence | Home |
 | --- | --- | --- | --- |
@@ -65,7 +65,6 @@ Cashfold includes the following third-party software. Each is used under its own
 | @swc/helpers | 0.5.23 | Apache-2.0 | https://swc.rs |
 | @tailwindcss/node | 4.3.3 | MIT | https://tailwindcss.com |
 | @tailwindcss/oxide | 4.3.3 | MIT | https://github.com/tailwindlabs/tailwindcss#readme |
-| @tailwindcss/oxide-darwin-arm64 | 4.3.3 | MIT | https://github.com/tailwindlabs/tailwindcss#readme |
 | @tailwindcss/postcss | 4.3.3 | MIT | https://tailwindcss.com |
 | @tanstack/react-virtual | 3.14.21 | MIT | https://tanstack.com/virtual |
 | @tanstack/virtual-core | 3.19.6 | MIT | https://tanstack.com/virtual |
