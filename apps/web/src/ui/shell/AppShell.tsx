@@ -6,13 +6,12 @@ import { useEffect, useRef, type ReactNode } from 'react';
 import { useCore } from '../core/CoreProvider';
 import { useI18n } from '../i18n/I18nProvider';
 import { LedgerProvider, useLedger } from '../ledger/LedgerProvider';
-import {
-  ArrowsRightLeftIcon, AuthLayout, BanknotesIcon, InformationCircleIcon, Button, Cog6ToothIcon, FlagIcon, HomeIcon, LockClosedIcon, Navbar, NavbarItem, NavbarSection, NavbarSpacer, PlusIcon,
-  Sidebar, SidebarBody, SidebarFooter, SidebarHeader, SidebarItem, SidebarLabel, SidebarLayout, SidebarSection,
-} from '../kit';
+import { ArrowsRightLeftIcon, AuthLayout, BanknotesIcon, InformationCircleIcon, Button, Cog6ToothIcon, FlagIcon, HomeIcon, LockClosedIcon, Navbar, NavbarItem, NavbarSection, NavbarSpacer, PlusIcon,
+  Sidebar, SidebarBody, SidebarFooter, SidebarHeader, SidebarItem, SidebarLabel, SidebarLayout, SidebarSection, Badge } from '../kit';
 import { prefsStore } from '../prefs/usePrefs';
 import { SyncIndicator } from '../sync/SyncIndicator';
 import { AddSheetHost } from '../transactions/AddSheetHost';
+import { useScheduleInbox } from '../transactions/useScheduleInbox';
 import { useAddSheet } from './add-context';
 import { OverlayHost } from './OverlayHost';
 import { FoldSwitcher } from './FoldSwitcher';
@@ -79,6 +78,7 @@ function NavigationSidebar() {
   const { openAdd } = useAddSheet();
   const router = useRouter();
   const current = matchSection(path);
+  const waiting = useScheduleInbox().length;
   return (
     <Sidebar aria-label={t('nav.label')}>
       <SidebarHeader>
@@ -97,6 +97,7 @@ function NavigationSidebar() {
               <SidebarItem key={section.id} href={section.href} current={current === section.id}>
                 <Icon data-slot="icon" aria-hidden="true" />
                 <SidebarLabel>{t(section.labelKey)}</SidebarLabel>
+                {section.id === 'transactions' && waiting > 0 ? <Badge color="primary">{waiting}<span className="sr-only"> {t('schedules.inbox.waiting')}</span></Badge> : null}
               </SidebarItem>
             );
           })}

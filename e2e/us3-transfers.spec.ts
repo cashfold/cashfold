@@ -1,6 +1,6 @@
 import type { Page } from '@playwright/test';
 import { expect, test } from './fixtures/index.js';
-import { go, moreDetails, cancelAdd } from './fixtures/nav.js';
+import { go, moreDetails, cancelAdd, openRowAction, toggleRecentlyDeleted } from './fixtures/nav.js';
 
 // User story 3: move money between accounts and currencies (FR-043 to FR-046), offline.
 
@@ -104,7 +104,7 @@ test.describe('@us3 transfers', () => {
     await expect(page.getByTestId('xfer-row')).toHaveCount(2);
 
     // --- edit changes both sides together
-    await page.getByRole('button', { name: 'Edit Everyday → Euro wallet' }).click();
+    await page.getByTestId('xfer-row').filter({ hasText: 'Everyday → Euro wallet' }).getByRole('button', { name: /^Everyday → Euro wallet/ }).first().click();
     dialog = page.getByRole('dialog');
     await dialog.getByLabel(/^Amount leaving/).fill('80.00');
     await dialog.getByLabel(/^Amount arriving/).fill('73.10');
@@ -117,7 +117,7 @@ test.describe('@us3 transfers', () => {
 
     // --- delete asks first, removes both sides, and restore brings both back
     await go(page, 'Transfers');
-    await page.getByRole('button', { name: 'Delete Everyday → Euro wallet' }).click();
+    await openRowAction(page, 'Everyday → Euro wallet', 'Delete');
     await expect(page.getByRole('dialog')).toContainText('Both sides are removed together');
     await expectNoA11yViolations();
     await page.getByRole('dialog').getByRole('button', { name: 'Delete transfer' }).click();
@@ -126,7 +126,9 @@ test.describe('@us3 transfers', () => {
     await expect(balanceOf(page, 'Everyday')).toHaveText('950.00 USD');
     await expect(balanceOf(page, 'Euro wallet')).toHaveText('0.00 EUR');
     await go(page, 'Transfers');
-    await page.getByTestId('xfer-deleted').getByRole('button', { name: 'Restore' }).click();
+    await toggleRecentlyDeleted(page);
+    await page.getByTestId('xfer-deleted').getByRole('button', { name: /^Restore/ }).click();
+    await toggleRecentlyDeleted(page);
     await expect(page.getByTestId('xfer-row')).toHaveCount(2);
     await go(page, 'Accounts');
     await expect(balanceOf(page, 'Everyday')).toHaveText('870.00 USD');
@@ -152,7 +154,7 @@ test.describe('@us3 transfers', () => {
     await expect(page.getByTestId('expense')).toHaveText('130.00 USD'); // 80.00 to the Euro wallet + 50.00 to the goal
     await expectNoA11yViolations();
 
-    await go(page, 'Transfers');
+    await go(page, 'Advanced');
     await page.getByLabel('Rate for EUR').fill('0.9137');
     await page.getByRole('button', { name: 'Save rate' }).click();
     await expect(page.getByTestId('rate-list')).toContainText('0.9137');
@@ -165,7 +167,7 @@ test.describe('@us3 transfers', () => {
     await expect(page.getByTestId('expense')).toHaveText('0.00 USD');
 
     // --- re-valuing past transactions says what it did
-    await go(page, 'Transfers');
+    await go(page, 'Advanced');
     await page.getByRole('button', { name: 'Re-value transactions' }).click();
     await page.getByRole('button', { name: 'Re-value now' }).click();
     await expect(page.getByTestId('revalue-summary')).toContainText('No transaction changed');
@@ -176,10 +178,11 @@ test.describe('@us3 transfers', () => {
     await go(page, 'Accounts');
     await addAccount(page, 'Everyday', '1000.00');
     await addAccount(page, 'Euro wallet', '0', { currency: 'EUR' });
-    await go(page, 'Transfers');
+    await go(page, 'Advanced');
     await page.getByLabel('Rate for EUR').fill('0.9137');
     await page.getByRole('button', { name: 'Save rate' }).click();
     await expect(page.getByTestId('rate-list')).toContainText('0.9137');
+    await go(page, 'Transactions');
 
     const dialog = await transfer(page, 'Everyday (USD)', 'Euro wallet (EUR)', '100.00');
     await expect(dialog.getByLabel(/^Amount arriving/)).toHaveValue('');

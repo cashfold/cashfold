@@ -1273,5 +1273,8 @@
   "empty.goals.action": "Add your first goal",
   "ledger.categories.tabs": "Kinds of labels",
   "budgets.form.more": "More options",
-  "schedules.form.more": "More options"
+  "schedules.form.more": "More options",
+  "ledger.list.transfer": "Transfer",
+  "schedules.inbox.banner": "{count, plural, one {# scheduled entry is waiting for you} other {# scheduled entries are waiting for you}}",
+  "schedules.inbox.waiting": "scheduled entries waiting"
 }

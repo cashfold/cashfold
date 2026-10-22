@@ -1,21 +1,21 @@
 'use client';
 
-import type { LocalDate, NeedsAttentionItem, RecentlyDeleted, SearchFilter, TransactionRow } from '@cashfold/core';
+import type { LocalDate, NeedsAttentionItem, RecentlyDeleted, RecentlyDeletedTransfer, SearchFilter, TransactionRow, TransferRow } from '@cashfold/core';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { InputField, SelectField } from '../forms/Field';
 import { useI18n } from '../i18n/I18nProvider';
 import {
-  Amount, Badge, Button, RowButton, Chip, ConfirmDialog, Dropdown, DropdownButton, DropdownItem, DropdownLabel, DropdownMenu, EllipsisHorizontalIcon, EmptyState, FunnelIcon, Input,
+  Amount, Badge, Button, RowButton, Chip, ConfirmDialog, Dropdown, DropdownButton, DropdownItem, DropdownLabel, DropdownMenu, ArrowsRightLeftIcon, EllipsisHorizontalIcon, EmptyState, FunnelIcon, Input,
   InputGroup, MagnifyingGlassIcon, Notice, Sheet,
 } from '../kit';
 import { dateToInput, formatDate, inputToDate } from '../ledger/dates';
 import { LedgerFrame } from '../ledger/LedgerFrame';
 import { useLedger } from '../ledger/LedgerProvider';
-import { TransfersSection } from '../ledger/transfer/TransfersScreen';
 import { useAddSheet } from '../shell/add-context';
 import { useStatus } from '../shell/StatusProvider';
 import { AddSheet } from './AddSheet';
+import { ScheduleInboxBanner } from './ScheduleInboxBanner';
 import { groupByDay } from './day-groups';
 import { NO_FILTERS, appliedChips, filtersFromQuery, filtersToQuery, removeFilter, type Filters, type StatusFilter } from './filters';
 
@@ -45,6 +45,10 @@ function TransactionsBody() {
   const [attentionShown, setAttentionShown] = useState(true);
   const [deleted, setDeleted] = useState<RecentlyDeleted[]>([]);
   const [showDeleted, setShowDeleted] = useState(false);
+  const [transfers, setTransfers] = useState<TransferRow[]>([]);
+  const [deletedTransfers, setDeletedTransfers] = useState<RecentlyDeletedTransfer[]>([]);
+  const [editingTransfer, setEditingTransfer] = useState<TransferRow | undefined>();
+  const [removingTransfer, setRemovingTransfer] = useState<TransferRow | undefined>();
   const [editing, setEditing] = useState<TransactionRow | undefined>();
   const [removing, setRemoving] = useState<TransactionRow | undefined>();
   const [panel, setPanel] = useState(false);
@@ -94,11 +98,15 @@ function TransactionsBody() {
   const load = useCallback(async () => {
     if ('error' in filter) return;
     try {
-      const [list, needs, gone] = await Promise.all([
+      const [list, needs, gone, moves, goneMoves] = await Promise.all([
         ledger.read<{ items: TransactionRow[]; count: number }>('ledger.transactions', { filter, sort: 'date_desc', page: { limit, offset: 0 } }),
         ledger.read<NeedsAttentionItem[]>('ledger.needsAttention'),
         ledger.read<RecentlyDeleted[]>('ledger.recentlyDeleted'),
+        ledger.read<TransferRow[]>('ledger.transfers'),
+        ledger.read<RecentlyDeletedTransfer[]>('ledger.recentlyDeletedTransfers'),
       ]);
+      setTransfers(moves);
+      setDeletedTransfers(goneMoves);
       setRows(list);
       setAttention(needs);
       setDeleted(gone);
@@ -109,7 +117,33 @@ function TransactionsBody() {
   }, [filter, limit, ledger.version, t]);
   useEffect(() => void load(), [load]);
 
-  const groups = useMemo(() => groupByDay(rows.items, rows.count), [rows]);
+  // Transfers sit in the same list as the transactions. They follow the filters that make sense for them, and while the list is still being paged
+  // in they stop at the oldest loaded transaction, so the groups are complete.
+  const visibleTransfers = useMemo(() => {
+    if (filters.category !== '' || filters.min !== '' || filters.max !== '') return [];
+    const from = inputToDate(filters.from);
+    const to = inputToDate(filters.to);
+    const oldest = rows.count > rows.items.length ? rows.items.at(-1)?.localDate : undefined;
+    const needle = filters.text.trim().toLowerCase();
+    return transfers.filter(
+      (x) =>
+        (filters.account === '' || x.fromAccountId === filters.account || x.toAccountId === filters.account) &&
+        (filters.status === '' || x.status === filters.status) &&
+        (from === undefined || x.localDate >= from) && (to === undefined || x.localDate <= to) &&
+        (oldest === undefined || x.localDate >= oldest) &&
+        (needle === '' || x.note.toLowerCase().includes(needle)),
+    );
+  }, [transfers, filters, rows]);
+
+  type Entry = { id: string; localDate: number; amountMinor: bigint; occurredUtcMs: number; tx?: TransactionRow; xf?: TransferRow };
+  const groups = useMemo(() => {
+    const entries: Entry[] = [
+      ...rows.items.map((tx) => ({ id: tx.id, localDate: tx.localDate as number, amountMinor: tx.amountMinor, occurredUtcMs: tx.occurredUtcMs, tx })),
+      ...visibleTransfers.map((xf) => ({ id: xf.id, localDate: xf.localDate as number, amountMinor: 0n, occurredUtcMs: xf.occurredUtcMs, xf })),
+    ].sort((a, b) => b.localDate - a.localDate || b.occurredUtcMs - a.occurredUtcMs);
+    // More transactions exist than are loaded: the last day may be incomplete.
+    return groupByDay(entries, entries.length + (rows.count - rows.items.length));
+  }, [rows, visibleTransfers]);
 
   async function confirmRemove() {
     if (!removing) return;
@@ -125,6 +159,22 @@ function TransactionsBody() {
     if (r.ok) status.notify('status.restored');
     else setMessage(ledger.explain(r.error.code));
   }
+  async function confirmRemoveTransfer() {
+    if (!removingTransfer) return;
+    const r = await ledger.run('ledger.deleteTransfer', { id: removingTransfer.id });
+    if (r.ok) {
+      setRemovingTransfer(undefined);
+      status.notify('status.deleted');
+    } else setMessage(ledger.explain(r.error.code));
+  }
+  async function restoreTransfer(id: string) {
+    setMessage(undefined);
+    const r = await ledger.run('ledger.restoreTransfer', { id });
+    if (r.ok) status.notify('status.restored');
+    else setMessage(ledger.explain(r.error.code));
+  }
+  const transferTitle = (x: Pick<TransferRow, 'fromAccountId' | 'toAccountId'>) => `${accountsById.get(x.fromAccountId)?.name ?? '?'} → ${accountsById.get(x.toAccountId)?.name ?? '?'}`;
+
   async function togglePin(row: TransactionRow) {
     const r = await ledger.run('ledger.updateTransaction', { id: row.id, changes: { isPinned: !row.isPinned } });
     if (!r.ok) setMessage(ledger.explain(r.error.code));
@@ -171,7 +221,7 @@ function TransactionsBody() {
         <section className="mt-6" aria-labelledby="deleted-title">
           <h2 id="deleted-title" className="text-lg font-semibold">{t('ledger.deleted.title')}</h2>
           <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">{t('ledger.deleted.lede')}</p>
-          {deleted.length === 0 ? <EmptyState className="mt-3" icon={EllipsisHorizontalIcon} title={t('ledger.deleted.empty')} body={t('ledger.deleted.lede')} /> : null}
+          {deleted.length === 0 && deletedTransfers.length === 0 ? <EmptyState className="mt-3" icon={EllipsisHorizontalIcon} title={t('ledger.deleted.empty')} body={t('ledger.deleted.lede')} /> : null}
           <ul className="mt-3 divide-y divide-zinc-950/10 rounded-xl border border-zinc-950/10 empty:hidden dark:divide-white/10 dark:border-white/10" data-testid="deleted-list">
             {deleted.map((d) => (
               <li key={d.transaction.id} className="flex flex-wrap items-center justify-between gap-3 p-3">
@@ -183,9 +233,21 @@ function TransactionsBody() {
               </li>
             ))}
           </ul>
+          <ul className="mt-3 divide-y divide-zinc-950/10 rounded-xl border border-zinc-950/10 empty:hidden dark:divide-white/10 dark:border-white/10" data-testid="xfer-deleted">
+            {deletedTransfers.map((d) => (
+              <li key={d.transfer.id} className="flex flex-wrap items-center justify-between gap-3 p-3">
+                <div>
+                  <span className="font-medium">{transferTitle(d.transfer)}</span>
+                  <span className="ms-3 text-sm text-zinc-600 dark:text-zinc-400">{formatDate(d.transfer.localDate, locale)} · {t('ledger.deleted.daysLeft', { days: d.daysLeft })}</span>
+                </div>
+                <Button outline onClick={() => void restoreTransfer(d.transfer.id)} aria-label={`${t('ledger.deleted.restore')} ${transferTitle(d.transfer)}`}>{t('ledger.deleted.restore')}</Button>
+              </li>
+            ))}
+          </ul>
         </section>
       ) : (
         <>
+          <ScheduleInboxBanner />
           {attention.length > 0 && attentionShown ? (
             <Notice className="mt-4" tone="warning" title={t('ledger.attention.title', { count: attention.length })} onDismiss={() => setAttentionShown(false)} dismissLabel={t('status.dismiss')}>
               <ul className="list-disc ps-5" data-testid="attention">
@@ -214,7 +276,7 @@ function TransactionsBody() {
           ) : null}
 
           <p className="mt-4 text-sm text-zinc-600 dark:text-zinc-400" role="status" data-testid="tx-count">{t('ledger.tx.count', { count: rows.count })}</p>
-          {rows.count === 0 && basics.accounts.length > 0 ? (
+          {rows.count === 0 && visibleTransfers.length === 0 && basics.accounts.length > 0 ? (
             <EmptyState
               className="mt-3" icon={filtered ? FunnelIcon : MagnifyingGlassIcon} title={filtered ? t('ledger.tx.noMatches') : t('ledger.tx.empty')} body={filtered ? t('empty.tx.filtered') : t('empty.tx.body')}
               action={filtered ? <Button outline onClick={() => apply(NO_FILTERS)}>{t('ledger.filter.clear')}</Button> : <Button onClick={() => openAdd()}>{t('empty.tx.action')}</Button>}
@@ -231,7 +293,9 @@ function TransactionsBody() {
                 </span>
               </h2>
               <ul className="divide-y divide-zinc-950/10 rounded-xl border border-zinc-950/10 dark:divide-white/10 dark:border-white/10">
-                {group.items.map((row) => <Row key={row.id} row={row} title={titleOf(row)} onEdit={() => setEditing(row)} onPin={() => void togglePin(row)} onDelete={() => setRemoving(row)} />)}
+                {group.items.map((entry) => entry.tx
+                  ? <Row key={entry.id} row={entry.tx} title={titleOf(entry.tx)} onEdit={() => setEditing(entry.tx)} onPin={() => void togglePin(entry.tx!)} onDelete={() => setRemoving(entry.tx)} />
+                  : <TransferItem key={entry.id} x={entry.xf!} title={transferTitle(entry.xf!)} />)}
               </ul>
             </section>
           ))}
@@ -239,13 +303,17 @@ function TransactionsBody() {
             <Button outline className="mt-4" onClick={() => setLimit((n) => n + PAGE)}>{t('ledger.tx.more', { shown: rows.items.length, count: rows.count })}</Button>
           ) : null}
 
-          <TransfersSection />
         </>
       )}
 
       <FiltersPanel open={panel} onClose={() => setPanel(false)} filters={filters} invalid={'error' in filter} onApply={(f) => { apply(f); setPanel(false); }} />
 
       {editing ? <AddSheet key={editing.id} existing={editing} onClose={() => setEditing(undefined)} /> : null}
+      {editingTransfer ? <AddSheet key={editingTransfer.id} existingTransfer={editingTransfer} onClose={() => setEditingTransfer(undefined)} /> : null}
+      <ConfirmDialog
+        open={removingTransfer !== undefined} destructive title={t('ledger.xfer.delete.title')} body={removingTransfer ? `${transferTitle(removingTransfer)} — ${t('ledger.xfer.delete.consequence')}` : undefined}
+        confirmLabel={t('ledger.xfer.delete.confirm')} cancelLabel={t('ledger.cancel')} onConfirm={() => void confirmRemoveTransfer()} onCancel={() => setRemovingTransfer(undefined)}
+      />
       <ConfirmDialog
         open={removing !== undefined} destructive title={t('ledger.tx.delete.title')}
         body={removing ? `${titleOf(removing)} — ${t('ledger.tx.delete.consequence', { when: dateToInput(removing.localDate) })}` : undefined}
@@ -253,6 +321,36 @@ function TransactionsBody() {
       />
     </LedgerFrame>
   );
+
+  function TransferItem({ x, title }: { x: TransferRow; title: string }) {
+    const from = accountsById.get(x.fromAccountId);
+    const to = accountsById.get(x.toAccountId);
+    return (
+      <li className="flex items-center gap-3 p-3" data-testid="xfer-row">
+        <span aria-hidden="true" className="grid size-9 shrink-0 place-items-center rounded-full bg-zinc-200 text-zinc-700 dark:bg-zinc-700 dark:text-zinc-200"><ArrowsRightLeftIcon className="size-5" /></span>
+        <RowButton onClick={() => setEditingTransfer(x)} className="flex-1">
+          <span className="flex flex-wrap items-center gap-x-2">
+            <span className="truncate font-medium">{title}</span>
+            <Badge>{t('ledger.list.transfer')}</Badge>
+            {x.status === 'posted' ? null : <Badge color={x.status === 'void' ? 'red' : 'amber'}>{t(`ledger.status.${x.status}`)}</Badge>}
+          </span>
+          <span className="block truncate text-sm text-zinc-600 dark:text-zinc-400">
+            <span data-testid="xfer-out">{from ? ledger.signed(-x.fromAmountMinor, from.currency) : ''}</span>
+            {' → '}
+            <span data-testid="xfer-in">{to ? ledger.signed(x.toAmountMinor, to.currency) : ''}</span>
+            {x.note !== '' ? ` · ${x.note}` : ''}
+          </span>
+        </RowButton>
+        <Dropdown>
+          <DropdownButton plain aria-label={`${t('ledger.list.actions')} ${title}`}><EllipsisHorizontalIcon data-slot="icon" aria-hidden="true" /></DropdownButton>
+          <DropdownMenu anchor="bottom end">
+            <DropdownItem onClick={() => setEditingTransfer(x)}><DropdownLabel>{t('ledger.edit')}</DropdownLabel></DropdownItem>
+            <DropdownItem onClick={() => setRemovingTransfer(x)}><DropdownLabel>{t('ledger.delete')}</DropdownLabel></DropdownItem>
+          </DropdownMenu>
+        </Dropdown>
+      </li>
+    );
+  }
 
   function Row({ row, title, onEdit, onPin, onDelete }: { row: TransactionRow; title: string; onEdit: () => void; onPin: () => void; onDelete: () => void }) {
     const account = accountsById.get(row.accountId);
