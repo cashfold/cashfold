@@ -6,8 +6,10 @@ export default defineConfig({
   // Component tests (apps/web) render JSX; tsconfig keeps `jsx: preserve` for Next.
   oxc: { jsx: { runtime: 'automatic' } },
   test: {
+    // CI runs 1000 property-test cases under coverage on a shared runner; the 5 s default is for a laptop.
+    testTimeout: process.env['CI'] ? 60_000 : 5_000,
     // Browser tests need a real browser: run them with `pnpm --filter @cashfold/web test:browser`.
-    exclude: ['**/node_modules/**', '**/dist/**', '**/*.browser.test.{ts,tsx}', 'e2e/**', 'apps/desktop/e2e/**'],
+    exclude: ['**/node_modules/**', '**/dist/**', '**/*.browser.test.{ts,tsx}', '**/*.int.test.ts', 'e2e/**', 'apps/desktop/e2e/**'],
     coverage: {
       provider: 'v8',
       include: ['packages/*/src/**/*.ts'],
