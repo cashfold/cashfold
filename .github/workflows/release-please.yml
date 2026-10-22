@@ -1,0 +1,36 @@
+name: Release proposal
+
+# Keeps a release proposal up to date: one pull request that holds the next version number (worked out from the Conventional Commit titles of
+# what was merged to main) and the changelog. Nothing is public until a maintainer approves it by merging it (specs/003, FR-020). Merging it
+# makes the tag vX.Y.Z and a draft release, and the tag starts release.yml.
+#
+# It runs in the `release-proposal` environment, which has no required reviewers: updating a proposal must never wait for a person. The
+# GitHub App token (not the default token) is what lets the proposal's checks run and the tag start the next workflow, because events made with
+# the default token start no other workflows.
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-proposal
+  cancel-in-progress: false
+
+jobs:
+  proposal:
+    runs-on: ubuntu-latest
+    environment: release-proposal
+    steps:
+      - id: app-token
+        uses: actions/create-github-app-token@fee1f7d63c2ff003460e3d139729b119787bc349 # v2.2.2
+        with:
+          app-id: ${{ secrets.RELEASE_APP_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+      - uses: googleapis/release-please-action@5c625bfb5d1ff62eadeeb3772007f7f66fdcf071 # v4.4.1
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json

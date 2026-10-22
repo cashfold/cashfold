@@ -4,25 +4,14 @@
 //
 //   node scripts/build-verify.mjs [--out dist-hashes] [--no-clean]
 import { execFileSync } from 'node:child_process';
-import { createHash } from 'node:crypto';
-import { mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
-import { join, relative } from 'node:path';
+import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { digestOfSums, hashTree, sumsOf } from './lib/tree-digest.mjs';
 
 const root = new URL('../', import.meta.url).pathname;
 const exportDir = join(root, 'apps/web/out');
 const args = process.argv.slice(2);
 const outDir = join(root, args.includes('--out') ? args[args.indexOf('--out') + 1] : 'build-hashes');
-
-function* walk(dir) {
-  for (const name of readdirSync(dir).sort()) {
-    const path = join(dir, name);
-    if (statSync(path).isDirectory()) yield* walk(path);
-    else yield path;
-  }
-}
-
-const hashTree = (dir) =>
-  Object.fromEntries([...walk(dir)].map((p) => [relative(dir, p).split('\\').join('/'), createHash('sha256').update(readFileSync(p)).digest('hex')]));
 
 function build(label) {
   if (!args.includes('--no-clean')) {
@@ -45,8 +34,8 @@ if (differing.length > 0) {
   process.exit(1);
 }
 
-const sums = names.map((n) => `${first[n]}  ${n}`).join('\n') + '\n';
-const digest = createHash('sha256').update(sums).digest('hex');
+const sums = sumsOf(first);
+const digest = digestOfSums(sums);
 mkdirSync(outDir, { recursive: true });
 writeFileSync(join(outDir, 'SHA256SUMS'), sums);
 writeFileSync(join(outDir, 'TREE_SHA256'), `${digest}\n`);

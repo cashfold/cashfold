@@ -23,3 +23,8 @@ JSON
 gh api --method PATCH "repos/${repo}" \
   -F allow_squash_merge=true -F allow_merge_commit=false -F allow_rebase_merge=false >/dev/null
 echo "Branch protection applied to ${repo}:main"
+
+# The tag ruleset that keeps releases behind the approved release proposal is set up by hand in the repository settings (Rules > Rulesets):
+# target: tags matching v*; rules: restrict creation, restrict updates, restrict deletions; bypass list: only the release GitHub App.
+# See docs/repo-settings.md ("Releases"). A maintainer checks it by trying to push the tag v0.0.0-test, which must be rejected.
+

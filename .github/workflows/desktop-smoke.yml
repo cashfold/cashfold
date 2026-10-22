@@ -1,0 +1,56 @@
+name: Desktop smoke
+
+# Runs the packaged-app end-to-end tests on all three operating systems when something the desktop app is made from changes. Not a required
+# check (a path-filtered required check would wait forever on pull requests that do not match); it is there to be looked at.
+
+on:
+  pull_request:
+    paths:
+      - 'apps/desktop/**'
+      - 'apps/web/**'
+      - 'packages/**'
+      - '.github/workflows/desktop-*.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: desktop-smoke-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    name: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: windows-latest, test: 'pnpm --filter @cashfold/desktop test:packaged' }
+          - { os: macos-latest, test: 'pnpm --filter @cashfold/desktop test:packaged' }
+          - { os: ubuntu-latest, test: 'xvfb-run -a pnpm --filter @cashfold/desktop test:packaged' }
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Display for the tests
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb
+      - run: pnpm --filter @cashfold/web build
+      - run: ${{ matrix.test }}
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: failure()
+        with:
+          name: desktop-smoke-${{ matrix.os }}
+          retention-days: 7
+          path: apps/desktop/test-results

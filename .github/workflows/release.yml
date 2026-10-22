@@ -1,31 +1,48 @@
 name: Release
 
-# A tag `vX.Y.Z` builds the web app twice and proves the two builds are identical, refuses to release while the external security
-# review is incomplete, and publishes the static export with the hashes of every file, an SBOM and a build-provenance attestation
-# (Constitution VIII, Workflow). Anyone can rebuild the tag and compare the tree digest.
+# A tag `vX.Y.Z` (made by merging the release proposal, see release-please.yml) is built once, on every platform, and published only if every
+# part succeeded (specs/003: FR-022, FR-024, FR-027). The jobs, in order:
+#
+#   gates     the tag is a version tag of this commit and package.json agrees; the external security review is complete; the same checks as every change
+#   web       two clean builds must be identical (reproducible); budgets; the static export is packaged
+#   desktop   Windows, macOS and Linux installers (desktop-build.yml), tested as packaged apps
+#   publish   signs the installers that update themselves, writes the checksums and the SBOM, attests provenance, uploads to the DRAFT release,
+#             checks it is complete, and only then makes it public. The only job that can write the release.
+#   notify    opens an issue when anything above failed
+#
+# A failed run leaves the release a draft, so nothing half-built is ever public. To run it again for the same tag, dispatch this workflow on the tag.
 
 on:
   push:
     tags: ['v*']
+  workflow_dispatch:
 
 permissions:
-  contents: write
-  id-token: write
-  attestations: write
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
-  release:
+  gates:
     runs-on: ubuntu-latest
-    env:
-      BUILD_ID: ${{ github.sha }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - name: Only a tag may release
+        if: ${{ github.ref_type != 'tag' }}
+        run: |
+          echo "This workflow publishes releases and runs only on a version tag (dispatch it on the tag, not on a branch)."
+          exit 1
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+
+      - name: The tag is a version tag of this commit, and package.json says that version
+        run: node scripts/check-release-tag.mjs
 
       - name: The external security review is complete
         run: node scripts/check-review-gate.mjs
@@ -37,32 +54,165 @@ jobs:
           pnpm vitest run
           pnpm check:licenses
           pnpm check:no-float
+          pnpm check:desktop-config
           node scripts/gen-third-party-notices.mjs --check
+          pnpm audit --audit-level=high
+
+  web:
+    needs: gates
+    runs-on: ubuntu-latest
+    env:
+      BUILD_ID: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
 
       - name: Reproducible build (two clean builds must be identical)
         run: node scripts/build-verify.mjs --out release
+
+      - name: Budgets
+        run: |
+          pnpm check:bundle
+          pnpm check:sqlite3mc
 
       - name: Package the export
         run: |
           cd apps/web/out
           tar --sort=name --mtime='1970-01-01 00:00:00' --owner=0 --group=0 --numeric-owner -czf "../../../cashfold-web-${GITHUB_REF_NAME}.tar.gz" .
           cd ../../..
-          sha256sum "cashfold-web-${GITHUB_REF_NAME}.tar.gz" >> release/SHA256SUMS.archive
+          mv release/SHA256SUMS release/SHA256SUMS.tree
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: web
+          if-no-files-found: error
+          path: |
+            cashfold-web-*.tar.gz
+            release/SHA256SUMS.tree
+            release/TREE_SHA256
+
+  desktop:
+    needs: gates
+    permissions:
+      contents: read
+    uses: ./.github/workflows/desktop-build.yml
+    with:
+      # Signing needs accounts and secrets (docs/desktop.md): switch it on by setting the repository variable RELEASE_SIGN to true. Until then the
+      # installers are built unsigned and the release says so.
+      sign: ${{ vars.RELEASE_SIGN == 'true' }}
+
+  publish:
+    needs: [gates, web, desktop]
+    if: ${{ success() }}
+    runs-on: ubuntu-latest
+    # The update-signing key lives in this environment (reviewers, tags `v*` only).
+    environment: release
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      UPDATE_SIGNING_KEY: ${{ secrets.UPDATE_SIGNING_KEY }}
+      # Whether the installers were code-signed (see the desktop job): everything, Windows included. A release that leaves Windows unsigned says so.
+      RELEASE_SIGNED: ${{ vars.RELEASE_SIGN == 'true' && vars.WINDOWS_SIGNING != 'none' && 'true' || 'false' }}
+      VERSION: ${{ github.ref_name }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      - name: Is the release already public? Then there is nothing to do (a re-run must not publish twice)
+        id: state
+        run: |
+          if gh release view "$VERSION" >/dev/null 2>&1; then
+            draft="$(gh release view "$VERSION" --json isDraft --jq .isDraft)"
+          else
+            gh release create "$VERSION" --draft --verify-tag --title "$VERSION" --notes "Release proposal notes were not found; the changelog is missing."
+            draft=true
+          fi
+          echo "draft=$draft" >> "$GITHUB_OUTPUT"
+          if [ "$draft" = "false" ]; then echo "$VERSION is already published; nothing to do." >> "$GITHUB_STEP_SUMMARY"; fi
+
+      - if: steps.state.outputs.draft == 'true'
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          path: artifacts
+
+      - name: Gather the release in one folder
+        if: steps.state.outputs.draft == 'true'
+        run: |
+          mkdir release-assets
+          find artifacts -type f -exec cp {} release-assets/ \;
+          ls -1 release-assets
 
       - name: SBOM
-        run: pnpm dlx @cyclonedx/cdxgen -o release/sbom.cdx.json
+        if: steps.state.outputs.draft == 'true'
+        run: pnpm dlx @cyclonedx/cdxgen -o release-assets/sbom.cdx.json
 
-      - uses: actions/attest-build-provenance@v2
+      - name: Sign the installers that update themselves
+        if: steps.state.outputs.draft == 'true'
+        run: node scripts/sign-update-assets.mjs release-assets
+
+      - name: Checksums and release notes
+        if: steps.state.outputs.draft == 'true'
+        run: |
+          gh release view "$VERSION" --json body --jq .body > changelog.md
+          node scripts/release-assets.mjs prepare release-assets \
+            --version "${VERSION#v}" --commit "$GITHUB_SHA" --repository "$GITHUB_REPOSITORY" --signed "$RELEASE_SIGNED" \
+            --changelog changelog.md --tree-digest release-assets/TREE_SHA256
+
+      - name: Attest provenance
+        if: steps.state.outputs.draft == 'true'
+        uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2.4.0
         with:
           subject-path: |
-            cashfold-web-*.tar.gz
-            release/SHA256SUMS
-            release/sbom.cdx.json
+            release-assets/Cashfold-*
+            release-assets/cashfold-web-*.tar.gz
+            release-assets/latest*.yml
+            release-assets/SHA256SUMS
+            release-assets/sbom.cdx.json
 
       - name: Publish
-        env:
-          GH_TOKEN: ${{ github.token }}
+        if: steps.state.outputs.draft == 'true'
         run: |
-          gh release create "${GITHUB_REF_NAME}" --verify-tag --generate-notes \
-            --notes-file <(printf 'Tree digest of the web export (sha256): %s\n\nRebuild: `BUILD_ID=%s node scripts/build-verify.mjs` must print the same digest.\n' "$(cat release/TREE_SHA256)" "${GITHUB_SHA}") \
-            "cashfold-web-${GITHUB_REF_NAME}.tar.gz" release/SHA256SUMS release/SHA256SUMS.archive release/TREE_SHA256 release/sbom.cdx.json
+          # Upload to the draft, check it is complete, and only then make it public.
+          gh release upload "$VERSION" release-assets/* --clobber
+          gh release view "$VERSION" --json assets --jq '.assets[].name' | node scripts/release-assets.mjs verify "${VERSION#v}"
+          gh release edit "$VERSION" --notes-file release-assets/notes.md --draft=false
+          tagged="$(git for-each-ref --format='%(creatordate:unix)' "refs/tags/$VERSION")"
+          echo "Published $VERSION $(( ($(date +%s) - ${tagged:-$(date +%s)}) / 60 )) minutes after the tag was made (target: under 45)." >> "$GITHUB_STEP_SUMMARY"
+
+  notify:
+    needs: [gates, web, desktop, publish]
+    if: ${{ failure() }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Open or update the issue for this release
+        run: |
+          failed="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/jobs" --paginate --jq '.jobs[] | select(.conclusion == "failure") | "- " + .name')"
+          title="Release $GITHUB_REF_NAME failed"
+          body="The release of $GITHUB_REF_NAME did not complete, so nothing was published (the release is still a draft).
+
+          Failed jobs:
+          ${failed}
+
+          Run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID
+
+          After fixing the cause, run the Release workflow again on the tag $GITHUB_REF_NAME."
+          existing="$(gh issue list --state open --search "\"$title\" in:title" --json number --jq '.[0].number // empty')"
+          if [ -n "$existing" ]; then gh issue comment "$existing" --body "$body"; else gh issue create --title "$title" --body "$body"; fi
