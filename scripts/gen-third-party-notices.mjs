@@ -7,8 +7,8 @@ const target = new URL('../THIRD_PARTY_NOTICES.md', import.meta.url);
 const byLicense = JSON.parse(execFileSync('pnpm', ['licenses', 'list', '--prod', '--json'], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 }));
 
 // Optional, platform-specific builds differ between machines (and are build tools, not part of what is shipped), so they are not listed:
-// the image optimiser (unused: images are exported unoptimised), the CSS compiler's native binaries and Next's compiler binaries.
-const PLATFORM_ONLY = /^(@img\/sharp-|lightningcss-(darwin|linux|win32|freebsd|android)|@next\/swc-|@esbuild\/|@rollup\/rollup-|@oxc-)/;
+// the image optimiser (unused: images are exported unoptimised), the CSS compilers' native binaries (lightningcss, Tailwind's oxide) and Next's compiler binaries.
+const PLATFORM_ONLY = /^(@img\/sharp-|lightningcss-(darwin|linux|win32|freebsd|android)|@next\/swc-|@esbuild\/|@rollup\/rollup-|@oxc-|@tailwindcss\/oxide-)/;
 const rows = [];
 for (const [license, packages] of Object.entries(byLicense)) {
   for (const p of packages.filter((x) => !PLATFORM_ONLY.test(x.name))) for (const version of p.versions) rows.push({ name: p.name, version, license, homepage: p.homepage ?? '' });
