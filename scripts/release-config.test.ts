@@ -11,6 +11,7 @@ const config = JSON.parse(readFileSync(join(root, 'release-please-config.json'),
 const manifest = JSON.parse(readFileSync(join(root, '.release-please-manifest.json'), 'utf8')) as Record<string, string>;
 const pkg = config.packages['.'] as {
   'release-type': string;
+  'initial-version': string;
   'include-component-in-tag': boolean;
   draft: boolean;
   'force-tag-creation': boolean;
@@ -40,7 +41,11 @@ describe('release-please configuration', () => {
     expect(pkg['bump-patch-for-minor-pre-major']).toBe(false);
   });
 
-  it('starts at 0.0.0, which is also the version in package.json (the first feature makes 0.1.0)', () => {
+  it('makes 0.1.0 the first release: with no earlier release release-please ignores the manifest and would otherwise start at 1.0.0', () => {
+    expect(pkg['initial-version']).toBe('0.1.0');
+  });
+
+  it('starts at 0.0.0, which is also the version in package.json', () => {
     expect(manifest).toEqual({ '.': '0.0.0' });
     expect((JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')) as { version: string }).version).toBe('0.0.0');
   });
