@@ -1,8 +1,9 @@
+import { encode } from '@cashfold/protocol/cbor';
 import { describe, expect, it } from 'vitest';
 import { createAesGcm } from '../adapters/webcrypto/aes-gcm';
 import { createHkdf } from '../adapters/webcrypto/hkdf';
 import { createPbkdf2 } from '../adapters/webcrypto/pbkdf2';
-import { AeadError, KdfBelowFloor, type Rng } from '../ports/index';
+import { AeadError, KdfBelowFloor, type Kdf, type KdfParams, type Rng } from '../ports/index';
 import { SecretBuf } from '../secret-buf';
 import { BackupError, createBackupCrypto } from './backup-crypto';
 
@@ -56,5 +57,43 @@ describe('encrypted backup (FR-091)', () => {
 
   it('refuses an empty passphrase', async () => {
     await expect(backup.seal(plain, pass(''))).rejects.toBeInstanceOf(BackupError);
+  });
+});
+
+describe('encrypted backup, wire format', () => {
+  // Argon2id itself is tested elsewhere; this stands in for it so the wire format for its parameters is exercised quickly.
+  const seen: KdfParams[] = [];
+  const fakeKdf: Kdf = {
+    async derive(password, salt, params) {
+      seen.push(params);
+      return SecretBuf.from(new Uint8Array(32).fill(password.length + salt[0]! * 0));
+    },
+  };
+  const argon = { kdf: 'argon2id' as const, mKib: 65_536, t: 3, p: 1 };
+  const withArgon = createBackupCrypto({ aead: createAesGcm(), hkdf: createHkdf(), kdf: fakeKdf, rng, defaultKdf: argon });
+
+  it('writes Argon2id parameters into the file and reads them back when opening', async () => {
+    const file = await withArgon.seal(plain, pass('p'));
+    expect(await withArgon.open(file, pass('p'))).toEqual(plain);
+    expect(seen.at(-1)).toEqual(argon);
+  });
+
+  const nonce = new Uint8Array(12);
+  const body = { v: 1n, mode: 'pass', salt: new Uint8Array(16), nonce, ct: new Uint8Array(32) };
+  const bad = (over: Record<string, unknown>) => encode({ ...body, ...over } as never);
+
+  it.each([
+    ['not a map at all', encode([1n, 2n] as never)],
+    ['another version', bad({ v: 2n, kdf: { kdf: 'pbkdf2-hmac-sha256', iter: 600_000n } })],
+    ['an unknown mode', bad({ mode: 'other' })],
+    ['a salt that is not bytes', bad({ salt: 'salt', kdf: { kdf: 'pbkdf2-hmac-sha256', iter: 600_000n } })],
+    ['a nonce of the wrong length', bad({ nonce: new Uint8Array(11), kdf: { kdf: 'pbkdf2-hmac-sha256', iter: 600_000n } })],
+    ['no key-stretching parameters', bad({})],
+    ['key-stretching parameters that are not a map', bad({ kdf: 'argon2id' })],
+    ['Argon2id with a missing field', bad({ kdf: { kdf: 'argon2id', m_kib: 65_536n, t: 3n } })],
+    ['PBKDF2 with a non-integer count', bad({ kdf: { kdf: 'pbkdf2-hmac-sha256', iter: 'many' } })],
+    ['an unknown key-stretching function', bad({ kdf: { kdf: 'scrypt', iter: 1n } })],
+  ])('refuses a file with %s', async (_name, file) => {
+    await expect(backup.open(file, pass('p'))).rejects.toBeInstanceOf(BackupError);
   });
 });

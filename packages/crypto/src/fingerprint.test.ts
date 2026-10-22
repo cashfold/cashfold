@@ -56,3 +56,9 @@ describe('fingerprint (FR-084)', () => {
     expect(fingerprintMatches(fp, fp.slice(0, 19))).toBe(false);
   });
 });
+
+describe('fingerprint, wrong length', () => {
+  it('refuses to format anything but 20 bytes', () => {
+    for (const n of [0, 19, 21]) expect(() => formatFingerprint(new Uint8Array(n))).toThrow(RangeError);
+  });
+});

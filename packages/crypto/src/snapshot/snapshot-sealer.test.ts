@@ -85,3 +85,12 @@ describe('snapshot sealer', () => {
     await fails(sealer.open(ctx, { blob: new Uint8Array(10), sig: new Uint8Array(64) }), 'malformed');
   });
 });
+
+describe('snapshot sealer, malformed input', () => {
+  it('refuses a position outside 64 bits and a blob too short to name a device', async () => {
+    const { sealer } = await setup();
+    await expect(sealer.seal({ ...ctx, dev: DEV, atSeq: -1n }, payload)).rejects.toBeInstanceOf(RangeError);
+    await expect(sealer.seal({ ...ctx, dev: DEV, atSeq: 0x1_0000_0000_0000_0000n }, payload)).rejects.toBeInstanceOf(RangeError);
+    await fails(sealer.open(ctx, { blob: new Uint8Array(16), sig: new Uint8Array(64) }), 'malformed');
+  });
+});
