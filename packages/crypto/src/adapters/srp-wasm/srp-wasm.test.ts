@@ -122,17 +122,19 @@ describe('expSum computes a + u * x', () => {
 describe('timing does not depend on the exponent', () => {
   it('takes about as long for a one-bit exponent as for a full one of the same width', () => {
     const base = padGroup(rand(512) % N);
-    const run = (exp: Uint8Array): number => {
-      const times: number[] = [];
-      for (let i = 0; i < 7; i++) {
-        const t0 = performance.now();
-        bn.modpow(base, exp, 256, NB);
-        times.push(performance.now() - t0);
-      }
-      return times.sort((p, q) => p - q)[3]!;
+    const [sparseExp, denseExp] = [padGroup(1n), padGroup((1n << 256n) - 1n)];
+    const time = (exp: Uint8Array): number => {
+      const t0 = performance.now();
+      bn.modpow(base, exp, 256, NB);
+      return performance.now() - t0;
     };
-    const sparse = run(padGroup(1n));
-    const dense = run(padGroup((1n << 256n) - 1n));
+    // Interleaved, and the fastest of many: a shared machine only ever makes a run slower, so the minimum is the closest to the
+    // true cost, and interleaving keeps a passing slowdown from landing on one side only.
+    let [sparse, dense] = [Infinity, Infinity];
+    for (let i = 0; i < 25; i++) {
+      sparse = Math.min(sparse, time(sparseExp));
+      dense = Math.min(dense, time(denseExp));
+    }
     // Square-and-multiply with branches would make `dense` roughly 1.5 times `sparse`; a fixed schedule makes them equal.
     expect(dense / sparse).toBeGreaterThan(0.7);
     expect(dense / sparse).toBeLessThan(1.3);
