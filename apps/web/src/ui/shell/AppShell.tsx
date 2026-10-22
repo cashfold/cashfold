@@ -6,13 +6,14 @@ import { useEffect, useRef, type ReactNode } from 'react';
 import { useCore } from '../core/CoreProvider';
 import { useI18n } from '../i18n/I18nProvider';
 import { LedgerProvider, useLedger } from '../ledger/LedgerProvider';
-import { ArrowsRightLeftIcon, AuthLayout, BanknotesIcon, InformationCircleIcon, Button, Cog6ToothIcon, FlagIcon, HomeIcon, LockClosedIcon, Navbar, NavbarItem, NavbarSection, NavbarSpacer, PlusIcon,
+import { ArrowsRightLeftIcon, AuthLayout, BanknotesIcon, InformationCircleIcon, Button, Cog6ToothIcon, FlagIcon, HomeIcon, LockClosedIcon, PlusIcon,
   Sidebar, SidebarBody, SidebarFooter, SidebarHeader, SidebarItem, SidebarLabel, SidebarLayout, SidebarSection, Badge } from '../kit';
 import { prefsStore } from '../prefs/usePrefs';
 import { SyncIndicator } from '../sync/SyncIndicator';
 import { AddSheetHost } from '../transactions/AddSheetHost';
 import { useScheduleInbox } from '../transactions/useScheduleInbox';
 import { useAddSheet } from './add-context';
+import { Topbar } from './Topbar';
 import { OverlayHost } from './OverlayHost';
 import { FoldSwitcher } from './FoldSwitcher';
 import { PrivacyCover } from './PrivacyCover';
@@ -120,21 +121,6 @@ function NavigationSidebar() {
   );
 }
 
-function MobileBar() {
-  const { t } = useI18n();
-  const { openAdd } = useAddSheet();
-  return (
-    <Navbar>
-      <NavbarSpacer />
-      <NavbarSection>
-        <NavbarItem onClick={() => openAdd()} aria-label={t('shell.add')}>
-          <PlusIcon aria-hidden="true" />
-        </NavbarItem>
-      </NavbarSection>
-    </Navbar>
-  );
-}
-
 /** The signed-in shell: persistent sidebar (a drawer on narrow screens), one `<main id="main">`, banners and the add sheet host. */
 function UnlockedShell({ children }: { children: ReactNode }) {
   const { t } = useI18n();
@@ -143,7 +129,7 @@ function UnlockedShell({ children }: { children: ReactNode }) {
     <LedgerProvider>
       <StatusProvider>
         <AddSheetHost>
-          <SidebarLayout navbar={<MobileBar />} sidebar={<NavigationSidebar />} openLabel={t('shell.menu')} closeLabel={t('shell.closeMenu')} contentInert={core.covered}>
+          <SidebarLayout navbar={<Topbar />} sidebar={<NavigationSidebar />} openLabel={t('shell.menu')} closeLabel={t('shell.closeMenu')} contentInert={core.covered}>
             <RouteRefresh />
             <Banners />
             {children}

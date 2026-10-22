@@ -1276,5 +1276,6 @@
   "schedules.form.more": "More options",
   "ledger.list.transfer": "Transfer",
   "schedules.inbox.banner": "{count, plural, one {# scheduled entry is waiting for you} other {# scheduled entries are waiting for you}}",
-  "schedules.inbox.waiting": "scheduled entries waiting"
+  "schedules.inbox.waiting": "scheduled entries waiting",
+  "folds.create.open": "New Fold"
 }

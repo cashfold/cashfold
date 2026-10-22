@@ -1,12 +1,12 @@
 'use client';
 
 import { RequireUnlocked } from '../../../ui/core/RequireUnlocked';
-import { SettingsScreen } from '../../../ui/settings/SettingsScreen';
+import { ProfileSecurity } from '../../../ui/settings/ProfileSecurity';
 
 export default function Page() {
   return (
     <RequireUnlocked titleKey="settings.group.profile">
-      <SettingsScreen />
+      <ProfileSecurity />
     </RequireUnlocked>
   );
 }

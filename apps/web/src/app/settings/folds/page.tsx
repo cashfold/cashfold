@@ -1,12 +1,12 @@
 'use client';
 
 import { RequireUnlocked } from '../../../ui/core/RequireUnlocked';
-import { FoldsScreen } from '../../../ui/folds/FoldsScreen';
+import { FoldsAndSharing } from '../../../ui/settings/FoldsAndSharing';
 
 export default function Page() {
   return (
     <RequireUnlocked titleKey="settings.group.folds">
-      <FoldsScreen />
+      <FoldsAndSharing />
     </RequireUnlocked>
   );
 }

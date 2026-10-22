@@ -17,7 +17,7 @@ const HIDDEN_SECONDS = [0, 15, 30, 60, 120, 300];
 
 type KitResult = { ok: true; value: KitSource } | { ok: false; error: { code: string; retryAfterMs?: number } };
 
-export function SettingsScreen() {
+export function ProfileSecurity() {
   const { t } = useI18n();
   const core = useCore();
   const [settings, setSettings] = useState<DeviceSettings | undefined>();

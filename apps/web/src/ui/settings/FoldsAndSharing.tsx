@@ -1,7 +1,7 @@
 'use client';
 
 import { CURRENCY_EXPONENTS, type FoldSummary } from '@cashfold/core';
-import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { useCore } from '../core/CoreProvider';
 import { TextField } from '../forms/TextField';
 import { Hint } from '../firstrun/Hint';
@@ -12,14 +12,14 @@ import { InvitationsSection } from '../sharing/InvitationsSection';
 import { MyCode } from '../sharing/MyCode';
 import { SharingPanel } from '../sharing/SharingPanel';
 import { KitReminder } from '../shell/KitReminder';
-import { Button, Select } from '../kit';
+import { Badge, Button, Sheet, Select } from '../kit';
 
 type Outcome<T> = { ok: true; value: T } | { ok: false; error: { code: string } };
 interface DeletionSummary { name: string; memberCount: number; isLastFold: boolean }
 
 const CURRENCIES = Object.keys(CURRENCY_EXPONENTS).sort();
 
-export function FoldsScreen() {
+export function FoldsAndSharing() {
   const { t } = useI18n();
   const core = useCore();
   const [folds, setFolds] = useState<readonly FoldSummary[]>([]);
@@ -34,7 +34,7 @@ export function FoldsScreen() {
   const [removedNotice, setRemovedNotice] = useState(false);
   const ledger = useLedger();
   const noticeShown = removedNotice || ledger.foldRemoved;
-  const dialog = useRef<HTMLDialogElement>(null);
+  const [creating, setCreating] = useState(false);
 
   const load = useCallback(async () => setFolds(await core.call<FoldSummary[]>('folds.list')), [core]);
   useEffect(() => void load().catch(() => setError(t('folds.error.generic'))), [load, t]);
@@ -46,11 +46,6 @@ export function FoldsScreen() {
     }
     if (e.type === 'RemoteChanged' || e.type === 'FoldRemoved') void load().catch(() => undefined);
   }), [core, load]);
-  useEffect(() => {
-    if (deleting) dialog.current?.showModal();
-    else dialog.current?.close();
-  }, [deleting]);
-
   const messageFor = (code: string) => (t(`folds.error.${code}`) === `folds.error.${code}` ? t('folds.error.generic') : t(`folds.error.${code}`));
 
   async function create(event: FormEvent) {
@@ -59,6 +54,7 @@ export function FoldsScreen() {
     const result = await core.call<Outcome<FoldSummary>>('folds.create', { name, baseCurrency: currency });
     if (result.ok) {
       setName('');
+      setCreating(false);
       await load();
     } else setError(messageFor(result.error.code));
   }
@@ -111,9 +107,9 @@ export function FoldsScreen() {
 
       <h2 className="mt-6 text-lg font-semibold">{t('folds.list.label')}</h2>
       {folds.length === 0 ? <p className="mt-2 text-muted">{t('folds.empty')}</p> : null}
-      <ul className="mt-2 divide-y divide-border-strong rounded-ui border border-border-strong" aria-label={t('folds.list.label')}>
+      <ul className="mt-2 grid gap-3 sm:grid-cols-2" aria-label={t('folds.list.label')}>
         {folds.map((fold) => (
-          <li key={fold.id} className="flex flex-wrap items-center justify-between gap-3 p-3">
+          <li key={fold.id} className="flex flex-col justify-between gap-3 rounded-lg border border-zinc-950/10 p-4 dark:border-white/10">
             {renaming?.id === fold.id ? (
               <form onSubmit={saveRename} className="flex flex-wrap items-end gap-2">
                 <TextField label={t('folds.name.label')} value={renaming.name} onChange={(e) => setRenaming({ id: fold.id, name: e.target.value })} autoFocus />
@@ -124,35 +120,42 @@ export function FoldsScreen() {
               <>
                 <div>
                   <strong data-testid="fold-name">{fold.name}</strong>
-                  <span className="ms-3 text-sm text-muted">{t(`folds.role.${fold.role}`)} · {t('folds.currency', { currency: fold.baseCurrency })}</span>
+                  <p className="mt-1 flex flex-wrap items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
+                    <Badge>{t(`folds.role.${fold.role}`)}</Badge>
+                    <span>{t('folds.currency', { currency: fold.baseCurrency })}</span>
+                  </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <Button outline type="button" onClick={() => setSharing(fold)} aria-label={`${t('sharing.open')} ${fold.name}`}>{t('sharing.open')}</Button>
+                  {fold.role === 'owner' ? (
+                    <>
+                      <Button outline type="button" onClick={() => setRenaming({ id: fold.id, name: fold.name })} aria-label={`${t('folds.rename')} ${fold.name}`}>{t('folds.rename')}</Button>
+                      <Button outline type="button" onClick={() => void askDelete(fold)} aria-label={`${t('folds.delete')} ${fold.name}`}>{t('folds.delete')}</Button>
+                    </>
+                  ) : null}
                 </div>
-                {fold.role === 'owner' ? (
-                  <div className="flex gap-2">
-                    <Button outline type="button" onClick={() => setRenaming({ id: fold.id, name: fold.name })} aria-label={`${t('folds.rename')} ${fold.name}`}>{t('folds.rename')}</Button>
-                    <Button outline type="button" onClick={() => void askDelete(fold)} aria-label={`${t('folds.delete')} ${fold.name}`}>{t('folds.delete')}</Button>
-                  </div>
-                ) : null}
               </>
             )}
           </li>
         ))}
       </ul>
+      <Button className="mt-4" type="button" onClick={() => setCreating(true)}>{t('folds.create.open')}</Button>
 
-      <h2 className="mt-8 text-lg font-semibold">{t('folds.create.title')}</h2>
-      <form onSubmit={create} className="max-w-md">
-        <TextField label={t('folds.name.label')} value={name} onChange={(e) => setName(e.target.value)} required />
-        <div className="mt-4">
-          <label htmlFor="fold-currency" className="block font-medium">{t('folds.currency.label')}</label>
-          <Select id="fold-currency" value={currency} onChange={(e) => setCurrency(e.target.value)}>
-            {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
-          </Select>
-        </div>
-        {error ? <p role="alert" className="mt-3 text-danger">{error}</p> : null}
-        <Button className="mt-4" type="submit" >{t('folds.create.submit')}</Button>
-      </form>
+      <Sheet
+        open={creating} onClose={() => setCreating(false)} title={t('folds.create.title')}
+        footer={<><Button plain type="button" onClick={() => setCreating(false)}>{t('folds.rename.cancel')}</Button><Button type="submit" form="fold-form">{t('folds.create.submit')}</Button></>}
+      >
+        <form id="fold-form" onSubmit={create} className="space-y-4">
+          <TextField label={t('folds.name.label')} value={name} onChange={(e) => setName(e.target.value)} required autoFocus />
+          <div>
+            <label htmlFor="fold-currency" className="block font-medium">{t('folds.currency.label')}</label>
+            <Select id="fold-currency" value={currency} onChange={(e) => setCurrency(e.target.value)}>
+              {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
+            </Select>
+          </div>
+          {error ? <p role="alert" className="text-(--danger)">{error}</p> : null}
+        </form>
+      </Sheet>
 
       <MyCode />
 
@@ -160,23 +163,21 @@ export function FoldsScreen() {
         {sharing ? <SharingPanel fold={sharing.id} name={sharing.name} onClose={() => setSharing(undefined)} onLeft={() => { setSharing(undefined); setRemovedNotice(false); void load(); }} /> : null}
       </Modal>
 
-      <dialog ref={dialog} aria-labelledby="delete-title" className="max-w-md rounded-ui border border-border-strong bg-bg p-6 text-text" onClose={() => setDeleting(undefined)}>
+      <Sheet
+        open={deleting !== undefined} onClose={() => setDeleting(undefined)} title={deleting ? t('folds.delete.title', { name: deleting.summary.name }) : ''}
+        footer={deleting ? <><Button plain type="button" onClick={() => setDeleting(undefined)}>{t('folds.delete.cancel')}</Button>{deleting.summary.isLastFold ? null : <Button color="danger" type="submit" form="fold-delete-form">{t('folds.delete.confirm')}</Button>}</> : undefined}
+      >
         {deleting ? (
-          <form onSubmit={confirmDelete}>
-            <h2 id="delete-title" className="text-lg font-semibold">{t('folds.delete.title', { name: deleting.summary.name })}</h2>
-            <p className="mt-3">{t('folds.delete.consequence', { name: deleting.summary.name, memberCount: deleting.summary.memberCount })}</p>
+          <form id="fold-delete-form" onSubmit={confirmDelete} className="space-y-4">
+            <p>{t('folds.delete.consequence', { name: deleting.summary.name, memberCount: deleting.summary.memberCount })}</p>
             {deleting.summary.isLastFold ? (
-              <p className="mt-3 text-danger" role="alert">{t('folds.delete.last')}</p>
+              <p className="text-(--danger)" role="alert">{t('folds.delete.last')}</p>
             ) : (
               <TextField label={t('folds.delete.confirm.label')} value={confirmName} onChange={(e) => setConfirmName(e.target.value)} error={dialogError} autoFocus />
             )}
-            <div className="mt-6 flex gap-3">
-              {deleting.summary.isLastFold ? null : <Button type="submit" >{t('folds.delete.confirm')}</Button>}
-              <Button outline type="button" onClick={() => setDeleting(undefined)}>{t('folds.delete.cancel')}</Button>
-            </div>
           </form>
         ) : null}
-      </dialog>
+      </Sheet>
     </div>
   );
 }

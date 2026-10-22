@@ -113,6 +113,7 @@ test.describe('@us1 account', () => {
     await page.getByRole('button', { name: 'Continue' }).click();
     await go(page, 'Folds');
 
+    await page.getByRole('button', { name: 'New Fold' }).click();
     await page.getByLabel('Fold name').fill(FOLD_NAME);
     await page.getByLabel('Base currency').selectOption('EUR');
     await page.getByRole('button', { name: 'Create Fold' }).click();
@@ -160,6 +161,7 @@ test.describe('@us1 account', () => {
     await page.getByLabel('I have saved my Secret Key').check();
     await page.getByRole('button', { name: 'Continue' }).click();
     await go(page, 'Folds');
+    await page.getByRole('button', { name: 'New Fold' }).click();
     await page.getByLabel('Fold name').fill(FOLD_NAME);
     await page.getByRole('button', { name: 'Create Fold' }).click();
     await expect(page.getByTestId('fold-name')).toHaveText(['Personal', FOLD_NAME]);
