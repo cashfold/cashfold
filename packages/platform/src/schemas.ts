@@ -1,5 +1,10 @@
 import { z } from 'zod';
 
+// Zod compiles object parsers with `new Function` when it can, and finds out by trying. The web app's Content-Security-Policy has no
+// 'unsafe-eval', so even that probe is reported as a violation on every page that loads these schemas. The shapes are tiny: parse
+// without compiling.
+z.config({ jitless: true });
+
 // The shapes that cross between the web app and the desktop shell (specs/003-desktop-apps-releases/contracts/desktop-bridge.md).
 // Every object is strict: an unexpected key is an error, on both sides of the bridge.
 
