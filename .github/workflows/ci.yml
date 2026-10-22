@@ -47,7 +47,7 @@ jobs:
         run: pnpm test:e2e
       - name: Benchmark, 50,000 transactions (SC-008)
         run: BENCH=1 pnpm exec playwright test -c e2e/playwright.config.ts e2e/bench --project=chromium
-      - name: Testcontainers (PostgreSQL: store contract and the relay's HTTP scenarios)
+      - name: "Testcontainers (PostgreSQL, store contract and the relay's HTTP scenarios)"
         run: pnpm --filter @cashfold/server test:integration
       - name: SRP module rebuilds to the committed bytes
         run: |
