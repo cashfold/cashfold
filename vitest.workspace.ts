@@ -5,6 +5,7 @@ import { defineWorkspace } from 'vitest/config';
 export default defineWorkspace([
   'packages/*/vitest.config.ts',
   'apps/web/vitest.config.ts',
+  'apps/desktop/vitest.config.ts',
   'tests/stack/vitest.config.ts',
   { test: { name: 'eslint-rules', include: ['eslint-rules/**/*.test.js'] } },
 ]);

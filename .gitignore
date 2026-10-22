@@ -13,6 +13,7 @@ Payload/
 node_modules/
 dist/
 build/
+!apps/desktop/build/
 .next/
 out/
 .turbo/
@@ -41,3 +42,6 @@ apps/web/public/srp-bigint.wasm
 apps/web/public/fonts/*
 !apps/web/public/fonts/UFL.txt
 apps/web/src/app/fonts.css
+
+# Desktop installers built locally
+apps/desktop/release/

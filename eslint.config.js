@@ -25,7 +25,7 @@ const dis = (from, to, message) => ({
 });
 
 export default tseslint.config(
-  { ignores: ['**/dist/**', '**/.next/**', '**/out/**', '**/node_modules/**', '**/coverage/**', 'vectors/**', 'apps/web/public/sqlite3mc/**'] },
+  { ignores: ['**/dist/**', '**/.next/**', '**/out/**', '**/node_modules/**', '**/coverage/**', 'vectors/**', 'apps/web/public/sqlite3mc/**', 'apps/desktop/release/**'] },
   ...tseslint.configs.recommended,
   {
     files: ['**/*.ts', '**/*.tsx'],
@@ -40,7 +40,9 @@ export default tseslint.config(
         { type: 'core', pattern: 'packages/core/src/**', partialMatch: false },
         { type: 'crypto', pattern: 'packages/crypto/src/**', partialMatch: false },
         { type: 'protocol', pattern: 'packages/protocol/src/**', partialMatch: false },
+        { type: 'platform', pattern: 'packages/platform/src/**', partialMatch: false },
         { type: 'web', pattern: 'apps/web/**', partialMatch: false },
+        { type: 'desktop', pattern: 'apps/desktop/**', partialMatch: false },
         { type: 'server', pattern: 'apps/server/**', partialMatch: false },
       ],
       'import/resolver': { typescript: { noWarnOnMultipleProjects: true, project: [join(root, 'packages/*/tsconfig.json'), join(root, 'apps/*/tsconfig.json')] } },
@@ -62,6 +64,12 @@ export default tseslint.config(
             dis('crypto', ['core', 'domain', 'application', 'ports', 'shared-kernel', 'web', 'server'], 'crypto never imports core'),
             dis('protocol', ['core', 'domain', 'application', 'ports', 'shared-kernel', 'crypto', 'web', 'server'], 'protocol imports nothing in the workspace'),
             dis('server', ['core', 'domain', 'application', 'ports', 'shared-kernel'], 'apps/server never imports core'),
+            // The desktop shell and its contract package (spec 003): the shell knows neither the web app nor the domain, the contract package
+            // is a leaf, and nothing below the apps knows the shell.
+            dis('platform', ['core', 'domain', 'application', 'ports', 'shared-kernel', 'crypto', 'protocol', 'web', 'server', 'desktop'], 'platform is a leaf: it imports nothing in the workspace'),
+            dis('desktop', ['core', 'domain', 'application', 'ports', 'shared-kernel', 'crypto', 'protocol', 'web', 'server'], 'apps/desktop imports only platform (the shell knows nothing of the app or the domain)'),
+            dis('web', ['desktop'], 'apps/web never imports apps/desktop'),
+            ...['core', 'domain', 'application', 'ports', 'shared-kernel', 'crypto', 'protocol', 'server'].map((from) => dis(from, ['platform', 'desktop'], `${from} does not know the desktop shell or its contract`)),
           ],
         },
       ],
