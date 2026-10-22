@@ -61,6 +61,7 @@ test.describe('@us5 budgets', () => {
     await dialog.getByLabel('Name', { exact: true }).fill(name);
     await dialog.getByLabel('Starting on').fill(FIRST_OF_LAST_MONTH);
     await dialog.getByLabel('Limit (USD)').fill('300.00');
+    await moreDetails(dialog);
     await dialog.getByLabel('What is left over').selectOption({ label: rollover });
     await dialog.getByRole('button', { name: 'Create budget' }).click();
     await expect(page.getByRole('dialog')).toHaveCount(0);

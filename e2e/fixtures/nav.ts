@@ -122,7 +122,7 @@ export async function signUpAndEnter(page: Page, email = 'alice@example.com'): P
   await page.locator('input[type=url]').fill('https://relay.example.com');
   await page.locator('form button[type=submit]').click();
   await page.getByTestId('secret-key').waitFor({ timeout: 60_000 });
-  await page.locator('input[type=checkbox]').check();
+  await page.locator('[role=checkbox]').first().check();
   await page.locator('main button:not([disabled])').last().click();
   await page.getByTestId('current-fold').filter({ hasText: 'Personal' }).waitFor({ state: 'attached' });
 }

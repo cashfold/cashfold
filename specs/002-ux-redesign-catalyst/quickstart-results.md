@@ -7,9 +7,10 @@ Recorded 2026-10-22 on the integration branch. Automated results only; the manua
 | Check | Result |
 |---|---|
 | `pnpm typecheck` | pass |
-| Unit tests of the web app (`vitest run apps/web`) | 507 pass |
+| Unit tests of the web app, lint rules and scripts | 639 pass; `no-raw-controls.test.ts` fails if any screen uses a bare button, select, textarea or input (other than file and hidden) |
+| `pnpm lint` | no errors, no warnings; the three kit rules are errors |
 | Kit in a real browser, light and dark, axe WCAG 2.2 AA + keyboard (`kit.browser.test.tsx`) | 10 pass |
-| End-to-end, Chromium | 101 pass, 2 skipped |
+| End-to-end, Chromium | 102 pass, 2 skipped (re-run after the controls were moved to the kit) |
 | End-to-end, `rtl` project (Arabic locale) | 101 pass |
 | End-to-end, `pseudo` project (texts 40 % longer) | responsive spec passes |
 | End-to-end, Firefox | 82 pass; `multitab` backup reminder and `us7` sharing also fail on the interface before this work (checked on commit b7764ee on the same machine), so they are environmental |

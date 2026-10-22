@@ -56,8 +56,11 @@ test.describe('@us6 schedules', () => {
     if (s.unit) await dialog.getByLabel('Repeats').selectOption({ label: s.unit });
     if (s.every) await dialog.getByLabel('Every', { exact: true }).fill(s.every);
     await dialog.getByLabel('First on').fill(s.first);
+    if (s.last || s.confirm) await moreDetails(dialog);
     if (s.last) await dialog.getByLabel('Last on (optional)').fill(s.last);
-    if (s.confirm) await dialog.getByLabel('Ask me to confirm each one before it counts').check();
+    if (s.confirm) {
+      await dialog.getByLabel('Ask me to confirm each one before it counts').check();
+    }
     await dialog.getByRole('button', { name: 'Create schedule' }).click();
     await expect(page.getByRole('dialog')).toHaveCount(0);
   }

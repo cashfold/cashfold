@@ -225,8 +225,11 @@ test.describe('@us2 ledger', () => {
     await expect(page.getByRole('heading', { level: 1, name: 'Categories' })).toBeVisible();
     await expect(page.getByTestId('category-root').filter({ hasText: 'Food & Drink' })).toHaveCount(1);
     await expect(page.getByTestId('category-child').filter({ hasText: 'Groceries' })).toContainText('used once');
+    await page.getByRole('tab', { name: 'Payees' }).click();
     await expect(page.getByTestId('payee-row').filter({ hasText: 'Corner shop' })).toContainText('used once');
+    await page.getByRole('tab', { name: 'Tags' }).click();
     await expect(page.getByTestId('tag-row').filter({ hasText: 'weekly' })).toContainText('used once');
+    await page.getByRole('tab', { name: 'Expense' }).click();
     await expectNoA11yViolations();
     await page.getByRole('button', { name: 'Merge Home', exact: true }).click();
     dialog = page.getByRole('dialog');

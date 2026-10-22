@@ -38,8 +38,9 @@ test.describe('@a11y primary tasks', () => {
     await expectNoA11yViolations();
   });
 
-  test('every screen has one heading, landmarks and no violations', async ({ page, expectNoA11yViolations }) => {
+  for (const scheme of ['light', 'dark'] as const) test(`every screen has one heading, landmarks and no violations (${scheme} theme)`, async ({ page, expectNoA11yViolations }) => {
     test.setTimeout(240_000);
+    await page.emulateMedia({ colorScheme: scheme });
     await intoApp(page);
     await expectNoA11yViolations();
     for (const screen of SCREENS) {
