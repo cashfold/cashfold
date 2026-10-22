@@ -35,5 +35,6 @@ export function OverlayHost({ children }: { children: ReactNode }) {
     observer.observe(document.body, { childList: true });
     return () => observer.disconnect();
   }, [covered]);
-  return <div inert={covered}>{children}</div>;
+  // The page itself is made inert by the shell (its content area) and hidden by the opaque cover; this layer only has to hold the overlays.
+  return <>{children}</>;
 }

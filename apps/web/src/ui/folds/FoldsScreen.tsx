@@ -4,6 +4,8 @@ import { CURRENCY_EXPONENTS, type FoldSummary } from '@cashfold/core';
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import { useCore } from '../core/CoreProvider';
 import { TextField, buttonClass, secondaryButtonClass } from '../forms/TextField';
+import { Hint } from '../firstrun/Hint';
+import { useLedger } from '../ledger/LedgerProvider';
 import { useI18n } from '../i18n/I18nProvider';
 import { Modal } from '../forms/Modal';
 import { InvitationsSection } from '../sharing/InvitationsSection';
@@ -29,6 +31,8 @@ export function FoldsScreen() {
   const [dialogError, setDialogError] = useState<string | undefined>();
   const [sharing, setSharing] = useState<FoldSummary | undefined>();
   const [removedNotice, setRemovedNotice] = useState(false);
+  const ledger = useLedger();
+  const noticeShown = removedNotice || ledger.foldRemoved;
   const dialog = useRef<HTMLDialogElement>(null);
 
   const load = useCallback(async () => setFolds(await core.call<FoldSummary[]>('folds.list')), [core]);
@@ -92,13 +96,14 @@ export function FoldsScreen() {
     <div>
       <KitReminder />
       <h1 className="text-2xl font-semibold">{t('page.folds.title')}</h1>
+      <Hint id="folds-sharing" className="mt-3">{t('hint.folds')}</Hint>
       <p className="mt-3 text-muted">{t('folds.lede')}</p>
 
-      {removedNotice ? (
+      {noticeShown ? (
         <div role="status" className="mt-4 rounded-ui border border-border-strong p-3" data-testid="fold-removed-notice">
           <p>{t('sharing.removed.notice')}</p>
           <p className="mt-1 text-sm text-muted">{t('sharing.removed.limit')}</p>
-          <button type="button" className={`${secondaryButtonClass} mt-2`} onClick={() => setRemovedNotice(false)}>{t('sharing.removed.dismiss')}</button>
+          <button type="button" className={`${secondaryButtonClass} mt-2`} onClick={() => { setRemovedNotice(false); ledger.dismissFoldRemoved(); }}>{t('sharing.removed.dismiss')}</button>
         </div>
       ) : null}
       <InvitationsSection onChanged={() => void load()} />

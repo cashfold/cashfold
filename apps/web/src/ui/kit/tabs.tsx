@@ -29,12 +29,12 @@ export function Tabs({
   const index = Math.max(0, items.findIndex((i) => i.value === value))
   return (
     <Headless.TabGroup selectedIndex={index} onChange={(i) => onChange(items[i]!.value)} className={className}>
-      <Headless.TabList aria-label={label} className="flex gap-1 rounded-xl bg-zinc-950/5 p-1 dark:bg-white/10">
+      <Headless.TabList aria-label={label} className="flex flex-wrap gap-1 rounded-xl bg-zinc-950/5 p-1 dark:bg-white/10">
         {items.map((item) => (
           <Headless.Tab
             key={item.value}
             className={clsx(
-              'flex min-h-9 flex-1 items-center justify-center gap-x-2 rounded-lg px-3 py-1.5 text-sm/6 font-medium text-zinc-600 focus:outline-hidden dark:text-zinc-400',
+              'flex min-h-9 min-w-0 flex-auto items-center justify-center gap-x-2 rounded-lg px-3 py-1.5 text-sm/6 font-medium text-zinc-600 focus:outline-hidden dark:text-zinc-400',
               'data-focus:outline-2 data-focus:outline-offset-1 data-focus:outline-(--focus)',
               'data-hover:text-zinc-950 dark:data-hover:text-white',
               'data-selected:bg-white data-selected:text-zinc-950 data-selected:shadow-sm dark:data-selected:bg-zinc-800 dark:data-selected:text-white',

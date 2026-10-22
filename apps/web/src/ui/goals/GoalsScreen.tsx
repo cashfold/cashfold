@@ -4,6 +4,8 @@ import type { GoalRow } from '@cashfold/core';
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { Modal } from '../forms/Modal';
 import { TextField, buttonClass, secondaryButtonClass } from '../forms/TextField';
+import { Progress } from '../kit';
+import { Button, EmptyState, FlagIcon } from '../kit';
 import { useI18n } from '../i18n/I18nProvider';
 import { AmountField } from '../ledger/AmountField';
 import { dateToInput, formatDate, inputToDate, todayLocal } from '../ledger/dates';
@@ -45,7 +47,7 @@ function GoalsBody() {
       <p className="mt-3 text-muted">{t('goals.lede')}</p>
       {free.length === 0 && rows.length === 0 ? <p className="mt-3" data-testid="goals-need-account">{t('goals.needAccount')}</p> : null}
       {message ? <p role="alert" className="mt-3 text-danger">{message}</p> : null}
-      {rows.length === 0 && free.length > 0 ? <p className="mt-6 text-muted">{t('goals.empty')}</p> : null}
+      {rows.length === 0 && free.length > 0 ? <EmptyState className="mt-6" icon={FlagIcon} title={t('goals.empty')} body={t('empty.goals.body')} action={<Button onClick={() => setEditing({})}>{t('empty.goals.action')}</Button>} /> : null}
       <ul className="mt-4 divide-y divide-border-strong rounded-ui border border-border-strong empty:hidden" aria-label={t('page.goals.title')}>
         {rows.map((row) => {
           const { goal, progress } = row;
@@ -62,9 +64,7 @@ function GoalsBody() {
               </div>
               {progress ? (
                 <>
-                  <div className="mt-2 h-2 w-full overflow-hidden rounded-ui bg-surface" role="progressbar" aria-label={t('goals.progress', { name: goal.name })} aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress.percent}>
-                    <div className="h-full bg-primary" style={{ width: `${progress.percent}%` }} />
-                  </div>
+                  <Progress className="mt-2" value={progress.percent} max={100} label={t('goals.progress', { name: goal.name })} statusText={t(`goals.status.${progress.status}`)} tone={progress.status === 'achieved' ? 'good' : progress.status === 'overdue' ? 'danger' : 'neutral'} />
                   <dl className="mt-2 grid grid-cols-2 gap-x-6 gap-y-1 sm:grid-cols-4">
                     <div><dt className="text-sm text-muted">{t('goals.saved')}</dt><dd data-testid="goal-saved">{money(progress.savedMinor)}</dd></div>
                     <div><dt className="text-sm text-muted">{t('goals.remaining')}</dt><dd data-testid="goal-remaining">{money(progress.remainingMinor)}</dd></div>

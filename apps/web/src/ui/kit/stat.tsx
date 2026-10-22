@@ -17,8 +17,8 @@ export function Stat({
 }) {
   return (
     <div className={clsx(className, 'rounded-xl border border-zinc-950/10 bg-white p-4 dark:border-white/10 dark:bg-zinc-900')} data-tone={tone}>
-      <dt className="text-sm/6 text-zinc-600 dark:text-zinc-400">{label}</dt>
-      <dd
+      <p className="text-sm/6 text-zinc-600 dark:text-zinc-400">{label}</p>
+      <p
         className={clsx(
           'mt-1 text-2xl/8 font-semibold tabular-nums',
           tone === 'gain' && 'text-(--success)',
@@ -27,8 +27,8 @@ export function Stat({
         )}
       >
         {value}
-      </dd>
-      {hint ? <dd className="mt-1 text-xs/5 text-zinc-600 dark:text-zinc-400">{hint}</dd> : null}
+      </p>
+      {hint ? <p className="mt-1 text-xs/5 text-zinc-600 dark:text-zinc-400">{hint}</p> : null}
     </div>
   )
 }

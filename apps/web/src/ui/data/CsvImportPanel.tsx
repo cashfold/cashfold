@@ -148,7 +148,7 @@ export function CsvImportPanel() {
         <div className="mt-4 max-w-2xl">
           <div>
             <label htmlFor="import-file" className="block font-medium">{t('data.import.file')}</label>
-            <input id="import-file" ref={file} type="file" accept=".csv,text/csv,text/plain" className="mt-1 block" onChange={() => void choose()} />
+            <input id="import-file" ref={file} type="file" accept=".csv,text/csv,text/plain" className="mt-1 block w-full max-w-full" onChange={() => void choose()} />
           </div>
 
           {sample !== undefined ? (

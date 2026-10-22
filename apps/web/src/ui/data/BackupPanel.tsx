@@ -87,7 +87,7 @@ export function BackupPanel({ folds }: { folds: readonly FoldSummary[] }) {
       <form onSubmit={restore} aria-busy={busy} className="max-w-md">
         <div className="mt-4">
           <label htmlFor="restore-file" className="block font-medium">{t('data.restore.file')}</label>
-          <input id="restore-file" ref={file} type="file" className="mt-1 block" />
+          <input id="restore-file" ref={file} type="file" className="mt-1 block w-full max-w-full" />
         </div>
         <TextField label={t('data.backup.passphrase')} type="password" autoComplete="off" value={restoreSecret} onChange={(e) => setRestoreSecret(e.target.value)} required />
         {restoreError ? <p role="alert" className="mt-3 text-danger">{restoreError}</p> : null}

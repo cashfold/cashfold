@@ -8,12 +8,10 @@ const ACCENTS: Readonly<Record<string, string>> = {
   A: 'Á', B: 'Ɓ', C: 'Ç', D: 'Ð', E: 'É', F: 'Ƒ', G: 'Ĝ', H: 'Ĥ', I: 'Í', J: 'Ĵ', K: 'Ķ', L: 'Ļ', M: 'Ṁ', N: 'Ñ', O: 'Ó', P: 'Þ', Q: 'Ǫ', R: 'Ŕ', S: 'Š', T: 'Ţ', U: 'Ú', V: 'Ṽ', W: 'Ŵ', X: 'Ẋ', Y: 'Ý', Z: 'Ž',
 };
 
-/** Accents the letters and lengthens a run of plain text by about 40 percent. */
+/** Accents the letters and lengthens every word by about 40 percent (so lines wrap where a longer language would, and no word is unbreakably long). */
 function textRun(text: string): string {
   if (text.trim() === '') return text;
-  const letters = [...text].filter((c) => c in ACCENTS).length;
-  const accented = [...text].map((c) => ACCENTS[c] ?? c).join('');
-  return accented + 'ẋ'.repeat(Math.ceil(letters * 0.4));
+  return text.replace(/[A-Za-z]+/g, (word) => [...word].map((c) => ACCENTS[c] ?? c).join('') + 'ẋ'.repeat(Math.ceil(word.length * 0.4)));
 }
 
 /** Reads the body of a `{…}` group starting after the opening brace; returns the body and the index after the closing brace. */

@@ -75,7 +75,7 @@ export function AttachmentField({ existing, choice, onChange }: { existing?: Tra
       ) : null}
       <div className="mt-2">
         <label htmlFor="attachment-file" className="block text-sm text-muted">{current === undefined ? t('ledger.attachment.add') : t('ledger.attachment.replace')}</label>
-        <input id="attachment-file" type="file" className="mt-1 block" onChange={(e) => pick(e.target.files?.[0])} />
+        <input id="attachment-file" type="file" className="mt-1 block w-full max-w-full" onChange={(e) => pick(e.target.files?.[0])} />
       </div>
       <p className="mt-1 text-sm text-muted">{t('ledger.attachment.hint', { mb: MAX_ATTACHMENT_MB })}</p>
       {error ? <p role="alert" className="mt-1 text-danger">{error}</p> : null}

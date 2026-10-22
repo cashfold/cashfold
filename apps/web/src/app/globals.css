@@ -9,3 +9,4 @@ html { background: var(--bg); color: var(--text); font-size: 100%; }
 body { min-block-size: 100vh; margin: 0; font-family: var(--font-sans); line-height: 1.5; background: var(--bg); color: var(--text); }
 :focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
 .tabular-nums { font-variant-numeric: tabular-nums; }
+select, input, textarea { max-inline-size: 100%; }

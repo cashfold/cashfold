@@ -11,6 +11,7 @@ export function Combobox<T>({
   filter,
   createOption,
   onQueryChange,
+  toggleLabel,
   anchor = 'bottom',
   className,
   placeholder,
@@ -26,6 +27,8 @@ export function Combobox<T>({
   createOption?: (query: string) => T
   /** Reports the text in the input as it is typed, so a form can use text the person typed but did not choose from the list. */
   onQueryChange?: (query: string) => void
+  /** The accessible name of the button that opens the list. */
+  toggleLabel: string
   className?: string
   placeholder?: string
   autoFocus?: boolean
@@ -98,7 +101,7 @@ export function Combobox<T>({
             'dark:scheme-dark',
           ])}
         />
-        <Headless.ComboboxButton className="group absolute inset-y-0 end-0 flex items-center px-2">
+        <Headless.ComboboxButton aria-label={toggleLabel} className="group absolute inset-y-0 end-0 flex items-center px-2">
           <svg
             className="size-5 stroke-zinc-500 group-data-disabled:stroke-zinc-600 group-data-hover:stroke-zinc-700 sm:size-4 dark:stroke-zinc-400 dark:group-data-hover:stroke-zinc-300 forced-colors:stroke-[CanvasText]"
             viewBox="0 0 16 16"
@@ -112,6 +115,7 @@ export function Combobox<T>({
       </span>
       <Headless.ComboboxOptions
         transition
+        modal={false}
         anchor={anchor}
         className={clsx(
           // Anchor positioning
@@ -144,7 +148,7 @@ export function ComboboxOption<T>({
   Headless.ComboboxOptionProps<'div', T>,
   'as' | 'className'
 >) {
-  let sharedClasses = clsx(
+  const sharedClasses = clsx(
     // Base
     'flex min-w-0 items-center',
     // Icons

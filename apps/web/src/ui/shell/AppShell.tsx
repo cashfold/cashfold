@@ -1,15 +1,16 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import type { ReactNode } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
+import { useEffect, useRef, type ReactNode } from 'react';
 import { useCore } from '../core/CoreProvider';
 import { useI18n } from '../i18n/I18nProvider';
-import { LedgerProvider } from '../ledger/LedgerProvider';
+import { LedgerProvider, useLedger } from '../ledger/LedgerProvider';
 import {
-  ArrowsRightLeftIcon, BanknotesIcon, Button, Cog6ToothIcon, FlagIcon, HomeIcon, LockClosedIcon, Navbar, NavbarItem, NavbarSection, NavbarSpacer, PlusIcon,
+  ArrowsRightLeftIcon, BanknotesIcon, InformationCircleIcon, Button, Cog6ToothIcon, FlagIcon, HomeIcon, LockClosedIcon, Navbar, NavbarItem, NavbarSection, NavbarSpacer, PlusIcon,
   Sidebar, SidebarBody, SidebarFooter, SidebarHeader, SidebarItem, SidebarLabel, SidebarLayout, SidebarSection,
 } from '../kit';
+import { prefsStore } from '../prefs/usePrefs';
 import { SyncIndicator } from '../sync/SyncIndicator';
 import { AddSheetHost } from '../transactions/AddSheetHost';
 import { useAddSheet } from './add-context';
@@ -27,6 +28,22 @@ const ICONS: Record<Section['icon'], typeof HomeIcon> = {
   plan: FlagIcon,
   settings: Cog6ToothIcon,
 };
+
+/** The shell keeps one ledger for every screen, so a screen asks it to read again when the person arrives (another tab may have changed things). */
+function RouteRefresh() {
+  const ledger = useLedger();
+  const path = usePathname();
+  const first = useRef(true);
+  useEffect(() => {
+    if (first.current) {
+      first.current = false;
+      return;
+    }
+    void ledger.refreshFolds();
+    void ledger.reload();
+  }, [path]);
+  return null;
+}
 
 function SkipLink() {
   const { t } = useI18n();
@@ -60,6 +77,7 @@ function NavigationSidebar() {
   const core = useCore();
   const path = usePathname();
   const { openAdd } = useAddSheet();
+  const router = useRouter();
   const current = matchSection(path);
   return (
     <Sidebar aria-label={t('nav.label')}>
@@ -87,6 +105,10 @@ function NavigationSidebar() {
       <SidebarFooter>
         <SyncIndicator />
         <SidebarSection className="mt-2">
+          <SidebarItem onClick={() => { prefsStore.update((p) => ({ ...p, firstRun: { dismissed: false } })); router.push('/overview/'); }}>
+            <InformationCircleIcon data-slot="icon" aria-hidden="true" />
+            <SidebarLabel>{t('shell.help')}</SidebarLabel>
+          </SidebarItem>
           <SidebarItem onClick={() => core.lock()}>
             <LockClosedIcon data-slot="icon" aria-hidden="true" />
             <SidebarLabel>{t('lock.button')}</SidebarLabel>
@@ -115,11 +137,13 @@ function MobileBar() {
 /** The signed-in shell: persistent sidebar (a drawer on narrow screens), one `<main id="main">`, banners and the add sheet host. */
 function UnlockedShell({ children }: { children: ReactNode }) {
   const { t } = useI18n();
+  const core = useCore();
   return (
     <LedgerProvider>
       <StatusProvider>
         <AddSheetHost>
-          <SidebarLayout navbar={<MobileBar />} sidebar={<NavigationSidebar />} openLabel={t('shell.menu')} closeLabel={t('shell.closeMenu')}>
+          <SidebarLayout navbar={<MobileBar />} sidebar={<NavigationSidebar />} openLabel={t('shell.menu')} closeLabel={t('shell.closeMenu')} contentInert={core.covered}>
+            <RouteRefresh />
             <Banners />
             {children}
           </SidebarLayout>
@@ -132,12 +156,13 @@ function UnlockedShell({ children }: { children: ReactNode }) {
 /** Before sign-in there is no navigation: a plain header with the brand, then the page (sign-up, unlock, recover, add device). */
 function PlainShell({ children }: { children: ReactNode }) {
   const { t } = useI18n();
+  const core = useCore();
   return (
     <>
       <header className="flex items-center gap-x-6 border-b border-(--border-strong) bg-(--surface) px-4 py-3">
         <Link href="/" className="text-lg font-semibold">{t('app.name')}</Link>
       </header>
-      <div className="mx-auto max-w-4xl p-4"><Banners />{children}</div>
+      <div className="mx-auto max-w-4xl p-4" inert={core.covered}><Banners />{children}</div>
     </>
   );
 }

@@ -1,12 +1,12 @@
 'use client';
 
 import { RequireUnlocked } from '../../ui/core/RequireUnlocked';
-import { DashboardScreen } from '../../ui/ledger/DashboardScreen';
+import { OverviewScreen } from '../../ui/overview/OverviewScreen';
 
 export default function Screen() {
   return (
     <RequireUnlocked titleKey="page.overview.title">
-      <DashboardScreen />
+      <OverviewScreen />
     </RequireUnlocked>
   );
 }

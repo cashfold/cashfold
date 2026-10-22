@@ -60,7 +60,7 @@ export function RateManager() {
         ))}
       </ul>
 
-      <form onSubmit={save} className="mt-4 grid max-w-xl gap-x-4 sm:grid-cols-3">
+      <form onSubmit={save} className="mt-4 grid max-w-xl gap-x-4 *:min-w-0 sm:grid-cols-3">
         <div className="mt-4">
           <label htmlFor="rate-quote" className="block font-medium">{t('ledger.rates.currency')}</label>
           <select id="rate-quote" className="mt-1 block w-full rounded-ui border border-border-strong bg-bg px-3 py-2" value={quote} onChange={(e) => setQuote(e.target.value)}>

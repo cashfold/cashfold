@@ -20,10 +20,14 @@ export function SyncIndicator() {
   else if (status.overall === 'error') text = t('sync.state.error');
   else text = t('sync.state.synced');
 
+  const tone = attention || status.overall === 'error' ? 'bg-(--warning)' : status.overall === 'offline' || status.connection === 'offline' ? 'bg-zinc-400' : 'bg-(--success)';
   return (
-    <p role="status" className="text-sm text-muted" data-sync-state={status.connection === 'online' ? status.overall : status.connection}>
-      <Link href="/settings/sync/" className="underline-offset-4 hover:underline">{text}</Link>
-      {attention ? <span> · {t('sync.attention')}</span> : null}
+    <p role="status" className="flex items-center gap-x-2 px-2 py-1 text-sm/6 text-zinc-600 dark:text-zinc-400" data-sync-state={status.connection === 'online' ? status.overall : status.connection}>
+      <span aria-hidden="true" className={`size-2 shrink-0 rounded-full ${tone}`} />
+      <span>
+        <Link href="/settings/sync/" className="underline-offset-4 hover:underline">{text}</Link>
+        {attention ? <span> · {t('sync.attention')}</span> : null}
+      </span>
     </p>
   );
 }

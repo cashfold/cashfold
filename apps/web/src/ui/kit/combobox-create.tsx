@@ -12,6 +12,7 @@ export function ComboboxCreate({
   onChange,
   createLabel,
   onTextChange,
+  toggleLabel,
   placeholder,
   autoFocus,
   'aria-label': ariaLabel,
@@ -23,6 +24,7 @@ export function ComboboxCreate({
   createLabel: (typed: string) => string
   /** The text in the input as it is typed (chosen or not). */
   onTextChange?: (text: string) => void
+  toggleLabel: string
   placeholder?: string
   autoFocus?: boolean
   'aria-label'?: string
@@ -35,6 +37,7 @@ export function ComboboxCreate({
       onChange={onChange}
       displayValue={(v) => v ?? ''}
       createOption={(typed) => typed}
+      toggleLabel={toggleLabel}
       {...(onTextChange === undefined ? {} : { onQueryChange: onTextChange })}
       {...(placeholder === undefined ? {} : { placeholder })}
       {...(autoFocus === undefined ? {} : { autoFocus })}

@@ -1,7 +1,7 @@
 'use client';
 
 import { RequireUnlocked } from '../../ui/core/RequireUnlocked';
-import { AccountsScreen } from '../../ui/ledger/AccountsScreen';
+import { AccountsScreen } from '../../ui/accounts/AccountsScreen';
 
 export default function Screen() {
   return (

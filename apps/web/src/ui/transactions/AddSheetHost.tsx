@@ -2,6 +2,7 @@
 
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useCallback, useMemo, type ReactNode } from 'react';
+import { AddSheet } from './AddSheet';
 import { AddContext, type AddApi, type AddRequest } from '../shell/add-context';
 
 const TYPES = ['expense', 'income', 'transfer'] as const;
@@ -17,8 +18,16 @@ export function useAddRequest(): AddRequest | undefined {
 /** Where the sheet itself is rendered. It reads the address, so the static export needs it inside a Suspense boundary. */
 function AddSheetSlot() {
   const request = useAddRequest();
-  void request;
-  return null;
+  const router = useRouter();
+  const pathname = usePathname();
+  const close = useCallback(() => {
+    const next = new URLSearchParams(window.location.search);
+    next.delete('new');
+    if (request?.accountId !== undefined && pathname !== '/transactions/') next.delete('account');
+    const query = next.toString();
+    router.replace(query === '' ? pathname : `${pathname}?${query}`);
+  }, [router, pathname, request?.accountId]);
+  return request === undefined ? null : <AddSheet request={request} onClose={close} />;
 }
 
 /** Provides `openAdd` to the whole shell and renders the add sheet while the address asks for it. */

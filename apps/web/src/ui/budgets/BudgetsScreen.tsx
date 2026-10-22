@@ -4,10 +4,12 @@ import type { BudgetRow, LocalDate } from '@cashfold/core';
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { Modal } from '../forms/Modal';
 import { TextField, buttonClass, secondaryButtonClass } from '../forms/TextField';
+import { Button, EmptyState, FlagIcon } from '../kit';
 import { useI18n } from '../i18n/I18nProvider';
 import { AmountField } from '../ledger/AmountField';
 import { dateToInput, formatDate, inputToDate, todayLocal } from '../ledger/dates';
-import { percentOf } from '../ledger/format';
+import { Progress } from '../kit';
+import { budgetStatus } from '../plan/status';
 import { LedgerFrame } from '../ledger/LedgerFrame';
 import { useLedger } from '../ledger/LedgerProvider';
 
@@ -62,7 +64,7 @@ function BudgetsBody() {
         </select>
       </div>
 
-      {rows.length === 0 ? <p className="mt-6 text-muted">{t('budgets.empty')}</p> : null}
+      {rows.length === 0 ? <EmptyState className="mt-6" icon={FlagIcon} title={t('budgets.empty')} body={t('empty.budgets.body')} action={<Button onClick={() => setEditing({})}>{t('empty.budgets.action')}</Button>} /> : null}
       <ul className="mt-4 divide-y divide-border-strong rounded-ui border border-border-strong empty:hidden" aria-label={t('page.budgets.title')}>
         {rows.map((row) => (
           <BudgetItem key={row.budget.id} row={row} mode={mode} onOpen={() => setViewing(row.budget.id)} onEdit={() => setEditing({ row })} onDelete={() => setRemoving(row)} />
@@ -100,7 +102,7 @@ function BudgetItem({ row, mode, onOpen, onEdit, onDelete }: { row: BudgetRow; m
       : mode === 'limit' ? money(period.limitMinor)
         : mode === 'available' ? money(period.availableMinor)
           : t('budgets.ratio', { spent: money(period.spentMinor), limit: money(period.allocationMinor + period.carryInMinor) });
-  const percent = period === undefined ? 0 : percentOf(period.spentMinor, period.allocationMinor + period.carryInMinor);
+  const status = period === undefined ? undefined : budgetStatus(period.spentMinor, period.allocationMinor + period.carryInMinor);
   const over = period !== undefined && period.availableMinor < 0n;
   return (
     <li className="p-3" data-testid="budget-row">
@@ -116,10 +118,8 @@ function BudgetItem({ row, mode, onOpen, onEdit, onDelete }: { row: BudgetRow; m
           {over ? <p className="text-sm text-danger">{t('budgets.over')}</p> : null}
         </div>
       </div>
-      {period !== undefined ? (
-        <div className="mt-2 h-2 w-full overflow-hidden rounded-ui bg-surface" role="progressbar" aria-label={t('budgets.progress', { name: budget.name })} aria-valuemin={0} aria-valuemax={100} aria-valuenow={percent}>
-          <div className={`h-full ${over ? 'bg-danger' : 'bg-primary'}`} style={{ width: `${percent}%` }} />
-        </div>
+      {period !== undefined && status !== undefined ? (
+        <Progress className="mt-2" value={status.progressBps} max={10_000} label={t('budgets.progress', { name: budget.name })} statusText={t(status.textKey)} tone={status.tone} />
       ) : null}
       {velocity?.overspend && budget.direction === 'expense' ? <p role="status" className="mt-2 text-sm text-danger" data-testid="budget-warning">{t('budgets.warning')}</p> : null}
       <div className="mt-2 flex flex-wrap gap-2">

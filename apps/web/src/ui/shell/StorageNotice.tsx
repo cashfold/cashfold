@@ -8,6 +8,7 @@ import { requestPersistence, type PersistenceState } from '../../adapters/storag
 import { useCore } from '../core/CoreProvider';
 import { secondaryButtonClass } from '../forms/TextField';
 import { useI18n } from '../i18n/I18nProvider';
+import { useOptionalLedger } from '../ledger/LedgerProvider';
 
 interface Status {
   recovery?: { reason: 'unreadable' | 'damaged'; incomplete: string[]; rebuilt: number; refetch: number; blocked: number; atMs: number };
@@ -28,6 +29,7 @@ export function StorageNotice() {
   const [status, setStatus] = useState<Status | undefined>();
   const [hidden, setHidden] = useState(false);
   const [recoveryRead, setRecoveryRead] = useState(false);
+  const dataVersion = useOptionalLedger()?.version ?? 0; // what there is to lose changes with every saved change
   const pathname = usePathname(); // what there is to lose changes as the person works: ask again when they move to another screen
 
   useEffect(() => {
@@ -38,7 +40,7 @@ export function StorageNotice() {
     return () => {
       live = false;
     };
-  }, [core, core.phase, core.epoch, pathname]);
+  }, [core, core.phase, core.epoch, pathname, dataVersion]);
 
   if (core.phase !== 'unlocked' || persistence === undefined || status === undefined) return null;
   if (status.recovery !== undefined && !recoveryRead) {

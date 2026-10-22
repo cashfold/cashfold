@@ -24,7 +24,8 @@ function* sources(dir: string): Generator<string> {
 }
 
 describe('the ledger screens only use words that exist', () => {
-  const screens = [...sources(here)].filter((f) => f.endsWith('.tsx'));
+  // Every screen and component of the interface except the kit (its components take their words from props).
+  const screens = [...sources(resolve(here, '..'))].filter((f) => f.endsWith('.tsx') && !f.includes('/ui/kit/'));
 
   it('finds the screens', () => {
     expect(screens.length).toBeGreaterThanOrEqual(8);

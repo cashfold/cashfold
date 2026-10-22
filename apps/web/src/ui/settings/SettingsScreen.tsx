@@ -10,8 +10,6 @@ import { AccountSection } from './AccountSection';
 import { CredentialsSection } from './CredentialsSection';
 import { QuickUnlockSection } from './QuickUnlockSection';
 import { RecoverySection } from './RecoverySection';
-import { StorageSection } from './StorageSection';
-import { SyncSection } from './SyncSection';
 
 const IDLE_MINUTES = [1, 2, 5, 10, 15, 30, 60];
 const HIDDEN_SECONDS = [0, 15, 30, 60, 120, 300];
@@ -47,7 +45,7 @@ export function SettingsScreen() {
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold">{t('page.settings.title')}</h1>
+      <h1 className="text-2xl font-semibold">{t('settings.group.profile')}</h1>
 
       <section aria-labelledby="lock-heading" className="mt-6">
         <h2 id="lock-heading" className="text-lg font-semibold">{t('settings.lock.title')}</h2>
@@ -73,10 +71,6 @@ export function SettingsScreen() {
 
       {settings ? <QuickUnlockSection enabled={settings.quickUnlock.enabled} onChange={reload} /> : null}
 
-      <StorageSection />
-
-      <SyncSection />
-
       <CredentialsSection />
 
       <RecoverySection />
@@ -84,7 +78,7 @@ export function SettingsScreen() {
       <section aria-labelledby="account-heading" className="mt-8">
         <h2 id="account-heading" className="text-lg font-semibold">{t('settings.account.title')}</h2>
         {core.account ? (
-          <dl className="mt-2 grid max-w-md grid-cols-[max-content_1fr] gap-x-4 gap-y-1">
+          <dl className="mt-2 grid max-w-md grid-cols-[max-content_minmax(0,1fr)] gap-x-4 gap-y-1">
             <dt className="font-medium">{t('signup.email.label')}</dt><dd className="break-all">{core.account.email}</dd>
             <dt className="font-medium">{t('signup.server.label')}</dt><dd className="break-all">{core.account.server}</dd>
             <dt className="font-medium">{t('settings.account.registration')}</dt><dd>{core.account.registration === 'done' ? t('settings.account.registered') : t('settings.account.pending')}</dd>

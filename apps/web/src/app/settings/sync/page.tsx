@@ -1,12 +1,12 @@
 'use client';
 
 import { RequireUnlocked } from '../../../ui/core/RequireUnlocked';
-import { DevicesScreen } from '../../../ui/devices/DevicesScreen';
+import { SyncAndDevices } from '../../../ui/settings/SyncAndDevices';
 
 export default function Page() {
   return (
     <RequireUnlocked titleKey="settings.group.sync">
-      <DevicesScreen />
+      <SyncAndDevices />
     </RequireUnlocked>
   );
 }

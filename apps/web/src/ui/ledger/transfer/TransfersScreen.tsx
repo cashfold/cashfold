@@ -6,24 +6,18 @@ import { Modal } from '../../forms/Modal';
 import { buttonClass, secondaryButtonClass } from '../../forms/TextField';
 import { useI18n } from '../../i18n/I18nProvider';
 import { formatDate, formatDateTime } from '../dates';
-import { LedgerFrame } from '../LedgerFrame';
 import { useLedger } from '../LedgerProvider';
 import { RateManager } from './RateManager';
-import { TransferForm } from './TransferForm';
+import { AddSheet } from '../../transactions/AddSheet';
 
-export function TransfersScreen() {
-  const { basics } = useLedger();
-  if (basics === undefined) return <LedgerFrame titleKey="page.transfers.title">{null}</LedgerFrame>;
-  return <TransfersBody />;
-}
-
-function TransfersBody() {
+/** The transfers of the Fold, listed under the transactions; they are entered and edited in the same sheet (transfer mode). */
+export function TransfersSection() {
   const { t, locale } = useI18n();
   const ledger = useLedger();
   const basics = ledger.basics!;
   const [rows, setRows] = useState<TransferRow[]>([]);
   const [deleted, setDeleted] = useState<RecentlyDeletedTransfer[]>([]);
-  const [editing, setEditing] = useState<{ row?: TransferRow } | undefined>();
+  const [editing, setEditing] = useState<TransferRow | undefined>();
   const [removing, setRemoving] = useState<TransferRow | undefined>();
   const [message, setMessage] = useState<string | undefined>();
   const accounts = useMemo(() => new Map(basics.accounts.map((a) => [a.id, a])), [basics.accounts]);
@@ -57,8 +51,9 @@ function TransfersBody() {
   }
 
   return (
-    <LedgerFrame titleKey="page.transfers.title" actions={<button type="button" className={buttonClass} onClick={() => setEditing({})} disabled={basics.accounts.length < 2}>{t('ledger.xfer.add')}</button>}>
-      <p className="mt-3 text-muted">{t('ledger.xfer.lede')}</p>
+    <section className="mt-10" aria-labelledby="xfers-title">
+      <h2 id="xfers-title" className="text-lg font-semibold">{t('page.transfers.title')}</h2>
+      <p className="mt-1 text-muted">{t('ledger.xfer.lede')}</p>
       {basics.accounts.length < 2 ? <p className="mt-3 text-muted">{t('ledger.xfer.needTwo')}</p> : null}
       {message ? <p role="alert" className="mt-3 text-danger">{message}</p> : null}
       <p className="mt-4 text-sm text-muted" role="status" data-testid="xfer-count">{t('ledger.xfer.count', { count: rows.length })}</p>
@@ -86,7 +81,7 @@ function TransfersBody() {
                     </div>
                   </div>
                   <div className="flex gap-2">
-                    <button type="button" className={secondaryButtonClass} onClick={() => setEditing({ row: x })} aria-label={`${t('ledger.edit')} ${title}`}>{t('ledger.edit')}</button>
+                    <button type="button" className={secondaryButtonClass} onClick={() => setEditing(x)} aria-label={`${t('ledger.edit')} ${title}`}>{t('ledger.edit')}</button>
                     <button type="button" className={secondaryButtonClass} onClick={() => setRemoving(x)} aria-label={`${t('ledger.delete')} ${title}`}>{t('ledger.delete')}</button>
                   </div>
                 </li>
@@ -114,9 +109,7 @@ function TransfersBody() {
 
       <RateManager />
 
-      <Modal open={editing !== undefined} title={editing?.row ? t('ledger.xfer.edit') : t('ledger.xfer.add')} onClose={() => setEditing(undefined)}>
-        {editing ? <TransferForm key={editing.row?.id ?? 'new'} {...(editing.row && { existing: editing.row })} onDone={() => setEditing(undefined)} /> : null}
-      </Modal>
+      {editing ? <AddSheet key={editing.id} existingTransfer={editing} onClose={() => setEditing(undefined)} /> : null}
 
       <Modal open={removing !== undefined} title={t('ledger.xfer.delete.title')} onClose={() => setRemoving(undefined)}>
         {removing ? (
@@ -129,6 +122,6 @@ function TransfersBody() {
           </div>
         ) : null}
       </Modal>
-    </LedgerFrame>
+    </section>
   );
 }

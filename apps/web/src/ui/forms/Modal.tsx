@@ -1,25 +1,15 @@
 'use client';
 
-import { useEffect, useId, useRef, type ReactNode } from 'react';
+import type { ReactNode } from 'react';
+import { Sheet } from '../kit';
 
-/** A modal dialog on the platform `<dialog>`: focus moves in, Escape closes, focus returns to what opened it. */
+/** A dialog for the screens that still build their own forms: the kit's sheet (bottom-anchored on narrow screens, centred from `sm`). */
 export function Modal({ open, title, onClose, children }: { open: boolean; title: string; onClose: () => void; children: ReactNode }) {
-  const ref = useRef<HTMLDialogElement>(null);
-  const titleId = useId();
-  useEffect(() => {
-    const dialog = ref.current;
-    if (dialog === null) return;
-    if (open && !dialog.open) dialog.showModal();
-    if (!open && dialog.open) dialog.close();
-  }, [open]);
+  // Unmounted while closed (no leave transition): nested dialogs that close in the same pass would otherwise leave the page behind hidden.
+  if (!open) return null;
   return (
-    <dialog ref={ref} aria-labelledby={titleId} className="w-full max-w-lg rounded-ui border border-border-strong bg-bg p-6 text-text" onClose={onClose}>
-      {open ? (
-        <>
-          <h2 id={titleId} className="text-lg font-semibold">{title}</h2>
-          {children}
-        </>
-      ) : null}
-    </dialog>
+    <Sheet open onClose={onClose} title={title}>
+      {children}
+    </Sheet>
   );
 }

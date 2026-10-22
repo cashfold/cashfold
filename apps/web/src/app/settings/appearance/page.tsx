@@ -1,12 +1,12 @@
 'use client';
 
 import { RequireUnlocked } from '../../../ui/core/RequireUnlocked';
-import { SettingsPlaceholder } from '../../../ui/settings/SettingsPlaceholder';
+import { AppearanceSection } from '../../../ui/settings/AppearanceSection';
 
 export default function Page() {
   return (
     <RequireUnlocked titleKey="settings.group.appearance">
-      <SettingsPlaceholder titleKey="settings.group.appearance" />
+      <AppearanceSection />
     </RequireUnlocked>
   );
 }

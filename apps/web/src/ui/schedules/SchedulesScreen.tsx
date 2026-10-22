@@ -6,6 +6,7 @@ import { allowAmounts, amountsAllowed, permission, rememberShown, requestPermiss
 import { showDueReminders } from '../../adapters/notifications/notify';
 import { Modal } from '../forms/Modal';
 import { TextField, buttonClass, secondaryButtonClass } from '../forms/TextField';
+import { ArrowPathIcon, EmptyState } from '../kit';
 import { useI18n } from '../i18n/I18nProvider';
 import { AmountField } from '../ledger/AmountField';
 import { dateToInput, formatDate, inputToDate, todayLocal } from '../ledger/dates';
@@ -123,7 +124,7 @@ function SchedulesBody() {
 
       <section className="mt-8" aria-labelledby="sch-active">
         <h2 id="sch-active" className="text-lg font-semibold">{t('schedules.active')}</h2>
-        {active.length === 0 ? <p className="mt-2 text-muted">{t('schedules.empty')}</p> : null}
+        {active.length === 0 ? <EmptyState className="mt-2" icon={ArrowPathIcon} title={t('schedules.empty')} body={t('empty.schedules.body')} /> : null}
         <ul className="mt-2 divide-y divide-border-strong rounded-ui border border-border-strong empty:hidden" aria-label={t('schedules.active')}>
           {active.map((s) => (
             <li key={s.id} className="p-3" data-testid="schedule-row">
