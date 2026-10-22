@@ -84,6 +84,16 @@ UI thread (React/Next client components)  ⇄ typed RPC ⇄  Core Worker (dedica
 
 ---
 
+### 0.x The interface layer (spec 002)
+
+The client UI is organised as follows. It changes presentation only; the Core Worker's commands and queries, the domain, the wire protocol and the database are untouched (FR-048).
+
+- **Shell** (`apps/web/src/ui/shell/`): five primary sections (Overview, Transactions, Accounts, Plan, Settings) from one route table (`routes.ts`), a persistent sidebar that is a drawer on narrow screens, the Fold switcher, sync status and Lock in one place, one `<main id="main">`, banners, `OverlayHost` (overlays follow the lock and the privacy cover) and `StatusProvider` (brief confirmations in a polite live region). Old addresses are tiny redirect pages (`RedirectStub`).
+- **Add sheet** (`ui/transactions/`): one place to enter or edit a transaction or transfer, opened over any screen by `?new=expense|income|transfer` or by `useAddSheet().openAdd`. Which fields show is decided by the field registry (`ui/prefs/fields.ts`, `visibleFields`).
+- **Kit** (`ui/kit/`): the only place Catalyst-derived and Headless UI code lives; see ADR-0008. Screens import from `ui/kit/index.ts` only.
+- **Preferences** (`ui/prefs/`, `ui/theme/`): device-local presentation state in `localStorage` key `cashfold.ui`, parsed defensively, never synced or exported. Themes are the `data-theme` attribute on `<html>`, set before first paint.
+- **Routes**: `/overview/`, `/transactions/`, `/accounts/`, `/plan/?view=`, `/settings/` with seven group pages, plus the unchanged sign-in, sign-up, recover and add-device pages.
+
 ## 1. Goals, non-goals, threat model
 
 ### 1.1 Goals

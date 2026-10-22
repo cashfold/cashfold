@@ -1,17 +1,20 @@
 // Bundle budgets for the static export (research R-12), gzipped:
-//   initial: the JavaScript the home page loads up front (scripts referenced by out/index.html)  <= 270 KiB
-//   worker:  every other JavaScript chunk (Core Worker and lazily loaded code)                   <= 280 KiB
+//   initial: the JavaScript the home page loads up front (scripts referenced by out/index.html)  <= 366 KiB
+//   worker:  every other JavaScript chunk (Core Worker and lazily loaded code)                   <= 257 KiB
 // The first targets (250 and 150 KiB) were set before the app existed. Measured at the end of the first release: 254.5 and 266.0 KiB, the
 // worker holding the protocol schemas (zod), the SQLite and Argon2 glue and every command and query. These limits are the measurement plus
 // about 6%: they stop growth, they do not claim the original targets were met (research.md R-12).
+// After the interface redesign (spec 002) the measurement is 342.2 and 241.8 KiB: the signed-in shell, the kit and Headless UI are part of every
+// page, so they sit in the initial chunks and the lazy ones shrank. Together that is 584.0 KiB, 63.5 KiB over the first release (520.5 KiB),
+// inside the 70 KiB the redesign allowed (SC-010). The fonts (about 380 KiB of woff2) are static assets loaded on demand, and are not in either budget.
 // The WASM modules are static assets, loaded on demand, and are not part of either budget.
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { gzipSync } from 'node:zlib';
 
 const OUT = 'apps/web/out';
-const INITIAL_BUDGET = Number(process.env.BUNDLE_INITIAL_BUDGET_BYTES ?? 270 * 1024);
-const WORKER_BUDGET = Number(process.env.BUNDLE_WORKER_BUDGET_BYTES ?? 280 * 1024);
+const INITIAL_BUDGET = Number(process.env.BUNDLE_INITIAL_BUDGET_BYTES ?? 366 * 1024);
+const WORKER_BUDGET = Number(process.env.BUNDLE_WORKER_BUDGET_BYTES ?? 257 * 1024);
 
 function* walk(dir) {
   for (const name of readdirSync(dir)) {
