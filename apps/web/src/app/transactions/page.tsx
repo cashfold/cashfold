@@ -1,15 +1,15 @@
 'use client';
 
+import { Suspense } from 'react';
 import { RequireUnlocked } from '../../ui/core/RequireUnlocked';
-import { TransactionsScreen } from '../../ui/ledger/TransactionsScreen';
-import { LedgerProvider } from '../../ui/ledger/LedgerProvider';
+import { TransactionsScreen } from '../../ui/transactions/TransactionsScreen';
 
 export default function Screen() {
   return (
     <RequireUnlocked titleKey="page.transactions.title">
-      <LedgerProvider>
+      <Suspense fallback={null}>
         <TransactionsScreen />
-      </LedgerProvider>
+      </Suspense>
     </RequireUnlocked>
   );
 }

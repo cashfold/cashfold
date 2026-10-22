@@ -23,6 +23,11 @@ export interface LedgerView {
   /** Reads from the chosen Fold. Throws if the worker cannot answer. */
   readonly read: <T = unknown>(method: string, args?: Record<string, unknown>) => Promise<T>;
   readonly reload: () => Promise<void>;
+  /** Reads the Fold list again (a Fold may have been created, restored or shared since). */
+  readonly refreshFolds: () => Promise<void>;
+  /** True after a Fold this account was taken out of disappeared from this device (FR-104); the Folds screen says so until it is dismissed. */
+  readonly foldRemoved: boolean;
+  readonly dismissFoldRemoved: () => void;
   readonly money: (minor: bigint, currency: string) => string;
   readonly signed: (minor: bigint, currency: string) => string;
   readonly parse: (text: string, currency: string) => ReturnType<typeof parseMoney>;
@@ -37,6 +42,11 @@ const ENTRIES: ReadonlySet<string> = new Set([
 ]);
 
 const Context = createContext<LedgerView | null>(null);
+
+/** The ledger when there is one (the signed-in shell), or nothing (before sign-in). */
+export function useOptionalLedger(): LedgerView | null {
+  return useContext(Context);
+}
 
 export function useLedger(): LedgerView {
   const value = useContext(Context);
@@ -54,8 +64,17 @@ export function LedgerProvider({ children }: { children: ReactNode }) {
   const [version, setVersion] = useState(0);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
+  const [foldRemoved, setFoldRemoved] = useState(false);
 
   const fold = useMemo(() => folds.find((f) => f.id === foldId) ?? folds[0], [folds, foldId]);
+
+  const refreshFolds = useCallback(async () => {
+    try {
+      setFolds(await core.call<FoldSummary[]>('folds.list'));
+    } catch {
+      // The list stays as it was.
+    }
+  }, [core]);
 
   const reload = useCallback(async () => {
     if (fold === undefined) return;
@@ -69,7 +88,8 @@ export function LedgerProvider({ children }: { children: ReactNode }) {
   useEffect(
     () =>
       core.subscribe((event) => {
-        if (event.type !== 'RemoteChanged') return;
+        if (event.type === 'FoldRemoved') setFoldRemoved(true);
+        if (event.type !== 'RemoteChanged' && event.type !== 'FoldRemoved') return;
         void core.call<FoldSummary[]>('folds.list').then(setFolds, () => undefined);
         void reload();
       }),
@@ -147,13 +167,13 @@ export function LedgerProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<LedgerView>(
     () => ({
-      folds, fold, selectFold: setFoldId, basics, version, loading, failed, run, read, reload,
+      folds, fold, selectFold: setFoldId, basics, version, loading, failed, run, read, reload, refreshFolds, foldRemoved, dismissFoldRemoved: () => setFoldRemoved(false),
       money: (minor, currency) => formatMoney(minor, currency, locale),
       signed: (minor, currency) => formatSigned(minor, currency, locale),
       parse: (text, currency) => parseMoney(text, currency, locale),
       explain,
     }),
-    [folds, fold, basics, version, loading, failed, run, read, reload, locale, explain],
+    [folds, fold, basics, version, loading, failed, run, read, reload, refreshFolds, foldRemoved, locale, explain],
   );
 
   return <Context.Provider value={value}>{children}</Context.Provider>;

@@ -3,6 +3,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { expect, test } from './fixtures/index.js';
+import { chooseFold, go, moreDetails, editRow } from './fixtures/nav.js';
 
 // User story 9: take your data with you, and get back in (FR-008, FR-009, FR-090 to FR-092, FR-101, SC-013, SC-014). Real browsers
 // on the real relay built from this checkout: each has its own account, its own encrypted database and its own keys.
@@ -11,7 +12,6 @@ const PASSWORD = 'correct horse battery staple';
 const NEW_PASSWORD = 'an entirely different passphrase 42';
 const RELAY = `http://localhost:${Number(process.env['E2E_RELAY_PORT'] ?? 3200)}`;
 const unique = () => `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
-const go = (page: Page, name: string) => page.getByRole('navigation').getByRole('link', { name, exact: true }).click();
 const region = (page: Page, name: string) => page.getByRole('region', { name });
 
 async function signUp(page: Page, email: string): Promise<string> {
@@ -26,7 +26,7 @@ async function signUp(page: Page, email: string): Promise<string> {
   const key = (await secret.textContent())!.trim();
   await page.getByLabel('I have saved my Secret Key').check();
   await page.getByRole('button', { name: 'Continue' }).click();
-  await expect(page.getByTestId('fold-name')).toHaveText('Personal');
+  await expect(page.getByTestId('current-fold')).toHaveText('Personal');
   return key;
 }
 
@@ -36,6 +36,7 @@ async function addAccount(page: Page, name: string, opening: string): Promise<vo
   const dialog = page.getByRole('dialog');
   await dialog.getByLabel('Name', { exact: true }).fill(name);
   await dialog.getByLabel('Opening balance (USD)').fill(opening);
+  await moreDetails(dialog);
   await dialog.getByLabel('Opening date').fill('2020-01-01');
   await dialog.getByRole('button', { name: 'Create account' }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
@@ -48,8 +49,9 @@ async function addExpense(page: Page, account: string, amount: string, note: str
   const dialog = page.getByRole('dialog');
   await dialog.getByLabel('Account').selectOption({ label: `${account} (USD)` });
   await dialog.getByLabel('Amount (USD)').fill(amount);
+  await moreDetails(dialog);
   await dialog.getByLabel('Note').fill(note);
-  await dialog.getByRole('button', { name: 'Add transaction' }).click();
+  await dialog.getByRole('button', { name: 'Save' }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
 }
 
@@ -61,7 +63,7 @@ async function signInNew(browser: Browser, email: string, secretKey: string, pas
   await expect(page.getByRole('heading', { level: 1, name: 'Add this device' })).toBeVisible();
   await page.getByLabel('Password', { exact: true }).fill(password);
   await page.getByRole('button', { name: 'Add this device' }).click();
-  await expect(page).toHaveURL(/\/dashboard\/$/, { timeout: 90_000 });
+  await expect(page).toHaveURL(/\/overview\/$/, { timeout: 90_000 });
   return { context, page };
 }
 
@@ -110,7 +112,7 @@ test.describe('@us9 portability and recovery', () => {
     expect(newSecretKey.slice(0, 9)).toBe(secretKey.slice(0, 9)); // the same account
     await b.getByLabel('I have saved it somewhere safe.').check();
     await b.getByRole('button', { name: 'Done' }).click();
-    await expect(b).toHaveURL(/\/dashboard\/$/, { timeout: 30_000 });
+    await expect(b).toHaveURL(/\/overview\/$/, { timeout: 30_000 });
     await go(b, 'Accounts');
     await expect(b.getByRole('link', { name: 'Everyday', exact: true })).toBeVisible({ timeout: 60_000 });
     await expect(balanceOf(b, 'Everyday')).toHaveText('1,000.00 USD');
@@ -211,7 +213,7 @@ test.describe('@us9 portability and recovery', () => {
     await expect(page.getByTestId('restored')).toContainText('Personal (restored)', { timeout: 60_000 });
 
     await go(page, 'Transactions');
-    await page.locator('#ledger-fold').selectOption({ label: 'Personal (restored)' });
+    await chooseFold(page, 'Personal (restored)', 'Transactions');
     await expect(page.getByTestId('tx-row').filter({ hasText: 'Coffee beans' })).toHaveCount(1, { timeout: 30_000 });
     await go(page, 'Accounts');
     await expect(page.getByRole('link', { name: 'Everyday', exact: true })).toBeVisible();
@@ -318,15 +320,16 @@ test.describe('@us9 portability and recovery', () => {
     const dialog = page.getByRole('dialog');
     await dialog.getByLabel('Account').selectOption({ label: 'Everyday (USD)' });
     await dialog.getByLabel('Amount (USD)').fill('12.50');
+    await moreDetails(dialog);
     await dialog.getByLabel('Note').fill('Coffee beans');
     await dialog.locator('#attachment-file').setInputFiles({ name: 'receipt.txt', mimeType: 'text/plain', buffer: contents });
-    await dialog.getByRole('button', { name: 'Add transaction' }).click();
+    await dialog.getByRole('button', { name: 'Save' }).click();
     await expect(page.getByRole('dialog')).toHaveCount(0, { timeout: 60_000 });
     await expect(syncState(page)).toHaveAttribute('data-sync-state', 'synced', { timeout: 60_000 });
 
     const openAndRead = async (p: Page): Promise<Buffer> => {
       await go(p, 'Transactions');
-      await p.getByRole('button', { name: 'Edit Coffee beans' }).click();
+      await editRow(p, 'Coffee beans').click();
       const d = p.getByRole('dialog');
       await expect(d.getByTestId('attachment-current')).toContainText('receipt.txt');
       const downloading = p.waitForEvent('download', { timeout: 60_000 });
@@ -350,13 +353,13 @@ test.describe('@us9 portability and recovery', () => {
 
     // Taking it off
     await go(page, 'Transactions');
-    await page.getByRole('button', { name: 'Edit Coffee beans' }).click();
+    await editRow(page, 'Coffee beans').click();
     const d = page.getByRole('dialog');
     await d.getByRole('button', { name: 'Remove receipt.txt' }).click();
     await expect(d.getByText('The attachment will be removed when you save.')).toBeVisible();
     await d.getByRole('button', { name: 'Save', exact: true }).click();
     await expect(page.getByRole('dialog')).toHaveCount(0, { timeout: 30_000 });
-    await page.getByRole('button', { name: 'Edit Coffee beans' }).click();
+    await editRow(page, 'Coffee beans').click();
     await expect(page.getByRole('dialog').getByTestId('attachment-current')).toHaveCount(0);
   });
 });

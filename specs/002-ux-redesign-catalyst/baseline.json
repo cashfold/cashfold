@@ -1,0 +1,34 @@
+{
+  "recordedAt": "2026-10-20",
+  "interface": "before the redesign",
+  "viewports": {
+    "390x844": {
+      "screens": {
+        "Dashboard": 25,
+        "Transactions": 25,
+        "Accounts": 30,
+        "Budgets": 32,
+        "Goals": 22,
+        "Schedules": 21,
+        "Settings": 22
+      },
+      "addFormControls": 49,
+      "addFormFields": 15,
+      "primaryNavigationEntries": 12
+    },
+    "1280x800": {
+      "screens": {
+        "Dashboard": 30,
+        "Transactions": 25,
+        "Accounts": 30,
+        "Budgets": 32,
+        "Goals": 22,
+        "Schedules": 21,
+        "Settings": 22
+      },
+      "addFormControls": 49,
+      "addFormFields": 15,
+      "primaryNavigationEntries": 12
+    }
+  }
+}

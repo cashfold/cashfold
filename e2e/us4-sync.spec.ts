@@ -3,6 +3,7 @@ import { randomBytes } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import net from 'node:net';
 import { expect, test } from './fixtures/index.js';
+import { accountAction, go, moreDetails } from './fixtures/nav.js';
 
 // User story 4: the same data on several devices, through a relay that sees only ciphertext (FR-004, FR-010, FR-072 to FR-082).
 // Two real browsers (separate contexts, so separate encrypted databases) and the real relay built from this checkout.
@@ -53,7 +54,6 @@ async function throttle(page: Page, browserName: string): Promise<void> {
   await cdp.send('Network.emulateNetworkConditions', { offline: false, latency: 75, downloadThroughput: (5 * 1024 * 1024) / 8, uploadThroughput: (5 * 1024 * 1024) / 8 });
 }
 
-const go = (page: Page, name: string) => page.getByRole('navigation').getByRole('link', { name, exact: true }).click();
 
 async function signUp(page: Page, email: string, server = RELAY): Promise<string> {
   await page.goto('/sign-up/');
@@ -67,7 +67,7 @@ async function signUp(page: Page, email: string, server = RELAY): Promise<string
   const key = (await secret.textContent())!.trim();
   await page.getByLabel('I have saved my Secret Key').check();
   await page.getByRole('button', { name: 'Continue' }).click();
-  await expect(page.getByTestId('fold-name')).toHaveText('Personal');
+  await expect(page.getByTestId('current-fold')).toHaveText('Personal');
   return key;
 }
 
@@ -88,8 +88,9 @@ async function addExpense(page: Page, account: string, amount: string, note: str
   const dialog = page.getByRole('dialog');
   await dialog.getByLabel('Account').selectOption({ label: `${account} (USD)` });
   await dialog.getByLabel('Amount (USD)').fill(amount);
+  await moreDetails(dialog);
   await dialog.getByLabel('Note').fill(note);
-  await dialog.getByRole('button', { name: 'Add transaction' }).click();
+  await dialog.getByRole('button', { name: 'Save' }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
 }
 
@@ -104,7 +105,7 @@ async function enrol(browser: Browser, email: string, secretKey: string, server 
   expect(await page.evaluate(() => location.href + history.length)).not.toContain(secretKey);
   await page.getByLabel('Password', { exact: true }).fill(PASSWORD);
   await page.getByRole('button', { name: 'Add this device' }).click();
-  await expect(page).toHaveURL(/\/dashboard\/$/, { timeout: 90_000 });
+  await expect(page).toHaveURL(/\/overview\/$/, { timeout: 90_000 });
   return { context, page };
 }
 
@@ -182,7 +183,7 @@ test.describe('@us4 sync', () => {
     // the very same field changed on both: the account's name
     for (const [p, name] of [[page, 'Everyday (first)'], [b.page, 'Everyday (second)']] as const) {
       await go(p, 'Accounts');
-      await p.getByRole('button', { name: 'Edit Everyday', exact: false }).first().click();
+      await accountAction(p, 'Everyday', 'Edit');
       await p.getByRole('dialog').getByLabel('Name', { exact: true }).fill(name);
       await p.getByRole('dialog').getByRole('button', { name: 'Save changes' }).click();
       await expect(p.getByRole('dialog')).toHaveCount(0);

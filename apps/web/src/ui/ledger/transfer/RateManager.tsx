@@ -2,11 +2,12 @@
 
 import { CURRENCY_EXPONENTS, type ExchangeRate } from '@cashfold/core';
 import { useState, type FormEvent } from 'react';
-import { TextField, buttonClass, secondaryButtonClass } from '../../forms/TextField';
+import { TextField } from '../../forms/TextField';
 import { useI18n } from '../../i18n/I18nProvider';
 import { dateOfUtcSeconds, dateToInput, formatDate, inputToDate, localDateOfUtcSeconds, startOfLocalDayUtcS, todayLocal } from '../dates';
 import { formatRate, parseRateText } from '../format';
 import { useLedger } from '../LedgerProvider';
+import { Button, Select } from '../../kit';
 
 const CURRENCIES = Object.keys(CURRENCY_EXPONENTS).filter((c) => c !== 'USD').sort();
 /** Your own exchange rates, and the action that re-values past transactions with the rates known now. */
@@ -54,24 +55,24 @@ export function RateManager() {
               <span className="ms-3 text-sm text-muted">{formatDate(r.source === 'custom' ? localDateOfUtcSeconds(r.asOfUtcS) : dateOfUtcSeconds(r.asOfUtcS), locale)} · {t(r.source === 'custom' ? 'ledger.rates.own' : 'ledger.rates.service')}</span>
             </span>
             {r.source === 'custom' ? (
-              <button type="button" className={secondaryButtonClass} onClick={() => void ledger.run('ledger.deleteCustomRate', { id: r.id })} aria-label={`${t('ledger.delete')} ${r.quote} ${formatRate(r.rateE12, locale)}`}>{t('ledger.delete')}</button>
+              <Button outline type="button" onClick={() => void ledger.run('ledger.deleteCustomRate', { id: r.id })} aria-label={`${t('ledger.delete')} ${r.quote} ${formatRate(r.rateE12, locale)}`}>{t('ledger.delete')}</Button>
             ) : null}
           </li>
         ))}
       </ul>
 
-      <form onSubmit={save} className="mt-4 grid max-w-xl gap-x-4 sm:grid-cols-3">
+      <form onSubmit={save} className="mt-4 grid max-w-xl gap-x-4 *:min-w-0 sm:grid-cols-3">
         <div className="mt-4">
           <label htmlFor="rate-quote" className="block font-medium">{t('ledger.rates.currency')}</label>
-          <select id="rate-quote" className="mt-1 block w-full rounded-ui border border-border-strong bg-bg px-3 py-2" value={quote} onChange={(e) => setQuote(e.target.value)}>
+          <Select id="rate-quote" value={quote} onChange={(e) => setQuote(e.target.value)}>
             {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
-          </select>
+          </Select>
         </div>
         <TextField label={t('ledger.rates.rate', { currency: quote })} value={text} onChange={(e) => setText(e.target.value)} inputMode="decimal" autoComplete="off" required />
         <TextField label={t('ledger.rates.date')} type="date" value={day} onChange={(e) => setDay(e.target.value)} required />
         <div className="sm:col-span-3">
           {error ? <p role="alert" className="mt-2 text-danger">{error}</p> : null}
-          <button type="submit" className={`${buttonClass} mt-3`}>{t('ledger.rates.save')}</button>
+          <Button className="mt-3" type="submit" >{t('ledger.rates.save')}</Button>
         </div>
       </form>
 
@@ -80,11 +81,11 @@ export function RateManager() {
         <p className="mt-1 text-sm text-muted">{t('ledger.rates.revalue.lede')}</p>
         {confirming ? (
           <div className="mt-2 flex flex-wrap gap-3">
-            <button type="button" className={buttonClass} onClick={() => void revalue()}>{t('ledger.rates.revalue.confirm')}</button>
-            <button type="button" className={secondaryButtonClass} onClick={() => setConfirming(false)}>{t('ledger.cancel')}</button>
+            <Button type="button" onClick={() => void revalue()}>{t('ledger.rates.revalue.confirm')}</Button>
+            <Button outline type="button" onClick={() => setConfirming(false)}>{t('ledger.cancel')}</Button>
           </div>
         ) : (
-          <button type="button" className={`${secondaryButtonClass} mt-2`} onClick={() => { setSummary(undefined); setConfirming(true); }}>{t('ledger.rates.revalue.button')}</button>
+          <Button outline className="mt-2" type="button" onClick={() => { setSummary(undefined); setConfirming(true); }}>{t('ledger.rates.revalue.button')}</Button>
         )}
         {summary ? <p role="status" className="mt-2" data-testid="revalue-summary">{summary}</p> : null}
       </div>

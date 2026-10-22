@@ -3,8 +3,9 @@
 import { useState } from 'react';
 import { downloadKit, printKit } from '../emergency-kit/actions';
 import { copyWithAutoClear } from '../emergency-kit/kit';
-import { buttonClass, secondaryButtonClass } from '../forms/TextField';
+
 import { useI18n } from '../i18n/I18nProvider';
+import { Button, Checkbox, CheckboxField, Label } from '../kit';
 
 export interface CreatedAccount {
   readonly secretKeyText: string;
@@ -21,24 +22,21 @@ export function SecretKeyScreen({ created, email, server, onDone }: { created: C
   const kit = { accountId: created.accountId, email, server, secretKeyText: created.secretKeyText };
 
   return (
-    <main id="main" tabIndex={-1}>
+    <div>
       <h1 className="text-2xl font-semibold">{t('secretkey.title')}</h1>
       <p className="mt-3">{t('secretkey.lede')}</p>
       <p className="mt-3 font-medium text-danger" role="note">{t('secretkey.warning')}</p>
       <p className="mt-6 text-sm text-muted">{t('secretkey.label')}</p>
       <p className="mt-1 break-all rounded-ui border border-border-strong bg-surface p-4 font-mono text-xl tracking-wide" data-testid="secret-key" dir="ltr">{created.secretKeyText}</p>
       <div className="mt-4 flex flex-wrap gap-3">
-        <button type="button" className={secondaryButtonClass} onClick={async () => setCopy((await copyWithAutoClear(created.secretKeyText, 60_000)) ? 'copied' : 'failed')}>{t('secretkey.copy')}</button>
-        <button type="button" className={secondaryButtonClass} onClick={() => downloadKit(kit)}>{t('secretkey.download')}</button>
-        <button type="button" className={secondaryButtonClass} onClick={() => printKit(kit)}>{t('secretkey.print')}</button>
+        <Button outline type="button" onClick={async () => setCopy((await copyWithAutoClear(created.secretKeyText, 60_000)) ? 'copied' : 'failed')}>{t('secretkey.copy')}</Button>
+        <Button outline type="button" onClick={() => downloadKit(kit)}>{t('secretkey.download')}</Button>
+        <Button outline type="button" onClick={() => printKit(kit)}>{t('secretkey.print')}</Button>
       </div>
       <p className="mt-2 text-sm" role="status">{copy === 'copied' ? t('secretkey.copied') : copy === 'failed' ? t('secretkey.copyFailed') : ''}</p>
       {created.registration === 'pending' ? <p className="mt-4 text-muted">{t('secretkey.pending')}</p> : null}
-      <label className="mt-6 flex items-start gap-2">
-        <input type="checkbox" className="mt-1" checked={saved} onChange={(e) => setSaved(e.target.checked)} />
-        <span>{t('secretkey.confirm')}</span>
-      </label>
-      <button type="button" className={`${buttonClass} mt-4`} disabled={!saved} onClick={() => void onDone()}>{t('secretkey.continue')}</button>
-    </main>
+      <CheckboxField className="mt-6"><Checkbox checked={saved} onChange={(checked) => setSaved(checked)} /><Label>{t('secretkey.confirm')}</Label></CheckboxField>
+      <Button className="mt-4" type="button" disabled={!saved} onClick={() => void onDone()}>{t('secretkey.continue')}</Button>
+    </div>
   );
 }

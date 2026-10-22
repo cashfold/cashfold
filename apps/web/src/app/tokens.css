@@ -1,38 +1,59 @@
-/* Design tokens. Colour pairs are held to WCAG 2.2 AA by src/ui/tokens.test.ts. */
+/* Design tokens. Colour pairs are held to WCAG 2.2 AA by src/ui/tokens.test.ts. The theme is the `data-theme` attribute on <html>, set before
+   first paint by src/ui/theme/bootstrap.ts; `:root` holds the light values as the default for a page without it. */
 :root {
   --bg: #ffffff;
-  --surface: #f4f5f7;
-  --text: #14161a;
-  --text-muted: #4b5563;
-  --primary: #0b57d0;
+  --surface: #fafafa;
+  --text: #09090b;
+  --text-muted: #52525b;
+  --primary: #047857;
   --on-primary: #ffffff;
+  --accent-text: #047857;
   --danger: #b3261e;
   --on-danger: #ffffff;
   --success: #146c2e;
   --warning: #8a5100;
-  --focus: #0b57d0;
-  --border-strong: #6b7280;
+  --focus: #059669;
+  --border-strong: #71717a;
   --cue-gain: '+';
   --cue-loss: '−';
   --cue-warning: '!';
   --radius: 0.5rem;
+  --font-sans: Ubuntu, system-ui, sans-serif;
+  color-scheme: light;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #0f1115;
-    --surface: #181b21;
-    --text: #eceef2;
-    --text-muted: #a8b0bd;
-    --primary: #8ab4ff;
-    --on-primary: #0f1115;
-    --danger: #ffb4ab;
-    --on-danger: #0f1115;
-    --success: #7ddc96;
-    --warning: #ffc266;
-    --focus: #8ab4ff;
-    --border-strong: #8b93a1;
-  }
+[data-theme="light"] {
+  --bg: #ffffff;
+  --surface: #fafafa;
+  --text: #09090b;
+  --text-muted: #52525b;
+  --primary: #047857;
+  --on-primary: #ffffff;
+  --accent-text: #047857;
+  --danger: #b3261e;
+  --on-danger: #ffffff;
+  --success: #146c2e;
+  --warning: #8a5100;
+  --focus: #059669;
+  --border-strong: #71717a;
+  color-scheme: light;
+}
+
+[data-theme="dark"] {
+  --bg: #09090b;
+  --surface: #18181b;
+  --text: #fafafa;
+  --text-muted: #a1a1aa;
+  --primary: #10b981;
+  --on-primary: #09090b;
+  --accent-text: #34d399;
+  --danger: #ffb4ab;
+  --on-danger: #09090b;
+  --success: #7ddc96;
+  --warning: #ffc266;
+  --focus: #34d399;
+  --border-strong: #8b93a1;
+  color-scheme: dark;
 }
 
 @theme inline {
@@ -42,11 +63,14 @@
   --color-muted: var(--text-muted);
   --color-primary: var(--primary);
   --color-on-primary: var(--on-primary);
+  --color-accent: var(--accent-text);
   --color-danger: var(--danger);
   --color-success: var(--success);
   --color-warning: var(--warning);
+  --color-focus: var(--focus);
   --color-border-strong: var(--border-strong);
   --radius-ui: var(--radius);
+  --font-sans: Ubuntu, system-ui, sans-serif;
 }
 
 @media (prefers-reduced-motion: reduce) {

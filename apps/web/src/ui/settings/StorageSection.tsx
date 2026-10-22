@@ -4,8 +4,9 @@ import type { DeviceSettings } from '@cashfold/core';
 import { useCallback, useEffect, useState } from 'react';
 import { readPersistence, requestPersistence, type PersistenceState } from '../../adapters/storage-persistence';
 import { useCore } from '../core/CoreProvider';
-import { secondaryButtonClass } from '../forms/TextField';
+
 import { useI18n } from '../i18n/I18nProvider';
+import { Button } from '../kit';
 
 const size = (bytes: number, locale: string): string => {
   const n = BigInt(Math.trunc(bytes));
@@ -36,7 +37,7 @@ export function StorageSection() {
       <p className="text-muted">{lastBackup === 0 ? t('storage.settings.noBackup') : t('storage.settings.lastBackup', { when: new Date(lastBackup).toLocaleDateString(locale) })}</p>
       {state.persisted !== true ? (
         <div className="mt-3">
-          <button type="button" className={secondaryButtonClass} onClick={() => void requestPersistence().then((s) => (setState(s), setAsked(true)))}>{t('storage.settings.ask')}</button>
+          <Button outline type="button" onClick={() => void requestPersistence().then((s) => (setState(s), setAsked(true)))}>{t('storage.settings.ask')}</Button>
           <p role="status" className="mt-1 text-sm text-muted">{asked ? t('storage.settings.asked') : ''}</p>
         </div>
       ) : null}

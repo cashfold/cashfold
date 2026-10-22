@@ -4,8 +4,9 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { readPrf } from './webauthn';
 import { useCore, withPasswordBytes } from '../core/CoreProvider';
 import { sessionMarker } from '../core/session-marker';
-import { TextField, buttonClass, secondaryButtonClass } from '../forms/TextField';
+import { TextField } from '../forms/TextField';
 import { useI18n } from '../i18n/I18nProvider';
+import { Button } from '../kit';
 
 type UnlockResult = { ok: true } | { ok: false; error: { code: string; retryAfterMs?: number } };
 
@@ -62,14 +63,14 @@ export function UnlockForm() {
   }
 
   return (
-    <main id="main" tabIndex={-1}>
+    <div>
       <h1 className="text-2xl font-semibold">{t('unlock.title')}</h1>
       {core.account ? <p className="mt-3 text-muted">{t('unlock.account', { email: core.account.email })}</p> : null}
       <form onSubmit={submit} aria-busy={busy}>
         <TextField label={t('unlock.password.label')} type="password" autoComplete="current-password" required autoFocus value={password} onChange={(e) => setPassword(e.target.value)} error={error} />
-        <button type="submit" className={`${buttonClass} mt-6`} disabled={busy}>{busy ? t('unlock.working') : t('unlock.submit')}</button>
+        <Button className="mt-6" type="submit" disabled={busy}>{busy ? t('unlock.working') : t('unlock.submit')}</Button>
       </form>
-      {quick ? <button type="button" className={`${secondaryButtonClass} mt-4`} disabled={busy} onClick={() => void unlockQuick()}>{t('quick.button')}</button> : null}
-    </main>
+      {quick ? <Button outline className="mt-4" type="button" disabled={busy} onClick={() => void unlockQuick()}>{t('quick.button')}</Button> : null}
+    </div>
   );
 }

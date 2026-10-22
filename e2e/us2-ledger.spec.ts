@@ -1,5 +1,6 @@
 import type { Page } from '@playwright/test';
 import { expect, test } from './fixtures/index.js';
+import { go, moreDetails, cancelAdd, openRowAction, toggleRecentlyDeleted, editRow, accountAction } from './fixtures/nav.js';
 
 // User story 2: accounts, categories and transactions, entirely offline (FR-023 to FR-036, FR-051, FR-072).
 // Runs on the production build with the real encrypted database. The network goes away after the app has loaded.
@@ -31,10 +32,9 @@ test.describe('@us2 ledger', () => {
     await expect(page.getByTestId('secret-key')).toBeVisible({ timeout: 60_000 });
     await page.getByLabel('I have saved my Secret Key').check();
     await page.getByRole('button', { name: 'Continue' }).click();
-    await expect(page.getByTestId('fold-name')).toHaveText('Personal');
+    await expect(page.getByTestId('current-fold')).toHaveText('Personal');
   }
 
-  const go = (page: Page, name: string) => page.getByRole('navigation').getByRole('link', { name, exact: true }).click();
 
   async function addAccount(page: Page, name: string, opening: string): Promise<void> {
     await page.getByRole('button', { name: 'Add account', exact: true }).click();
@@ -51,8 +51,9 @@ test.describe('@us2 ledger', () => {
     const dialog = page.getByRole('dialog');
     await dialog.getByLabel('Account').selectOption({ label: `${account} (USD)` });
     await dialog.getByLabel('Amount (USD)').fill(amount);
+    await moreDetails(dialog);
     await dialog.getByLabel('Note').fill(note);
-    await dialog.getByRole('button', { name: 'Add transaction' }).click();
+    await dialog.getByRole('button', { name: 'Save' }).click();
     await expect(page.getByRole('dialog')).toHaveCount(0);
     await expect(page.getByTestId('tx-row').filter({ hasText: note })).toHaveCount(1);
   }
@@ -68,7 +69,7 @@ test.describe('@us2 ledger', () => {
     await context.setOffline(true);
     await page.getByLabel('Password').fill(PASSWORD);
     await page.getByRole('button', { name: 'Unlock' }).click();
-    await expect(page.getByTestId('fold-name')).toHaveText('Personal');
+    await expect(page.getByTestId('current-fold')).toHaveText('Personal');
 
     // --- accounts
     await go(page, 'Accounts');
@@ -93,15 +94,16 @@ test.describe('@us2 ledger', () => {
     let dialog = page.getByRole('dialog');
     await dialog.getByLabel('Amount (USD)').fill('1.234');
     await expect(dialog.getByText('USD has 2 decimal places')).toBeVisible();
+    await moreDetails(dialog);
     await dialog.getByLabel('Note').fill('Should not exist');
-    await dialog.getByRole('button', { name: 'Add transaction' }).click();
+    await dialog.getByRole('button', { name: 'Save' }).click();
     await expect(dialog.getByRole('alert').first()).toBeVisible();
     await expectNoA11yViolations();
-    await dialog.getByRole('button', { name: 'Cancel' }).click();
+    await cancelAdd(page, dialog);
     await expect(page.getByText('Should not exist')).toHaveCount(0);
 
     // --- edit
-    await page.getByRole('button', { name: 'Edit Spend 2' }).click();
+    await editRow(page, 'Spend 2').click();
     dialog = page.getByRole('dialog');
     await expect(dialog.getByTestId('last-changed')).toContainText('this device');
     await dialog.getByLabel('Amount (USD)').fill('20.00');
@@ -111,15 +113,16 @@ test.describe('@us2 ledger', () => {
     expected += cents('12.50') - cents('20.00');
 
     // --- delete needs a confirmation, restore brings it back
-    await page.getByRole('button', { name: 'Delete Spend 3' }).click();
+    await openRowAction(page, 'Spend 3', 'Delete');
     dialog = page.getByRole('dialog');
     await expect(dialog).toContainText('moves to Recently deleted');
     await expectNoA11yViolations();
-    await dialog.getByRole('button', { name: 'Cancel' }).click();
+    await cancelAdd(page, dialog);
     await expect(page.getByTestId('tx-row').filter({ hasText: 'Spend 3' })).toHaveCount(1); // cancelling changed nothing
-    await page.getByRole('button', { name: 'Delete Spend 3' }).click();
+    await openRowAction(page, 'Spend 3', 'Delete');
     await page.getByRole('dialog').getByRole('button', { name: 'Delete transaction' }).click();
     await expect(page.getByTestId('tx-row').filter({ hasText: 'Spend 3' })).toHaveCount(0);
+    await toggleRecentlyDeleted(page);
     await expect(page.getByTestId('deleted-list')).toContainText('Spend 3');
     await expect(page.getByTestId('deleted-list')).toContainText('30 days left');
     expected += cents('7.99');
@@ -127,18 +130,21 @@ test.describe('@us2 ledger', () => {
     await go(page, 'Accounts');
     await expect(balanceOf(page, 'Everyday')).toHaveText(fmt(expected));
     await go(page, 'Transactions');
+    await toggleRecentlyDeleted(page);
     await page.getByTestId('deleted-list').getByRole('button', { name: /^Restore/ }).click();
+    await toggleRecentlyDeleted(page);
     await expect(page.getByTestId('tx-row').filter({ hasText: 'Spend 3' })).toHaveCount(1);
     expected -= cents('7.99');
 
     // --- a very large amount stays exact (more than 2^53 minor units)
     await page.getByRole('button', { name: 'Add transaction', exact: true }).click();
     dialog = page.getByRole('dialog');
-    await dialog.getByLabel('Income').check();
+    await dialog.getByRole('tab', { name: 'Income' }).click();
     await dialog.getByLabel('Account').selectOption({ label: 'Everyday (USD)' });
     await dialog.getByLabel('Amount (USD)').fill('90071992547409.93');
+    await moreDetails(dialog);
     await dialog.getByLabel('Note').fill('Windfall');
-    await dialog.getByRole('button', { name: 'Add transaction' }).click();
+    await dialog.getByRole('button', { name: 'Save' }).click();
     await expect(page.getByTestId('tx-row').filter({ hasText: 'Windfall' })).toHaveCount(1);
     expected += 9_007_199_254_740_993n;
 
@@ -147,29 +153,34 @@ test.describe('@us2 ledger', () => {
     dialog = page.getByRole('dialog');
     await dialog.getByLabel('Account').selectOption({ label: 'Everyday (USD)' });
     await dialog.getByLabel('Amount (USD)').fill('8.00');
-    await dialog.getByLabel('Category').selectOption({ label: 'Food & Drink › Groceries' });
+    await dialog.getByLabel('Category').fill('Groceries');
+    await dialog.getByRole('option', { name: /Food & Drink › Groceries/ }).click();
+    await moreDetails(dialog);
     await dialog.getByLabel('Payee').fill('Corner shop');
-    await dialog.getByLabel('New tag').fill('weekly');
+    await dialog.getByLabel(/^Tags/).fill('weekly');
     await dialog.getByLabel('Place name').fill('Corner shop, High Street');
+    await dialog.getByRole('button', { name: 'Exact coordinates' }).click();
     await dialog.getByLabel('Latitude').fill('51.5074');
     await dialog.getByLabel('Longitude').fill('-0.1278');
     await dialog.getByLabel('Note').fill('Groceries run');
-    await dialog.getByRole('button', { name: 'Add transaction' }).click();
+    await dialog.getByRole('button', { name: 'Save' }).click();
     await expect(page.getByRole('dialog')).toHaveCount(0);
     const run = page.getByTestId('tx-row').filter({ hasText: 'Groceries run' });
     await expect(run).toHaveCount(1);
     await expect(run).toContainText('Groceries');
     await expect(run).toContainText('Corner shop, High Street');
     expected -= cents('8.00');
-    await page.getByRole('button', { name: 'Edit Corner shop' }).click();
+    await editRow(page, 'Corner shop').click();
     dialog = page.getByRole('dialog');
     await expect(dialog.getByLabel('Latitude')).toHaveValue('51.5074');
     await expect(dialog.getByLabel('Longitude')).toHaveValue('-0.1278');
     await expectNoA11yViolations();
-    await dialog.getByRole('button', { name: 'Cancel' }).click();
+    await cancelAdd(page, dialog);
+    await page.getByRole('button', { name: /^Filters/ }).click();
     await page.getByLabel('Category', { exact: true }).selectOption({ label: 'Food & Drink › Groceries' });
+    await page.getByRole('button', { name: 'Apply' }).click();
     await expect(page.getByTestId('tx-count')).toHaveText('1 transaction');
-    await page.getByLabel('Category', { exact: true }).selectOption({ label: 'Any' });
+    await page.getByTestId('filter-chips').getByRole('button', { name: 'Clear all' }).click();
 
     // --- search and filter work on the device
     await page.getByLabel('Search').fill('windfall');
@@ -180,31 +191,31 @@ test.describe('@us2 ledger', () => {
     // --- archive hides an account
     await go(page, 'Accounts');
     await expect(balanceOf(page, 'Everyday')).toHaveText(fmt(expected));
-    await page.getByRole('button', { name: 'Archive Rainy day' }).click();
+    await accountAction(page, 'Rainy day', 'Archive');
     await expect(page.getByRole('link', { name: 'Rainy day', exact: true })).toHaveCount(0);
     await page.getByLabel('Show archived accounts').check();
     await expect(page.getByTestId('account-row').filter({ hasText: 'Rainy day' })).toContainText('Archived');
-    await page.getByRole('button', { name: 'Restore Rainy day' }).click();
+    await accountAction(page, 'Rainy day', 'Restore');
     await page.getByLabel('Show archived accounts').uncheck();
     await expect(page.getByRole('link', { name: 'Rainy day', exact: true })).toBeVisible();
 
     // --- the balance can be adjusted to an exact target
-    await page.getByRole('button', { name: 'Adjust balance Rainy day' }).click();
+    await accountAction(page, 'Rainy day', 'Adjust balance');
     dialog = page.getByRole('dialog');
     await dialog.getByLabel('Balance should be (USD)').fill('300.00');
     await dialog.getByRole('button', { name: 'Adjust balance' }).click();
     await expect(balanceOf(page, 'Rainy day')).toHaveText(fmt(30_000n));
 
     // --- deleting an account says what goes with it, and needs a confirmation
-    await page.getByRole('button', { name: 'Delete Rainy day' }).click();
+    await accountAction(page, 'Rainy day', 'Delete');
     dialog = page.getByRole('dialog');
     await expect(dialog).toContainText('This also deletes 1 transaction');
-    await dialog.getByRole('button', { name: 'Cancel' }).click();
+    await cancelAdd(page, dialog);
     await expect(page.getByRole('link', { name: 'Rainy day', exact: true })).toBeVisible();
 
     // --- dashboard
     await go(page, 'Dashboard');
-    await expect(page.getByRole('heading', { level: 1, name: 'Dashboard' })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1, name: 'Overview' })).toBeVisible();
     await expect(page.getByTestId('net-worth')).toHaveText(fmt(expected + 30_000n));
     await expect(page.getByTestId('expense')).toHaveText(fmt(EXPENSES.reduce((sum, a) => sum + cents(a), 0n) - cents('12.50') + cents('20.00') + cents('8.00')));
     await expectNoA11yViolations();
@@ -214,15 +225,18 @@ test.describe('@us2 ledger', () => {
     await expect(page.getByRole('heading', { level: 1, name: 'Categories' })).toBeVisible();
     await expect(page.getByTestId('category-root').filter({ hasText: 'Food & Drink' })).toHaveCount(1);
     await expect(page.getByTestId('category-child').filter({ hasText: 'Groceries' })).toContainText('used once');
+    await page.getByRole('tab', { name: 'Payees' }).click();
     await expect(page.getByTestId('payee-row').filter({ hasText: 'Corner shop' })).toContainText('used once');
+    await page.getByRole('tab', { name: 'Tags' }).click();
     await expect(page.getByTestId('tag-row').filter({ hasText: 'weekly' })).toContainText('used once');
+    await page.getByRole('tab', { name: 'Expense' }).click();
     await expectNoA11yViolations();
     await page.getByRole('button', { name: 'Merge Home', exact: true }).click();
     dialog = page.getByRole('dialog');
     await dialog.getByLabel('Merge into').selectOption({ label: 'Food & Drink › Groceries' });
     await dialog.getByRole('button', { name: 'Merge', exact: true }).click();
     await expect(dialog.getByRole('alert')).toContainText('at most two levels');
-    await dialog.getByRole('button', { name: 'Cancel' }).click();
+    await cancelAdd(page, dialog);
 
     // --- everything is still there after a reload while offline (the app starts locked)
     await page.reload();

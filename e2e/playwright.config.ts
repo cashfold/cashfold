@@ -21,6 +21,8 @@ export default defineConfig({
     { name: 'webkit', use: { ...devices['Desktop Safari'] } },
     // Every spec also runs once under an RTL locale and asserts logical layout order.
     { name: 'rtl', use: { ...devices['Desktop Chrome'], locale: 'ar' } },
+    // Messages about 40 percent longer (the test-only locale en-XA): the responsive spec checks that nothing is clipped or overflows.
+    { name: 'pseudo', testMatch: '**/ux-responsive.spec.ts', use: { ...devices['Desktop Chrome'], locale: 'en-XA' } },
   ],
   // E2E_NO_SERVER=1 runs specs that serve their own pages (the leak-scan self-test) without building the app.
   webServer: process.env['E2E_NO_SERVER']

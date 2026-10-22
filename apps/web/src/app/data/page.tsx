@@ -1,15 +1,5 @@
-'use client';
+import { RedirectStub } from '../../ui/shell/RedirectStub';
 
-import { RequireUnlocked } from '../../ui/core/RequireUnlocked';
-import { DataScreen } from '../../ui/data/DataScreen';
-import { LedgerProvider } from '../../ui/ledger/LedgerProvider';
-
-export default function Screen() {
-  return (
-    <RequireUnlocked titleKey="page.data.title">
-      <LedgerProvider>
-        <DataScreen />
-      </LedgerProvider>
-    </RequireUnlocked>
-  );
+export default function Page() {
+  return <RedirectStub from="/data/" />;
 }

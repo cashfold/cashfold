@@ -56,7 +56,9 @@ own in a few minutes.
 5. Serve `apps/web/out` with the headers in `apps/web/out/_headers` (written by the build; Netlify and Cloudflare Pages read it as it is).
    Every page already carries its own Content-Security-Policy and a no-referrer policy as `<meta>` tags, and every script and
    stylesheet is pinned by an integrity hash, so the app is protected even on a host that cannot set headers. Real headers add what a
-   `<meta>` cannot: `frame-ancestors`, `Permissions-Policy` and HSTS. For Caddy:
+   `<meta>` cannot: `frame-ancestors`, `Permissions-Policy` and HSTS. The Ubuntu font is served from the same origin under `/fonts/`
+   (`font-src 'self'`, no third-party font host); the files are copied unmodified with their licence (`fonts/UFL.txt`). A small inline script
+   sets the colour theme before the first paint; the page's policy allows exactly that script by hash. For Caddy:
 
    ```
    cashfold.example.com {

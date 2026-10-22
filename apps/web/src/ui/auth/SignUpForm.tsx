@@ -4,10 +4,11 @@ import { estimateStrength } from '@cashfold/core';
 import { useRouter } from 'next/navigation';
 import { useState, type FormEvent } from 'react';
 import { useCore, withPasswordBytes } from '../core/CoreProvider';
-import { TextField, buttonClass } from '../forms/TextField';
+import { TextField } from '../forms/TextField';
 import { useI18n } from '../i18n/I18nProvider';
 import { ServerAddress } from '../settings/ServerAddress';
 import { SecretKeyScreen, type CreatedAccount } from './SecretKeyScreen';
+import { Button, Checkbox, CheckboxField, Label } from '../kit';
 
 const DEFAULT_SERVER = process.env['NEXT_PUBLIC_DEFAULT_SERVER'] ?? '';
 
@@ -63,14 +64,14 @@ export function SignUpForm() {
         onDone={async () => {
           setCreated(undefined); // drops the Secret Key from memory
           await core.markUnlocked();
-          router.push('/folds/');
+          router.push('/overview/');
         }}
       />
     );
   }
 
   return (
-    <main id="main" tabIndex={-1}>
+    <div>
       <h1 className="text-2xl font-semibold">{t('page.signUp.title')}</h1>
       <p className="mt-3 text-muted">{t('signup.lede')}</p>
       <form onSubmit={submit} noValidate aria-busy={busy}>
@@ -93,14 +94,11 @@ export function SignUpForm() {
         <TextField label={t('signup.confirm.label')} type="password" autoComplete="new-password" required value={confirm} onChange={(e) => setConfirm(e.target.value)} error={errors.confirm} />
         <ServerAddress value={server} onChange={setServer} error={errors.server} />
         <div className="mt-4">
-          <label className="flex items-start gap-2">
-            <input type="checkbox" className="mt-1" checked={discoverable} onChange={(e) => setDiscoverable(e.target.checked)} />
-            <span>{t('signup.discoverable.label')}<span className="block text-sm text-muted">{t('signup.discoverable.hint')}</span></span>
-          </label>
+          <CheckboxField><Checkbox checked={discoverable} onChange={(checked) => setDiscoverable(checked)} /><Label>{t('signup.discoverable.label')}<span className="block text-sm text-muted">{t('signup.discoverable.hint')}</span></Label></CheckboxField>
         </div>
         {errors.form ? <p role="alert" className="mt-4 text-danger">{errors.form}</p> : null}
-        <button type="submit" className={`${buttonClass} mt-6`} disabled={busy}>{busy ? t('signup.working') : t('signup.submit')}</button>
+        <Button className="mt-6" type="submit" disabled={busy}>{busy ? t('signup.working') : t('signup.submit')}</Button>
       </form>
-    </main>
+    </div>
   );
 }

@@ -1,4 +1,5 @@
 import { expect, test } from './fixtures/index.js';
+import { go } from './fixtures/nav.js';
 
 // Quick unlock with a platform authenticator (FR-006), using Chromium's virtual authenticator with the PRF extension.
 
@@ -24,8 +25,8 @@ test.describe('@us1 quick unlock', () => {
     await page.getByTestId('secret-key').waitFor({ timeout: 60_000 });
     await page.getByLabel('I have saved my Secret Key').check();
     await page.getByRole('button', { name: 'Continue' }).click();
-    await expect(page.getByTestId('fold-name')).toHaveText('Personal');
-    await page.getByRole('navigation').getByRole('link', { name: 'Settings' }).click();
+    await expect(page.getByTestId('current-fold')).toHaveText('Personal');
+    await go(page, 'Settings');
   }
 
   test('turns on with the password, then unlocks without it; a browser restart brings the password back', async ({ page, context, expectNoA11yViolations }) => {
@@ -45,8 +46,8 @@ test.describe('@us1 quick unlock', () => {
     await page.getByRole('button', { name: 'Lock', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'Unlock Cashfold' })).toBeVisible();
     await page.getByRole('button', { name: 'Unlock with this device' }).click();
-    await page.getByRole('navigation').getByRole('link', { name: 'Folds' }).click();
-    await expect(page.getByTestId('fold-name')).toHaveText('Personal', { timeout: 30_000 });
+    await go(page, 'Folds');
+    await expect(page.getByTestId('current-fold')).toHaveText('Personal', { timeout: 30_000 });
 
     // lock, reload in the same browser session: still offered
     await page.getByRole('button', { name: 'Lock', exact: true }).click();

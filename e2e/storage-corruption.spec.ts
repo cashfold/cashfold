@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { chromium, type BrowserContext, type Page } from '@playwright/test';
 import { expect, test } from './fixtures/index.js';
+import { chooseFold, go, moreDetails } from './fixtures/nav.js';
 
 // A device whose storage misbehaves (FR-072, FR-016, edge cases): the browser is shut down the moment a change was confirmed; a page of the
 // encrypted database is overwritten while the app is locked. Confirmed changes are never lost without a word, a damaged file is kept, what can
@@ -12,7 +13,6 @@ const PASSWORD = 'correct horse battery staple';
 const RELAY = `http://localhost:${Number(process.env['E2E_RELAY_PORT'] ?? 3200)}`;
 const NOWHERE = 'http://localhost:9';
 const unique = () => `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
-const go = (page: Page, name: string) => page.getByRole('navigation').getByRole('link', { name, exact: true }).click();
 
 async function signUp(page: Page, server: string): Promise<string> {
   await page.goto('/sign-up/');
@@ -25,7 +25,7 @@ async function signUp(page: Page, server: string): Promise<string> {
   await expect(page.getByTestId('secret-key')).toBeVisible({ timeout: 90_000 });
   await page.getByLabel('I have saved my Secret Key').check();
   await page.getByRole('button', { name: 'Continue' }).click();
-  await expect(page.getByTestId('fold-name')).toHaveText('Personal');
+  await expect(page.getByTestId('current-fold')).toHaveText('Personal');
   return email;
 }
 
@@ -35,6 +35,7 @@ async function addAccount(page: Page, name: string): Promise<void> {
   const dialog = page.getByRole('dialog');
   await dialog.getByLabel('Name', { exact: true }).fill(name);
   await dialog.getByLabel('Opening balance (USD)').fill('100.00');
+  await moreDetails(dialog);
   await dialog.getByLabel('Opening date').fill('2020-01-01');
   await dialog.getByRole('button', { name: 'Create account' }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
@@ -46,8 +47,9 @@ async function addExpense(page: Page, account: string, amount: string, note: str
   const dialog = page.getByRole('dialog');
   await dialog.getByLabel('Account').selectOption({ label: `${account} (USD)` });
   await dialog.getByLabel('Amount (USD)').fill(amount);
+  await moreDetails(dialog);
   await dialog.getByLabel('Note').fill(note);
-  await dialog.getByRole('button', { name: 'Add transaction' }).click();
+  await dialog.getByRole('button', { name: 'Save' }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
 }
 
@@ -178,8 +180,8 @@ test.describe('@storage a device whose storage misbehaves', () => {
     await restore.getByRole('button', { name: 'Restore', exact: true }).click();
     await expect(page.getByTestId('restored')).toContainText('(restored)', { timeout: 60_000 });
     await go(page, 'Transactions');
-    // The picker appears when the damaged Fold was kept beside the restored one; otherwise the restored Fold is the only one.
-    if (await page.locator('#ledger-fold').count()) await page.locator('#ledger-fold').selectOption({ label: 'Personal (restored)' });
+    // The switcher appears when the damaged Fold was kept beside the restored one; otherwise the restored Fold is the only one.
+    if (await page.getByRole('button', { name: /^Switch Fold/ }).count()) await chooseFold(page, 'Personal (restored)', 'Transactions');
     await expect(page.getByTestId('tx-row').filter({ hasText: 'Coffee beans' })).toHaveCount(1, { timeout: 30_000 });
   });
 });

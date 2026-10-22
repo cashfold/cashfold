@@ -8,10 +8,10 @@ export function Page({ titleKey }: { titleKey: string }) {
   const { t } = useI18n();
   return (
     <RequireUnlocked titleKey={titleKey}>
-      <main id="main" tabIndex={-1}>
+      <div>
         <h1 className="text-2xl font-semibold">{t(titleKey)}</h1>
         <p className="mt-3 text-muted">{t('page.soon')}</p>
-      </main>
+      </div>
     </RequireUnlocked>
   );
 }

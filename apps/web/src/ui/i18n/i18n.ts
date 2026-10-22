@@ -1,6 +1,7 @@
 import IntlMessageFormat from 'intl-messageformat';
 import { MESSAGES_EN } from '../errors/catalogue';
 import en from './messages/en.json' with { type: 'json' };
+import { PSEUDO_LOCALE, pseudoCatalogue } from './pseudo';
 
 // Static-export friendly internationalisation: catalogues are bundled, ICU messages are formatted on the client with
 // intl-messageformat, and the locale is chosen from the browser's languages. Adding a language means adding a catalogue
@@ -10,15 +11,17 @@ export type Catalog = Readonly<Record<string, string>>;
 export type Catalogs = Readonly<Partial<Record<string, Catalog>>>;
 export type Translate = (key: string, params?: Record<string, string | number>) => string;
 
-export const LOCALES = { en: 'ltr', ar: 'rtl' } as const;
+export const LOCALES = { en: 'ltr', ar: 'rtl', 'en-XA': 'ltr' } as const;
 export type Locale = keyof typeof LOCALES;
-export const SUPPORTED_LOCALES = Object.keys(LOCALES) as Locale[];
+/** The languages people can use: the pseudo-locale (tests only) is not among them. */
+export const SUPPORTED_LOCALES = (Object.keys(LOCALES) as Locale[]).filter((l) => l !== PSEUDO_LOCALE);
 export const DEFAULT_LOCALE: Locale = 'en';
 
 const RTL_LANGUAGES = new Set(['ar', 'he', 'fa', 'ur', 'ps', 'sd', 'ug', 'yi', 'dv', 'ckb']);
 
 /** Bundled catalogues. `ar` is intentionally empty until it is professionally translated: the layout is right-to-left, the words fall back to English. */
-export const CATALOGS: Catalogs = { en: { ...MESSAGES_EN, ...en }, ar: {} };
+const ENGLISH: Catalog = { ...MESSAGES_EN, ...en };
+export const CATALOGS: Catalogs = { en: ENGLISH, ar: {}, [PSEUDO_LOCALE]: pseudoCatalogue(ENGLISH) };
 
 export function directionOf(tag: string): 'ltr' | 'rtl' {
   const language = tag.toLowerCase().split('-')[0] ?? '';
@@ -27,6 +30,7 @@ export function directionOf(tag: string): 'ltr' | 'rtl' {
 
 export function resolveLocale(preferred: readonly string[] | undefined): Locale {
   for (const tag of preferred ?? []) {
+    if (tag === PSEUDO_LOCALE) return PSEUDO_LOCALE; // exact, for the pseudo-locale e2e project only
     const language = tag.toLowerCase().split('-')[0] ?? '';
     const match = SUPPORTED_LOCALES.find((l) => l === language);
     if (match) return match;

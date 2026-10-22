@@ -21,8 +21,10 @@ function tokens(body: string): Record<string, string> {
   return Object.fromEntries([...body.matchAll(/--([a-z0-9-]+):\s*(#[0-9a-fA-F]{6})\s*;/g)].map((m) => [m[1]!, m[2]!]));
 }
 
-const light = tokens(block(css, /:root\s*\{/));
-const dark = tokens(block(block(css, /@media\s*\(prefers-color-scheme:\s*dark\)/), /:root\s*\{/));
+// Themes are chosen by the `data-theme` attribute on <html> (R-UX-05), set before first paint; `:root` carries the light values as the default.
+const light = tokens(block(css, /\[data-theme="light"\]/));
+const dark = tokens(block(css, /\[data-theme="dark"\]/));
+const rootDefault = tokens(block(css, /:root\s*\{/));
 
 function luminance(hex: string): number {
   const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255).map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
@@ -36,7 +38,7 @@ const contrast = (a: string, b: string) => {
 const TEXT_PAIRS: ReadonlyArray<readonly [string, string]> = [
   ['text', 'bg'], ['text', 'surface'], ['text-muted', 'bg'], ['text-muted', 'surface'],
   ['primary', 'bg'], ['on-primary', 'primary'], ['danger', 'bg'], ['danger', 'surface'], ['success', 'bg'], ['success', 'surface'],
-  ['warning', 'bg'], ['warning', 'surface'], ['on-danger', 'danger'],
+  ['warning', 'bg'], ['warning', 'surface'], ['on-danger', 'danger'], ['accent-text', 'bg'], ['accent-text', 'surface'],
 ];
 
 describe.each([['light', light], ['dark', dark]] as const)('%s theme', (_name, theme) => {
@@ -54,6 +56,25 @@ describe.each([['light', light], ['dark', dark]] as const)('%s theme', (_name, t
   it('keeps focus rings and borders of interactive controls at 3:1 against the page (non-text contrast)', () => {
     expect(contrast(theme['focus']!, theme['bg']!)).toBeGreaterThanOrEqual(3);
     expect(contrast(theme['border-strong']!, theme['bg']!)).toBeGreaterThanOrEqual(3);
+  });
+});
+
+describe('theme blocks', () => {
+  it('give the light theme as the :root default, so a page without the attribute is readable', () => {
+    expect(rootDefault).toEqual(light);
+  });
+
+  it('use the colours the design contract names (contracts/ui-kit.md §5)', () => {
+    expect(light['primary']).toBe('#047857');
+    expect(dark['primary']).toBe('#10b981');
+    expect(contrast(light['on-primary']!, light['primary']!)).toBeGreaterThanOrEqual(5.4);
+    expect(contrast(dark['on-primary']!, dark['primary']!)).toBeGreaterThanOrEqual(7.8);
+  });
+
+  it('declare the colour scheme and the font', () => {
+    expect(block(css, /\[data-theme="dark"\]/)).toMatch(/color-scheme:\s*dark/);
+    expect(block(css, /\[data-theme="light"\]/)).toMatch(/color-scheme:\s*light/);
+    expect(css).toMatch(/--font-sans:\s*Ubuntu,\s*system-ui,\s*sans-serif/);
   });
 });
 

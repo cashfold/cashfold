@@ -1,4 +1,5 @@
 import { containsAmount, containsBytes, encodings, formatLeaks, scanForLeaks, startCapture, type Seed } from './fixtures/leak-scan.js';
+import { parsePrefs } from '../apps/web/src/ui/prefs/schema.js';
 import { expect, test } from './fixtures/index.js';
 
 // The scan must be able to fail. Each case plants one marker in one place and checks it is reported; the clean
@@ -54,7 +55,25 @@ test('finds a marker in IndexedDB, localStorage, sessionStorage and Cache Storag
     await cache.put('/page', new Response('Secret Savings', { headers: { 'content-type': 'text/html' } }));
   });
   const leaks = await scanForLeaks(page, { seed });
-  expect(leaks.map((l) => l.where).sort()).toEqual(['cachestorage', 'indexeddb', 'localstorage', 'sessionstorage']);
+  // The `draft` key is both seeded text and a key the app may not use.
+  expect(leaks.map((l) => l.where).sort()).toEqual(['cachestorage', 'indexeddb', 'localstorage', 'localstorage', 'sessionstorage']);
+});
+
+test('allows only a schema-valid cashfold.ui in localStorage', async ({ page }) => {
+  const valid = JSON.stringify(parsePrefs(JSON.stringify({ v: 1, theme: 'dark', recents: { account: { f1: 'a1' }, categories: {} } })));
+  await page.evaluate((v) => localStorage.setItem('cashfold.ui', v), valid);
+  expect(await scanForLeaks(page, { seed })).toEqual([]);
+
+  await page.evaluate(() => localStorage.setItem('cashfold.ui', JSON.stringify({ v: 1, theme: 'dark', extra: 'x' })));
+  expect(formatLeaks(await scanForLeaks(page, { seed }))).toMatch(/does not match the preferences schema/);
+
+  await page.evaluate(() => localStorage.setItem('cashfold.ui', JSON.stringify({ v: 1, hints: { dismissed: ['Alice Example'] } })));
+  expect(formatLeaks(await scanForLeaks(page, { seed }))).toMatch(/localstorage: "Alice Example"/);
+});
+
+test('reports any other localStorage key', async ({ page }) => {
+  await page.evaluate(() => localStorage.setItem('theme', 'dark'));
+  expect(formatLeaks(await scanForLeaks(page, { seed }))).toMatch(/unexpected localStorage key "theme"/);
 });
 
 test('finds a marker in the console and in a network request', async ({ page }) => {

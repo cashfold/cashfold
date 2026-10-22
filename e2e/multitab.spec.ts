@@ -1,5 +1,6 @@
 import type { Page } from '@playwright/test';
 import { expect, test } from './fixtures/index.js';
+import { go } from './fixtures/nav.js';
 
 // Durability and several tabs (ARCHITECTURE 8.1a, FR-072): the app asks the browser to keep its data and says so when it will not, reminds
 // people whose data is only on their device to make a backup, and keeps one writer however many tabs are open.
@@ -8,7 +9,6 @@ const PASSWORD = 'correct horse battery staple';
 const RELAY = `http://localhost:${Number(process.env['E2E_RELAY_PORT'] ?? 3200)}`;
 const NOWHERE = 'http://localhost:9'; // nothing listens here: the account is made on this device and registered later
 const unique = () => `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
-const go = (page: Page, name: string) => page.getByRole('navigation').getByRole('link', { name, exact: true }).click();
 
 async function signUp(page: Page, server = RELAY): Promise<void> {
   await page.goto('/sign-up/');
@@ -20,7 +20,7 @@ async function signUp(page: Page, server = RELAY): Promise<void> {
   await expect(page.getByTestId('secret-key')).toBeVisible({ timeout: 90_000 });
   await page.getByLabel('I have saved my Secret Key').check();
   await page.getByRole('button', { name: 'Continue' }).click();
-  await expect(page.getByTestId('fold-name')).toHaveText('Personal');
+  await expect(page.getByTestId('current-fold')).toHaveText('Personal');
 }
 
 async function addAccount(page: Page, name: string): Promise<void> {
@@ -66,7 +66,7 @@ test.describe('@durability storage and tabs', () => {
     await browserWillKeep(page, true);
     await signUp(page);
     await addAccount(page, 'Everyday');
-    await go(page, 'Settings');
+    await go(page, 'Data');
     await expect(page.getByTestId('storage-state')).toContainText('has agreed to keep');
     await expect(page.getByTestId('storage-warning')).toHaveCount(0);
     expect(await page.evaluate(() => (window as unknown as { __persistCalls: number }).__persistCalls)).toBeGreaterThanOrEqual(1);
@@ -82,7 +82,7 @@ test.describe('@durability storage and tabs', () => {
     await go(page, 'Transactions');
     await expect(page.getByTestId('storage-warning')).toContainText('Your data is also on the service', { timeout: 30_000 });
     await expectNoA11yViolations();
-    await go(page, 'Settings');
+    await go(page, 'Data');
     await expect(page.getByTestId('storage-state')).toContainText('has not agreed');
     await page.getByRole('button', { name: 'Ask the browser to keep my data' }).click();
     await expect(page.getByRole('region', { name: 'Storage' }).getByRole('status')).toContainText('asked again');
@@ -109,7 +109,7 @@ test.describe('@durability storage and tabs', () => {
     await backup.getByLabel('Passphrase again').fill('backup passphrase 1');
     const [download] = await Promise.all([page.waitForEvent('download'), backup.getByRole('button', { name: 'Make a backup' }).click()]);
     expect(download.suggestedFilename()).toMatch(/\.cashfold-backup$/);
-    await go(page, 'Settings');
+    await go(page, 'Data');
     await expect(page.getByRole('region', { name: 'Storage' })).toContainText('Last backup');
   });
 

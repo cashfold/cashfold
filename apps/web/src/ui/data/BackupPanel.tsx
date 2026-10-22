@@ -4,11 +4,11 @@ import Link from 'next/link';
 import { useRef, useState, type FormEvent } from 'react';
 import type { FoldSummary } from '@cashfold/core';
 import { useCore, withPasswordBytes } from '../core/CoreProvider';
-import { TextField, buttonClass } from '../forms/TextField';
+import { TextField } from '../forms/TextField';
 import { useI18n } from '../i18n/I18nProvider';
 import { accountErrorText, type Reply } from '../settings/errors';
+import { Button, Select } from '../kit';
 
-const select = 'mt-1 block w-full rounded-ui border border-border-strong bg-bg px-3 py-2';
 
 /** Encrypted backup of one Fold, and restoring one into a new Fold (FR-091). The file is useless without its passphrase. */
 export function BackupPanel({ folds }: { folds: readonly FoldSummary[] }) {
@@ -72,13 +72,13 @@ export function BackupPanel({ folds }: { folds: readonly FoldSummary[] }) {
         {folds.length > 1 ? (
           <label className="mt-4 block">
             <span className="block font-medium">{t('ledger.fold.label')}</span>
-            <select className={select} value={fold} onChange={(e) => setFold(e.target.value)}>{folds.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}</select>
+            <Select value={fold} onChange={(e) => setFold(e.target.value)}>{folds.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}</Select>
           </label>
         ) : null}
         <TextField label={t('data.backup.passphrase')} hint={t('data.backup.passphrase.hint')} type="password" autoComplete="new-password" value={passphrase} onChange={(e) => setPassphrase(e.target.value)} required />
         <TextField label={t('data.backup.again')} type="password" autoComplete="new-password" value={again} onChange={(e) => setAgain(e.target.value)} required />
         {error ? <p role="alert" className="mt-3 text-danger">{error}</p> : null}
-        <button type="submit" className={`${buttonClass} mt-4`} disabled={busy}>{t('data.backup.create')}</button>
+        <Button className="mt-4" type="submit" disabled={busy}>{t('data.backup.create')}</Button>
         {made ? <p role="status" className="mt-3">{t('data.backup.made')}</p> : null}
       </form>
 
@@ -87,15 +87,15 @@ export function BackupPanel({ folds }: { folds: readonly FoldSummary[] }) {
       <form onSubmit={restore} aria-busy={busy} className="max-w-md">
         <div className="mt-4">
           <label htmlFor="restore-file" className="block font-medium">{t('data.restore.file')}</label>
-          <input id="restore-file" ref={file} type="file" className="mt-1 block" />
+          <input id="restore-file" ref={file} type="file" className="mt-1 block w-full max-w-full" />
         </div>
         <TextField label={t('data.backup.passphrase')} type="password" autoComplete="off" value={restoreSecret} onChange={(e) => setRestoreSecret(e.target.value)} required />
         {restoreError ? <p role="alert" className="mt-3 text-danger">{restoreError}</p> : null}
-        <button type="submit" className={`${buttonClass} mt-4`} disabled={busy}>{t('data.restore.submit')}</button>
+        <Button className="mt-4" type="submit" disabled={busy}>{t('data.restore.submit')}</Button>
       </form>
       {restored ? (
         <p role="status" className="mt-3" data-testid="restored">
-          {t('data.restore.done', { name: restored.name, count: restored.records })} <Link className="underline" href="/folds/">{t('data.restore.goFolds')}</Link>
+          {t('data.restore.done', { name: restored.name, count: restored.records })} <Link className="underline" href="/settings/folds/">{t('data.restore.goFolds')}</Link>
         </p>
       ) : null}
     </section>

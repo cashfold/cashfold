@@ -3,6 +3,7 @@ import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import type { Page } from '@playwright/test';
 import { expect, test } from './fixtures/index.js';
+import { go } from './fixtures/nav.js';
 
 // What the static export promises the browser (Constitution VIII, T189): a Content-Security-Policy with no 'unsafe-inline' or
 // 'unsafe-eval', a subresource-integrity hash on every script and stylesheet, a no-referrer policy, the headers a host must send,
@@ -146,12 +147,12 @@ test.describe('@security the app under that policy', () => {
     await expect(page.getByTestId('secret-key')).toBeVisible({ timeout: 90_000 });
     await page.getByLabel('I have saved my Secret Key').check();
     await page.getByRole('button', { name: 'Continue' }).click();
-    await expect(page.getByTestId('fold-name')).toHaveText('Personal');
+    await expect(page.getByTestId('current-fold')).toHaveText('Personal');
     for (const name of ['Accounts', 'Transactions', 'Budgets', 'Schedules', 'Goals', 'Data', 'Devices', 'Settings', 'Folds']) {
-      await page.getByRole('navigation').getByRole('link', { name, exact: true }).click();
+      await go(page, name);
       await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
     }
-    await expect(page.getByTestId('fold-name')).toHaveText('Personal');
+    await expect(page.getByTestId('current-fold')).toHaveText('Personal');
     await page.waitForTimeout(2_000); // let the service worker and the sync connection settle
     const inPage = await page.evaluate(() => (window as unknown as { __csp?: string[] }).__csp ?? []);
     expect([...inPage, ...seen()]).toEqual([]);

@@ -1,6 +1,12 @@
 @import 'tailwindcss';
 @import './tokens.css';
+@import './fonts.css';
+
+/* Dark utilities follow the attribute, not the operating system, so the person's choice wins (R-UX-05). */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
 html { background: var(--bg); color: var(--text); font-size: 100%; }
-body { min-block-size: 100vh; margin: 0; font-family: system-ui, sans-serif; line-height: 1.5; }
+body { min-block-size: 100vh; margin: 0; font-family: var(--font-sans); line-height: 1.5; background: var(--bg); color: var(--text); }
 :focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+.tabular-nums { font-variant-numeric: tabular-nums; }
+select, input, textarea { max-inline-size: 100%; }

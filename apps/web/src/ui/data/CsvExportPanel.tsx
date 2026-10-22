@@ -3,12 +3,12 @@
 import { useState, type FormEvent } from 'react';
 import type { FoldSummary } from '@cashfold/core';
 import { useCore, withPasswordBytes } from '../core/CoreProvider';
-import { TextField, buttonClass } from '../forms/TextField';
+import { TextField } from '../forms/TextField';
 import { useI18n } from '../i18n/I18nProvider';
 import { downloadText } from '../settings/OneTimeSecret';
 import { accountErrorText, type Reply } from '../settings/errors';
+import { Button, Select } from '../kit';
 
-const select = 'mt-1 block w-full rounded-ui border border-border-strong bg-bg px-3 py-2';
 
 /** CSV export (FR-092). The file is plain text, so the warning comes first and the password is asked for again. */
 export function CsvExportPanel({ folds }: { folds: readonly FoldSummary[] }) {
@@ -44,12 +44,12 @@ export function CsvExportPanel({ folds }: { folds: readonly FoldSummary[] }) {
         {folds.length > 1 ? (
           <label className="mt-4 block">
             <span className="block font-medium">{t('ledger.fold.label')}</span>
-            <select className={select} value={fold} onChange={(e) => setFold(e.target.value)}>{folds.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}</select>
+            <Select value={fold} onChange={(e) => setFold(e.target.value)}>{folds.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}</Select>
           </label>
         ) : null}
         <TextField label={t('account.credentials.current')} type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} required />
         {error ? <p role="alert" className="mt-3 text-danger">{error}</p> : null}
-        <button type="submit" className={`${buttonClass} mt-4`} disabled={busy}>{t('data.export.submit')}</button>
+        <Button className="mt-4" type="submit" disabled={busy}>{t('data.export.submit')}</Button>
         {done ? <p role="status" className="mt-3">{t('data.export.done')}</p> : null}
       </form>
     </section>

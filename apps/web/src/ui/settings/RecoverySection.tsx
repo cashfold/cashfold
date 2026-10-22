@@ -2,10 +2,11 @@
 
 import { useState, type FormEvent } from 'react';
 import { useCore, withPasswordBytes } from '../core/CoreProvider';
-import { TextField, buttonClass, secondaryButtonClass } from '../forms/TextField';
+import { TextField } from '../forms/TextField';
 import { useI18n } from '../i18n/I18nProvider';
 import { OneTimeSecret } from './OneTimeSecret';
 import { accountErrorText, type Reply } from './errors';
+import { Button } from '../kit';
 
 /** The Recovery Key (FR-009): a way back in when the password or the Secret Key is lost. Shown once, kept by the person. */
 export function RecoverySection() {
@@ -43,8 +44,8 @@ export function RecoverySection() {
         <TextField label={t('account.credentials.current')} type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} required />
         {error ? <p role="alert" className="mt-3 text-danger">{error}</p> : null}
         <div className="mt-4 flex flex-wrap gap-3">
-          <button type="submit" className={buttonClass} disabled={busy}>{t('account.recovery.set')}</button>
-          <button type="button" className={secondaryButtonClass} disabled={busy || password === ''} onClick={(e) => void run('remove', e as never)}>{t('account.recovery.remove')}</button>
+          <Button type="submit" disabled={busy}>{t('account.recovery.set')}</Button>
+          <Button outline type="button" disabled={busy || password === ''} onClick={(e) => void run('remove', e as never)}>{t('account.recovery.remove')}</Button>
         </div>
       </form>
       {removed ? <p role="status" className="mt-3">{t('account.recovery.removed')}</p> : null}

@@ -2,11 +2,12 @@
 
 import { useState, type FormEvent } from 'react';
 import { useCore, withPasswordBytes } from '../core/CoreProvider';
-import { TextField, buttonClass } from '../forms/TextField';
+import { TextField } from '../forms/TextField';
 import { useI18n } from '../i18n/I18nProvider';
 import { useSyncStatus } from '../sync/useSyncStatus';
 import { EmailSection } from './EmailSection';
 import { ServerAddress } from './ServerAddress';
+import { Button } from '../kit';
 
 type Result = { ok: true } | { ok: false; error: { code: string } };
 
@@ -63,7 +64,7 @@ export function SyncSection() {
           <TextField label={t('unlock.password.label')} type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} />
           <TextField label={t('syncenable.invite.label')} hint={t('syncenable.invite.hint')} autoComplete="off" value={invite} onChange={(e) => setInvite(e.target.value)} />
           {error ? <p role="alert" className="mt-3 text-danger">{error}</p> : null}
-          <button type="submit" className={`${buttonClass} mt-4`} disabled={busy}>{busy ? t('adddevice.working') : t('syncenable.submit')}</button>
+          <Button className="mt-4" type="submit" disabled={busy}>{busy ? t('adddevice.working') : t('syncenable.submit')}</Button>
         </form>
       ) : (
         <>

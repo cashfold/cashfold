@@ -3,9 +3,10 @@
 import Link from 'next/link';
 import { useState, type FormEvent } from 'react';
 import { useCore, withPasswordBytes } from '../core/CoreProvider';
-import { TextField, buttonClass, secondaryButtonClass } from '../forms/TextField';
+import { TextField } from '../forms/TextField';
 import { useI18n } from '../i18n/I18nProvider';
 import { accountErrorText, type Reply } from './errors';
+import { Button, Checkbox, CheckboxField, Label } from '../kit';
 
 interface Moved { server: string; folds: number; kept: string[]; otherDevices: number; oldDeleted: boolean }
 type DeleteReply = Reply<true> | { ok: false; error: { code: 'owns_shared_fold'; folds?: Array<{ id: string; name: string }> } };
@@ -20,8 +21,8 @@ export function AccountSection() {
     <section aria-labelledby="danger-heading" className="mt-8">
       <h2 id="danger-heading" className="text-lg font-semibold">{t('account.manage.title')}</h2>
       <div className="mt-3 flex flex-wrap gap-3">
-        <button type="button" className={secondaryButtonClass} aria-expanded={open === 'move'} onClick={() => setOpen(open === 'move' ? undefined : 'move')}>{t('account.move.open')}</button>
-        <button type="button" className={secondaryButtonClass} aria-expanded={open === 'delete'} onClick={() => setOpen(open === 'delete' ? undefined : 'delete')}>{t('account.delete.open')}</button>
+        <Button outline type="button" aria-expanded={open === 'move'} onClick={() => setOpen(open === 'move' ? undefined : 'move')}>{t('account.move.open')}</Button>
+        <Button outline type="button" aria-expanded={open === 'delete'} onClick={() => setOpen(open === 'delete' ? undefined : 'delete')}>{t('account.delete.open')}</Button>
       </div>
       {open === 'move' ? <MoveForm /> : null}
       {open === 'delete' ? <DeleteForm /> : null}
@@ -72,12 +73,9 @@ function MoveForm() {
       <TextField label={t('account.move.server')} type="url" value={server} onChange={(e) => setServer(e.target.value)} placeholder="https://" required autoComplete="off" />
       <TextField label={t('account.move.invite')} value={invite} onChange={(e) => setInvite(e.target.value)} autoComplete="off" />
       <TextField label={t('account.credentials.current')} type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} required />
-      <label className="mt-4 flex items-start gap-2">
-        <input type="checkbox" className="mt-1" checked={deleteOld} onChange={(e) => setDeleteOld(e.target.checked)} />
-        <span>{t('account.move.deleteOld')}</span>
-      </label>
+      <CheckboxField className="mt-4"><Checkbox checked={deleteOld} onChange={(checked) => setDeleteOld(checked)} /><Label>{t('account.move.deleteOld')}</Label></CheckboxField>
       {error ? <p role="alert" className="mt-3 text-danger">{error}</p> : null}
-      <button type="submit" className={`${buttonClass} mt-4`} disabled={busy}>{t('account.move.submit')}</button>
+      <Button className="mt-4" type="submit" disabled={busy}>{t('account.move.submit')}</Button>
     </form>
   );
 }
@@ -120,8 +118,8 @@ function DeleteForm() {
           {owned.map((f) => <li key={f.id}>{f.name}</li>)}
         </ul>
       ) : null}
-      {owned.length > 0 ? <p className="mt-2"><Link className="underline" href="/folds/">{t('account.delete.goFolds')}</Link></p> : null}
-      <button type="submit" className={`${buttonClass} mt-4`} disabled={busy || typed.trim().toLowerCase() !== email.toLowerCase()}>{t('account.delete.submit')}</button>
+      {owned.length > 0 ? <p className="mt-2"><Link className="underline" href="/settings/folds/">{t('account.delete.goFolds')}</Link></p> : null}
+      <Button className="mt-4" type="submit" disabled={busy || typed.trim().toLowerCase() !== email.toLowerCase()}>{t('account.delete.submit')}</Button>
     </form>
   );
 }

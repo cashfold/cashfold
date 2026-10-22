@@ -6,6 +6,7 @@ import { ErrorBoundary } from '../ui/errors/ErrorBoundary';
 import { I18nProvider, useI18n } from '../ui/i18n/I18nProvider';
 import { CoreProvider } from '../ui/core/CoreProvider';
 import { AppShell } from '../ui/shell/AppShell';
+import { ThemeProvider } from '../ui/theme/ThemeProvider';
 import { SupportGate } from '../ui/support/SupportGate';
 
 function Inner({ children }: { children: ReactNode }) {
@@ -24,10 +25,12 @@ export function AppProviders({ children }: { children: ReactNode }) {
     registerServiceWorker().catch(() => undefined);
   }, []);
   return (
-    <I18nProvider>
-      <CoreProvider>
-        <Inner>{children}</Inner>
-      </CoreProvider>
-    </I18nProvider>
+    <ThemeProvider>
+      <I18nProvider>
+        <CoreProvider>
+          <Inner>{children}</Inner>
+        </CoreProvider>
+      </I18nProvider>
+    </ThemeProvider>
   );
 }

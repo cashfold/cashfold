@@ -1,12 +1,12 @@
 'use client';
 
 import { RequireUnlocked } from '../../ui/core/RequireUnlocked';
-import { SettingsScreen } from '../../ui/settings/SettingsScreen';
+import { SettingsIndex } from '../../ui/settings/SettingsIndex';
 
 export default function SettingsPage() {
   return (
     <RequireUnlocked titleKey="page.settings.title">
-      <SettingsScreen />
+      <SettingsIndex />
     </RequireUnlocked>
   );
 }

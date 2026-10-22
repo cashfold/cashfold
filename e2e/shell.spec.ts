@@ -5,7 +5,8 @@ import { expect, test } from './fixtures/index.js';
 
 test('shell has landmarks, a working skip link and no axe violations', async ({ page, expectNoA11yViolations }) => {
   await page.goto('/');
-  await expect(page.getByRole('navigation')).toBeVisible();
+  // Before sign-in there is no navigation: a banner with the brand, then the page.
+  await expect(page.getByRole('banner')).toBeVisible();
   await expect(page.getByRole('main')).toBeVisible();
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
   await page.keyboard.press('Tab');
@@ -17,7 +18,7 @@ test('shell has landmarks, a working skip link and no axe violations', async ({ 
 });
 
 test('every route renders a single level-one heading', async ({ page }) => {
-  for (const route of ['/dashboard/', '/accounts/', '/transactions/', '/transfers/', '/categories/', '/folds/', '/settings/', '/sign-in/', '/sign-up/', '/add/']) {
+  for (const route of ['/overview/', '/accounts/', '/transactions/', '/plan/', '/settings/', '/settings/profile/', '/settings/appearance/', '/settings/categories/', '/settings/sync/', '/settings/data/', '/settings/folds/', '/settings/advanced/', '/sign-in/', '/sign-up/', '/add/']) {
     await page.goto(route);
     await expect(page.getByRole('heading', { level: 1 }), route).toHaveCount(1);
   }

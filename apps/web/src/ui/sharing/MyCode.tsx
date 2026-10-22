@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import { useCore } from '../core/CoreProvider';
-import { secondaryButtonClass } from '../forms/TextField';
+
 import { useI18n } from '../i18n/I18nProvider';
 import { Fingerprint } from './Fingerprint';
+import { Button } from '../kit';
 
 interface MyCodeData { code: string; fingerprint: string[]; fingerprintQr: string }
 type Outcome<T> = { ok: true; value: T } | { ok: false; error: { code: string } };
@@ -33,12 +34,12 @@ export function MyCode() {
       <Fingerprint groups={data.fingerprint} qr={data.fingerprintQr} label={t('sharing.mine.fingerprint')} testId="my-fingerprint" />
       <h3 className="mt-4 font-medium">{t('sharing.mine.code')}</h3>
       <p className="mt-1 break-all rounded-ui border border-border-strong p-2 font-mono text-sm" data-testid="my-code">{data.code}</p>
-      <button
-        type="button" className={`${secondaryButtonClass} mt-2`}
+      <Button outline className="mt-2"
+        type="button" 
         onClick={() => void navigator.clipboard?.writeText(data.code).then(() => setCopied(true), () => undefined)}
       >
         {copied ? t('sharing.mine.copied') : t('sharing.mine.copy')}
-      </button>
+      </Button>
     </section>
   );
 }

@@ -4,6 +4,7 @@
 //  - every external script and stylesheet gets a subresource-integrity hash;
 //  - every page gets a Content-Security-Policy <meta> that allows its own files and exactly its own inline scripts (by hash), so there is
 //    no 'unsafe-inline' and no 'unsafe-eval';
+//  - a page fails the build when it carries a `style=` attribute: `style-src 'self'` blocks it, so it would only show up as a broken layout;
 //  - a no-referrer policy;
 //  - `_headers`: the policy a host should send as real headers (Netlify / Cloudflare Pages format; the same values are given for nginx
 //    and others in docs/self-hosting.md). Headers can say what a <meta> cannot (frame-ancestors, Permissions-Policy, HSTS).
@@ -63,6 +64,9 @@ for (const file of walk(out)) {
   html = html.replace(/<script\b[^>]*\ssrc="[^"]*"[^>]*>/g, (tag) => withIntegrity(tag, 'src'));
   html = html.replace(/<link\b[^>]*\srel="(?:stylesheet|modulepreload)"[^>]*>/g, (tag) => withIntegrity(tag, 'href'));
   html = html.replace(/<link\b[^>]*\srel="preload"[^>]*\sas="(?:script|style)"[^>]*>/g, (tag) => withIntegrity(tag, 'href'));
+
+  const styled = /<[a-z][^>]*\sstyle=/i.exec(html);
+  if (styled) throw new Error(`${relative(out, file)} has a style attribute (${styled[0].slice(0, 80)}); the Content-Security-Policy blocks it. Use a class.`);
 
   const inline = [];
   for (const m of html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/g)) {

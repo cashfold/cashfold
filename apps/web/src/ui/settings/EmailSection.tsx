@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { useCore } from '../core/CoreProvider';
-import { TextField, buttonClass, secondaryButtonClass } from '../forms/TextField';
+import { TextField } from '../forms/TextField';
 import { useI18n } from '../i18n/I18nProvider';
+import { Button, Checkbox, CheckboxField, Label } from '../kit';
 
 type State = { verification: { kind: 'verified' | 'unverified' | 'disabled' }; discoverable: boolean };
 type Reply<T> = { ok: true; value: T } | { ok: false; error: { code: string } };
@@ -68,17 +69,14 @@ export function EmailSection() {
       {state.verification.kind === 'unverified' ? (
         <div className="mt-1">
           <p className="text-muted">{t('email.unverified')}</p>
-          <button type="button" className={`${secondaryButtonClass} mt-2`} onClick={() => void request()}>{t('email.send')}</button>
+          <Button outline className="mt-2" type="button" onClick={() => void request()}>{t('email.send')}</Button>
           <form onSubmit={submit}>
             <TextField label={t('email.code.label')} hint={t('email.code.hint')} autoComplete="one-time-code" required value={token} onChange={(e) => setToken(e.target.value)} />
-            <button type="submit" className={`${buttonClass} mt-3`}>{t('email.confirm')}</button>
+            <Button className="mt-3" type="submit" >{t('email.confirm')}</Button>
           </form>
         </div>
       ) : null}
-      <label className="mt-4 flex items-start gap-2">
-        <input type="checkbox" checked={state.discoverable} onChange={(e) => void setDiscoverable(e.target.checked)} />
-        <span>{t('email.discoverable')}</span>
-      </label>
+      <CheckboxField className="mt-4"><Checkbox checked={state.discoverable} onChange={(checked) => void setDiscoverable(checked)} /><Label>{t('email.discoverable')}</Label></CheckboxField>
       <p role="status" className="mt-2 text-sm text-muted">{message ?? ''}</p>
     </div>
   );

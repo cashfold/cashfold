@@ -14,17 +14,17 @@ export function RequireUnlocked({ children, titleKey }: { children: ReactNode; t
   if (phase === 'locked') return <UnlockForm />;
   if (phase === 'no_account') {
     return (
-      <main id="main" tabIndex={-1}>
+      <div>
         <h1 className="text-2xl font-semibold">{t(titleKey)}</h1>
         <p className="mt-3">{t('gate.noAccount')}</p>
         <p className="mt-3"><Link className="underline" href="/sign-up/">{t('gate.createAccount')}</Link></p>
-      </main>
+      </div>
     );
   }
   return (
-    <main id="main" tabIndex={-1}>
+    <div>
       <h1 className="text-2xl font-semibold">{t(titleKey)}</h1>
       <p className="mt-3" role={phase === 'failed' ? 'alert' : 'status'}>{phase === 'failed' ? t('gate.failed') : t('loading')}</p>
-    </main>
+    </div>
   );
 }

@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { expect, test } from './fixtures/index.js';
+import { go } from './fixtures/nav.js';
 
 // User story 1: create a private account and a first Fold, entirely on this device (FR-001 to FR-007, FR-020, FR-022).
 // Runs on the production build with the real encrypted database in a real worker.
@@ -45,8 +46,8 @@ test.describe('@us1 account', () => {
     await page.getByLabel('I have saved my Secret Key').check();
     await continueButton.click();
 
-    await expect(page).toHaveURL(/\/folds\/$/);
-    await expect(page.getByTestId('fold-name')).toHaveText('Personal');
+    await expect(page).toHaveURL(/\/overview\/$/);
+    await expect(page.getByTestId('current-fold')).toHaveText('Personal');
     await expectNoA11yViolations();
     await expect(page.getByText(secretKey)).toHaveCount(0); // the key is gone from the page
   });
@@ -66,7 +67,7 @@ test.describe('@us1 account', () => {
     await signUp(page);
     await page.getByLabel('I have saved my Secret Key').check();
     await page.getByRole('button', { name: 'Continue' }).click();
-    await expect(page.getByTestId('fold-name')).toHaveText('Personal');
+    await expect(page.getByTestId('current-fold')).toHaveText('Personal');
 
     await page.getByRole('button', { name: 'Lock', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'Unlock Cashfold' })).toBeVisible();
@@ -80,15 +81,15 @@ test.describe('@us1 account', () => {
     await page.getByLabel('Password').fill(`  ${PASSWORD}  `);
     await page.getByRole('button', { name: 'Unlock' }).click();
     // In-app navigation keeps the session; a full page load would (correctly) end it.
-    await page.getByRole('navigation').getByRole('link', { name: 'Folds' }).click();
-    await expect(page.getByTestId('fold-name')).toHaveText('Personal');
+    await go(page, 'Folds');
+    await expect(page.getByTestId('current-fold')).toHaveText('Personal');
   });
 
   test('stays locked after a reload and needs the password again', async ({ page }) => {
     await signUp(page);
     await page.getByLabel('I have saved my Secret Key').check();
     await page.getByRole('button', { name: 'Continue' }).click();
-    await expect(page.getByTestId('fold-name')).toHaveText('Personal');
+    await expect(page.getByTestId('current-fold')).toHaveText('Personal');
     await page.reload();
     await expect(page.getByRole('heading', { name: 'Unlock Cashfold' })).toBeVisible({ timeout: 30_000 });
     await expect(page.getByText('Personal')).toHaveCount(0);
@@ -98,7 +99,7 @@ test.describe('@us1 account', () => {
     await signUp(page);
     await page.getByLabel('I have saved my Secret Key').check();
     await page.getByRole('button', { name: 'Continue' }).click();
-    await expect(page.getByTestId('fold-name')).toHaveText('Personal');
+    await expect(page.getByTestId('current-fold')).toHaveText('Personal');
     await page.evaluate(() => window.dispatchEvent(new Event('blur')));
     await expect(page.getByTestId('privacy-cover')).toBeVisible();
     await expect(page.locator('main[inert], div[inert]').first()).toBeAttached();
@@ -110,7 +111,9 @@ test.describe('@us1 account', () => {
     await signUp(page);
     await page.getByLabel('I have saved my Secret Key').check();
     await page.getByRole('button', { name: 'Continue' }).click();
+    await go(page, 'Folds');
 
+    await page.getByRole('button', { name: 'New Fold' }).click();
     await page.getByLabel('Fold name').fill(FOLD_NAME);
     await page.getByLabel('Base currency').selectOption('EUR');
     await page.getByRole('button', { name: 'Create Fold' }).click();
@@ -142,11 +145,11 @@ test.describe('@us1 account', () => {
     await signUp(page);
     await page.getByLabel('I have saved my Secret Key').check();
     await page.getByRole('button', { name: 'Continue' }).click();
-    await expect(page.getByTestId('fold-name')).toHaveText('Personal');
+    await expect(page.getByTestId('current-fold')).toHaveText('Personal');
 
     const second = await context.newPage();
     await second.goto('/folds/');
-    await expect(second.getByTestId('fold-name')).toHaveText('Personal', { timeout: 30_000 });
+    await expect(second.getByTestId('current-fold')).toHaveText('Personal', { timeout: 30_000 });
 
     await page.getByRole('button', { name: 'Lock', exact: true }).click();
     await expect(second.getByRole('heading', { name: 'Unlock Cashfold' })).toBeVisible({ timeout: 15_000 });
@@ -157,6 +160,8 @@ test.describe('@us1 account', () => {
     const secretKey = await signUp(page);
     await page.getByLabel('I have saved my Secret Key').check();
     await page.getByRole('button', { name: 'Continue' }).click();
+    await go(page, 'Folds');
+    await page.getByRole('button', { name: 'New Fold' }).click();
     await page.getByLabel('Fold name').fill(FOLD_NAME);
     await page.getByRole('button', { name: 'Create Fold' }).click();
     await expect(page.getByTestId('fold-name')).toHaveText(['Personal', FOLD_NAME]);
@@ -169,7 +174,7 @@ test.describe('@us1 account', () => {
     const secretKey = await signUp(page);
     await page.getByLabel('I have saved my Secret Key').check();
     await page.getByRole('button', { name: 'Continue' }).click();
-    await expect(page.getByTestId('fold-name')).toHaveText('Personal');
+    await expect(page.getByTestId('current-fold')).toHaveText('Personal');
     return secretKey;
   }
 
@@ -179,15 +184,15 @@ test.describe('@us1 account', () => {
     await expect(reminder).toBeVisible();
     await reminder.getByRole('button', { name: 'Dismiss' }).click();
     await expect(reminder).toHaveCount(0);
-    await page.getByRole('navigation').getByRole('link', { name: 'Settings' }).click();
-    await page.getByRole('navigation').getByRole('link', { name: 'Folds' }).click();
+    await go(page, 'Settings');
+    await go(page, 'Folds');
     await expect(page.getByRole('complementary', { name: 'Reminder' })).toHaveCount(0);
   });
 
   test('settings: the auto-lock period is stored on the device, and the Emergency Kit needs the password again', async ({ page, expectNoA11yViolations }) => {
     const secretKey = await intoApp(page);
-    await page.getByRole('navigation').getByRole('link', { name: 'Settings' }).click();
-    await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
+    await go(page, 'Settings');
+    await expect(page.getByRole('heading', { level: 1, name: 'Profile and security' })).toBeVisible();
     await expectNoA11yViolations();
 
     await page.getByLabel('Lock after no activity for').selectOption('15');
@@ -207,7 +212,7 @@ test.describe('@us1 account', () => {
     await page.reload();
     await page.getByLabel('Password').fill(PASSWORD);
     await page.getByRole('button', { name: 'Unlock' }).click();
-    await page.getByRole('navigation').getByRole('link', { name: 'Settings' }).click();
+    await go(page, 'Settings');
     await expect(page.getByLabel('Lock after no activity for')).toHaveValue('15');
   });
 });

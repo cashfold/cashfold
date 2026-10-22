@@ -60,3 +60,9 @@ Add: date, change, asset or boundary touched, attacker capability considered, mi
 - 2026-10: Recovery Key (second SRP credential; keys wrapped under a key derived from the Recovery Key, never sent). A device that is not registered yet may read the wrapped keys and set new credentials, because recovery is how it gets in; it can do nothing else.
 - 2026-10: Attachments sealed per 64 KiB piece under a key derived from the Fold key and the attachment id; the last-piece marker in each piece's authenticated data detects truncation.
 - 2026-10: Account deletion and service migration need a fresh proof of the password; deleting the old account is skipped while other devices remain on it, so they are not told to erase unsent changes.
+
+## Interface layer (spec 002)
+
+- **Vendored UI code.** `apps/web/src/ui/kit/` holds components derived from the Catalyst kit and Headless UI (MIT). They run in the same origin as the key material, so they are reviewed like any dependency: pinned versions, `pnpm audit` in CI, no network access of their own, and a Content-Security-Policy without `unsafe-inline`/`unsafe-eval` that the end-to-end suite watches for violations (`e2e/ux-csp.spec.ts`).
+- **Preference store.** `localStorage` key `cashfold.ui` holds the theme, remembered choices (ids of the last account and categories only), collapsed sections and dismissed hints. It never holds names, amounts, e-mail addresses or notes; the plaintext-leak scan fails if it does or if any other `localStorage` key appears. It is device-local, never synced or exported, and can be reset in Settings → Appearance.
+- **Overlays.** The privacy cover makes dialogs inert and hidden; locking unmounts them (see ADR-0008).

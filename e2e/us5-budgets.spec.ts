@@ -1,5 +1,6 @@
 import type { Page } from '@playwright/test';
 import { expect, test } from './fixtures/index.js';
+import { go, moreDetails } from './fixtures/nav.js';
 
 // User story 5: envelope budgets with rollover (FR-054 to FR-061), offline.
 // The scenario runs against the device clock: the budget starts at the first day of last month, so "month one" is
@@ -28,16 +29,16 @@ test.describe('@us5 budgets', () => {
     await expect(page.getByTestId('secret-key')).toBeVisible({ timeout: 60_000 });
     await page.getByLabel('I have saved my Secret Key').check();
     await page.getByRole('button', { name: 'Continue' }).click();
-    await expect(page.getByTestId('fold-name')).toHaveText('Personal');
+    await expect(page.getByTestId('current-fold')).toHaveText('Personal');
   }
 
-  const go = (page: Page, name: string) => page.getByRole('navigation').getByRole('link', { name, exact: true }).click();
 
   async function addAccount(page: Page, name: string, opening: string): Promise<void> {
     await page.getByRole('button', { name: 'Add account', exact: true }).click();
     const dialog = page.getByRole('dialog');
     await dialog.getByLabel('Name', { exact: true }).fill(name);
     await dialog.getByLabel('Opening balance (USD)').fill(opening);
+    await moreDetails(dialog);
     await dialog.getByLabel('Opening date').fill('2020-01-01');
     await dialog.getByRole('button', { name: 'Create account' }).click();
     await expect(page.getByRole('dialog')).toHaveCount(0);
@@ -48,8 +49,9 @@ test.describe('@us5 budgets', () => {
     const dialog = page.getByRole('dialog');
     await dialog.getByLabel('Amount (USD)').fill(amount);
     await dialog.getByLabel('Date and time').fill(TENTH_OF_LAST_MONTH);
+    await moreDetails(dialog);
     await dialog.getByLabel('Note').fill(note);
-    await dialog.getByRole('button', { name: 'Add transaction' }).click();
+    await dialog.getByRole('button', { name: 'Save' }).click();
     await expect(page.getByRole('dialog')).toHaveCount(0);
   }
 
@@ -59,6 +61,7 @@ test.describe('@us5 budgets', () => {
     await dialog.getByLabel('Name', { exact: true }).fill(name);
     await dialog.getByLabel('Starting on').fill(FIRST_OF_LAST_MONTH);
     await dialog.getByLabel('Limit (USD)').fill('300.00');
+    await moreDetails(dialog);
     await dialog.getByLabel('What is left over').selectOption({ label: rollover });
     await dialog.getByRole('button', { name: 'Create budget' }).click();
     await expect(page.getByRole('dialog')).toHaveCount(0);

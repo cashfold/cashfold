@@ -3,9 +3,10 @@
 import type { TransactionRow } from '@cashfold/core';
 import { useState } from 'react';
 import { useCore } from '../core/CoreProvider';
-import { secondaryButtonClass } from '../forms/TextField';
+
 import { useI18n } from '../i18n/I18nProvider';
 import { useLedger } from './LedgerProvider';
+import { Button } from '../kit';
 
 export const MAX_ATTACHMENT_MB = 25;
 
@@ -63,19 +64,19 @@ export function AttachmentField({ existing, choice, onChange }: { existing?: Tra
       {current !== undefined && !choice.remove && choice.file === undefined ? (
         <p className="mt-1 flex flex-wrap items-center gap-3" data-testid="attachment-current">
           <span dir="auto">{current.name} <span className="text-muted">({sizeText(current.size, locale)})</span></span>
-          <button type="button" className={secondaryButtonClass} disabled={opening} aria-label={t('ledger.attachment.open.label', { name: current.name })} onClick={() => void open()}>{t('ledger.attachment.open')}</button>
-          <button type="button" className={secondaryButtonClass} aria-label={t('ledger.attachment.remove.label', { name: current.name })} onClick={() => onChange({ file: undefined, remove: true })}>{t('ledger.attachment.remove')}</button>
+          <Button outline type="button" disabled={opening} aria-label={t('ledger.attachment.open.label', { name: current.name })} onClick={() => void open()}>{t('ledger.attachment.open')}</Button>
+          <Button outline type="button" aria-label={t('ledger.attachment.remove.label', { name: current.name })} onClick={() => onChange({ file: undefined, remove: true })}>{t('ledger.attachment.remove')}</Button>
         </p>
       ) : null}
       {choice.remove && choice.file === undefined ? (
         <p className="mt-1 flex flex-wrap items-center gap-3">
           <span>{t('ledger.attachment.willRemove')}</span>
-          <button type="button" className={secondaryButtonClass} onClick={() => onChange({ file: undefined, remove: false })}>{t('ledger.attachment.keep')}</button>
+          <Button outline type="button" onClick={() => onChange({ file: undefined, remove: false })}>{t('ledger.attachment.keep')}</Button>
         </p>
       ) : null}
       <div className="mt-2">
         <label htmlFor="attachment-file" className="block text-sm text-muted">{current === undefined ? t('ledger.attachment.add') : t('ledger.attachment.replace')}</label>
-        <input id="attachment-file" type="file" className="mt-1 block" onChange={(e) => pick(e.target.files?.[0])} />
+        <input id="attachment-file" type="file" className="mt-1 block w-full max-w-full" onChange={(e) => pick(e.target.files?.[0])} />
       </div>
       <p className="mt-1 text-sm text-muted">{t('ledger.attachment.hint', { mb: MAX_ATTACHMENT_MB })}</p>
       {error ? <p role="alert" className="mt-1 text-danger">{error}</p> : null}

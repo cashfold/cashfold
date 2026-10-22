@@ -2,8 +2,9 @@
 
 import { useState, type ReactNode } from 'react';
 import { copyWithAutoClear } from '../emergency-kit/kit';
-import { buttonClass, secondaryButtonClass } from '../forms/TextField';
+
 import { useI18n } from '../i18n/I18nProvider';
+import { Button, Checkbox, CheckboxField, Label } from '../kit';
 
 /** Saves text as a file the person keeps. */
 export function downloadText(name: string, text: string, type = 'text/plain'): void {
@@ -28,16 +29,13 @@ export function OneTimeSecret(props: { title: string; lede: string; warning: str
       <p className="mt-4 text-sm text-muted">{props.label}</p>
       <p className="mt-1 break-all rounded-ui border border-border-strong bg-surface p-4 font-mono text-lg tracking-wide" data-testid={props.testId} dir="ltr">{props.text}</p>
       <div className="mt-3 flex flex-wrap gap-3">
-        <button type="button" className={secondaryButtonClass} onClick={async () => setCopy((await copyWithAutoClear(props.text, 60_000)) ? 'copied' : 'failed')}>{t('secretkey.copy')}</button>
-        <button type="button" className={secondaryButtonClass} onClick={() => downloadText(props.fileName, `${props.text}\n`)}>{t('account.secret.download')}</button>
+        <Button outline type="button" onClick={async () => setCopy((await copyWithAutoClear(props.text, 60_000)) ? 'copied' : 'failed')}>{t('secretkey.copy')}</Button>
+        <Button outline type="button" onClick={() => downloadText(props.fileName, `${props.text}\n`)}>{t('account.secret.download')}</Button>
         {props.extra}
       </div>
       <p className="mt-2 text-sm" role="status">{copy === 'copied' ? t('secretkey.copied') : copy === 'failed' ? t('secretkey.copyFailed') : ''}</p>
-      <label className="mt-4 flex items-start gap-2">
-        <input type="checkbox" className="mt-1" checked={saved} onChange={(e) => setSaved(e.target.checked)} />
-        <span>{t('account.secret.confirm')}</span>
-      </label>
-      <button type="button" className={`${buttonClass} mt-3`} disabled={!saved} onClick={props.onDone}>{t('account.secret.done')}</button>
+      <CheckboxField className="mt-4"><Checkbox checked={saved} onChange={(checked) => setSaved(checked)} /><Label>{t('account.secret.confirm')}</Label></CheckboxField>
+      <Button className="mt-3" type="button" disabled={!saved} onClick={props.onDone}>{t('account.secret.done')}</Button>
     </section>
   );
 }

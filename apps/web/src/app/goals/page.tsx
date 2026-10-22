@@ -1,15 +1,5 @@
-'use client';
+import { RedirectStub } from '../../ui/shell/RedirectStub';
 
-import { RequireUnlocked } from '../../ui/core/RequireUnlocked';
-import { GoalsScreen } from '../../ui/goals/GoalsScreen';
-import { LedgerProvider } from '../../ui/ledger/LedgerProvider';
-
-export default function Screen() {
-  return (
-    <RequireUnlocked titleKey="page.goals.title">
-      <LedgerProvider>
-        <GoalsScreen />
-      </LedgerProvider>
-    </RequireUnlocked>
-  );
+export default function Page() {
+  return <RedirectStub from="/goals/" />;
 }

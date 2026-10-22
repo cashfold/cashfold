@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type ReactNode } from 'react';
 import { formatError } from '../errors/catalogue';
+import { Button } from '../kit';
 import { useI18n } from '../i18n/I18nProvider';
 import { detectBrowserSupport, type SupportResult } from './detect';
 
@@ -19,9 +20,9 @@ export function SupportGate({ children }: { children: ReactNode }) {
       <h1 className="text-2xl font-semibold">{t('support.title')}</h1>
       <p className="mt-3">{t('support.detail')}</p>
       <p className="mt-3 text-danger" role="alert">{formatError({ kind: 'UnsupportedBrowser', feature: first }, locale)}</p>
-      <button type="button" className="mt-4 rounded-ui bg-primary px-4 py-2 text-on-primary" onClick={() => location.reload()}>
+      <Button className="mt-4" type="button" onClick={() => location.reload()}>
         {t('support.reload')}
-      </button>
+      </Button>
     </main>
   );
 }
