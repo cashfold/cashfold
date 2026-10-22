@@ -7,7 +7,7 @@ import { useCore } from '../core/CoreProvider';
 import { useI18n } from '../i18n/I18nProvider';
 import { LedgerProvider, useLedger } from '../ledger/LedgerProvider';
 import {
-  ArrowsRightLeftIcon, BanknotesIcon, InformationCircleIcon, Button, Cog6ToothIcon, FlagIcon, HomeIcon, LockClosedIcon, Navbar, NavbarItem, NavbarSection, NavbarSpacer, PlusIcon,
+  ArrowsRightLeftIcon, AuthLayout, BanknotesIcon, InformationCircleIcon, Button, Cog6ToothIcon, FlagIcon, HomeIcon, LockClosedIcon, Navbar, NavbarItem, NavbarSection, NavbarSpacer, PlusIcon,
   Sidebar, SidebarBody, SidebarFooter, SidebarHeader, SidebarItem, SidebarLabel, SidebarLayout, SidebarSection,
 } from '../kit';
 import { prefsStore } from '../prefs/usePrefs';
@@ -162,7 +162,7 @@ function PlainShell({ children }: { children: ReactNode }) {
       <header className="flex items-center gap-x-6 border-b border-(--border-strong) bg-(--surface) px-4 py-3">
         <Link href="/" className="text-lg font-semibold">{t('app.name')}</Link>
       </header>
-      <div className="mx-auto max-w-4xl p-4" inert={core.covered}><Banners />{children}</div>
+      <AuthLayout><div inert={core.covered}><Banners />{children}</div></AuthLayout>
     </>
   );
 }

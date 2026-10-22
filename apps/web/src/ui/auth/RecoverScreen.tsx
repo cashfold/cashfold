@@ -5,11 +5,12 @@ import { useRouter } from 'next/navigation';
 import { useState, type FormEvent } from 'react';
 import { useCore, withPasswordBytes } from '../core/CoreProvider';
 import { downloadKit, printKit } from '../emergency-kit/actions';
-import { TextField, buttonClass, secondaryButtonClass } from '../forms/TextField';
+import { TextField } from '../forms/TextField';
 import { useI18n } from '../i18n/I18nProvider';
 import { OneTimeSecret } from '../settings/OneTimeSecret';
 import { ServerAddress } from '../settings/ServerAddress';
 import { accountErrorText, type Reply } from '../settings/errors';
+import { Button } from '../kit';
 
 /**
  * Getting back into an account with its Recovery Key (FR-009), when the password or the Secret Key is lost. A new password and a
@@ -52,7 +53,7 @@ export function RecoverScreen() {
   if (newKey !== undefined) {
     const kit = { accountId: newKey.accountId, email: email.trim().toLowerCase(), server, secretKeyText: newKey.text };
     return (
-      <main id="main" tabIndex={-1}>
+      <div>
         <h1 className="text-2xl font-semibold">{t('page.recover.title')}</h1>
         <p className="mt-3" role="status">{t('recover.done')}</p>
         <OneTimeSecret
@@ -60,28 +61,28 @@ export function RecoverScreen() {
           fileName="cashfold-secret-key.txt"
           extra={(
             <>
-              <button type="button" className={secondaryButtonClass} onClick={() => downloadKit(kit)}>{t('secretkey.download')}</button>
-              <button type="button" className={secondaryButtonClass} onClick={() => printKit(kit)}>{t('secretkey.print')}</button>
+              <Button outline type="button" onClick={() => downloadKit(kit)}>{t('secretkey.download')}</Button>
+              <Button outline type="button" onClick={() => printKit(kit)}>{t('secretkey.print')}</Button>
             </>
           )}
           onDone={() => void core.markUnlocked().then(() => router.replace('/overview/'))}
         />
-      </main>
+      </div>
     );
   }
 
   if (core.phase === 'locked' || core.phase === 'unlocked') {
     return (
-      <main id="main" tabIndex={-1}>
+      <div>
         <h1 className="text-2xl font-semibold">{t('page.recover.title')}</h1>
         <p className="mt-3">{t('adddevice.alreadyHasAccount')}</p>
         <p className="mt-3"><Link className="underline" href="/settings/">{t('recover.goSettings')}</Link></p>
-      </main>
+      </div>
     );
   }
 
   return (
-    <main id="main" tabIndex={-1}>
+    <div>
       <h1 className="text-2xl font-semibold">{t('page.recover.title')}</h1>
       <p className="mt-3 text-muted">{t('recover.lede')}</p>
       <form onSubmit={submit} aria-busy={busy}>
@@ -91,9 +92,9 @@ export function RecoverScreen() {
         <TextField label={t('account.credentials.new')} type="password" autoComplete="new-password" required value={password} onChange={(e) => setPassword(e.target.value)} />
         <TextField label={t('account.credentials.again')} type="password" autoComplete="new-password" required value={again} onChange={(e) => setAgain(e.target.value)} />
         {error ? <p role="alert" className="mt-4 text-danger">{error}</p> : null}
-        <button type="submit" className={`${buttonClass} mt-6`} disabled={busy}>{busy ? t('adddevice.working') : t('recover.submit')}</button>
+        <Button className="mt-6" type="submit" disabled={busy}>{busy ? t('adddevice.working') : t('recover.submit')}</Button>
       </form>
       <p className="mt-6"><Link className="underline" href="/add/">{t('recover.back')}</Link></p>
-    </main>
+    </div>
   );
 }

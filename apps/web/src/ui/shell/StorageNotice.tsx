@@ -6,9 +6,10 @@ import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { requestPersistence, type PersistenceState } from '../../adapters/storage-persistence';
 import { useCore } from '../core/CoreProvider';
-import { secondaryButtonClass } from '../forms/TextField';
+
 import { useI18n } from '../i18n/I18nProvider';
 import { useOptionalLedger } from '../ledger/LedgerProvider';
+import { Button } from '../kit';
 
 interface Status {
   recovery?: { reason: 'unreadable' | 'damaged'; incomplete: string[]; rebuilt: number; refetch: number; blocked: number; atMs: number };
@@ -45,12 +46,12 @@ export function StorageNotice() {
   if (core.phase !== 'unlocked' || persistence === undefined || status === undefined) return null;
   if (status.recovery !== undefined && !recoveryRead) {
     return (
-      <aside role="alert" aria-label={t('storage.recovery.label')} data-testid="recovery-notice" className="border-b border-border-strong bg-surface px-4 py-3">
+      <aside role="alert" aria-label={t('storage.recovery.label')} data-testid="recovery-notice" className="mb-4 rounded-xl border border-zinc-950/10 bg-zinc-950/[0.03] p-4 dark:border-white/10 dark:bg-white/5">
         <p className="font-medium">{t('storage.recovery.title')}</p>
         <p className="mt-1">{t(status.onService ? 'storage.recovery.service' : 'storage.recovery.local')}</p>
         {status.recovery.blocked > 0 ? <p className="mt-1">{t('storage.recovery.blocked', { count: status.recovery.blocked })}</p> : null}
         {!status.onService ? <p className="mt-1"><Link className="underline" href="/settings/data/">{t('storage.recovery.restore')}</Link></p> : null}
-        <button type="button" className={`${secondaryButtonClass} mt-2`} onClick={() => setRecoveryRead(true)}>{t('storage.recovery.ok')}</button>
+        <Button outline className="mt-2" type="button" onClick={() => setRecoveryRead(true)}>{t('storage.recovery.ok')}</Button>
       </aside>
     );
   }
@@ -64,12 +65,12 @@ export function StorageNotice() {
     await core.call('settings.set', { backupNagDismissedAtMs: Date.now() }).catch(() => undefined);
   };
   return (
-    <aside aria-label={t('storage.notice.label')} data-testid="storage-notice" data-level={level} className="border-b border-border-strong bg-surface px-4 py-3">
+    <aside aria-label={t('storage.notice.label')} data-testid="storage-notice" data-level={level} className="mb-4 rounded-xl border border-zinc-950/10 bg-zinc-950/[0.03] p-4 dark:border-white/10 dark:bg-white/5">
       {refused ? <p role="status" data-testid="storage-warning">{t(status.onService ? 'storage.refused.service' : 'storage.refused.local')}</p> : null}
       {level !== 'none' ? (
         <div className="mt-1 flex flex-wrap items-center gap-3">
           <p className="flex-1" data-testid="backup-nag">{t(level === 'strong' ? 'storage.backup.strong' : 'storage.backup.gentle')} <Link className="underline" href="/settings/data/">{t('storage.backup.link')}</Link></p>
-          <button type="button" className={secondaryButtonClass} onClick={() => void dismiss()}>{t(level === 'strong' ? 'storage.backup.later' : 'storage.backup.dismiss')}</button>
+          <Button outline type="button" onClick={() => void dismiss()}>{t(level === 'strong' ? 'storage.backup.later' : 'storage.backup.dismiss')}</Button>
         </div>
       ) : null}
     </aside>

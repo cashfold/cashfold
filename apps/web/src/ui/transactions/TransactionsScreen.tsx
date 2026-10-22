@@ -6,7 +6,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { InputField, SelectField } from '../forms/Field';
 import { useI18n } from '../i18n/I18nProvider';
 import {
-  Amount, Badge, Button, Chip, ConfirmDialog, Dropdown, DropdownButton, DropdownItem, DropdownLabel, DropdownMenu, EllipsisHorizontalIcon, EmptyState, FunnelIcon, Input,
+  Amount, Badge, Button, RowButton, Chip, ConfirmDialog, Dropdown, DropdownButton, DropdownItem, DropdownLabel, DropdownMenu, EllipsisHorizontalIcon, EmptyState, FunnelIcon, Input,
   InputGroup, MagnifyingGlassIcon, Notice, Sheet,
 } from '../kit';
 import { dateToInput, formatDate, inputToDate } from '../ledger/dates';
@@ -264,7 +264,7 @@ function TransactionsBody() {
         <span aria-hidden="true" className="grid size-9 shrink-0 place-items-center rounded-full bg-zinc-600 text-sm font-semibold text-white" {...(colour ? { style: { backgroundColor: colour } } : {})}>
           {(category?.name ?? title).slice(0, 1).toUpperCase()}
         </span>
-        <button type="button" onClick={onEdit} className="min-w-0 flex-1 text-start focus:outline-hidden focus-visible:outline-2 focus-visible:outline-(--focus)">
+        <RowButton onClick={onEdit} className="flex-1">
           <span className="flex flex-wrap items-center gap-x-2">
             <span className="truncate font-medium">{title}</span>
             {row.isPinned ? <Badge>{t('ledger.tx.pinned')}</Badge> : null}
@@ -273,7 +273,7 @@ function TransactionsBody() {
             {row.status === 'posted' ? null : <Badge color={row.status === 'void' ? 'red' : 'amber'}>{t(`ledger.status.${row.status}`)}</Badge>}
           </span>
           <span className="block truncate text-sm text-zinc-600 dark:text-zinc-400">{[category?.name, account?.name, row.place?.name, payee && row.note !== '' ? row.note : undefined].filter(Boolean).join(' · ')}</span>
-        </button>
+        </RowButton>
         <span data-testid="tx-amount" data-sign={row.amountMinor > 0n ? 'gain' : row.amountMinor < 0n ? 'loss' : 'zero'}>
           <Amount minor={row.amountMinor} currency={row.currency} locale={locale} tone="auto" showSign />
         </span>
