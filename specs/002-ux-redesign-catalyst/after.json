@@ -1,0 +1,26 @@
+{
+  "recordedAt": "2026-10-22",
+  "interface": "after the redesign",
+  "viewports": {
+    "390x844": {
+      "screens": {
+        "Overview": 20,
+        "Transactions": 13,
+        "Settings": 9
+      },
+      "addFormControls": 11,
+      "addFormFields": 4,
+      "primaryNavigationEntries": 5
+    },
+    "1280x800": {
+      "screens": {
+        "Overview": 27,
+        "Transactions": 20,
+        "Settings": 17
+      },
+      "addFormControls": 11,
+      "addFormFields": 4,
+      "primaryNavigationEntries": 5
+    }
+  }
+}

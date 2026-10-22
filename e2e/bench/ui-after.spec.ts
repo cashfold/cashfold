@@ -13,6 +13,7 @@ const VIEWPORTS = [
 ] as const;
 // Old screen name in the baseline -> where it lives now.
 const SCREENS = { Dashboard: 'Overview', Transactions: 'Transactions', Settings: 'Settings' } as const;
+const ROUTES: Record<string, RegExp> = { Overview: /\/overview\/$/, Transactions: /\/transactions\/$/, Settings: /\/settings\/$/ };
 const REQUIRED_REDUCTION = 0.4;
 const MAX_DEFAULT_ADD_FIELDS = 5;
 
@@ -49,20 +50,25 @@ test.describe('@bench interface after the redesign', () => {
       const screens: Record<string, number> = {};
       for (const [old, now] of Object.entries(SCREENS)) {
         await go(page, now);
+        await page.waitForURL(ROUTES[now]!);
+        await expect(page.getByRole('dialog')).toHaveCount(0);
         await expect(page.getByRole('heading', { level: 1 }).first()).toBeVisible();
         await page.waitForLoadState('networkidle');
-        screens[now] = await visibleControls(page, 'main');
+        await page.waitForTimeout(500);
+        screens[now] = await visibleControls(page);
+        if (process.env['DUMP']) console.log(viewport.name, now, JSON.stringify(await page.evaluate((sel) => [...document.querySelectorAll<HTMLElement>(sel)].filter((el) => { const b = el.getBoundingClientRect(); return b.width > 0 && b.height > 0 && getComputedStyle(el).visibility !== 'hidden'; }).map((el) => `${el.tagName.toLowerCase()}:${(el.getAttribute('aria-label') ?? el.textContent ?? '').trim().slice(0, 25)}`), INTERACTIVE)));
         const allowed = Math.floor(before.screens[old]! * (1 - REQUIRED_REDUCTION));
         if (screens[now]! > allowed) misses.push(`${now} at ${viewport.name}: ${screens[now]} controls, at most ${allowed} (was ${before.screens[old]})`);
       }
       await go(page, 'Transactions');
-      await page.getByRole('button', { name: 'Add', exact: true }).first().click();
-      const sheet = page.getByRole('dialog');
-      await expect(sheet).toBeVisible();
+      await expect(page.getByRole('dialog')).toHaveCount(0);
+      await page.locator('button[aria-label="Add"]:visible, button:visible:text-is("Add")').first().click();
+      const sheet = page.getByRole('dialog', { name: 'Add transaction' });
+      await expect(sheet.getByLabel(/^Amount/)).toBeVisible();
       const addFormControls = await visibleControls(page, '[role=dialog]');
       const addFormFields = await sheet.evaluate((d) => [...d.querySelectorAll<HTMLElement>('input, select, textarea')].filter((el) => el.getBoundingClientRect().width > 0 && !(el instanceof HTMLInputElement && el.type === 'hidden')).length);
       await page.keyboard.press('Escape');
-      await expect(page.getByRole('dialog')).toHaveCount(0);
+      await expect(sheet).toHaveCount(0);
       const allowedAdd = Math.floor(before.addFormControls * (1 - REQUIRED_REDUCTION));
       if (addFormControls > allowedAdd) misses.push(`add form at ${viewport.name}: ${addFormControls} controls, at most ${allowedAdd} (was ${before.addFormControls})`);
       if (addFormFields > MAX_DEFAULT_ADD_FIELDS) misses.push(`add form at ${viewport.name}: ${addFormFields} default fields, at most ${MAX_DEFAULT_ADD_FIELDS}`);

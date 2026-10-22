@@ -20,11 +20,22 @@ Recorded 2026-10-22 on the integration branch. Automated results only; the manua
 
 ## Baseline comparison (SC-002, SC-003, SC-005)
 
-Before (`baseline.json`, 1280×800): 12 primary navigation entries; 15 fields in the add form; 49 visible controls with the add form open. After: 5 navigation entries (asserted in `ux-shell.spec.ts`); the add sheet shows amount, account, category and date plus the type switch and the collapsed "More details" group (asserted in `ux-add.spec.ts`). The re-run of `e2e/bench/ui-baseline.spec.ts` against the new interface (T115) has not been written, so the 40 % control-count claim is not measured.
+Measured by `e2e/bench/ui-after.spec.ts` (`AFTER=1`, whole page, a fresh account with one account, as `ui-baseline.spec.ts` did) and written to `after.json`.
+
+| Measure | Before | After | Needed | Result |
+|---|---|---|---|---|
+| Primary navigation entries | 12 | 5 | exactly 5 | met |
+| Default add-form fields | 15 | 4 | 5 or fewer | met |
+| Add form, visible controls | 49 | 11 | 29 or fewer | met (78 % fewer) |
+| Overview, 390×844 / 1280×800 | 25 / 30 | 20 / 27 | 15 / 18 | **not met** |
+| Transactions, 390×844 / 1280×800 | 25 / 25 | 13 / 20 | 15 / 15 | met on phone, **not met** wide |
+| Settings, 390×844 / 1280×800 | 22 / 22 | 9 / 17 | 13 / 13 | met on phone, **not met** wide |
+
+On a wide screen the sidebar alone is 11 controls (skip link, brand, Add, five entries, sync status, Help, Lock), and a new account also shows the Emergency Kit reminder (4) and, on the Overview, the first-run checklist (2) and the period and chart controls. SC-005 is therefore not met on the first load of a new account at 1280×800 for Overview, Transactions and Settings. The numbers are recorded as measured; T115 stays open until the person owning the spec decides between trimming that chrome (for example one-action reminder, sidebar Help and Lock into one menu) and restating SC-005 as a count of the screen's own content.
 
 ## Not done
 
 - T116 screen-reader and keyboard-only passes (NVDA, VoiceOver, TalkBack).
 - T117 moderated sessions (SC-001, SC-003, SC-004, SC-009, SC-012).
 - T118 walk of every function of spec 001 against the new screens.
-- T115 control-count comparison, `e2e/bench/list-10k.spec.ts`, and the 50,000-row dashboard bench on the new route.
+- T115 acceptance of the control-count comparison (see above), and the 50,000-row dashboard bench on the new route.
