@@ -4,6 +4,7 @@ import { useCore } from '../core/CoreProvider';
 import { useI18n } from '../i18n/I18nProvider';
 import { LedgerFrame } from '../ledger/LedgerFrame';
 import { RateManager } from '../ledger/transfer/RateManager';
+import { AboutSection } from './AboutSection';
 import { DescriptionList, DescriptionDetails, DescriptionTerm, Text } from '../kit';
 
 /** Settings → Advanced: things most people never change, each with a sentence on when to. */
@@ -27,6 +28,7 @@ export function Advanced() {
         <Text>{t('settings.advanced.rates.when')}</Text>
         <RateManager />
       </section>
+      <AboutSection />
     </LedgerFrame>
   );
 }

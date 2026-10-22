@@ -18,4 +18,4 @@ Cashfold needs one language across a zero-knowledge client and a thin relay so t
 
 ## Consequences
 
-Boundaries are enforced mechanically (`eslint-plugin-boundaries`). Tauri shells can later reuse the static export without changes to `core`, `crypto` or `protocol`.
+Boundaries are enforced mechanically (`eslint-plugin-boundaries`). Desktop shells (Electron, ADR-0009) reuse the static export without changes to `core`, `crypto` or `protocol`.

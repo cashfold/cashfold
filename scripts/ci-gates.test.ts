@@ -17,7 +17,7 @@ describe('quality gates', () => {
   it('CI runs every gate in the `verify` job', () => {
     expect(ci).toMatch(/^  verify:/m);
     for (const gate of [
-      'pnpm typecheck', 'pnpm lint', 'pnpm vitest run --coverage', 'pnpm build', 'pnpm check:bundle', 'pnpm check:licenses', 'pnpm check:no-float', 'pnpm check:sqlite3mc',
+      'pnpm typecheck', 'pnpm lint', 'pnpm vitest run --coverage', 'pnpm build', 'pnpm check:bundle', 'pnpm check:licenses', 'pnpm check:no-float', 'pnpm check:desktop-config', 'pnpm check:sqlite3mc',
       'pnpm audit --audit-level=high', 'pnpm test:e2e', 'test:integration', 'gen-third-party-notices.mjs --check', 'build-verify.mjs', 'gen-migrations.mjs', 'gen-protocol-docs.mjs',
     ]) expect(ci, gate).toContain(gate);
   });

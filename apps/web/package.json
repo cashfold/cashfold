@@ -15,6 +15,7 @@
   "dependencies": {
     "@cashfold/core": "workspace:*",
     "@cashfold/crypto": "workspace:*",
+    "@cashfold/platform": "workspace:*",
     "@cashfold/protocol": "workspace:*",
     "@headlessui/react": "2.2.10",
     "@heroicons/react": "2.2.0",

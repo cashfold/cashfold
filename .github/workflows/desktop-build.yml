@@ -1,0 +1,170 @@
+name: Desktop build
+
+# Builds the desktop app's installers on Windows, macOS and Linux, tests the packaged app, and uploads the results as workflow artifacts. It never
+# creates a release: that is the release workflow's last job, after every platform has built (specs/003-desktop-apps-releases, FR-022).
+#
+#  - called by release.yml (workflow_call) for a release. With `sign: true` the jobs run in the `release` environment, which holds the signing
+#    credentials, and the installers are signed (and notarized on macOS); otherwise they are built unsigned and labelled so.
+#  - run by hand (workflow_dispatch) from any branch for an unsigned test build, to try the pipeline or an installer. A manual run never uses
+#    an environment, so it can never reach a signing credential. With `canary` it also echoes a throwaway secret, to show that logs are masked.
+
+on:
+  workflow_call:
+    inputs:
+      sign:
+        description: Sign the installers (and notarize on macOS). Only a release does this; the jobs then use the `release` environment.
+        type: boolean
+        default: false
+  workflow_dispatch:
+    inputs:
+      canary:
+        description: Echo the LOG_MASKING_CANARY repository secret in the log, to check that GitHub masks it (nothing is signed).
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: windows-x64, os: windows-latest, platform: win, flags: '--win --x64', test: 'pnpm --filter @cashfold/desktop test:packaged' }
+          # One arm64 runner builds both Mac architectures; the x64 build is tested under Rosetta.
+          - { name: macos, os: macos-latest, platform: mac, flags: '--mac --arm64 --x64', test: 'pnpm --filter @cashfold/desktop test:packaged' }
+          - { name: linux-x64, os: ubuntu-latest, platform: linux, flags: '--linux --x64', test: 'xvfb-run -a pnpm --filter @cashfold/desktop test:packaged' }
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    # The signing credentials live in the `release` environment; only a signing run uses it. Nothing else (a manual run, a pull request) ever does.
+    environment: ${{ inputs.sign && 'release' || '' }}
+    defaults:
+      run:
+        shell: bash
+    env:
+      # Which commit the web export was built from; shown in About and recorded in the release.
+      BUILD_ID: ${{ github.sha }}
+      CASHFOLD_SIGN: ${{ inputs.sign && '1' || '' }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      - name: Log masking canary
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.canary }}
+        env:
+          LOG_MASKING_CANARY: ${{ secrets.LOG_MASKING_CANARY }}
+        run: |
+          # GitHub replaces a known secret with *** in the log. Run scripts/check-run-logs.mjs on this run to see that the value is nowhere.
+          echo "the canary is: $LOG_MASKING_CANARY"
+
+      - name: Check the signing credentials (nothing is signed with an incomplete set)
+        if: ${{ inputs.sign }}
+        env:
+          APPLE_CERT_P12: ${{ secrets.APPLE_CERT_P12 }}
+          APPLE_CERT_PASSWORD: ${{ secrets.APPLE_CERT_PASSWORD }}
+          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+          CASHFOLD_WIN_SIGNING: ${{ vars.WINDOWS_SIGNING }}
+          WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+          WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          AZURE_TRUSTED_SIGNING_ENDPOINT: ${{ vars.AZURE_TRUSTED_SIGNING_ENDPOINT }}
+          AZURE_TRUSTED_SIGNING_ACCOUNT: ${{ vars.AZURE_TRUSTED_SIGNING_ACCOUNT }}
+          AZURE_TRUSTED_SIGNING_PROFILE: ${{ vars.AZURE_TRUSTED_SIGNING_PROFILE }}
+        run: node scripts/check-signing-env.mjs
+
+      - name: Tools for the Linux packages and the display for the tests
+        if: matrix.platform == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y rpm fakeroot xvfb
+      - name: Rosetta, to test the Intel Mac build
+        if: matrix.platform == 'mac'
+        run: softwareupdate --install-rosetta --agree-to-license || echo "Rosetta not installed; the x64 build is packaged but not run"
+
+      - run: pnpm --filter @cashfold/web build
+      # The packaged app, driven by the end-to-end tests (a test build: Playwright needs the inspector fuse on; every other fuse is the release value).
+      - name: Packaged-app tests
+        run: ${{ matrix.test }}
+
+      - name: The notarization key as a file (the tool reads a path)
+        if: ${{ inputs.sign && matrix.platform == 'mac' }}
+        env:
+          APPLE_API_KEY_CONTENT: ${{ secrets.APPLE_API_KEY }}
+        run: |
+          printf '%s' "$APPLE_API_KEY_CONTENT" > "$RUNNER_TEMP/AuthKey.p8"
+          echo "APPLE_API_KEY=$RUNNER_TEMP/AuthKey.p8" >> "$GITHUB_ENV"
+
+      - name: Build the installers
+        env:
+          # The certificate goes into a temporary keychain that electron-builder creates and deletes; the notarization account is read from APPLE_*.
+          CSC_LINK: ${{ inputs.sign && matrix.platform == 'mac' && secrets.APPLE_CERT_P12 || '' }}
+          CSC_KEY_PASSWORD: ${{ inputs.sign && matrix.platform == 'mac' && secrets.APPLE_CERT_PASSWORD || '' }}
+          APPLE_API_KEY_ID: ${{ inputs.sign && matrix.platform == 'mac' && secrets.APPLE_API_KEY_ID || '' }}
+          APPLE_API_ISSUER: ${{ inputs.sign && matrix.platform == 'mac' && secrets.APPLE_API_ISSUER || '' }}
+          CASHFOLD_WIN_SIGNING: ${{ inputs.sign && matrix.platform == 'win' && vars.WINDOWS_SIGNING || '' }}
+          WIN_CSC_LINK: ${{ inputs.sign && matrix.platform == 'win' && secrets.WIN_CSC_LINK || '' }}
+          WIN_CSC_KEY_PASSWORD: ${{ inputs.sign && matrix.platform == 'win' && secrets.WIN_CSC_KEY_PASSWORD || '' }}
+          AZURE_TENANT_ID: ${{ inputs.sign && matrix.platform == 'win' && secrets.AZURE_TENANT_ID || '' }}
+          AZURE_CLIENT_ID: ${{ inputs.sign && matrix.platform == 'win' && secrets.AZURE_CLIENT_ID || '' }}
+          AZURE_CLIENT_SECRET: ${{ inputs.sign && matrix.platform == 'win' && secrets.AZURE_CLIENT_SECRET || '' }}
+          AZURE_TRUSTED_SIGNING_ENDPOINT: ${{ inputs.sign && matrix.platform == 'win' && vars.AZURE_TRUSTED_SIGNING_ENDPOINT || '' }}
+          AZURE_TRUSTED_SIGNING_ACCOUNT: ${{ inputs.sign && matrix.platform == 'win' && vars.AZURE_TRUSTED_SIGNING_ACCOUNT || '' }}
+          AZURE_TRUSTED_SIGNING_PROFILE: ${{ inputs.sign && matrix.platform == 'win' && vars.AZURE_TRUSTED_SIGNING_PROFILE || '' }}
+        run: |
+          flags=""
+          if [ "${{ inputs.sign }}" = "true" ]; then flags="--signed"; fi
+          pnpm --filter @cashfold/desktop build $flags
+          pnpm --filter @cashfold/desktop package -- ${{ matrix.flags }}
+      - name: The release fuses are set
+        run: node apps/desktop/scripts/check-fuses.mjs
+
+      # A signing run must prove that what it made is signed; a failure here fails the run, so an unsigned file is never published as signed (FR-030).
+      - name: The Mac apps are signed, notarized and accepted by Gatekeeper
+        if: ${{ inputs.sign && matrix.platform == 'mac' }}
+        run: |
+          for app in apps/desktop/release/mac*/Cashfold.app; do
+            codesign --verify --deep --strict --verbose=2 "$app"
+            spctl --assess --type execute --verbose=2 "$app"
+            xcrun stapler validate "$app"
+          done
+      - name: The Windows installer carries a valid signature
+        if: ${{ inputs.sign && matrix.platform == 'win' && vars.WINDOWS_SIGNING != 'none' }}
+        shell: pwsh
+        run: |
+          $bad = Get-ChildItem apps/desktop/release/*.exe | Where-Object { (Get-AuthenticodeSignature $_.FullName).Status -ne 'Valid' }
+          if ($bad) { $bad | ForEach-Object { Write-Error "Not validly signed: $($_.Name)" }; exit 1 }
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: desktop-${{ matrix.name }}
+          if-no-files-found: error
+          retention-days: 14
+          path: |
+            apps/desktop/release/*.exe
+            apps/desktop/release/*.dmg
+            apps/desktop/release/*.zip
+            apps/desktop/release/*.AppImage
+            apps/desktop/release/*.deb
+            apps/desktop/release/*.rpm
+            apps/desktop/release/*.blockmap
+            apps/desktop/release/latest*.yml
+
+      - name: Summary
+        run: |
+          if [ "${{ inputs.sign }}" = "true" ]; then state="signed"; else state="UNSIGNED (a test build: the operating system will warn on first launch)"; fi
+          {
+            echo "### ${{ matrix.name }}: $state"
+            echo ""
+            ls -1 apps/desktop/release | grep -E '\.(exe|dmg|zip|AppImage|deb|rpm)$' | sed 's/^/- /'
+          } >> "$GITHUB_STEP_SUMMARY"

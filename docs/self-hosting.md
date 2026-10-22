@@ -82,7 +82,7 @@ own in a few minutes.
    ```
 
    Do not rewrite or minify the files after the build: the integrity hashes and the service worker's list of files would no longer
-   match, and the app would refuse to run them. Releases publish the hash of every file (`SHA256SUMS`); you can rebuild a tag with
+   match, and the app would refuse to run them. Releases publish the hash of every file of the web app (`SHA256SUMS.tree`) and of every download (`SHA256SUMS`); you can rebuild a tag with
    `node scripts/build-verify.mjs` and compare.
 
 ## Settings

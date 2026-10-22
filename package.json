@@ -1,5 +1,6 @@
 {
   "name": "cashfold",
+  "version": "0.0.0",
   "private": true,
   "type": "module",
   "packageManager": "pnpm@10.26.2",
@@ -15,6 +16,7 @@
     "check:bundle": "node scripts/check-bundle-size.mjs",
     "check:licenses": "node scripts/check-licenses.mjs",
     "check:no-float": "node scripts/check-no-float.mjs",
+    "check:desktop-config": "node scripts/check-desktop-config.mjs",
     "prepare": "git config core.hooksPath .githooks",
     "verify": "pnpm typecheck && pnpm lint && vitest run",
     "check:sqlite3mc": "node scripts/verify-sqlite3mc.mjs",
@@ -41,5 +43,10 @@
     "vite": "8.3.4",
     "vitest": "5.0.5",
     "yaml": "2.9.1"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "electron"
+    ]
   }
 }

@@ -20,6 +20,7 @@ import { PrivacyCover } from './PrivacyCover';
 import { PRIMARY_SECTIONS, matchSection, type Section } from './routes';
 import { StatusProvider } from './StatusProvider';
 import { StorageNotice } from './StorageNotice';
+import { UpdateNotice } from './UpdateNotice';
 
 const ICONS: Record<Section['icon'], typeof HomeIcon> = {
   home: HomeIcon,
@@ -68,6 +69,7 @@ function Banners() {
         <p role="alert" data-testid="storage-full" className="mb-4 rounded-lg border border-(--border-strong) bg-(--surface) px-4 py-3">{t('storage.full')}</p>
       ) : null}
       <StorageNotice />
+      <UpdateNotice />
     </>
   );
 }

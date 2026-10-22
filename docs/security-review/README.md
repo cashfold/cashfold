@@ -12,6 +12,7 @@ In scope, in the order we would like them looked at:
 4. **Client handling of secrets** (`apps/web/src/worker`, `apps/web/src/adapters`): what lives in the worker, locking, wiping, the credentials blob, quick unlock, the Emergency Kit, how passwords cross the worker boundary.
 5. **Web delivery** (`apps/web`): CSP, subresource integrity, the service worker's asset pinning, headers, the reproducible build.
 6. **Parsers of untrusted input**: CBOR and wire schemas, CSV import, backups, operations and membership entries from the service or other members.
+7. **Desktop shell** (`apps/desktop`, `packages/platform`, release workflows): the main process, the preload bridge and its IPC validation, the `app://` protocol handler and header application, navigation and permission lockdown, the updater and its Ed25519 update-signature check (ADR-0010), installer scripts, and the release workflows (`.github/workflows/release*.yml`, `desktop-*.yml`) including how signing secrets are handled.
 
 Out of scope: the hosting environment of any particular operator, third-party libraries beyond their use here (`@noble/*`, `hash-wasm`, SQLite3 Multiple Ciphers; they are listed in `THIRD_PARTY_NOTICES.md`), denial of service by volume.
 
@@ -39,7 +40,7 @@ pnpm --filter @cashfold/server test:integration   # the same service tests again
 node scripts/build-verify.mjs         # builds the web app twice and checks the files are identical
 ```
 
-A released build's file hashes are published with the release (`SHA256SUMS`, and the digest of the whole tree). Rebuilding the tagged commit with `BUILD_ID=<commit>` must give the same digest.
+A released build's file hashes are published with the release (`SHA256SUMS.tree` for the web app's files, `SHA256SUMS` for every download, and the digest of the whole tree). Rebuilding the tagged commit with `BUILD_ID=<commit>` must give the same digest.
 
 ## What we would like tested
 

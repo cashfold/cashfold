@@ -6,7 +6,7 @@ import { go, moreDetails } from './fixtures/nav.js';
 // keyboard alone, and the names, roles and live regions a screen reader announces.
 
 const PASSWORD = 'correct horse battery staple';
-const SCREENS = ['Overview', 'Accounts', 'Transactions', 'Budgets', 'Schedules', 'Goals', 'Categories', 'Folds', 'Data', 'Devices', 'Settings'];
+const SCREENS = ['Overview', 'Accounts', 'Transactions', 'Budgets', 'Schedules', 'Goals', 'Categories', 'Folds', 'Data', 'Devices', 'Settings', 'Advanced'];
 
 test.describe('@a11y primary tasks', () => {
   test.beforeEach(({ browserName }) => {

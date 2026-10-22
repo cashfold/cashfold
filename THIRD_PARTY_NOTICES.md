@@ -10,9 +10,11 @@ Cashfold includes the following third-party software. Each is used under its own
 | hash-wasm (Argon2id module) | MIT | Password stretching; checked against an independent implementation (ADR-0004). |
 | SRP-6a big-integer module (`packages/crypto/src/adapters/srp-wasm`) | Cashfold, built from Rust sources and the crates listed in its `Cargo.lock` | Rebuilt in CI and compared with the committed bytes (ADR-0006). |
 | Ubuntu font (`@fontsource/ubuntu`, woff2 files copied unmodified to `apps/web/public/fonts/`) | Ubuntu Font Licence 1.0 | Licence text shipped as `fonts/UFL.txt`; not covered by the repository's AGPL grant. |
+| Electron (the desktop app's application shell, `apps/desktop`) | MIT | Ships in every desktop installer with its own `LICENSE.electron.txt`; a development dependency of the repository, so it is not in the production list below. |
+| Chromium (inside Electron) | BSD-3-Clause and the licences of its many components | The full texts ship in every desktop installer as `LICENSES.chromium.html`. |
 | Catalyst-derived UI components (`apps/web/src/ui/kit/`) | Tailwind Plus License | Isolated in one directory with its own licence notice (`LICENSE-TAILWIND-PLUS.md`); not covered by the repository's AGPL grant (ADR-0008). |
 
-## Production dependencies (167)
+## Production dependencies (180)
 
 | Package | Version | Licence | Home |
 | --- | --- | --- | --- |
@@ -73,10 +75,12 @@ Cashfold includes the following third-party software. Each is used under its own
 | abstract-logging | 2.0.1 | MIT | https://github.com/jsumners/abstract-logging#readme |
 | ajv | 8.20.0 | MIT | https://ajv.js.org |
 | ajv-formats | 3.0.1 | MIT | https://github.com/ajv-validator/ajv-formats#readme |
+| argparse | 2.0.1 | Python-2.0 | https://github.com/nodeca/argparse#readme |
 | aria-hidden | 1.2.6 | MIT | https://github.com/theKashey/aria-hidden#readme |
 | atomic-sleep | 1.0.0 | MIT | https://github.com/davidmarkclements/atomic-sleep#readme |
 | avvio | 9.3.1 | MIT | https://github.com/fastify/avvio#readme |
 | baseline-browser-mapping | 2.11.29 | Apache-2.0 | https://github.com/web-platform-dx/baseline-browser-mapping#readme |
+| builder-util-runtime | 9.7.0 | MIT | https://github.com/electron-userland/electron-builder |
 | caniuse-lite | 1.0.30001816 | CC-BY-4.0 | https://github.com/browserslist/caniuse-lite#readme |
 | client-only | 0.0.1 | MIT | https://reactjs.org/ |
 | clsx | 2.1.1 | MIT | https://github.com/lukeed/clsx#readme |
@@ -85,6 +89,7 @@ Cashfold includes the following third-party software. Each is used under its own
 | debug | 4.4.3 | MIT | https://github.com/debug-js/debug#readme |
 | dequal | 2.0.3 | MIT | https://github.com/lukeed/dequal#readme |
 | detect-libc | 2.1.2 | Apache-2.0 | https://github.com/lovell/detect-libc#readme |
+| electron-updater | 6.8.9 | MIT | https://github.com/electron-userland/electron-builder |
 | enhanced-resolve | 5.26.0 | MIT | https://github.com/webpack/enhanced-resolve#readme |
 | fast-decode-uri-component | 1.0.1 | MIT | https://github.com/delvedor/fast-decode-uri-component#readme |
 | fast-deep-equal | 3.1.3 | MIT | https://github.com/epoberezkin/fast-deep-equal#readme |
@@ -100,6 +105,7 @@ Cashfold includes the following third-party software. Each is used under its own
 | file-type | 22.1.1 | MIT | https://github.com/sindresorhus/file-type#readme |
 | find-my-way | 9.10.0 | MIT | https://github.com/delvedor/find-my-way#readme |
 | find-my-way | 9.9.0 | MIT | https://github.com/delvedor/find-my-way#readme |
+| fs-extra | 10.1.0 | MIT | https://github.com/jprichardson/node-fs-extra |
 | graceful-fs | 4.2.11 | ISC | https://github.com/isaacs/node-graceful-fs#readme |
 | hash-wasm | 4.12.0 | MIT | https://github.com/Daninet/hash-wasm#readme |
 | ieee754 | 1.2.1 | BSD-3-Clause | https://github.com/feross/ieee754#readme |
@@ -107,13 +113,18 @@ Cashfold includes the following third-party software. Each is used under its own
 | ipaddr.js | 2.5.0 | MIT | https://github.com/whitequark/ipaddr.js#readme |
 | iterare | 1.2.1 | ISC | https://github.com/felixfbecker/iterare#readme |
 | jiti | 2.7.0 | MIT | https://github.com/unjs/jiti#readme |
+| js-yaml | 4.3.2 | MIT | https://github.com/nodeca/js-yaml#readme |
 | json-schema-ref-resolver | 3.0.1 | MIT | https://github.com/fastify/json-schema-ref-resolver#readme |
 | json-schema-traverse | 1.0.0 | MIT | https://github.com/epoberezkin/json-schema-traverse#readme |
+| jsonfile | 6.2.1 | MIT | https://github.com/jprichardson/node-jsonfile#readme |
 | kysely | 0.29.7 | MIT | https://kysely.dev |
+| lazy-val | 1.0.5 | MIT | https://github.com/develar/lazy-val |
 | light-my-request | 6.6.0 | BSD-3-Clause | https://github.com/fastify/light-my-request#readme |
 | light-my-request | 6.8.0 | BSD-3-Clause | https://github.com/fastify/light-my-request#readme |
 | lightningcss | 1.32.0 | MPL-2.0 | https://github.com/parcel-bundler/lightningcss#readme |
 | load-esm | 1.0.3 | MIT | https://github.com/Borewit/load-esm#readme |
+| lodash.escaperegexp | 4.1.2 | MIT | https://lodash.com/ |
+| lodash.isequal | 4.5.0 | MIT | https://lodash.com/ |
 | magic-string | 0.30.21 | MIT | https://github.com/Rich-Harris/magic-string#readme |
 | ms | 2.1.3 | MIT | https://github.com/vercel/ms#readme |
 | nanoid | 3.3.20 | MIT | https://github.com/ai/nanoid#readme |
@@ -158,8 +169,10 @@ Cashfold includes the following third-party software. Each is used under its own
 | rxjs | 7.8.2 | Apache-2.0 | https://rxjs.dev |
 | safe-regex2 | 5.1.2 | MIT | https://github.com/fastify/safe-regex2 |
 | safe-stable-stringify | 2.5.0 | MIT | https://github.com/BridgeAR/safe-stable-stringify#readme |
+| sax | 1.6.1 | BlueOak-1.0.0 | https://github.com/isaacs/sax-js#readme |
 | scheduler | 0.28.0 | MIT | https://react.dev/ |
 | secure-json-parse | 4.1.1 | BSD-3-Clause | https://github.com/fastify/secure-json-parse#readme |
+| semver | 7.7.4 | ISC | https://github.com/npm/node-semver#readme |
 | semver | 7.8.5 | ISC | https://github.com/npm/node-semver#readme |
 | set-cookie-parser | 2.7.2 | MIT | https://github.com/nfriedly/set-cookie-parser |
 | set-cookie-parser | 3.1.4 | MIT | https://github.com/nfriedly/set-cookie-parser |
@@ -173,12 +186,14 @@ Cashfold includes the following third-party software. Each is used under its own
 | tailwindcss | 4.3.3 | MIT | https://tailwindcss.com |
 | tapable | 2.3.3 | MIT | https://github.com/webpack/tapable |
 | thread-stream | 4.2.0 | MIT | https://github.com/mcollina/thread-stream#readme |
+| tiny-typed-emitter | 2.1.0 | MIT | https://github.com/binier/tiny-typed-emitter#readme |
 | toad-cache | 3.7.4 | MIT | https://github.com/kibertoad/toad-cache |
 | token-types | 6.1.2 | MIT | https://github.com/Borewit/token-types#readme |
 | tslib | 2.8.1 | 0BSD | https://www.typescriptlang.org/ |
 | uid | 2.0.2 | MIT | https://github.com/lukeed/uid#readme |
 | uint8array-extras | 1.6.0 | MIT | https://github.com/sindresorhus/uint8array-extras#readme |
 | undici-types | 8.9.0 | MIT | https://undici.nodejs.org |
+| universalify | 2.0.1 | MIT | https://github.com/RyanZim/universalify#readme |
 | use-sync-external-store | 1.7.0 | MIT | https://github.com/react/react#readme |
 | ws | 8.22.0 | MIT | https://github.com/websockets/ws |
 | xtend | 4.0.2 | MIT | https://github.com/Raynos/xtend |

@@ -3,6 +3,7 @@
   "tasks": {
     "build": { "dependsOn": ["^build"], "outputs": ["dist/**", "out/**", ".next/**"] },
     "typecheck": { "dependsOn": ["^build"], "outputs": [] },
-    "test": { "dependsOn": ["^build"], "outputs": ["coverage/**"] }
+    "test": { "dependsOn": ["^build"], "outputs": ["coverage/**"] },
+    "@cashfold/desktop#build": { "dependsOn": ["@cashfold/web#build", "@cashfold/platform#build"], "outputs": ["dist/**"] }
   }
 }

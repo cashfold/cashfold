@@ -7,7 +7,7 @@ export default defineConfig({
   oxc: { jsx: { runtime: 'automatic' } },
   test: {
     // Browser tests need a real browser: run them with `pnpm --filter @cashfold/web test:browser`.
-    exclude: ['**/node_modules/**', '**/dist/**', '**/*.browser.test.{ts,tsx}', 'e2e/**'],
+    exclude: ['**/node_modules/**', '**/dist/**', '**/*.browser.test.{ts,tsx}', 'e2e/**', 'apps/desktop/e2e/**'],
     coverage: {
       provider: 'v8',
       include: ['packages/*/src/**/*.ts'],
