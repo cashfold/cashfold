@@ -24,7 +24,7 @@ Normative keywords (MUST, SHOULD, MAY) follow RFC 2119.
 5. **Asymmetric cryptography** is X25519 (sealing via HPKE) and Ed25519 (signatures) (§5.1).
 6. **SRP** is SRP-6a with SHA-256 over the 4096-bit RFC 3526 group, with a fully pinned message format (§6).
 7. **Cashfold defines its own protocols.** Interoperability with any other product is not a goal.
-8. **Stack**: TypeScript throughout; Next.js static export + Tailwind for the web client; NestJS + PostgreSQL for the relay; web first, Tauri 2 shells later (§0.3). This follows the project constitution (`.specify/memory/constitution.md`), which prevails over this document on technology.
+8. **Stack**: TypeScript throughout; Next.js static export + Tailwind for the web client; NestJS + PostgreSQL for the relay; web first, an Electron desktop shell (ADR-0009, §10.1), mobile shells later (§0.3). This follows the project constitution (`.specify/memory/constitution.md`), which prevails over this document on technology.
 9. **Software architecture**: DDD, Clean/Hexagonal architecture, CQRS, and event sourcing adapted to CRDT sync, all inside the client `core` package; the server holds no domain model (§0.3).
 8. AES-256-GCM, HKDF-SHA256 and a Secret Key of at least 128 bits of entropy are fixed requirements.
 
@@ -80,7 +80,7 @@ UI thread (React/Next client components)  ⇄ typed RPC ⇄  Core Worker (dedica
 
 **Server (NestJS) shape**: modules `auth`, `devices`, `folds`, `membership`, `ops`, `snapshots`, `attachments`, `rates`, `mail`. Each module is controller → application service → repository (PostgreSQL). Request/response schemas come from `protocol`. The server verifies signatures and structural rules only (§9.6); it has no domain entities.
 
-**Later platforms**: Tauri 2 desktop and mobile shells load the same static export. They MAY supply hardware-backed key storage through Tauri plugins behind `KeyStorePort`. They MUST NOT require changes to `core`, `crypto` or `protocol`.
+**Later platforms**: the desktop shell is Electron (ADR-0009, §10.1) and loads the same static export unchanged. Mobile shells are later, with their technology not yet decided. A shell MAY supply hardware-backed key storage behind `KeyStorePort`. No shell MAY require changes to `core`, `crypto` or `protocol`.
 
 ---
 
@@ -352,7 +352,7 @@ occurrence(n) for n ≥ 0:
 
 | Purpose | Cashfold primitive | Source |
 |---|---|---|
-| CSPRNG | `crypto.getRandomValues` (web, Workers, Node); Tauri shells use the same API in their webview | The only randomness source permitted |
+| CSPRNG | `crypto.getRandomValues` (web, Workers, Node); shells use the same API in their webview | The only randomness source permitted |
 | Symmetric AEAD | **AES-256-GCM** via WebCrypto, 96-bit random nonce, 128-bit tag | |
 | KDF (key extraction/expansion) | **HKDF-SHA256** (RFC 5869) via WebCrypto | |
 | Password hash (primary) | **Argon2id** (RFC 9106), output 32 B, vetted WASM build run in the Core Worker | Memory-hard. |
@@ -361,7 +361,7 @@ occurrence(n) for n ≥ 0:
 | Key agreement / sealing | **X25519** inside **HPKE** (RFC 9180): DHKEM(X25519, HKDF-SHA256), HKDF-SHA256, AES-256-GCM. `@noble/curves` (and `@noble/hashes`); WebCrypto X25519 where available | |
 | Signatures | **Ed25519** (RFC 8032): WebCrypto where supported (allows non-extractable device keys), otherwise `@noble/curves`. Strict verification. | |
 | Local DB | SQLite WASM on OPFS with whole-file encryption (§8.1) | |
-| Hardware-backed key | Not available on the web. WebAuthn PRF MAY unlock a wrapping key from a platform authenticator (§5.2). Tauri shells add OS keychain / Secure Enclave later behind `KeyStorePort`. | |
+| Hardware-backed key | Not available on the web. WebAuthn PRF MAY unlock a wrapping key from a platform authenticator (§5.2). Native shells MAY add OS keychain / Secure Enclave later behind `KeyStorePort` (the Electron shell does not, ADR-0009). | |
 | Serialization | Deterministic CBOR (RFC 8949 §4.2.1), TypeScript encoder with frozen byte vectors | |
 
 Rationale: Argon2id is memory-hard, which raises GPU/ASIC cost far above PBKDF2 at equal latency. X25519/Ed25519 give 128-bit security with 32-byte keys, constant-time implementations are ubiquitous. SRP's 4096-bit group exceeds the commonly required ≥2048-bit minimum at a cost of one extra modular exponentiation per login.
@@ -1038,6 +1038,24 @@ JavaScript cannot guarantee that secrets are erased from memory: the garbage col
 12. **Supply chain.** Pinned dependencies with lockfile enforcement, provenance verification, automated vulnerability scanning, a minimal dependency set, and review of any dependency that touches key material.
 
 ---
+
+### 10.1 Desktop shell and update signatures (spec 003)
+
+The desktop app is an Electron shell around the unchanged static export (ADR-0009). It adds no domain logic, no key handling and no change to `core`, `crypto` or `protocol`.
+
+- **Origin and headers.** The export is served on the privileged origin `app://cashfold`; the response headers are the ones `harden-html.mjs` writes to `_headers` (CSP, no inline script, Trusted Types), so web and desktop share one policy.
+- **Isolation.** Context isolation and sandbox on, no Node integration in the renderer, navigation and `window.open` denied, a permission allow-list, Electron fuses set at packaging. The only bridge is a small typed contract (`@cashfold/platform`): version and build info, the data location, and the update state machine. Every IPC call is checked against strict schemas and against the sender's origin.
+- **Data.** The encrypted database lives where Chromium keeps its profile, in the OS per-user application-data folder. Backups are the existing passphrase-encrypted `.cashfold-backup` (§5.8); the shell only shows a native save dialog.
+
+#### Update signatures
+
+Updates are applied only with the user's consent, and every in-app update must be shown to come from the project (FR-016 of spec 003). The updater's own check (SHA-512 from the release feed) proves integrity only: whoever controls the release controls the feed. Authenticity therefore rests on a detached signature the project makes and the app checks.
+
+- **Scheme.** Ed25519 (RFC 8032) over the UTF-8 message `cashfold-update-v1\n<asset name>\n<sha512 base64>`, where the SHA-512 is the value in the feed. The signature is base64 in `<asset name>.sig`, uploaded with the installer.
+- **Keys.** One or two raw public keys are compiled into the app (`UPDATE_PUBLIC_KEYS`); a signature from any of them is valid. The private key exists only as a secret in the protected `release` environment and in an offline backup held by a second person. Rotation: publish a release that trusts old and new key, then retire the old key one release later. A lost key strands installed apps, which is why the backup exists.
+- **Verification.** After the download and before the app reports the update as ready, the main process fetches the `.sig` from the same release, checks it with WebCrypto, and on any failure deletes the file and reports `verify-failed`. Download URLs are pinned to the project's release URL.
+- **Implementation.** WebCrypto (`crypto.subtle`, Ed25519) only; no new primitive and no third-party signing library. It lives in `scripts/lib/update-signature.mjs` (used by the signing script and bundled into the app), outside `packages/crypto`, because a shell must not require changes to `crypto` (ADR-0010). Known-answer tests use the RFC 8032 §7.1 vectors.
+- **Limits.** A stolen private key lets an attacker sign a malicious update; the mitigations are custody in the protected environment, offline backup, two-key rotation, and the OS signature that signed builds also carry. See the threat model.
 
 ## 11. Verification requirements
 

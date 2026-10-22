@@ -24,7 +24,7 @@ adapters (storage, crypto, transport, UI). Ports are interfaces owned by the inn
 Boundaries MUST be enforced by dependency-boundary lint rules (eslint-plugin-boundaries or
 dependency-cruiser) that fail CI. `apps/server` is a thin adapter layer that follows the same
 discipline and has no domain layer. Rationale: lets storage, crypto and delivery targets
-(web now, Tauri later) change without touching the domain.
+(web now, desktop shells later) change without touching the domain.
 
 ### IV. CQRS
 Commands (validated, authorised, intent-named) MUST change state only by appending events.
@@ -86,8 +86,9 @@ carry real cost; they are tools, not goals.
     export. Server components, server actions and API routes MUST NOT touch user data or
     secrets. Marketing and documentation pages MAY use server rendering.
   - `apps/server`: NestJS with PostgreSQL, acting as the relay.
-- **Phasing**: Phase 1 targets the web only. Desktop and mobile shells (Tauri 2) are planned
-  later and MUST NOT require changes to `core`, `crypto` or `protocol`.
+- **Phasing**: Phase 1 targets the web only. The desktop shell is Electron (ADR-0009); mobile
+  shells are planned later and their technology is not yet decided. No shell MAY require
+  changes to `core`, `crypto` or `protocol`.
 - **Testing tools**: Vitest, Playwright, fast-check (property tests), and Testcontainers for
   PostgreSQL.
 - **Cryptography**: WebCrypto where available (AES-256-GCM, HKDF-SHA256, PBKDF2 fallback) and
@@ -142,4 +143,4 @@ principles or sections or materially expanded guidance, PATCH for clarifications
 `plan.md` Constitution Check MUST cite the principles above by number (I–IX) and justify any
 deviation in Complexity Tracking. Reviewers MUST verify compliance in every pull request.
 
-**Version**: 1.0.1 | **Ratified**: 2026-10-18 | **Last Amended**: 2026-10-18
+**Version**: 1.1.0 | **Ratified**: 2026-10-18 | **Last Amended**: 2026-10-22
