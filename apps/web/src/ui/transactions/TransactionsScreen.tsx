@@ -17,9 +17,14 @@ import { useStatus } from '../shell/StatusProvider';
 import { AddSheet } from './AddSheet';
 import { ScheduleInboxBanner } from './ScheduleInboxBanner';
 import { groupByDay } from './day-groups';
+import { useWindowedBlock } from './useWindowedRows';
 import { NO_FILTERS, appliedChips, filtersFromQuery, filtersToQuery, removeFilter, type Filters, type StatusFilter } from './filters';
 
 const PAGE = 100;
+/** Day groups below the first screenful are rendered only while they are near the viewport (FR-027); these size the ones not yet seen. */
+const EAGER_GROUPS = 6;
+const ROW_ESTIMATE_PX = 64;
+const HEADING_ESTIMATE_PX = 52;
 
 /** Waits for the Fold's lists, then shows the screen: the body below can rely on them being there. */
 export function TransactionsScreen() {
@@ -144,6 +149,13 @@ function TransactionsBody() {
     // More transactions exist than are loaded: the last day may be incomplete.
     return groupByDay(entries, entries.length + (rows.count - rows.items.length));
   }, [rows, visibleTransfers]);
+
+  // The currency a day's net is shown in: that of its first transaction (looked up once, not per group).
+  const currencyByDate = useMemo(() => {
+    const map = new Map<number, string>();
+    for (const r of rows.items) if (!map.has(r.localDate)) map.set(r.localDate, r.currency);
+    return map;
+  }, [rows]);
 
   async function confirmRemove() {
     if (!removing) return;
@@ -283,21 +295,8 @@ function TransactionsBody() {
             />
           ) : null}
 
-          {groups.map((group) => (
-            <section key={group.date} className="mt-5" aria-labelledby={`day-${group.date}`}>
-              <h2 id={`day-${group.date}`} className="sticky top-0 z-10 flex items-baseline justify-between bg-white/90 py-1 text-sm font-semibold text-zinc-600 backdrop-blur dark:bg-zinc-900/90 dark:text-zinc-400">
-                <span>{formatDate(group.date as LocalDate, locale)}</span>
-                <span className="font-normal">
-                  {group.partial ? `${t('ledger.list.soFar')} ` : ''}
-                  <Amount minor={group.netMinor} currency={rows.items.find((r) => r.localDate === group.date)?.currency ?? basics.baseCurrency ?? 'USD'} locale={locale} showSign />
-                </span>
-              </h2>
-              <ul className="divide-y divide-zinc-950/10 rounded-xl border border-zinc-950/10 dark:divide-white/10 dark:border-white/10">
-                {group.items.map((entry) => entry.tx
-                  ? <Row key={entry.id} row={entry.tx} title={titleOf(entry.tx)} onEdit={() => setEditing(entry.tx)} onPin={() => void togglePin(entry.tx!)} onDelete={() => setRemoving(entry.tx)} />
-                  : <TransferItem key={entry.id} x={entry.xf!} title={transferTitle(entry.xf!)} />)}
-              </ul>
-            </section>
+          {groups.map((group, index) => (
+            <DayGroup key={group.date} group={group} eager={index < EAGER_GROUPS} currency={currencyByDate.get(group.date as number) ?? basics.baseCurrency ?? 'USD'} />
           ))}
           {rows.count > rows.items.length ? (
             <Button outline className="mt-4" onClick={() => setLimit((n) => n + PAGE)}>{t('ledger.tx.more', { shown: rows.items.length, count: rows.count })}</Button>
@@ -321,6 +320,30 @@ function TransactionsBody() {
       />
     </LedgerFrame>
   );
+
+  function DayGroup({ group, eager, currency }: { group: (typeof groups)[number]; eager: boolean; currency: string }) {
+    const { ref, rendered } = useWindowedBlock<HTMLElement>(eager, ROW_ESTIMATE_PX * group.items.length + HEADING_ESTIMATE_PX);
+    return (
+      <section ref={ref} className="mt-5" aria-labelledby={`day-${group.date}`}>
+        {rendered ? (
+          <>
+            <h2 id={`day-${group.date}`} className="sticky top-0 z-10 flex items-baseline justify-between bg-white/90 py-1 text-sm font-semibold text-zinc-600 backdrop-blur dark:bg-zinc-900/90 dark:text-zinc-400">
+              <span>{formatDate(group.date as LocalDate, locale)}</span>
+              <span className="font-normal">
+                {group.partial ? `${t('ledger.list.soFar')} ` : ''}
+                <Amount minor={group.netMinor} currency={currency} locale={locale} showSign />
+              </span>
+            </h2>
+            <ul className="divide-y divide-zinc-950/10 rounded-xl border border-zinc-950/10 dark:divide-white/10 dark:border-white/10">
+              {group.items.map((entry) => entry.tx
+                ? <Row key={entry.id} row={entry.tx} title={titleOf(entry.tx)} onEdit={() => setEditing(entry.tx)} onPin={() => void togglePin(entry.tx!)} onDelete={() => setRemoving(entry.tx)} />
+                : <TransferItem key={entry.id} x={entry.xf!} title={transferTitle(entry.xf!)} />)}
+            </ul>
+          </>
+        ) : null}
+      </section>
+    );
+  }
 
   function TransferItem({ x, title }: { x: TransferRow; title: string }) {
     const from = accountsById.get(x.fromAccountId);

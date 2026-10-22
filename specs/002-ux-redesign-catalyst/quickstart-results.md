@@ -33,6 +33,17 @@ Measured by `e2e/bench/ui-after.spec.ts` (`AFTER=1`, whole page, a fresh account
 
 On a wide screen the sidebar alone is 11 controls (skip link, brand, Add, five entries, sync status, Help, Lock), and a new account also shows the Emergency Kit reminder (4) and, on the Overview, the first-run checklist (2) and the period and chart controls. SC-005 is therefore not met on the first load of a new account at 1280×800 for Overview, Transactions and Settings. The numbers are recorded as measured; T115 stays open until the person owning the spec decides between trimming that chrome (for example one-action reminder, sidebar Help and Lock into one menu) and restating SC-005 as a count of the screen's own content.
 
+## 10,000-row list (SC-010, T077)
+
+`e2e/bench/list-10k.spec.ts` (`BENCH=1`; Chromium, page CPU slowed 4×; the worker runs at this machine's speed). Before windowing, loading the next 100 rows at 2,100 rows loaded took 12.3 s. With day groups rendered only while near the viewport (`useWindowedRows.ts`, with a browser test) and the per-group currency lookup done once:
+
+| Step at 10,000 rows | p95, 4× slowdown | p95, no slowdown | Target |
+|---|---|---|---|
+| Show more (next 100 rows on screen) | 586 ms | 181 ms | 200 ms |
+| Search (keystroke to narrowed list, less the 200 ms pause by design) | about 660 ms | about 200 ms | 200 ms |
+
+SC-010 is **not met** at the reference slowdown. The remaining cost is that every "Show more" asks for all rows again (offset 0, growing limit) and the search runs over all rows in the worker. Fetching only the next page and appending, and measuring the worker query, are the next steps; T077 stays open.
+
 ## Not done
 
 - T116 screen-reader and keyboard-only passes (NVDA, VoiceOver, TalkBack).
