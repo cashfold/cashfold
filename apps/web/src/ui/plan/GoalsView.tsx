@@ -3,9 +3,8 @@
 import type { GoalRow } from '@cashfold/core';
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { Modal } from '../forms/Modal';
-import { TextField, buttonClass, secondaryButtonClass } from '../forms/TextField';
-import { Progress } from '../kit';
-import { Button, EmptyState, FlagIcon } from '../kit';
+import { TextField } from '../forms/TextField';
+import { Button, EmptyState, FlagIcon, Progress, Select } from '../kit';
 import { useI18n } from '../i18n/I18nProvider';
 import { AmountField } from '../ledger/AmountField';
 import { dateToInput, formatDate, inputToDate, todayLocal } from '../ledger/dates';
@@ -14,9 +13,8 @@ import { LedgerFrame } from '../ledger/LedgerFrame';
 import { useLedger } from '../ledger/LedgerProvider';
 import { COLOR_COUNT, colorFor } from '../ledger/palette';
 
-const select = 'mt-1 block w-full rounded-ui border border-border-strong bg-bg px-3 py-2';
 
-export function GoalsScreen() {
+export function GoalsView() {
   const { basics } = useLedger();
   if (basics === undefined) return <LedgerFrame titleKey="page.goals.title">{null}</LedgerFrame>;
   return <GoalsBody />;
@@ -43,7 +41,7 @@ function GoalsBody() {
   const free = basics.accounts.filter((a) => a.kind === 'goal' && !a.archived && !rows.some((r) => r.goal.accountId === a.id));
 
   return (
-    <LedgerFrame titleKey="page.goals.title" actions={<button type="button" className={buttonClass} onClick={() => setEditing({})} disabled={free.length === 0}>{t('goals.add')}</button>}>
+    <LedgerFrame titleKey="page.goals.title" actions={<Button type="button" onClick={() => setEditing({})} disabled={free.length === 0}>{t('goals.add')}</Button>}>
       <p className="mt-3 text-muted">{t('goals.lede')}</p>
       {free.length === 0 && rows.length === 0 ? <p className="mt-3" data-testid="goals-need-account">{t('goals.needAccount')}</p> : null}
       {message ? <p role="alert" className="mt-3 text-danger">{message}</p> : null}
@@ -75,8 +73,8 @@ function GoalsBody() {
               ) : null}
               {row.missingRates.length > 0 ? <p role="status" className="mt-2 text-sm text-muted">{t('goals.missingRates', { currencies: row.missingRates.join(', ') })}</p> : null}
               <div className="mt-2 flex flex-wrap gap-2">
-                <button type="button" className={secondaryButtonClass} onClick={() => setEditing({ row })} aria-label={`${t('ledger.edit')} ${goal.name}`}>{t('ledger.edit')}</button>
-                <button type="button" className={secondaryButtonClass} onClick={() => setRemoving(row)} aria-label={`${t('ledger.delete')} ${goal.name}`}>{t('ledger.delete')}</button>
+                <Button outline type="button" onClick={() => setEditing({ row })} aria-label={`${t('ledger.edit')} ${goal.name}`}>{t('ledger.edit')}</Button>
+                <Button outline type="button" onClick={() => setRemoving(row)} aria-label={`${t('ledger.delete')} ${goal.name}`}>{t('ledger.delete')}</Button>
               </div>
             </li>
           );
@@ -91,15 +89,15 @@ function GoalsBody() {
           <div>
             <p className="mt-3">{t('goals.delete.explain', { name: removing.goal.name })}</p>
             <div className="mt-6 flex gap-3">
-              <button
-                type="button" className={buttonClass}
+              <Button
+                type="button" 
                 onClick={async () => {
                   const r = await ledger.run('goals.delete', { id: removing.goal.id });
                   if (r.ok) setRemoving(undefined);
                   else setMessage(ledger.explain(r.error.code));
                 }}
-              >{t('ledger.delete')}</button>
-              <button type="button" className={secondaryButtonClass} onClick={() => setRemoving(undefined)}>{t('ledger.cancel')}</button>
+              >{t('ledger.delete')}</Button>
+              <Button outline type="button" onClick={() => setRemoving(undefined)}>{t('ledger.cancel')}</Button>
             </div>
           </div>
         ) : null}
@@ -147,22 +145,22 @@ function GoalForm({ row, free, onDone }: { row?: GoalRow | undefined; free: Read
       <TextField label={t('goals.form.name')} value={name} onChange={(e) => setName(e.target.value)} required maxLength={80} autoFocus />
       <div className="mt-4">
         <label htmlFor="goal-account" className="block font-medium">{t('goals.form.account')}</label>
-        <select id="goal-account" className={select} value={accountId} onChange={(e) => setAccountId(e.target.value)} required>
+        <Select id="goal-account" value={accountId} onChange={(e) => setAccountId(e.target.value)} required>
           {options.map((a) => <option key={a.id} value={a.id}>{a.name} ({a.currency})</option>)}
-        </select>
+        </Select>
       </div>
       <AmountField label={t('goals.form.target')} currency={currency} value={target} onChange={setTarget} required />
       <TextField label={t('goals.form.date')} type="date" value={due} onChange={(e) => setDue(e.target.value)} required />
       <div className="mt-4">
         <label htmlFor="goal-color" className="block font-medium">{t('ledger.categories.form.color')}</label>
-        <select id="goal-color" className={select} value={color} onChange={(e) => setColor(Number(e.target.value))}>
+        <Select id="goal-color" value={color} onChange={(e) => setColor(Number(e.target.value))}>
           {Array.from({ length: COLOR_COUNT }, (_, i) => <option key={i} value={i}>{t(`ledger.color.${i}`)}</option>)}
-        </select>
+        </Select>
       </div>
       {error ? <p role="alert" className="mt-3 text-danger">{error}</p> : null}
       <div className="mt-6 flex gap-3">
-        <button type="submit" className={buttonClass} disabled={busy}>{existing ? t('ledger.save') : t('goals.create')}</button>
-        <button type="button" className={secondaryButtonClass} onClick={onDone}>{t('ledger.cancel')}</button>
+        <Button type="submit" disabled={busy}>{existing ? t('ledger.save') : t('goals.create')}</Button>
+        <Button outline type="button" onClick={onDone}>{t('ledger.cancel')}</Button>
       </div>
     </form>
   );

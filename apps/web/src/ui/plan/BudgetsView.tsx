@@ -3,8 +3,8 @@
 import type { BudgetRow, LocalDate } from '@cashfold/core';
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { Modal } from '../forms/Modal';
-import { TextField, buttonClass, secondaryButtonClass } from '../forms/TextField';
-import { Button, EmptyState, FlagIcon } from '../kit';
+import { TextField } from '../forms/TextField';
+import { Button, Checkbox, CheckboxField, Disclosure, EmptyState, FlagIcon, Label, Select } from '../kit';
 import { useI18n } from '../i18n/I18nProvider';
 import { AmountField } from '../ledger/AmountField';
 import { dateToInput, formatDate, inputToDate, todayLocal } from '../ledger/dates';
@@ -17,9 +17,8 @@ type Mode = 'spent' | 'limit' | 'available' | 'ratio';
 const MODES: readonly Mode[] = ['spent', 'limit', 'available', 'ratio'];
 const UNITS = ['day', 'week', 'month', 'year', 'custom'] as const;
 const ROLLOVERS = ['none', 'carry_positive', 'carry_all'] as const;
-const select = 'mt-1 block w-full rounded-ui border border-border-strong bg-bg px-3 py-2';
 
-export function BudgetsScreen() {
+export function BudgetsView() {
   const { basics } = useLedger();
   if (basics === undefined) return <LedgerFrame titleKey="page.budgets.title">{null}</LedgerFrame>;
   return <BudgetsBody />;
@@ -54,14 +53,14 @@ function BudgetsBody() {
   const viewed = rows.find((r) => r.budget.id === viewing);
 
   return (
-    <LedgerFrame titleKey="page.budgets.title" actions={<button type="button" className={buttonClass} onClick={() => setEditing({})}>{t('budgets.add')}</button>}>
+    <LedgerFrame titleKey="page.budgets.title" actions={<Button type="button" onClick={() => setEditing({})}>{t('budgets.add')}</Button>}>
       <p className="mt-3 text-muted">{t('budgets.lede')}</p>
       {message ? <p role="alert" className="mt-3 text-danger">{message}</p> : null}
       <div className="mt-4">
         <label htmlFor="budget-mode" className="me-2 font-medium">{t('budgets.mode')}</label>
-        <select id="budget-mode" className="rounded-ui border border-border-strong bg-bg px-3 py-2" value={mode} onChange={(e) => setMode(e.target.value as Mode)}>
+        <Select id="budget-mode" value={mode} onChange={(e) => setMode(e.target.value as Mode)}>
           {MODES.map((m) => <option key={m} value={m}>{t(`budgets.mode.${m}`)}</option>)}
-        </select>
+        </Select>
       </div>
 
       {rows.length === 0 ? <EmptyState className="mt-6" icon={FlagIcon} title={t('budgets.empty')} body={t('empty.budgets.body')} action={<Button onClick={() => setEditing({})}>{t('empty.budgets.action')}</Button>} /> : null}
@@ -82,8 +81,8 @@ function BudgetsBody() {
           <div>
             <p className="mt-3">{t('budgets.delete.explain', { name: removing.budget.name })}</p>
             <div className="mt-6 flex gap-3">
-              <button type="button" className={buttonClass} onClick={confirmRemove}>{t('ledger.delete')}</button>
-              <button type="button" className={secondaryButtonClass} onClick={() => setRemoving(undefined)}>{t('ledger.cancel')}</button>
+              <Button type="button" onClick={confirmRemove}>{t('ledger.delete')}</Button>
+              <Button outline type="button" onClick={() => setRemoving(undefined)}>{t('ledger.cancel')}</Button>
             </div>
           </div>
         ) : null}
@@ -108,7 +107,7 @@ function BudgetItem({ row, mode, onOpen, onEdit, onDelete }: { row: BudgetRow; m
     <li className="p-3" data-testid="budget-row">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <button type="button" className="text-start font-semibold underline-offset-4 hover:underline" onClick={onOpen}>{budget.name}</button>
+          <Button plain type="button" onClick={onOpen}>{budget.name}</Button>
           <p className="text-sm text-muted">
             {period === undefined ? t('budgets.notStarted', { date: formatDate(budget.anchorLocalDate, locale) }) : t('budgets.period', { from: formatDate(period.from, locale), to: formatDate(period.to, locale) })}
           </p>
@@ -123,8 +122,8 @@ function BudgetItem({ row, mode, onOpen, onEdit, onDelete }: { row: BudgetRow; m
       ) : null}
       {velocity?.overspend && budget.direction === 'expense' ? <p role="status" className="mt-2 text-sm text-danger" data-testid="budget-warning">{t('budgets.warning')}</p> : null}
       <div className="mt-2 flex flex-wrap gap-2">
-        <button type="button" className={secondaryButtonClass} onClick={onEdit} aria-label={`${t('ledger.edit')} ${budget.name}`}>{t('ledger.edit')}</button>
-        <button type="button" className={secondaryButtonClass} onClick={onDelete} aria-label={`${t('ledger.delete')} ${budget.name}`}>{t('ledger.delete')}</button>
+        <Button outline type="button" onClick={onEdit} aria-label={`${t('ledger.edit')} ${budget.name}`}>{t('ledger.edit')}</Button>
+        <Button outline type="button" onClick={onDelete} aria-label={`${t('ledger.delete')} ${budget.name}`}>{t('ledger.delete')}</Button>
       </div>
     </li>
   );
@@ -136,7 +135,7 @@ function BudgetDetail({ row, onClose }: { row: BudgetRow; onClose: () => void })
   const { budget, period, velocity } = row;
   const money = (minor: bigint) => ledger.money(minor, budget.currency);
   if (period === undefined || velocity === undefined) {
-    return <div><p className="mt-3">{t('budgets.notStarted', { date: formatDate(budget.anchorLocalDate, locale) })}</p><button type="button" className={`${secondaryButtonClass} mt-6`} onClick={onClose}>{t('ledger.close')}</button></div>;
+    return <div><p className="mt-3">{t('budgets.notStarted', { date: formatDate(budget.anchorLocalDate, locale) })}</p><Button outline className="mt-6" type="button" onClick={onClose}>{t('ledger.close')}</Button></div>;
   }
   const rows: Array<[string, string, string]> = [
     [t('budgets.detail.carryIn'), money(period.carryInMinor), 'carry-in'],
@@ -159,7 +158,7 @@ function BudgetDetail({ row, onClose }: { row: BudgetRow; onClose: () => void })
       </dl>
       {velocity.overspend ? <p role="status" className="mt-4 text-danger">{t('budgets.warning')}</p> : null}
       {period.missingRates.length > 0 ? <p role="status" className="mt-4 text-sm text-muted">{t('budgets.missingRates', { currencies: period.missingRates.join(', ') })}</p> : null}
-      <button type="button" className={`${secondaryButtonClass} mt-6`} onClick={onClose}>{t('ledger.close')}</button>
+      <Button outline className="mt-6" type="button" onClick={onClose}>{t('ledger.close')}</Button>
     </div>
   );
 }
@@ -222,52 +221,53 @@ function BudgetForm({ row, onDone }: { row?: BudgetRow | undefined; onDone: () =
     <form onSubmit={submit}>
       <TextField label={t('budgets.form.name')} value={name} onChange={(e) => setName(e.target.value)} required maxLength={80} autoFocus />
       <div className="mt-4">
-        <label htmlFor="bg-direction" className="block font-medium">{t('budgets.form.direction')}</label>
-        <select id="bg-direction" className={select} value={direction} onChange={(e) => setDirection(e.target.value as 'expense' | 'income')}>
-          <option value="expense">{t('ledger.kind.expense')}</option>
-          <option value="income">{t('ledger.kind.income')}</option>
-        </select>
-      </div>
-      <div className="mt-4 grid grid-cols-2 gap-3">
         <div>
           <label htmlFor="bg-unit" className="block font-medium">{t('budgets.form.period')}</label>
-          <select id="bg-unit" className={select} value={unit} onChange={(e) => setUnit(e.target.value as (typeof UNITS)[number])}>
+          <Select id="bg-unit" value={unit} onChange={(e) => setUnit(e.target.value as (typeof UNITS)[number])}>
             {UNITS.map((u) => <option key={u} value={u}>{t(`budgets.unit.${u}`)}</option>)}
-          </select>
+          </Select>
         </div>
-        {unit !== 'custom' ? <TextField label={t('budgets.form.every')} type="number" min={1} step={1} value={interval} onChange={(e) => setInterval(e.target.value)} required /> : null}
       </div>
       <TextField label={unit === 'custom' ? t('budgets.form.start') : t('budgets.form.anchor')} type="date" value={anchor} onChange={(e) => setAnchor(e.target.value)} required />
       {unit === 'custom' ? <TextField label={t('budgets.form.end')} type="date" value={end} onChange={(e) => setEnd(e.target.value)} required /> : null}
       <AmountField label={t('budgets.form.limit')} currency={currency} value={limit} onChange={setLimit} required />
+
+
+      <fieldset className="mt-6">
+        <Picker
+          id="bg-categories" label={t('budgets.form.categories')} value={categoryIds} onChange={setCategoryIds}
+          options={basics.categories.filter((c) => c.direction === direction).map((c) => ({ id: c.id, label: c.parentId === null ? c.name : `${basics.categories.find((p) => p.id === c.parentId)?.name ?? ''} › ${c.name}` }))}
+        />
+      </fieldset>
+      <Disclosure className="mt-6" title={t('budgets.form.more')} defaultOpen={existing !== undefined}>
+      <div className="mt-4">
+        <label htmlFor="bg-direction" className="block font-medium">{t('budgets.form.direction')}</label>
+        <Select id="bg-direction" value={direction} onChange={(e) => setDirection(e.target.value as 'expense' | 'income')}>
+          <option value="expense">{t('ledger.kind.expense')}</option>
+          <option value="income">{t('ledger.kind.income')}</option>
+        </Select>
+      </div>
+      {unit !== 'custom' ? <TextField label={t('budgets.form.every')} type="number" min={1} step={1} value={interval} onChange={(e) => setInterval(e.target.value)} required /> : null}
       <AmountField label={t('budgets.form.allocation')} currency={currency} value={allocation} onChange={setAllocation} hint={t('budgets.form.allocation.hint')} />
       <div className="mt-4">
         <label htmlFor="bg-rollover" className="block font-medium">{t('budgets.form.rollover')}</label>
-        <select id="bg-rollover" className={select} value={rollover} onChange={(e) => setRollover(e.target.value as (typeof ROLLOVERS)[number])}>
+        <Select id="bg-rollover" value={rollover} onChange={(e) => setRollover(e.target.value as (typeof ROLLOVERS)[number])}>
           {ROLLOVERS.map((r) => <option key={r} value={r}>{t(`budgets.rollover.${r}`)}</option>)}
-        </select>
+        </Select>
       </div>
-
       <fieldset className="mt-6">
         <legend className="font-medium">{t('budgets.form.scope')}</legend>
         <p className="mt-1 text-sm text-muted">{t('budgets.form.scope.hint')}</p>
         <Picker id="bg-accounts" label={t('budgets.form.accounts')} options={basics.accounts.map((a) => ({ id: a.id, label: a.name }))} value={accountIds} onChange={setAccountIds} />
         <Picker id="bg-groups" label={t('budgets.form.groups')} options={basics.groups.map((g) => ({ id: g.id, label: g.name }))} value={groupIds} onChange={setGroupIds} />
-        <Picker
-          id="bg-categories" label={t('budgets.form.categories')} value={categoryIds} onChange={setCategoryIds}
-          options={basics.categories.filter((c) => c.direction === direction).map((c) => ({ id: c.id, label: c.parentId === null ? c.name : `${basics.categories.find((p) => p.id === c.parentId)?.name ?? ''} › ${c.name}` }))}
-        />
         <Picker id="bg-tags" label={t('budgets.form.tags')} options={basics.tags.map((x) => ({ id: x.id, label: x.name }))} value={tagIds} onChange={setTagIds} />
-        <label className="mt-4 flex items-center gap-2">
-          <input type="checkbox" checked={includeTransfers} onChange={(e) => setIncludeTransfers(e.target.checked)} />
-          {t('budgets.form.transfers')}
-        </label>
+        <CheckboxField className="mt-4"><Checkbox checked={includeTransfers} onChange={(checked) => setIncludeTransfers(checked)} /><Label>{t('budgets.form.transfers')}</Label></CheckboxField>
       </fieldset>
-
+      </Disclosure>
       {error ? <p role="alert" className="mt-3 text-danger">{error}</p> : null}
       <div className="mt-6 flex gap-3">
-        <button type="submit" className={buttonClass} disabled={busy}>{existing ? t('ledger.save') : t('budgets.create')}</button>
-        <button type="button" className={secondaryButtonClass} onClick={onDone}>{t('ledger.cancel')}</button>
+        <Button type="submit" disabled={busy}>{existing ? t('ledger.save') : t('budgets.create')}</Button>
+        <Button outline type="button" onClick={onDone}>{t('ledger.cancel')}</Button>
       </div>
     </form>
   );
@@ -278,9 +278,9 @@ function Picker({ id, label, options, value, onChange }: { id: string; label: st
   return (
     <div className="mt-4">
       <label htmlFor={id} className="block font-medium">{label}</label>
-      <select id={id} multiple className={`${select} h-28`} value={value} onChange={(e) => onChange([...e.target.selectedOptions].map((o) => o.value))}>
+      <Select id={id} multiple className="h-28" value={value} onChange={(e) => onChange([...e.target.selectedOptions].map((o) => o.value))}>
         {options.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
-      </select>
+      </Select>
     </div>
   );
 }

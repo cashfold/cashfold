@@ -5,8 +5,8 @@ import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react
 import { allowAmounts, amountsAllowed, permission, rememberShown, requestPermission, show, shownKeys } from '../../adapters/notifications/browser';
 import { showDueReminders } from '../../adapters/notifications/notify';
 import { Modal } from '../forms/Modal';
-import { TextField, buttonClass, secondaryButtonClass } from '../forms/TextField';
-import { ArrowPathIcon, EmptyState } from '../kit';
+import { TextField } from '../forms/TextField';
+import { ArrowPathIcon, Button, Checkbox, CheckboxField, Disclosure, EmptyState, Label, Select } from '../kit';
 import { useI18n } from '../i18n/I18nProvider';
 import { AmountField } from '../ledger/AmountField';
 import { dateToInput, formatDate, inputToDate, todayLocal } from '../ledger/dates';
@@ -16,9 +16,8 @@ import { useLedger } from '../ledger/LedgerProvider';
 
 const UNITS = ['day', 'week', 'month', 'year'] as const;
 const REMINDERS = ['none', '0', '60', '1440'] as const;
-const select = 'mt-1 block w-full rounded-ui border border-border-strong bg-bg px-3 py-2';
 
-export function SchedulesScreen() {
+export function SchedulesView() {
   const { basics } = useLedger();
   if (basics === undefined) return <LedgerFrame titleKey="page.schedules.title">{null}</LedgerFrame>;
   return <SchedulesBody />;
@@ -78,7 +77,7 @@ function SchedulesBody() {
   const finished = rows.filter((r) => r.completedUtcMs !== null);
 
   return (
-    <LedgerFrame titleKey="page.schedules.title" actions={<button type="button" className={buttonClass} onClick={() => setEditing({})} disabled={basics.accounts.length === 0}>{t('schedules.add')}</button>}>
+    <LedgerFrame titleKey="page.schedules.title" actions={<Button type="button" onClick={() => setEditing({})} disabled={basics.accounts.length === 0}>{t('schedules.add')}</Button>}>
       <p className="mt-3 text-muted">{t('schedules.lede')}</p>
       {message ? <p role="alert" className="mt-3 text-danger">{message}</p> : null}
       <ReminderSettings />
@@ -95,8 +94,8 @@ function SchedulesBody() {
                 <p className="text-sm text-muted">{formatDate(p.record.localDate, locale)}</p>
               </div>
               <div className="flex flex-wrap gap-2">
-                <button type="button" className={buttonClass} onClick={() => act('schedules.confirm', { schedule: p.scheduleId, n: p.n })} aria-label={`${t('schedules.confirm')} ${p.scheduleName}`}>{t('schedules.confirm')}</button>
-                <button type="button" className={secondaryButtonClass} onClick={() => act('schedules.skip', { schedule: p.scheduleId, n: p.n })} aria-label={`${t('schedules.skip')} ${p.scheduleName}`}>{t('schedules.skip')}</button>
+                <Button type="button" onClick={() => act('schedules.confirm', { schedule: p.scheduleId, n: p.n })} aria-label={`${t('schedules.confirm')} ${p.scheduleName}`}>{t('schedules.confirm')}</Button>
+                <Button outline type="button" onClick={() => act('schedules.skip', { schedule: p.scheduleId, n: p.n })} aria-label={`${t('schedules.skip')} ${p.scheduleName}`}>{t('schedules.skip')}</Button>
               </div>
             </li>
           ))}
@@ -139,9 +138,9 @@ function SchedulesBody() {
                 <span>{amountText(s.template)}</span>
               </div>
               <div className="mt-2 flex flex-wrap gap-2">
-                <button type="button" className={secondaryButtonClass} onClick={() => setEditing({ row: s })} aria-label={`${t('ledger.edit')} ${s.name}`}>{t('ledger.edit')}</button>
-                <button type="button" className={secondaryButtonClass} onClick={() => act('schedules.finish', { id: s.id })} aria-label={`${t('schedules.finish')} ${s.name}`}>{t('schedules.finish')}</button>
-                <button type="button" className={secondaryButtonClass} onClick={() => setRemoving(s)} aria-label={`${t('ledger.delete')} ${s.name}`}>{t('ledger.delete')}</button>
+                <Button outline type="button" onClick={() => setEditing({ row: s })} aria-label={`${t('ledger.edit')} ${s.name}`}>{t('ledger.edit')}</Button>
+                <Button outline type="button" onClick={() => act('schedules.finish', { id: s.id })} aria-label={`${t('schedules.finish')} ${s.name}`}>{t('schedules.finish')}</Button>
+                <Button outline type="button" onClick={() => setRemoving(s)} aria-label={`${t('ledger.delete')} ${s.name}`}>{t('ledger.delete')}</Button>
               </div>
             </li>
           ))}
@@ -155,7 +154,7 @@ function SchedulesBody() {
             {finished.map((s) => (
               <li key={s.id} className="flex flex-wrap items-center justify-between gap-3 p-3" data-testid="finished-row">
                 <strong>{s.name}</strong>
-                <button type="button" className={secondaryButtonClass} onClick={() => setRemoving(s)} aria-label={`${t('ledger.delete')} ${s.name}`}>{t('ledger.delete')}</button>
+                <Button outline type="button" onClick={() => setRemoving(s)} aria-label={`${t('ledger.delete')} ${s.name}`}>{t('ledger.delete')}</Button>
               </li>
             ))}
           </ul>
@@ -170,8 +169,8 @@ function SchedulesBody() {
           <div>
             <p className="mt-3">{t('schedules.delete.explain', { name: removing.name })}</p>
             <div className="mt-6 flex gap-3">
-              <button type="button" className={buttonClass} onClick={async () => { await act('schedules.delete', { id: removing.id }); setRemoving(undefined); }}>{t('ledger.delete')}</button>
-              <button type="button" className={secondaryButtonClass} onClick={() => setRemoving(undefined)}>{t('ledger.cancel')}</button>
+              <Button type="button" onClick={async () => { await act('schedules.delete', { id: removing.id }); setRemoving(undefined); }}>{t('ledger.delete')}</Button>
+              <Button outline type="button" onClick={() => setRemoving(undefined)}>{t('ledger.cancel')}</Button>
             </div>
           </div>
         ) : null}
@@ -228,11 +227,8 @@ function ReminderSettings() {
       <p className="font-medium">{t('schedules.notify.title')}</p>
       {state === 'granted' ? <p className="text-sm text-muted">{t('schedules.notify.on')}</p> : null}
       {state === 'denied' ? <p className="text-sm text-muted">{t('schedules.notify.denied')}</p> : null}
-      {state === 'default' ? <button type="button" className={`${secondaryButtonClass} mt-2`} onClick={async () => setState(await requestPermission())}>{t('schedules.notify.enable')}</button> : null}
-      <label className="mt-2 flex items-center gap-2">
-        <input type="checkbox" checked={amounts} onChange={(e) => { setAmounts(e.target.checked); allowAmounts(e.target.checked); }} />
-        {t('schedules.notify.amounts')}
-      </label>
+      {state === 'default' ? <Button outline className="mt-2" type="button" onClick={async () => setState(await requestPermission())}>{t('schedules.notify.enable')}</Button> : null}
+      <CheckboxField className="mt-2"><Checkbox checked={amounts} onChange={(checked) => { setAmounts(checked); allowAmounts(checked); }} /><Label>{t('schedules.notify.amounts')}</Label></CheckboxField>
       <p className="text-sm text-muted">{t('schedules.notify.amounts.hint')}</p>
     </div>
   );
@@ -344,66 +340,65 @@ function ScheduleForm({ row, onDone }: { row?: ScheduleRow | undefined; onDone: 
       <TextField label={t('schedules.form.name')} value={name} onChange={(e) => setName(e.target.value)} required maxLength={80} autoFocus />
       <div className="mt-4">
         <label htmlFor="sc-kind" className="block font-medium">{t('schedules.form.kind')}</label>
-        <select id="sc-kind" className={select} value={kind} onChange={(e) => setKind(e.target.value as Kind)}>
+        <Select id="sc-kind" value={kind} onChange={(e) => setKind(e.target.value as Kind)}>
           <option value="expense">{t('ledger.kind.expense')}</option>
           <option value="income">{t('ledger.kind.income')}</option>
           <option value="transfer">{t('schedules.form.transfer')}</option>
-        </select>
+        </Select>
       </div>
       <div className="mt-4">
         <label htmlFor="sc-account" className="block font-medium">{kind === 'transfer' ? t('ledger.xfer.from') : t('schedules.form.account')}</label>
-        <select id="sc-account" className={select} value={accountId} onChange={(e) => setAccountId(e.target.value)} required>
+        <Select id="sc-account" value={accountId} onChange={(e) => setAccountId(e.target.value)} required>
           {basics.accounts.filter((a) => !a.archived).map((a) => <option key={a.id} value={a.id}>{a.name} ({a.currency})</option>)}
-        </select>
+        </Select>
       </div>
       <AmountField label={kind === 'transfer' ? t('ledger.xfer.fromAmount') : t('schedules.form.amount')} currency={account?.currency ?? 'USD'} value={amount} onChange={setAmount} required />
       {kind === 'transfer' ? (
         <>
           <div className="mt-4">
             <label htmlFor="sc-to" className="block font-medium">{t('ledger.xfer.to')}</label>
-            <select id="sc-to" className={select} value={toAccountId} onChange={(e) => setToAccountId(e.target.value)} required>
+            <Select id="sc-to" value={toAccountId} onChange={(e) => setToAccountId(e.target.value)} required>
               {basics.accounts.filter((a) => !a.archived && a.id !== accountId).map((a) => <option key={a.id} value={a.id}>{a.name} ({a.currency})</option>)}
-            </select>
+            </Select>
           </div>
           {sameCurrency ? null : <AmountField label={t('ledger.xfer.toAmount')} currency={toAccount?.currency ?? 'USD'} value={toAmount} onChange={setToAmount} required />}
         </>
       ) : (
         <div className="mt-4">
           <label htmlFor="sc-category" className="block font-medium">{t('schedules.form.category')}</label>
-          <select id="sc-category" className={select} value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
+          <Select id="sc-category" value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
             <option value="">{t('schedules.form.noCategory')}</option>
             {categories.map((c) => <option key={c.id} value={c.id}>{c.parentId === null ? c.name : `${basics.categories.find((p) => p.id === c.parentId)?.name ?? ''} › ${c.name}`}</option>)}
-          </select>
+          </Select>
         </div>
       )}
-      <TextField label={t('schedules.form.note')} value={note} onChange={(e) => setNote(e.target.value)} maxLength={2000} />
 
       <div className="mt-4 grid grid-cols-2 gap-3">
         <div>
           <label htmlFor="sc-unit" className="block font-medium">{t('schedules.form.repeats')}</label>
-          <select id="sc-unit" className={select} value={unit} onChange={(e) => setUnit(e.target.value as (typeof UNITS)[number])}>
+          <Select id="sc-unit" value={unit} onChange={(e) => setUnit(e.target.value as (typeof UNITS)[number])}>
             {UNITS.map((u) => <option key={u} value={u}>{t(`schedules.unit.${u}`)}</option>)}
-          </select>
+          </Select>
         </div>
         <TextField label={t('schedules.form.every')} type="number" min={1} step={1} value={interval} onChange={(e) => setInterval(e.target.value)} required />
       </div>
       <TextField label={t('schedules.form.begin')} type="date" value={begin} onChange={(e) => setBegin(e.target.value)} required />
+
+      <Disclosure className="mt-6" title={t('schedules.form.more')} defaultOpen={existing !== undefined}>
+      <TextField label={t('schedules.form.note')} value={note} onChange={(e) => setNote(e.target.value)} maxLength={2000} />
       <TextField label={t('schedules.form.end')} type="date" value={end} onChange={(e) => setEnd(e.target.value)} hint={t('schedules.form.end.hint')} />
-      <label className="mt-4 flex items-center gap-2">
-        <input type="checkbox" checked={confirm} onChange={(e) => setConfirm(e.target.checked)} />
-        {t('schedules.form.confirm')}
-      </label>
+      <CheckboxField className="mt-4"><Checkbox checked={confirm} onChange={(checked) => setConfirm(checked)} /><Label>{t('schedules.form.confirm')}</Label></CheckboxField>
       <div className="mt-4">
         <label htmlFor="sc-reminder" className="block font-medium">{t('schedules.form.reminder')}</label>
-        <select id="sc-reminder" className={select} value={reminder} onChange={(e) => setReminder(e.target.value as (typeof REMINDERS)[number])}>
+        <Select id="sc-reminder" value={reminder} onChange={(e) => setReminder(e.target.value as (typeof REMINDERS)[number])}>
           {REMINDERS.map((r) => <option key={r} value={r}>{t(`schedules.reminder.${r}`)}</option>)}
-        </select>
+        </Select>
       </div>
-
+      </Disclosure>
       {error ? <p role="alert" className="mt-3 text-danger">{error}</p> : null}
       <div className="mt-6 flex gap-3">
-        <button type="submit" className={buttonClass} disabled={busy}>{existing ? t('ledger.save') : t('schedules.create')}</button>
-        <button type="button" className={secondaryButtonClass} onClick={onDone}>{t('ledger.cancel')}</button>
+        <Button type="submit" disabled={busy}>{existing ? t('ledger.save') : t('schedules.create')}</Button>
+        <Button outline type="button" onClick={onDone}>{t('ledger.cancel')}</Button>
       </div>
     </form>
   );

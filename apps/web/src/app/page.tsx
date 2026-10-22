@@ -16,13 +16,13 @@ export default function Home() {
   }, [phase, router]);
   if (phase === 'locked') return <UnlockForm />;
   return (
-    <main id="main" tabIndex={-1}>
+    <div>
       <h1 className="text-2xl font-semibold">{t('page.home.title')}</h1>
       <p className="mt-3 text-muted">{t('page.home.lede')}</p>
       <p className="mt-6" data-testid="phase" data-phase={phase}>
         {phase === 'no_account' ? <Link className="underline" href="/sign-up/">{t('gate.createAccount')}</Link> : null}
         {phase === 'unlocked' ? <Link className="underline" href="/overview/">{t('nav.overview')}</Link> : null}
       </p>
-    </main>
+    </div>
   );
 }

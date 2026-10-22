@@ -1270,5 +1270,8 @@
   "empty.goals.body": "A goal sets aside money for something, with a target and a date.",
   "empty.schedules.body": "A schedule records a repeating transaction for you, such as rent or a salary.",
   "empty.budgets.action": "Add your first budget",
-  "empty.goals.action": "Add your first goal"
+  "empty.goals.action": "Add your first goal",
+  "ledger.categories.tabs": "Kinds of labels",
+  "budgets.form.more": "More options",
+  "schedules.form.more": "More options"
 }
