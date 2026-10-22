@@ -1,6 +1,6 @@
 import type { Page } from '@playwright/test';
 import { expect, test } from './fixtures/index.js';
-import { go } from './fixtures/nav.js';
+import { go, moreDetails } from './fixtures/nav.js';
 
 // User story 6: recurring transactions (FR-062 to FR-066), offline. Dates are relative to the device clock.
 
@@ -42,6 +42,7 @@ test.describe('@us6 schedules', () => {
     const dialog = page.getByRole('dialog');
     await dialog.getByLabel('Name', { exact: true }).fill(name);
     await dialog.getByLabel('Opening balance (USD)').fill(opening);
+    await moreDetails(dialog);
     await dialog.getByLabel('Opening date').fill('2020-01-01');
     await dialog.getByRole('button', { name: 'Create account' }).click();
     await expect(page.getByRole('dialog')).toHaveCount(0);

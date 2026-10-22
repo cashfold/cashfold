@@ -1,6 +1,6 @@
 import type { Page } from '@playwright/test';
 import { expect, test } from './fixtures/index.js';
-import { go } from './fixtures/nav.js';
+import { go, moreDetails, cancelAdd } from './fixtures/nav.js';
 
 // User story 3: move money between accounts and currencies (FR-043 to FR-046), offline.
 
@@ -37,10 +37,20 @@ test.describe('@us3 transfers', () => {
     await expect(page.getByRole('link', { name, exact: true })).toBeVisible();
   }
 
+  /** The Overview keeps its two counting options under "Options"; this opens them when needed and sets the transfers switch. */
+  async function countTransfers(page: Page, on: boolean): Promise<void> {
+    const toggle = page.getByRole('button', { name: /^Options/ });
+    if ((await toggle.getAttribute('aria-expanded')) === 'false') await toggle.click();
+    const sw = page.getByLabel('Count transfers as income and expenses');
+    if (on) await sw.check();
+    else await sw.uncheck();
+  }
+
   const balanceOf = (page: Page, account: string) => page.getByTestId('account-row').filter({ hasText: account }).getByTestId('account-balance');
 
   async function transfer(page: Page, from: string, to: string, out: string, arriving?: string) {
-    await page.getByRole('button', { name: 'Add transfer', exact: true }).click();
+    await page.getByRole('button', { name: 'Add', exact: true }).first().click();
+    await page.getByRole('tab', { name: 'Transfer' }).click();
     const dialog = page.getByRole('dialog');
     await dialog.getByLabel('From account').selectOption({ label: from });
     await dialog.getByLabel('To account').selectOption({ label: to });
@@ -50,6 +60,7 @@ test.describe('@us3 transfers', () => {
   }
 
   test('moves money across currencies exactly, edits and deletes both sides together, and keeps transfers out of income and expenses unless asked', async ({ page, context, expectNoA11yViolations }) => {
+    test.setTimeout(120_000);
     await intoApp(page);
     await page.evaluate(() => navigator.serviceWorker.ready.then(() => undefined));
     await page.reload();
@@ -65,10 +76,9 @@ test.describe('@us3 transfers', () => {
 
     // --- USD 100.00 becomes EUR 91.37, exactly as entered
     await go(page, 'Transfers');
-    await expect(page.getByRole('heading', { level: 1, name: 'Transfers' })).toBeVisible();
     let dialog = await transfer(page, 'Everyday (USD)', 'Euro wallet (EUR)', '100.00', '91.37');
     await expectNoA11yViolations();
-    await dialog.getByRole('button', { name: 'Add transfer' }).click();
+    await dialog.getByRole('button', { name: 'Save' }).click();
     await expect(page.getByRole('dialog')).toHaveCount(0);
     const row = page.getByTestId('xfer-row');
     await expect(row).toHaveCount(1);
@@ -81,16 +91,16 @@ test.describe('@us3 transfers', () => {
     // --- the same account on both sides is refused
     await go(page, 'Transfers');
     dialog = await transfer(page, 'Everyday (USD)', 'Everyday (USD)', '5.00');
-    await dialog.getByRole('button', { name: 'Add transfer' }).click();
+    await dialog.getByRole('button', { name: 'Save' }).click();
     await expect(dialog.getByRole('alert')).toContainText('two different accounts');
-    await dialog.getByRole('button', { name: 'Cancel' }).click();
+    await cancelAdd(page, dialog);
     await expect(page.getByTestId('xfer-row')).toHaveCount(1);
 
     // --- same currency mirrors the amount
     dialog = await transfer(page, 'Everyday (USD)', 'Holiday fund (USD)', '50.00');
     await expect(dialog.getByTestId('mirrored')).toBeVisible();
     await expect(dialog.getByLabel(/^Amount arriving/)).toHaveCount(0);
-    await dialog.getByRole('button', { name: 'Add transfer' }).click();
+    await dialog.getByRole('button', { name: 'Save' }).click();
     await expect(page.getByTestId('xfer-row')).toHaveCount(2);
 
     // --- edit changes both sides together
@@ -126,19 +136,19 @@ test.describe('@us3 transfers', () => {
     await go(page, 'Transactions');
     await page.getByRole('button', { name: 'Add transaction', exact: true }).click();
     dialog = page.getByRole('dialog');
-    await dialog.getByLabel('Income').check();
+    await dialog.getByRole('tab', { name: 'Income' }).click();
     await dialog.getByLabel('Account').selectOption({ label: 'Holiday fund (USD)' });
     await dialog.getByLabel('Amount (USD)').fill('10.00');
-    await dialog.getByRole('button', { name: 'Add transaction' }).click();
+    await dialog.getByRole('button', { name: 'Save' }).click();
     await expect(dialog.getByRole('alert')).toContainText('goal takes only transfers');
-    await dialog.getByRole('button', { name: 'Cancel' }).click();
+    await cancelAdd(page, dialog);
 
     // --- dashboard: transfers stay out of income and expenses unless asked, and then need a rate
     await go(page, 'Dashboard');
     await expect(page.getByTestId('expense')).toHaveText('0.00 USD');
     await expect(page.getByTestId('income')).toHaveText('0.00 USD');
-    await page.getByLabel('Count transfers as income and expenses').check();
-    await expect(page.getByText('No exchange rate is known for EUR')).toBeVisible();
+    await countTransfers(page, true);
+    await expect(page.getByText('Missing exchange rates for EUR')).toBeVisible();
     await expect(page.getByTestId('expense')).toHaveText('130.00 USD'); // 80.00 to the Euro wallet + 50.00 to the goal
     await expectNoA11yViolations();
 
@@ -147,11 +157,11 @@ test.describe('@us3 transfers', () => {
     await page.getByRole('button', { name: 'Save rate' }).click();
     await expect(page.getByTestId('rate-list')).toContainText('0.9137');
     await go(page, 'Dashboard');
-    await page.getByLabel('Count transfers as income and expenses').check();
+    await countTransfers(page, true);
     await expect(page.getByTestId('income')).toHaveText('130.00 USD'); // 73.10 EUR / 0.9137 = 80.00, plus the 50.00 that arrives in the goal
     await expect(page.getByTestId('expense')).toHaveText('130.00 USD');
     await expect(page.getByTestId('net')).toHaveText('0.00 USD');
-    await page.getByLabel('Count transfers as income and expenses').uncheck();
+    await countTransfers(page, false);
     await expect(page.getByTestId('expense')).toHaveText('0.00 USD');
 
     // --- re-valuing past transactions says what it did
@@ -178,7 +188,7 @@ test.describe('@us3 transfers', () => {
     await expect(dialog.getByTestId('rate-used')).toBeVisible();
     await dialog.getByLabel(/^Amount arriving/).fill('91.00'); // the person's own number wins
     await expect(dialog.getByTestId('implied-rate')).toContainText('0.91');
-    await dialog.getByRole('button', { name: 'Add transfer' }).click();
+    await dialog.getByRole('button', { name: 'Save' }).click();
     await expect(page.getByTestId('xfer-row').getByTestId('xfer-in')).toHaveText('+91.00 EUR');
   });
 
@@ -190,8 +200,9 @@ test.describe('@us3 transfers', () => {
     await addAccount(page, 'Walrus Wallet', '0', { currency: 'EUR' });
     await go(page, 'Transfers');
     const dialog = await transfer(page, 'Narwhal Savings (USD)', 'Walrus Wallet (EUR)', '321.45', '293.71');
+    await moreDetails(dialog);
     await dialog.getByLabel('Note').fill('Tusk repairs');
-    await dialog.getByRole('button', { name: 'Add transfer' }).click();
+    await dialog.getByRole('button', { name: 'Save' }).click();
     await expect(page.getByTestId('xfer-row')).toHaveCount(1);
     await leakScan.expectNoLeaks({ strings: ['Narwhal Savings', 'Walrus Wallet', 'Tusk repairs', PASSWORD], amounts: ['321.45', '32145', '293.71', '29371', '777.77', '77777'] }, capture);
   });

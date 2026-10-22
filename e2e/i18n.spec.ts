@@ -1,6 +1,6 @@
 import type { Page } from '@playwright/test';
 import { expect, test } from './fixtures/index.js';
-import { go } from './fixtures/nav.js';
+import { go, moreDetails } from './fixtures/nav.js';
 
 // Direction and number formatting (FR-095). The `rtl` project runs this under an Arabic browser locale: the layout mirrors with logical
 // properties, and amounts stay exact (bigint minor units, Latin digits, never a floating-point number), even beyond 2^53.
@@ -41,12 +41,12 @@ test.describe('@i18n direction and formatting', () => {
       expect(overflow, `${screen} scrolls sideways`).toBeLessThanOrEqual(1);
       expect(direction).toBe(rtl ? 'rtl' : 'ltr');
     }
-    // The Lock button sits at the inline end of the header: right in LTR, left in RTL.
+    // The Lock button sits in the sidebar, at the inline start: left in LTR, right in RTL.
     const lock = await page.getByRole('button', { name: 'Lock', exact: true }).boundingBox();
     const width = page.viewportSize()!.width;
     const centre = lock!.x + lock!.width / 2;
-    if (rtl) expect(centre).toBeLessThan(width / 2);
-    else expect(centre).toBeGreaterThan(width / 2);
+    if (rtl) expect(centre).toBeGreaterThan(width / 2);
+    else expect(centre).toBeLessThan(width / 2);
   });
 
   test('a dialog mirrors, and its fields keep left-to-right content where it must', async ({ page }, info) => {
@@ -55,7 +55,7 @@ test.describe('@i18n direction and formatting', () => {
     await go(page, 'Accounts');
     await page.getByRole('button', { name: 'Add account', exact: true }).click();
     const dialog = page.getByRole('dialog');
-    await expect(dialog).toBeVisible();
+    await expect(dialog.getByLabel('Name', { exact: true })).toBeVisible();
     expect(await dialog.evaluate((d) => getComputedStyle(d).direction)).toBe(rtl ? 'rtl' : 'ltr');
     const label = await dialog.getByText('Name', { exact: true }).first().boundingBox();
     const box = await dialog.boundingBox();
@@ -85,8 +85,9 @@ test.describe('@i18n direction and formatting', () => {
     const tx = page.getByRole('dialog');
     await tx.getByLabel('Account').selectOption({ label: 'Vault (USD)' });
     await tx.getByLabel('Amount (USD)').fill('0.01');
+    await moreDetails(tx);
     await tx.getByLabel('Note').fill('One cent');
-    await tx.getByRole('button', { name: 'Add transaction' }).click();
+    await tx.getByRole('button', { name: 'Save' }).click();
     await expect(page.getByRole('dialog')).toHaveCount(0);
     await go(page, 'Accounts');
     await expect(page.getByTestId('account-row').filter({ hasText: 'Vault' }).getByTestId('account-balance')).toHaveText('90,071,992,547,409.92 USD');

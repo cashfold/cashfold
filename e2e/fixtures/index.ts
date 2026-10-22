@@ -29,6 +29,8 @@ export const test = base.extend<{
   ],
   expectNoA11yViolations: async ({ page }, use) => {
     await use(async () => {
+      // Wait for dialogs and sheets to finish their enter and leave transitions: axe would measure the half-faded colours.
+      await page.waitForFunction(() => document.querySelector('[data-enter],[data-leave],[data-closed]') === null, undefined, { timeout: 5_000 }).catch(() => undefined);
       const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']).analyze();
       expect(results.violations).toEqual([]);
     });

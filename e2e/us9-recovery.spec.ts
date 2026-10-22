@@ -3,7 +3,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { expect, test } from './fixtures/index.js';
-import { chooseFold, go } from './fixtures/nav.js';
+import { chooseFold, go, moreDetails, editRow } from './fixtures/nav.js';
 
 // User story 9: take your data with you, and get back in (FR-008, FR-009, FR-090 to FR-092, FR-101, SC-013, SC-014). Real browsers
 // on the real relay built from this checkout: each has its own account, its own encrypted database and its own keys.
@@ -36,6 +36,7 @@ async function addAccount(page: Page, name: string, opening: string): Promise<vo
   const dialog = page.getByRole('dialog');
   await dialog.getByLabel('Name', { exact: true }).fill(name);
   await dialog.getByLabel('Opening balance (USD)').fill(opening);
+  await moreDetails(dialog);
   await dialog.getByLabel('Opening date').fill('2020-01-01');
   await dialog.getByRole('button', { name: 'Create account' }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
@@ -48,8 +49,9 @@ async function addExpense(page: Page, account: string, amount: string, note: str
   const dialog = page.getByRole('dialog');
   await dialog.getByLabel('Account').selectOption({ label: `${account} (USD)` });
   await dialog.getByLabel('Amount (USD)').fill(amount);
+  await moreDetails(dialog);
   await dialog.getByLabel('Note').fill(note);
-  await dialog.getByRole('button', { name: 'Add transaction' }).click();
+  await dialog.getByRole('button', { name: 'Save' }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
 }
 
@@ -211,7 +213,7 @@ test.describe('@us9 portability and recovery', () => {
     await expect(page.getByTestId('restored')).toContainText('Personal (restored)', { timeout: 60_000 });
 
     await go(page, 'Transactions');
-    await chooseFold(page, 'Personal (restored)');
+    await chooseFold(page, 'Personal (restored)', 'Transactions');
     await expect(page.getByTestId('tx-row').filter({ hasText: 'Coffee beans' })).toHaveCount(1, { timeout: 30_000 });
     await go(page, 'Accounts');
     await expect(page.getByRole('link', { name: 'Everyday', exact: true })).toBeVisible();
@@ -318,15 +320,16 @@ test.describe('@us9 portability and recovery', () => {
     const dialog = page.getByRole('dialog');
     await dialog.getByLabel('Account').selectOption({ label: 'Everyday (USD)' });
     await dialog.getByLabel('Amount (USD)').fill('12.50');
+    await moreDetails(dialog);
     await dialog.getByLabel('Note').fill('Coffee beans');
     await dialog.locator('#attachment-file').setInputFiles({ name: 'receipt.txt', mimeType: 'text/plain', buffer: contents });
-    await dialog.getByRole('button', { name: 'Add transaction' }).click();
+    await dialog.getByRole('button', { name: 'Save' }).click();
     await expect(page.getByRole('dialog')).toHaveCount(0, { timeout: 60_000 });
     await expect(syncState(page)).toHaveAttribute('data-sync-state', 'synced', { timeout: 60_000 });
 
     const openAndRead = async (p: Page): Promise<Buffer> => {
       await go(p, 'Transactions');
-      await p.getByRole('button', { name: 'Edit Coffee beans' }).click();
+      await editRow(p, 'Coffee beans').click();
       const d = p.getByRole('dialog');
       await expect(d.getByTestId('attachment-current')).toContainText('receipt.txt');
       const downloading = p.waitForEvent('download', { timeout: 60_000 });
@@ -350,13 +353,13 @@ test.describe('@us9 portability and recovery', () => {
 
     // Taking it off
     await go(page, 'Transactions');
-    await page.getByRole('button', { name: 'Edit Coffee beans' }).click();
+    await editRow(page, 'Coffee beans').click();
     const d = page.getByRole('dialog');
     await d.getByRole('button', { name: 'Remove receipt.txt' }).click();
     await expect(d.getByText('The attachment will be removed when you save.')).toBeVisible();
     await d.getByRole('button', { name: 'Save', exact: true }).click();
     await expect(page.getByRole('dialog')).toHaveCount(0, { timeout: 30_000 });
-    await page.getByRole('button', { name: 'Edit Coffee beans' }).click();
+    await editRow(page, 'Coffee beans').click();
     await expect(page.getByRole('dialog').getByTestId('attachment-current')).toHaveCount(0);
   });
 });

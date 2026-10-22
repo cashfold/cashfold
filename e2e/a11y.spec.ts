@@ -1,6 +1,6 @@
 import type { Page } from '@playwright/test';
 import { expect, test } from './fixtures/index.js';
-import { go } from './fixtures/nav.js';
+import { go, moreDetails } from './fixtures/nav.js';
 
 // Accessibility of every primary task (FR-094, SC-016): axe at WCAG 2.2 AA on each screen and each dialog, the primary tasks done with the
 // keyboard alone, and the names, roles and live regions a screen reader announces.
@@ -70,11 +70,11 @@ test.describe('@a11y primary tasks', () => {
     await open.focus();
     await page.keyboard.press('Enter');
     const dialog = page.getByRole('dialog');
-    await expect(dialog).toBeVisible();
+    await expect(dialog.getByLabel('Name', { exact: true })).toBeVisible();
     await expect(dialog).toHaveAccessibleName(/.+/);
     await expectNoA11yViolations();
     // A modal dialog makes the page behind it inert, so Tab can only move within it.
-    expect(await dialog.evaluate((d) => d.matches(':modal'))).toBe(true);
+    await expect(dialog).toHaveAttribute('aria-modal', 'true');
     await page.keyboard.press('Tab');
     expect(await dialog.evaluate((d) => d.contains(document.activeElement))).toBe(true);
     await page.keyboard.press('Escape');
@@ -96,9 +96,10 @@ test.describe('@a11y primary tasks', () => {
     const tx = page.getByRole('dialog');
     await tx.getByLabel('Account').selectOption({ label: 'Everyday (USD)' });
     await tx.getByLabel('Amount (USD)').fill('12.50');
+    await moreDetails(tx);
     await tx.getByLabel('Note').fill('Coffee beans');
     await expectNoA11yViolations();
-    await tx.getByRole('button', { name: 'Add transaction' }).focus();
+    await tx.getByRole('button', { name: 'Save' }).focus();
     await page.keyboard.press('Enter');
     await expect(page.getByRole('dialog')).toHaveCount(0);
     const row = page.getByTestId('tx-row').filter({ hasText: 'Coffee beans' });
@@ -130,7 +131,7 @@ test.describe('@a11y primary tasks', () => {
     await page.setViewportSize({ width: 320, height: 640 });
     await page.evaluate(() => document.documentElement.style.setProperty('font-size', '200%', 'important'));
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
-    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
-    expect(overflow).toBeLessThanOrEqual(1);
+    // The layout settles after the resize (banners and the list load), so the width is read until it holds.
+    await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth), { timeout: 10_000 }).toBeLessThanOrEqual(1);
   });
 });

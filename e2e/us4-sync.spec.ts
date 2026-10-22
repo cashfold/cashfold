@@ -3,7 +3,7 @@ import { randomBytes } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import net from 'node:net';
 import { expect, test } from './fixtures/index.js';
-import { go } from './fixtures/nav.js';
+import { accountAction, go, moreDetails } from './fixtures/nav.js';
 
 // User story 4: the same data on several devices, through a relay that sees only ciphertext (FR-004, FR-010, FR-072 to FR-082).
 // Two real browsers (separate contexts, so separate encrypted databases) and the real relay built from this checkout.
@@ -88,8 +88,9 @@ async function addExpense(page: Page, account: string, amount: string, note: str
   const dialog = page.getByRole('dialog');
   await dialog.getByLabel('Account').selectOption({ label: `${account} (USD)` });
   await dialog.getByLabel('Amount (USD)').fill(amount);
+  await moreDetails(dialog);
   await dialog.getByLabel('Note').fill(note);
-  await dialog.getByRole('button', { name: 'Add transaction' }).click();
+  await dialog.getByRole('button', { name: 'Save' }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
 }
 
@@ -182,7 +183,7 @@ test.describe('@us4 sync', () => {
     // the very same field changed on both: the account's name
     for (const [p, name] of [[page, 'Everyday (first)'], [b.page, 'Everyday (second)']] as const) {
       await go(p, 'Accounts');
-      await p.getByRole('button', { name: 'Edit Everyday', exact: false }).first().click();
+      await accountAction(p, 'Everyday', 'Edit');
       await p.getByRole('dialog').getByLabel('Name', { exact: true }).fill(name);
       await p.getByRole('dialog').getByRole('button', { name: 'Save changes' }).click();
       await expect(p.getByRole('dialog')).toHaveCount(0);

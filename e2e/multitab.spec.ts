@@ -66,7 +66,7 @@ test.describe('@durability storage and tabs', () => {
     await browserWillKeep(page, true);
     await signUp(page);
     await addAccount(page, 'Everyday');
-    await go(page, 'Settings');
+    await go(page, 'Data');
     await expect(page.getByTestId('storage-state')).toContainText('has agreed to keep');
     await expect(page.getByTestId('storage-warning')).toHaveCount(0);
     expect(await page.evaluate(() => (window as unknown as { __persistCalls: number }).__persistCalls)).toBeGreaterThanOrEqual(1);
@@ -82,7 +82,7 @@ test.describe('@durability storage and tabs', () => {
     await go(page, 'Transactions');
     await expect(page.getByTestId('storage-warning')).toContainText('Your data is also on the service', { timeout: 30_000 });
     await expectNoA11yViolations();
-    await go(page, 'Settings');
+    await go(page, 'Data');
     await expect(page.getByTestId('storage-state')).toContainText('has not agreed');
     await page.getByRole('button', { name: 'Ask the browser to keep my data' }).click();
     await expect(page.getByRole('region', { name: 'Storage' }).getByRole('status')).toContainText('asked again');
@@ -109,7 +109,7 @@ test.describe('@durability storage and tabs', () => {
     await backup.getByLabel('Passphrase again').fill('backup passphrase 1');
     const [download] = await Promise.all([page.waitForEvent('download'), backup.getByRole('button', { name: 'Make a backup' }).click()]);
     expect(download.suggestedFilename()).toMatch(/\.cashfold-backup$/);
-    await go(page, 'Settings');
+    await go(page, 'Data');
     await expect(page.getByRole('region', { name: 'Storage' })).toContainText('Last backup');
   });
 

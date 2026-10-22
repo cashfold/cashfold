@@ -52,12 +52,13 @@ test.describe('@us8 goals', () => {
   }
 
   async function moveIn(page: Page, to: string, amount: string): Promise<void> {
-    await page.getByRole('button', { name: 'Add transfer', exact: true }).click();
+    await page.getByRole('button', { name: 'Add', exact: true }).first().click();
+    await page.getByRole('tab', { name: 'Transfer' }).click();
     const dialog = page.getByRole('dialog');
     await dialog.getByLabel('From account').selectOption({ label: 'Everyday (USD)' });
     await dialog.getByLabel('To account').selectOption({ label: `${to} (USD)` });
     await dialog.getByLabel(/^Amount leaving/).fill(amount);
-    await dialog.getByRole('button', { name: 'Add transfer' }).click();
+    await dialog.getByRole('button', { name: 'Save' }).click();
     await expect(page.getByRole('dialog')).toHaveCount(0);
   }
 
@@ -128,7 +129,7 @@ test.describe('@us8 goals', () => {
     const dialog = page.getByRole('dialog');
     await dialog.getByLabel('Account').selectOption({ label: 'Car fund (USD)' });
     await dialog.getByLabel('Amount (USD)').fill('5.00');
-    await dialog.getByRole('button', { name: 'Add transaction' }).click();
+    await dialog.getByRole('button', { name: 'Save' }).click();
     await expect(dialog.getByRole('alert')).toContainText('goal takes only transfers');
   });
 });

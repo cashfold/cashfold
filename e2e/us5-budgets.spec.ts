@@ -1,6 +1,6 @@
 import type { Page } from '@playwright/test';
 import { expect, test } from './fixtures/index.js';
-import { go } from './fixtures/nav.js';
+import { go, moreDetails } from './fixtures/nav.js';
 
 // User story 5: envelope budgets with rollover (FR-054 to FR-061), offline.
 // The scenario runs against the device clock: the budget starts at the first day of last month, so "month one" is
@@ -38,6 +38,7 @@ test.describe('@us5 budgets', () => {
     const dialog = page.getByRole('dialog');
     await dialog.getByLabel('Name', { exact: true }).fill(name);
     await dialog.getByLabel('Opening balance (USD)').fill(opening);
+    await moreDetails(dialog);
     await dialog.getByLabel('Opening date').fill('2020-01-01');
     await dialog.getByRole('button', { name: 'Create account' }).click();
     await expect(page.getByRole('dialog')).toHaveCount(0);
@@ -48,8 +49,9 @@ test.describe('@us5 budgets', () => {
     const dialog = page.getByRole('dialog');
     await dialog.getByLabel('Amount (USD)').fill(amount);
     await dialog.getByLabel('Date and time').fill(TENTH_OF_LAST_MONTH);
+    await moreDetails(dialog);
     await dialog.getByLabel('Note').fill(note);
-    await dialog.getByRole('button', { name: 'Add transaction' }).click();
+    await dialog.getByRole('button', { name: 'Save' }).click();
     await expect(page.getByRole('dialog')).toHaveCount(0);
   }
 

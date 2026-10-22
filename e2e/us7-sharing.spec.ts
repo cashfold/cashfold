@@ -1,6 +1,6 @@
 import type { Browser, BrowserContext, Page } from '@playwright/test';
 import { expect, test } from './fixtures/index.js';
-import { chooseFold, go } from './fixtures/nav.js';
+import { cancelAdd, chooseFold, go, moreDetails } from './fixtures/nav.js';
 
 // User story 7: share a Fold with other people (FR-083 to FR-089, FR-102, FR-104). Three real browsers on the real relay
 // built from this checkout: each has its own account, its own encrypted database and its own keys.
@@ -13,7 +13,7 @@ const unique = () => `${Date.now().toString(36)}${Math.random().toString(36).sli
 /** A ledger screen on the shared Fold: people in two Folds choose which one they are looking at, in the sidebar. */
 async function goIn(page: Page, name: string, fold = 'Household'): Promise<void> {
   await go(page, name);
-  await chooseFold(page, fold);
+  await chooseFold(page, fold, name);
 }
 
 async function signUp(page: Page, email: string): Promise<void> {
@@ -43,6 +43,7 @@ async function addAccount(page: Page, name: string, opening: string): Promise<vo
   const dialog = page.getByRole('dialog');
   await dialog.getByLabel('Name', { exact: true }).fill(name);
   await dialog.getByLabel('Opening balance (USD)').fill(opening);
+  await moreDetails(dialog);
   await dialog.getByLabel('Opening date').fill('2020-01-01');
   await dialog.getByRole('button', { name: 'Create account' }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
@@ -54,13 +55,14 @@ async function addExpense(page: Page, account: string, amount: string, note: str
   const dialog = page.getByRole('dialog');
   await dialog.getByLabel('Account').selectOption({ label: `${account} (USD)` });
   await dialog.getByLabel('Amount (USD)').fill(amount);
+  await moreDetails(dialog);
   await dialog.getByLabel('Note').fill(note);
   if (daysAgo > 0) {
     const d = new Date(Date.now() - daysAgo * 86_400_000);
     const p = (n: number) => String(n).padStart(2, '0');
     await dialog.getByLabel('Date and time').fill(`${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T12:00`);
   }
-  await dialog.getByRole('button', { name: 'Add transaction' }).click();
+  await dialog.getByRole('button', { name: 'Save' }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
 }
 
@@ -101,7 +103,10 @@ async function invite(page: Page, fold: string, how: { email: string } | { code:
   await dialog.getByLabel('What can they do?').selectOption({ label: opts.role });
   await dialog.getByLabel(opts.scope === 'full' ? /^All history/ : /^From now on/).check();
   await dialog.getByRole('button', { name: 'Send invitation' }).click();
-  await expect(page.getByRole('dialog').filter({ hasText: 'Invite someone' })).toHaveCount(0, { timeout: 60_000 });
+  await expect(page.getByRole('heading', { name: 'Invite someone' })).toHaveCount(0, { timeout: 60_000 });
+  // The sharing panel stays open behind the invitation form; close it so the rest of the page can be reached.
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('heading', { name: /^Sharing / })).toHaveCount(0);
 }
 
 async function accept(page: Page, inviterFingerprint: string): Promise<void> {
@@ -137,7 +142,7 @@ test.describe('@us7 sharing', () => {
     await page.getByRole('button', { name: 'Rename Personal' }).click();
     await page.getByLabel('Fold name').first().fill('Household');
     await page.getByRole('button', { name: 'Save name' }).click();
-    await expect(page.getByTestId('current-fold')).toHaveText('Household');
+    await expect(page.getByTestId('fold-name').filter({ hasText: 'Household' })).toBeVisible();
     await addAccount(page, 'Everyday', '1,000.00');
     await addExpense(page, 'Everyday', '25.00', 'Old coffee', 10);
     const alice = await myCode(page);
@@ -189,10 +194,11 @@ test.describe('@us7 sharing', () => {
       await bob.page.getByRole('button', { name: 'Add transaction', exact: true }).click();
       const dialog = bob.page.getByRole('dialog');
       await dialog.getByLabel('Amount (USD)').fill('1.00');
+      await moreDetails(dialog);
       await dialog.getByLabel('Note').fill('not allowed');
-      await dialog.getByRole('button', { name: 'Add transaction' }).click();
+      await dialog.getByRole('button', { name: 'Save' }).click();
       await expect(dialog.getByRole('alert')).toContainText('does not allow that', { timeout: 3_000 });
-      await dialog.getByRole('button', { name: 'Cancel' }).click();
+      await cancelAdd(bob.page, dialog);
     }).toPass({ timeout: 90_000 });
 
     // --- Alice invites Carol with her code and the whole history: Carol reads everything, and everyone is told
