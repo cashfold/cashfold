@@ -66,3 +66,34 @@ Add: date, change, asset or boundary touched, attacker capability considered, mi
 - **Vendored UI code.** `apps/web/src/ui/kit/` holds components derived from the Catalyst kit and Headless UI (MIT). They run in the same origin as the key material, so they are reviewed like any dependency: pinned versions, `pnpm audit` in CI, no network access of their own, and a Content-Security-Policy without `unsafe-inline`/`unsafe-eval` that the end-to-end suite watches for violations (`e2e/ux-csp.spec.ts`).
 - **Preference store.** `localStorage` key `cashfold.ui` holds the theme, remembered choices (ids of the last account and categories only), collapsed sections and dismissed hints. It never holds names, amounts, e-mail addresses or notes; the plaintext-leak scan fails if it does or if any other `localStorage` key appears. It is device-local, never synced or exported, and can be reset in Settings → Appearance.
 - **Overlays.** The privacy cover makes dialogs inert and hidden; locking unmounts them (see ADR-0008).
+
+## Desktop shell (spec 003)
+
+The desktop app is an Electron shell around the unchanged web export (ADR-0009). It adds a program on the person's computer that loads the web app, a small bridge between the two, an updater, and installers. The web app's own rules (zero knowledge, local encryption, strict content policy) are unchanged and apply inside the shell.
+
+**New assets and boundaries**
+
+- *The main process.* It runs with the person's full rights, outside the page. It holds no key and no plaintext: it serves files, shows windows, applies a policy, talks to GitHub to find updates, and opens the data folder. The database key never leaves the page's worker.
+- *The bridge* (`@cashfold/platform`, global `cashfoldDesktop`). The boundary between the page and the main process. Eight fixed calls; no path, address or command from the page is ever used; every argument and every answer is checked against a strict schema; the caller must be the app's own page.
+- *The installers and the update path.* What the person runs, and what replaces it later.
+- *The update-signing key* (ADR-0010) and the operating-system signing credentials.
+
+**Threats and mitigations**
+
+| Threat | Mitigation |
+|---|---|
+| Code in the page (a compromised dependency, an injected script) reaches the person's computer | Context isolation, sandbox, no Node in the page; navigation, new windows and webviews refused; two permissions granted; the bridge is the only way out and is narrow and validated. The page's content policy is the web build's (no inline script, Trusted Types). |
+| A page from another origin calls the bridge | Every call checks the sender frame's address is the app origin; a refused call is logged without its content. |
+| The page asks the shell to open or write somewhere | It cannot name a path or address. The data folder opened is the one main chose; external links go through an allow-list of the project's own repository; downloads are accepted only from `blob:` URLs the app made, and always through the native save dialog. |
+| Local files served to the page are swapped, or a path escapes the export | The export is read-only inside the application archive, whose integrity is checked by a fuse; the URL-to-file mapping refuses `..`, encoded separators, NUL, other hosts and methods before touching the disk. |
+| A hostile or tampered **update** is installed | The updater never downloads or installs without the person's two clicks. Every installer that updates itself carries the project's Ed25519 signature, checked in the main process against keys built into the app, over the file's own SHA-512, fetched from the same release at an address built from the pinned repository. A bad or missing signature deletes the download. Downloads whose feed entry points elsewhere are refused. Windows and signed macOS builds also have the operating system's check. The feed's own SHA-512 alone would prove integrity only. |
+| A test convenience becomes an update-hijack switch | The local update feed and its key exist only in a build made with the test flag, which the release check refuses (`pnpm check:desktop-config --release` looks at the build flags and at the bundle). |
+| The update-signing key is stolen | It lives only in the protected `release` environment (reviewers, tags `v*` only) and in an offline backup held by a second person. A thief could sign a malicious update; mitigations are custody, the operating-system signature that signed builds also carry (it would need the thief to have that too), the provenance attestation on release assets, and two-key rotation (publish a release trusting old and new, then retire the old key). Losing the key is not an attack but strands installed copies, hence the backup. |
+| The operating-system signing credentials are stolen | Held only as encrypted secrets in the same environment; a signing run needs approval; certificates are checked for expiry before use; renewal and revocation are documented in `docs/desktop.md`. |
+| A release is made without the project's approval | Releases come only from the release proposal, which needs the same reviews as any change; creating a `v*` tag is restricted to the release GitHub App; the release workflow refuses to run on anything but a version tag of the commit it builds whose `package.json` says that version; and it will not run until the external review is complete. |
+| A secret leaks through a build log | Secrets are handed to steps through the environment, never on a command line; GitHub masks them; a canary run and `scripts/check-run-logs.mjs` search the logs of a signed run. |
+| The data folder is read by another program on the computer | Out of scope, as for the web app on a shared profile: the database is encrypted at rest with the same key hierarchy; a program running as the person can also read the page's memory. The location is shown to the person. |
+| The shell logs something sensitive | The shell's log redacts by type (paths, key-shaped values, URL credentials, bytes); IPC payloads are never logged. |
+
+**Residual risks.** The update check reveals the app version and the person's address to GitHub (documented in `docs/privacy.md`; it can be switched off). Electron's Chromium needs regular security updates, and a copy that is not updated stays exposed to the browser engine's known flaws; updates are therefore on by default and a release is made for every Electron security release. The JavaScript memory-erasure limit of the web app applies unchanged. The desktop shell is part of the scope of the external security review.
+

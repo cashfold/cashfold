@@ -64,6 +64,10 @@ Like any web service, it sees the **network address** your requests come from an
 
 Confirmation links and invitation notices. A notice names only the person inviting you, and contains no Fold name or financial information.
 
+### The desktop app and updates
+
+The desktop app (Windows, macOS, Linux) is the same app in its own window, so everything above holds for it too. It adds one thing: it looks for new versions of itself, when it starts and every few hours, by asking GitHub (where releases are published) for a small file that lists the newest version. That request reveals your **network address** and the **version of the app** you run, to GitHub, as any download does, and nothing else: no account, no data, no identifier. Downloading an update, and installing it, happen only when you choose to. You can switch the automatic check off in Settings → Advanced → Updates; you can still check by hand. The desktop app has no analytics, no crash reporting and no other connection of its own; its only other connection is to the service address you chose, exactly as in the web app.
+
 ## What is public
 
 The exchange-rate table is the same for everyone and is served to anyone who asks. Asking for it reveals nothing about what you hold.
