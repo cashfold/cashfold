@@ -50,3 +50,10 @@ Further changes after windowing: "Show more" now reads only the next page and ap
 - T117 moderated sessions (SC-001, SC-003, SC-004, SC-009, SC-012).
 - T118 walk of every function of spec 001 against the new screens.
 - T115 acceptance of the control-count comparison (see above), and the 50,000-row dashboard bench on the new route.
+
+## Deferred to a later change
+
+Decided with the owner on 2026-10-22: these are left for a follow-up, not done in this change.
+
+- **T115 / SC-005** first-load control counts on wide screens (Overview, Transactions, Settings). Options: a one-action Emergency Kit reminder and Help and Lock in one menu, or restating SC-005 as a count of each screen's own content. Measurements are in `after.json`.
+- **T077 / SC-010** the 10,000-row list answers in about 290 ms at the 4× slowdown against 200 ms. Next step: do not re-read needs-attention, transfers and recently deleted on every search or "Show more".
