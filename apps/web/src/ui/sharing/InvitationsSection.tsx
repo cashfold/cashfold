@@ -2,10 +2,11 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useCore } from '../core/CoreProvider';
-import { buttonClass, secondaryButtonClass } from '../forms/TextField';
+
 import { useI18n } from '../i18n/I18nProvider';
 import { Fingerprint } from './Fingerprint';
 import { sharingError } from './errors';
+import { Button, Checkbox, CheckboxField, Label } from '../kit';
 
 type Outcome<T> = { ok: true; value: T } | { ok: false; error: { code: string } };
 
@@ -68,15 +69,12 @@ export function InvitationsSection({ onChanged }: { onChanged: () => void }) {
               <>
                 <h3 className="mt-3 font-medium">{t('sharing.invitations.fingerprint', { inviter: i.inviter })}</h3>
                 <Fingerprint groups={i.inviterFingerprint} label={t('sharing.invitations.fingerprint', { inviter: i.inviter })} testId="inviter-fingerprint" />
-                <label className="mt-3 flex items-start gap-2">
-                  <input type="checkbox" className="mt-1" checked={confirmed[i.fold] === true} onChange={(e) => setConfirmed({ ...confirmed, [i.fold]: e.target.checked })} />
-                  <span>{t('sharing.invitations.confirm', { inviter: i.inviter })}</span>
-                </label>
+                <CheckboxField className="mt-3"><Checkbox checked={confirmed[i.fold] === true} onChange={(checked) => setConfirmed({ ...confirmed, [i.fold]: checked })} /><Label>{t('sharing.invitations.confirm', { inviter: i.inviter })}</Label></CheckboxField>
               </>
             )}
             <div className="mt-3 flex gap-3">
-              {i.status === 'pending' ? <button type="button" className={buttonClass} disabled={busy === i.fold || confirmed[i.fold] !== true} onClick={() => void act('sharing.accept', i)}>{t('sharing.invitations.accept')}</button> : null}
-              <button type="button" className={secondaryButtonClass} disabled={busy === i.fold} onClick={() => void act('sharing.decline', i)}>{t('sharing.invitations.decline')}</button>
+              {i.status === 'pending' ? <Button type="button" disabled={busy === i.fold || confirmed[i.fold] !== true} onClick={() => void act('sharing.accept', i)}>{t('sharing.invitations.accept')}</Button> : null}
+              <Button outline type="button" disabled={busy === i.fold} onClick={() => void act('sharing.decline', i)}>{t('sharing.invitations.decline')}</Button>
             </div>
           </li>
         ))}

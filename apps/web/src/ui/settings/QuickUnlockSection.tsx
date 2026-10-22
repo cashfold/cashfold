@@ -4,8 +4,9 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { enrolDeviceCredential, platformAuthenticatorAvailable, readPrf } from '../auth/webauthn';
 import { useCore, withPasswordBytes } from '../core/CoreProvider';
 import { sessionMarker } from '../core/session-marker';
-import { TextField, buttonClass, secondaryButtonClass } from '../forms/TextField';
+import { TextField } from '../forms/TextField';
 import { useI18n } from '../i18n/I18nProvider';
+import { Button } from '../kit';
 
 type Outcome = { ok: true } | { ok: false; error: { code: string; retryAfterMs?: number } };
 
@@ -52,13 +53,13 @@ export function QuickUnlockSection({ enabled, onChange }: { enabled: boolean; on
       {available && enabled ? (
         <div className="mt-3">
           <p>{t('quick.on')}</p>
-          <button type="button" className={`${secondaryButtonClass} mt-2`} onClick={() => void core.call('quickUnlock.disable').then(onChange)}>{t('quick.turnOff')}</button>
+          <Button outline className="mt-2" type="button" onClick={() => void core.call('quickUnlock.disable').then(onChange)}>{t('quick.turnOff')}</Button>
         </div>
       ) : null}
       {available && !enabled ? (
         <form onSubmit={turnOn} className="max-w-md" aria-busy={busy}>
           <TextField label={t('unlock.password.label')} type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} error={error} />
-          <button type="submit" className={`${buttonClass} mt-4`} disabled={busy}>{t('quick.turnOn')}</button>
+          <Button className="mt-4" type="submit" disabled={busy}>{t('quick.turnOn')}</Button>
         </form>
       ) : null}
     </section>

@@ -3,12 +3,13 @@
 import type { LocalDate, RecentlyDeletedTransfer, TransferRow } from '@cashfold/core';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Modal } from '../../forms/Modal';
-import { buttonClass, secondaryButtonClass } from '../../forms/TextField';
+
 import { useI18n } from '../../i18n/I18nProvider';
 import { formatDate, formatDateTime } from '../dates';
 import { useLedger } from '../LedgerProvider';
 import { RateManager } from './RateManager';
 import { AddSheet } from '../../transactions/AddSheet';
+import { Button } from '../../kit';
 
 /** The transfers of the Fold, listed under the transactions; they are entered and edited in the same sheet (transfer mode). */
 export function TransfersSection() {
@@ -81,8 +82,8 @@ export function TransfersSection() {
                     </div>
                   </div>
                   <div className="flex gap-2">
-                    <button type="button" className={secondaryButtonClass} onClick={() => setEditing(x)} aria-label={`${t('ledger.edit')} ${title}`}>{t('ledger.edit')}</button>
-                    <button type="button" className={secondaryButtonClass} onClick={() => setRemoving(x)} aria-label={`${t('ledger.delete')} ${title}`}>{t('ledger.delete')}</button>
+                    <Button outline type="button" onClick={() => setEditing(x)} aria-label={`${t('ledger.edit')} ${title}`}>{t('ledger.edit')}</Button>
+                    <Button outline type="button" onClick={() => setRemoving(x)} aria-label={`${t('ledger.delete')} ${title}`}>{t('ledger.delete')}</Button>
                   </div>
                 </li>
               );
@@ -101,7 +102,7 @@ export function TransfersSection() {
                 {accounts.get(d.transfer.fromAccountId)?.name} → {accounts.get(d.transfer.toAccountId)?.name}
                 <span className="ms-3 text-sm text-muted">{formatDate(d.transfer.localDate, locale)} · {t('ledger.deleted.daysLeft', { days: d.daysLeft })}</span>
               </span>
-              <button type="button" className={secondaryButtonClass} onClick={async () => { const r = await ledger.run('ledger.restoreTransfer', { id: d.transfer.id }); if (!r.ok) setMessage(ledger.explain(r.error.code)); }}>{t('ledger.deleted.restore')}</button>
+              <Button outline type="button" onClick={async () => { const r = await ledger.run('ledger.restoreTransfer', { id: d.transfer.id }); if (!r.ok) setMessage(ledger.explain(r.error.code)); }}>{t('ledger.deleted.restore')}</Button>
             </li>
           ))}
         </ul>
@@ -116,8 +117,8 @@ export function TransfersSection() {
           <div>
             <p className="mt-3">{t('ledger.xfer.delete.consequence')}</p>
             <div className="mt-6 flex gap-3">
-              <button type="button" className={buttonClass} onClick={() => void confirmRemove()}>{t('ledger.xfer.delete.confirm')}</button>
-              <button type="button" className={secondaryButtonClass} onClick={() => setRemoving(undefined)}>{t('ledger.cancel')}</button>
+              <Button type="button" onClick={() => void confirmRemove()}>{t('ledger.xfer.delete.confirm')}</Button>
+              <Button outline type="button" onClick={() => setRemoving(undefined)}>{t('ledger.cancel')}</Button>
             </div>
           </div>
         ) : null}

@@ -3,11 +3,12 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useCore } from '../core/CoreProvider';
 import { Modal } from '../forms/Modal';
-import { buttonClass, secondaryButtonClass } from '../forms/TextField';
+
 import { useI18n } from '../i18n/I18nProvider';
 import { Fingerprint } from './Fingerprint';
 import { InviteForm } from './InviteForm';
 import { sharingError } from './errors';
+import { Button, Select } from '../kit';
 
 type Role = 'owner' | 'editor' | 'viewer';
 type Outcome<T> = { ok: true; value: T } | { ok: false; error: { code: string } };
@@ -22,7 +23,6 @@ interface Overview {
 }
 type Dialog = { kind: 'invite' } | { kind: 'remove'; member: Member } | { kind: 'leave' } | { kind: 'transfer'; member: Member } | { kind: 'fingerprint'; member: Member };
 
-const select = 'rounded-ui border border-border-strong bg-bg px-2 py-1';
 
 /** Who is in a Fold and what each may do; for an owner, inviting, changing roles and removing; for anyone, leaving (FR-083 to FR-089). */
 export function SharingPanel({ fold, name, onClose, onLeft }: { fold: string; name: string; onClose: () => void; onLeft: () => void }) {
@@ -83,16 +83,16 @@ export function SharingPanel({ fold, name, onClose, onLeft }: { fold: string; na
                 {owner && !m.isMe ? (
                   <>
                     <label className="sr-only" htmlFor={`role-${m.account}`}>{t('sharing.members.roleOf', { account: m.account })}</label>
-                    <select id={`role-${m.account}`} className={select} value={m.role} disabled={busy} onChange={(e) => void run('sharing.changeRole', { member: m.account, role: e.target.value })}>
+                    <Select id={`role-${m.account}`} value={m.role} disabled={busy} onChange={(e) => void run('sharing.changeRole', { member: m.account, role: e.target.value })}>
                       <option value="owner">{t('sharing.role.owner')}</option>
                       <option value="editor">{t('sharing.role.editor')}</option>
                       <option value="viewer">{t('sharing.role.viewer')}</option>
-                    </select>
-                    <button type="button" className={secondaryButtonClass} onClick={() => setDialog({ kind: 'remove', member: m })} aria-label={`${t('sharing.members.remove')} ${m.account}`}>{t('sharing.members.remove')}</button>
-                    {m.role === 'owner' ? null : <button type="button" className={secondaryButtonClass} onClick={() => setDialog({ kind: 'transfer', member: m })} aria-label={`${t('sharing.members.transfer')} ${m.account}`}>{t('sharing.members.transfer')}</button>}
+                    </Select>
+                    <Button outline type="button" onClick={() => setDialog({ kind: 'remove', member: m })} aria-label={`${t('sharing.members.remove')} ${m.account}`}>{t('sharing.members.remove')}</Button>
+                    {m.role === 'owner' ? null : <Button outline type="button" onClick={() => setDialog({ kind: 'transfer', member: m })} aria-label={`${t('sharing.members.transfer')} ${m.account}`}>{t('sharing.members.transfer')}</Button>}
                   </>
                 ) : null}
-                <button type="button" className={secondaryButtonClass} onClick={() => setDialog({ kind: 'fingerprint', member: m })} aria-label={`${t('sharing.members.fingerprint')} ${m.account}`}>{t('sharing.members.fingerprint')}</button>
+                <Button outline type="button" onClick={() => setDialog({ kind: 'fingerprint', member: m })} aria-label={`${t('sharing.members.fingerprint')} ${m.account}`}>{t('sharing.members.fingerprint')}</Button>
               </div>
             </div>
             {owner ? (
@@ -114,9 +114,9 @@ export function SharingPanel({ fold, name, onClose, onLeft }: { fold: string; na
       ) : null}
 
       <div className="mt-6 flex flex-wrap gap-3">
-        {owner ? <button type="button" className={buttonClass} onClick={() => setDialog({ kind: 'invite' })}>{t('sharing.invite.open')}</button> : null}
-        {view.myRole !== undefined ? <button type="button" className={secondaryButtonClass} onClick={() => setDialog({ kind: 'leave' })}>{t('sharing.leave.open')}</button> : null}
-        <button type="button" className={secondaryButtonClass} onClick={onClose}>{t('ledger.close')}</button>
+        {owner ? <Button type="button" onClick={() => setDialog({ kind: 'invite' })}>{t('sharing.invite.open')}</Button> : null}
+        {view.myRole !== undefined ? <Button outline type="button" onClick={() => setDialog({ kind: 'leave' })}>{t('sharing.leave.open')}</Button> : null}
+        <Button outline type="button" onClick={onClose}>{t('ledger.close')}</Button>
       </div>
 
       <Modal open={dialog?.kind === 'invite'} title={t('sharing.invite.title')} onClose={() => setDialog(undefined)}>
@@ -128,7 +128,7 @@ export function SharingPanel({ fold, name, onClose, onLeft }: { fold: string; na
           <div>
             <p className="mt-2 text-sm text-muted">{t('sharing.members.fingerprint.hint')}</p>
             <div className="mt-2"><Fingerprint groups={dialog.member.fingerprint} label={t('sharing.members.fingerprintOf', { account: dialog.member.account })} /></div>
-            <button type="button" className={`${secondaryButtonClass} mt-4`} onClick={() => setDialog(undefined)}>{t('ledger.close')}</button>
+            <Button outline className="mt-4" type="button" onClick={() => setDialog(undefined)}>{t('ledger.close')}</Button>
           </div>
         ) : null}
       </Modal>
@@ -139,11 +139,11 @@ export function SharingPanel({ fold, name, onClose, onLeft }: { fold: string; na
             <p className="mt-3">{t('sharing.remove.explain', { account: dialog.member.account })}</p>
             <p className="mt-2 text-sm text-muted">{t('sharing.remove.limit')}</p>
             <div className="mt-6 flex gap-3">
-              <button
-                type="button" className={buttonClass} disabled={busy}
+              <Button
+                type="button"  disabled={busy}
                 onClick={() => void run('sharing.remove', { member: dialog.member.account }, () => { setDialog(undefined); setNotice(t('sharing.remove.done', { account: dialog.member.account })); })}
-              >{t('sharing.members.remove')}</button>
-              <button type="button" className={secondaryButtonClass} onClick={() => setDialog(undefined)}>{t('ledger.cancel')}</button>
+              >{t('sharing.members.remove')}</Button>
+              <Button outline type="button" onClick={() => setDialog(undefined)}>{t('ledger.cancel')}</Button>
             </div>
           </div>
         ) : null}
@@ -154,8 +154,8 @@ export function SharingPanel({ fold, name, onClose, onLeft }: { fold: string; na
           <div>
             <p className="mt-3">{t('sharing.transfer.explain', { account: dialog.member.account })}</p>
             <div className="mt-6 flex gap-3">
-              <button type="button" className={buttonClass} disabled={busy} onClick={() => void run('sharing.transfer', { to: dialog.member.account }, () => setDialog(undefined))}>{t('sharing.members.transfer')}</button>
-              <button type="button" className={secondaryButtonClass} onClick={() => setDialog(undefined)}>{t('ledger.cancel')}</button>
+              <Button type="button" disabled={busy} onClick={() => void run('sharing.transfer', { to: dialog.member.account }, () => setDialog(undefined))}>{t('sharing.members.transfer')}</Button>
+              <Button outline type="button" onClick={() => setDialog(undefined)}>{t('ledger.cancel')}</Button>
             </div>
           </div>
         ) : null}
@@ -201,11 +201,11 @@ function LeavePanel({ fold, name, onDone, onCancel }: { fold: string; name: stri
     <div>
       <p className="mt-3">{t('sharing.leave.explain', { name })}</p>
       <p className="mt-2 text-sm text-muted">{t('sharing.leave.limit')}</p>
-      <button type="button" className={`${secondaryButtonClass} mt-3`} onClick={() => void exportCopy()}>{t('sharing.leave.export')}</button>
+      <Button outline className="mt-3" type="button" onClick={() => void exportCopy()}>{t('sharing.leave.export')}</Button>
       {error ? <p role="alert" className="mt-3 text-danger">{error}</p> : null}
       <div className="mt-6 flex gap-3">
-        <button type="button" className={buttonClass} disabled={busy} onClick={() => void leave()}>{t('sharing.leave.confirm')}</button>
-        <button type="button" className={secondaryButtonClass} onClick={onCancel}>{t('ledger.cancel')}</button>
+        <Button type="button" disabled={busy} onClick={() => void leave()}>{t('sharing.leave.confirm')}</Button>
+        <Button outline type="button" onClick={onCancel}>{t('ledger.cancel')}</Button>
       </div>
     </div>
   );

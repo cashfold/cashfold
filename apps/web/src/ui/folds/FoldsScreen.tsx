@@ -3,7 +3,7 @@
 import { CURRENCY_EXPONENTS, type FoldSummary } from '@cashfold/core';
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import { useCore } from '../core/CoreProvider';
-import { TextField, buttonClass, secondaryButtonClass } from '../forms/TextField';
+import { TextField } from '../forms/TextField';
 import { Hint } from '../firstrun/Hint';
 import { useLedger } from '../ledger/LedgerProvider';
 import { useI18n } from '../i18n/I18nProvider';
@@ -12,6 +12,7 @@ import { InvitationsSection } from '../sharing/InvitationsSection';
 import { MyCode } from '../sharing/MyCode';
 import { SharingPanel } from '../sharing/SharingPanel';
 import { KitReminder } from '../shell/KitReminder';
+import { Button, Select } from '../kit';
 
 type Outcome<T> = { ok: true; value: T } | { ok: false; error: { code: string } };
 interface DeletionSummary { name: string; memberCount: number; isLastFold: boolean }
@@ -103,7 +104,7 @@ export function FoldsScreen() {
         <div role="status" className="mt-4 rounded-ui border border-border-strong p-3" data-testid="fold-removed-notice">
           <p>{t('sharing.removed.notice')}</p>
           <p className="mt-1 text-sm text-muted">{t('sharing.removed.limit')}</p>
-          <button type="button" className={`${secondaryButtonClass} mt-2`} onClick={() => { setRemovedNotice(false); ledger.dismissFoldRemoved(); }}>{t('sharing.removed.dismiss')}</button>
+          <Button outline className="mt-2" type="button" onClick={() => { setRemovedNotice(false); ledger.dismissFoldRemoved(); }}>{t('sharing.removed.dismiss')}</Button>
         </div>
       ) : null}
       <InvitationsSection onChanged={() => void load()} />
@@ -116,8 +117,8 @@ export function FoldsScreen() {
             {renaming?.id === fold.id ? (
               <form onSubmit={saveRename} className="flex flex-wrap items-end gap-2">
                 <TextField label={t('folds.name.label')} value={renaming.name} onChange={(e) => setRenaming({ id: fold.id, name: e.target.value })} autoFocus />
-                <button type="submit" className={buttonClass}>{t('folds.rename.save')}</button>
-                <button type="button" className={secondaryButtonClass} onClick={() => setRenaming(undefined)}>{t('folds.rename.cancel')}</button>
+                <Button type="submit" >{t('folds.rename.save')}</Button>
+                <Button outline type="button" onClick={() => setRenaming(undefined)}>{t('folds.rename.cancel')}</Button>
               </form>
             ) : (
               <>
@@ -126,12 +127,12 @@ export function FoldsScreen() {
                   <span className="ms-3 text-sm text-muted">{t(`folds.role.${fold.role}`)} · {t('folds.currency', { currency: fold.baseCurrency })}</span>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <button type="button" className={secondaryButtonClass} onClick={() => setSharing(fold)} aria-label={`${t('sharing.open')} ${fold.name}`}>{t('sharing.open')}</button>
+                  <Button outline type="button" onClick={() => setSharing(fold)} aria-label={`${t('sharing.open')} ${fold.name}`}>{t('sharing.open')}</Button>
                 </div>
                 {fold.role === 'owner' ? (
                   <div className="flex gap-2">
-                    <button type="button" className={secondaryButtonClass} onClick={() => setRenaming({ id: fold.id, name: fold.name })} aria-label={`${t('folds.rename')} ${fold.name}`}>{t('folds.rename')}</button>
-                    <button type="button" className={secondaryButtonClass} onClick={() => void askDelete(fold)} aria-label={`${t('folds.delete')} ${fold.name}`}>{t('folds.delete')}</button>
+                    <Button outline type="button" onClick={() => setRenaming({ id: fold.id, name: fold.name })} aria-label={`${t('folds.rename')} ${fold.name}`}>{t('folds.rename')}</Button>
+                    <Button outline type="button" onClick={() => void askDelete(fold)} aria-label={`${t('folds.delete')} ${fold.name}`}>{t('folds.delete')}</Button>
                   </div>
                 ) : null}
               </>
@@ -145,12 +146,12 @@ export function FoldsScreen() {
         <TextField label={t('folds.name.label')} value={name} onChange={(e) => setName(e.target.value)} required />
         <div className="mt-4">
           <label htmlFor="fold-currency" className="block font-medium">{t('folds.currency.label')}</label>
-          <select id="fold-currency" className="mt-1 block rounded-ui border border-border-strong bg-bg px-3 py-2" value={currency} onChange={(e) => setCurrency(e.target.value)}>
+          <Select id="fold-currency" value={currency} onChange={(e) => setCurrency(e.target.value)}>
             {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
-          </select>
+          </Select>
         </div>
         {error ? <p role="alert" className="mt-3 text-danger">{error}</p> : null}
-        <button type="submit" className={`${buttonClass} mt-4`}>{t('folds.create.submit')}</button>
+        <Button className="mt-4" type="submit" >{t('folds.create.submit')}</Button>
       </form>
 
       <MyCode />
@@ -170,8 +171,8 @@ export function FoldsScreen() {
               <TextField label={t('folds.delete.confirm.label')} value={confirmName} onChange={(e) => setConfirmName(e.target.value)} error={dialogError} autoFocus />
             )}
             <div className="mt-6 flex gap-3">
-              {deleting.summary.isLastFold ? null : <button type="submit" className={buttonClass}>{t('folds.delete.confirm')}</button>}
-              <button type="button" className={secondaryButtonClass} onClick={() => setDeleting(undefined)}>{t('folds.delete.cancel')}</button>
+              {deleting.summary.isLastFold ? null : <Button type="submit" >{t('folds.delete.confirm')}</Button>}
+              <Button outline type="button" onClick={() => setDeleting(undefined)}>{t('folds.delete.cancel')}</Button>
             </div>
           </form>
         ) : null}

@@ -4,9 +4,10 @@ import type { DeviceInfo } from '@cashfold/core';
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { useCore } from '../core/CoreProvider';
-import { buttonClass, secondaryButtonClass, TextField } from '../forms/TextField';
+import { TextField } from '../forms/TextField';
 import { useI18n } from '../i18n/I18nProvider';
 import { useSyncStatus, type SyncView } from '../sync/useSyncStatus';
+import { Button } from '../kit';
 
 type Listed = { ok: true; value: DeviceInfo[] } | { ok: false; error: { code: string } };
 
@@ -79,22 +80,22 @@ export function DevicesScreen() {
                 <form className="mt-2" onSubmit={(e) => (e.preventDefault(), void rename(d.id))}>
                   <TextField label={t('devices.rename.label')} value={label} maxLength={60} onChange={(e) => setLabel(e.target.value)} autoFocus />
                   <div className="mt-3 flex gap-3">
-                    <button type="submit" className={buttonClass}>{t('devices.rename.save')}</button>
-                    <button type="button" className={secondaryButtonClass} onClick={() => setRenaming(undefined)}>{t('devices.cancel')}</button>
+                    <Button type="submit" >{t('devices.rename.save')}</Button>
+                    <Button outline type="button" onClick={() => setRenaming(undefined)}>{t('devices.cancel')}</Button>
                   </div>
                 </form>
               ) : confirm === d.id ? (
                 <div className="mt-2" role="alertdialog" aria-label={t('devices.remove.confirmTitle')}>
                   <p>{d.thisDevice ? t('devices.remove.confirmThis') : t('devices.remove.confirm')}</p>
                   <div className="mt-3 flex gap-3">
-                    <button type="button" className={buttonClass} onClick={() => void revoke(d.id)}>{t('devices.remove.yes')}</button>
-                    <button type="button" className={secondaryButtonClass} onClick={() => setConfirm(undefined)}>{t('devices.cancel')}</button>
+                    <Button type="button" onClick={() => void revoke(d.id)}>{t('devices.remove.yes')}</Button>
+                    <Button outline type="button" onClick={() => setConfirm(undefined)}>{t('devices.cancel')}</Button>
                   </div>
                 </div>
               ) : !d.revoked ? (
                 <div className="mt-2 flex gap-3">
-                  <button type="button" className={secondaryButtonClass} onClick={() => (setRenaming(d.id), setLabel(d.label ?? ''))}>{t('devices.rename')}</button>
-                  <button type="button" className={secondaryButtonClass} onClick={() => setConfirm(d.id)}>{t('devices.remove')}</button>
+                  <Button outline type="button" onClick={() => (setRenaming(d.id), setLabel(d.label ?? ''))}>{t('devices.rename')}</Button>
+                  <Button outline type="button" onClick={() => setConfirm(d.id)}>{t('devices.remove')}</Button>
                 </div>
               ) : null}
             </li>
@@ -137,7 +138,7 @@ function SyncPanel({ status, onSyncNow }: { status: SyncView | undefined; onSync
       </dl>
       {status.connection === 'needs_password' ? <p role="alert" className="mt-2">{t('sync.needsPassword')}</p> : null}
       {status.connection === 'not_registered' ? <p className="mt-2"><Link className="underline" href="/settings/">{t('sync.enableLink')}</Link></p> : null}
-      <button type="button" className={`${secondaryButtonClass} mt-3`} onClick={onSyncNow} disabled={status.connection === 'not_registered'}>{t('sync.now')}</button>
+      <Button outline className="mt-3" type="button" onClick={onSyncNow} disabled={status.connection === 'not_registered'}>{t('sync.now')}</Button>
     </section>
   );
 }

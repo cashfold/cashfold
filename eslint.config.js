@@ -81,10 +81,10 @@ export default tseslint.config(
     rules: { 'cashfold/no-number-in-money': 'error' },
   },
   {
-    // The interface is built from the kit (R-UX-03). Warnings while screens migrate; T111 turns them into errors.
+    // The interface is built from the kit (R-UX-03): every screen uses its components, never the bare elements.
     files: ['apps/web/src/ui/**/*.tsx', 'apps/web/src/app/**/*.tsx'],
     ignores: ['apps/web/src/ui/kit/**', '**/*.test.tsx'],
     plugins: { 'ui-kit': { rules: uiKit } },
-    rules: { 'ui-kit/no-headless-outside-kit': 'warn', 'ui-kit/no-raw-controls': 'warn', 'ui-kit/no-name-on-headless': 'warn' },
+    rules: { 'ui-kit/no-headless-outside-kit': 'error', 'ui-kit/no-raw-controls': 'error', 'ui-kit/no-name-on-headless': 'error' },
   },
 );

@@ -4,12 +4,13 @@ import type { DeviceSettings } from '@cashfold/core';
 import { useEffect, useState, type FormEvent } from 'react';
 import { useCore, withPasswordBytes } from '../core/CoreProvider';
 import { downloadKit, printKit, type KitSource } from '../emergency-kit/actions';
-import { TextField, buttonClass, secondaryButtonClass } from '../forms/TextField';
+import { TextField } from '../forms/TextField';
 import { useI18n } from '../i18n/I18nProvider';
 import { AccountSection } from './AccountSection';
 import { CredentialsSection } from './CredentialsSection';
 import { QuickUnlockSection } from './QuickUnlockSection';
 import { RecoverySection } from './RecoverySection';
+import { Button, Select } from '../kit';
 
 const IDLE_MINUTES = [1, 2, 5, 10, 15, 30, 60];
 const HIDDEN_SECONDS = [0, 15, 30, 60, 120, 300];
@@ -54,15 +55,15 @@ export function SettingsScreen() {
           <div className="mt-3 grid max-w-md gap-4">
             <label className="block">
               <span className="block font-medium">{t('settings.lock.idle')}</span>
-              <select className="mt-1 rounded-ui border border-border-strong bg-bg px-3 py-2" value={settings.autoLockMinutes} onChange={(e) => void change({ autoLockMinutes: Number(e.target.value) })}>
+              <Select value={settings.autoLockMinutes} onChange={(e) => void change({ autoLockMinutes: Number(e.target.value) })}>
                 {IDLE_MINUTES.map((m) => <option key={m} value={m}>{t('settings.lock.minutes', { minutes: m })}</option>)}
-              </select>
+              </Select>
             </label>
             <label className="block">
               <span className="block font-medium">{t('settings.lock.hidden')}</span>
-              <select className="mt-1 rounded-ui border border-border-strong bg-bg px-3 py-2" value={settings.hiddenGraceSeconds} onChange={(e) => void change({ hiddenGraceSeconds: Number(e.target.value) })}>
+              <Select value={settings.hiddenGraceSeconds} onChange={(e) => void change({ hiddenGraceSeconds: Number(e.target.value) })}>
                 {HIDDEN_SECONDS.map((s) => <option key={s} value={s}>{s === 0 ? t('settings.lock.immediately') : t('settings.lock.seconds', { seconds: s })}</option>)}
-              </select>
+              </Select>
             </label>
             <p role="status" className="text-sm text-muted">{saved ? t('settings.saved') : ''}</p>
           </div>
@@ -91,14 +92,14 @@ export function SettingsScreen() {
         <p className="mt-1 text-muted">{t('settings.kit.lede')}</p>
         {kit ? (
           <div className="mt-3 flex flex-wrap gap-3">
-            <button type="button" className={secondaryButtonClass} onClick={() => downloadKit(kit)}>{t('secretkey.download')}</button>
-            <button type="button" className={secondaryButtonClass} onClick={() => printKit(kit)}>{t('secretkey.print')}</button>
-            <button type="button" className={secondaryButtonClass} onClick={() => setKit(undefined)}>{t('settings.kit.done')}</button>
+            <Button outline type="button" onClick={() => downloadKit(kit)}>{t('secretkey.download')}</Button>
+            <Button outline type="button" onClick={() => printKit(kit)}>{t('secretkey.print')}</Button>
+            <Button outline type="button" onClick={() => setKit(undefined)}>{t('settings.kit.done')}</Button>
           </div>
         ) : (
           <form onSubmit={exportKit} className="max-w-md">
             <TextField label={t('unlock.password.label')} type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} error={kitError} />
-            <button type="submit" className={`${buttonClass} mt-4`}>{t('settings.kit.show')}</button>
+            <Button className="mt-4" type="submit" >{t('settings.kit.show')}</Button>
           </form>
         )}
       </section>

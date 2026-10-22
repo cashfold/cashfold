@@ -2,6 +2,7 @@
 
 import { Component, type ReactNode } from 'react';
 import { createAppLogger, createConsoleSink } from '../../adapters/logger';
+import { Button } from '../kit';
 
 const log = createAppLogger([createConsoleSink()]);
 
@@ -22,9 +23,9 @@ export class ErrorBoundary extends Component<{ children: ReactNode; title: strin
     return (
       <div role="alert" className="mx-auto max-w-prose p-6">
         <h1 className="text-xl font-semibold">{this.props.title}</h1>
-        <button type="button" className="mt-4 rounded-ui bg-primary px-4 py-2 text-on-primary" onClick={() => location.reload()}>
+        <Button className="mt-4" type="button" onClick={() => location.reload()}>
           {this.props.reload}
-        </button>
+        </Button>
       </div>
     );
   }

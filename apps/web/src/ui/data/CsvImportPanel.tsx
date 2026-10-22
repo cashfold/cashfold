@@ -2,12 +2,12 @@
 
 import type { ColumnMapping, ImportOptions, PreviewRow } from '@cashfold/core';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { buttonClass, secondaryButtonClass } from '../forms/TextField';
+
 import { useI18n } from '../i18n/I18nProvider';
 import { formatDate } from '../ledger/dates';
 import { useLedger } from '../ledger/LedgerProvider';
+import { Button, Checkbox, CheckboxField, Label, Radio, RadioField, RadioGroup, Select } from '../kit';
 
-const select = 'mt-1 block w-full rounded-ui border border-border-strong bg-bg px-3 py-2';
 
 interface Sample { delimiter: ',' | ';' | '\t'; rows: number; header: string[]; sample: string[][] }
 interface Preview { rows: number; ok: number; problems: number; duplicates: number; shown: PreviewRow[] }
@@ -133,10 +133,10 @@ export function CsvImportPanel() {
   const columnSelect = (field: string, label: string) => (
     <label className="block" key={field}>
       <span className="block font-medium">{label}</span>
-      <select className={select} value={columns[field] ?? NONE} onChange={(e) => setColumns({ ...columns, [field]: Number(e.target.value) })}>
+      <Select value={columns[field] ?? NONE} onChange={(e) => setColumns({ ...columns, [field]: Number(e.target.value) })}>
         <option value={NONE}>{t('data.import.none')}</option>
         {(sample?.header ?? []).map((h, i) => <option key={i} value={i}>{hasHeader && h.trim() !== '' ? h : t('data.import.column', { n: i + 1 })}</option>)}
-      </select>
+      </Select>
     </label>
   );
 
@@ -155,35 +155,34 @@ export function CsvImportPanel() {
             <div className="mt-4 grid gap-4 sm:grid-cols-2">
               <label className="block sm:col-span-2">
                 <span className="block font-medium">{t('data.import.account')}</span>
-                <select className={select} value={chosen?.id} onChange={(e) => { setAccount(e.target.value); setPreview(undefined); }}>
+                <Select value={chosen?.id} onChange={(e) => { setAccount(e.target.value); setPreview(undefined); }}>
                   {accounts.map((a) => <option key={a.id} value={a.id}>{a.name} ({a.currency})</option>)}
-                </select>
+                </Select>
               </label>
-              <label className="flex items-start gap-2 sm:col-span-2">
-                <input type="checkbox" className="mt-1" checked={hasHeader} onChange={(e) => setHasHeader(e.target.checked)} />
-                <span>{t('data.import.header')}</span>
-              </label>
+              <CheckboxField className="sm:col-span-2"><Checkbox checked={hasHeader} onChange={(checked) => setHasHeader(checked)} /><Label>{t('data.import.header')}</Label></CheckboxField>
               {columnSelect('date', t('data.import.date'))}
               <label className="block">
                 <span className="block font-medium">{t('data.import.dateOrder')}</span>
-                <select className={select} value={dateOrder} onChange={(e) => setDateOrder(e.target.value as typeof dateOrder)}>
+                <Select value={dateOrder} onChange={(e) => setDateOrder(e.target.value as typeof dateOrder)}>
                   <option value="ymd">{t('data.import.order.ymd')}</option>
                   <option value="dmy">{t('data.import.order.dmy')}</option>
                   <option value="mdy">{t('data.import.order.mdy')}</option>
-                </select>
+                </Select>
               </label>
               <fieldset className="sm:col-span-2">
                 <legend className="font-medium">{t('data.import.amounts')}</legend>
-                <label className="me-4 mt-1 inline-flex items-center gap-2"><input type="radio" name="amountStyle" checked={amountStyle === 'signed'} onChange={() => setAmountStyle('signed')} />{t('data.import.amounts.signed')}</label>
-                <label className="mt-1 inline-flex items-center gap-2"><input type="radio" name="amountStyle" checked={amountStyle === 'split'} onChange={() => setAmountStyle('split')} />{t('data.import.amounts.split')}</label>
+                <RadioGroup value={amountStyle} onChange={(v) => setAmountStyle(v as typeof amountStyle)} aria-label={t('data.import.amounts')} className="mt-1">
+                  <RadioField><Radio value="signed" /><Label>{t('data.import.amounts.signed')}</Label></RadioField>
+                  <RadioField><Radio value="split" /><Label>{t('data.import.amounts.split')}</Label></RadioField>
+                </RadioGroup>
               </fieldset>
               {amountStyle === 'signed' ? columnSelect('signed', t('data.import.amount')) : (<>{columnSelect('income', t('data.import.income'))}{columnSelect('expense', t('data.import.expense'))}</>)}
               <label className="block">
                 <span className="block font-medium">{t('data.import.decimal')}</span>
-                <select className={select} value={decimal} onChange={(e) => setDecimal(e.target.value as typeof decimal)}>
+                <Select value={decimal} onChange={(e) => setDecimal(e.target.value as typeof decimal)}>
                   <option value=".">{t('data.import.decimal.dot')}</option>
                   <option value=",">{t('data.import.decimal.comma')}</option>
-                </select>
+                </Select>
               </label>
               {columnSelect('currency', t('data.import.currency'))}
               {columnSelect('type', t('data.import.type'))}
@@ -192,7 +191,7 @@ export function CsvImportPanel() {
               {columnSelect('note', t('data.import.note'))}
               {columnSelect('tags', t('data.import.tags'))}
               <div className="sm:col-span-2">
-                <button type="button" className={buttonClass} disabled={!ready || busy} onClick={() => void showPreview()}>{t('data.import.preview')}</button>
+                <Button type="button" disabled={!ready || busy} onClick={() => void showPreview()}>{t('data.import.preview')}</Button>
                 {!ready ? <span className="ms-3 text-sm text-muted">{t('data.import.needColumns')}</span> : null}
               </div>
             </div>
@@ -222,14 +221,11 @@ export function CsvImportPanel() {
               </div>
               {preview.rows > preview.shown.length ? <p className="mt-2 text-sm text-muted">{t('data.import.shown', { shown: preview.shown.length, total: preview.rows })}</p> : null}
               {preview.duplicates > 0 ? (
-                <label className="mt-3 flex items-start gap-2">
-                  <input type="checkbox" className="mt-1" checked={includeDuplicates} onChange={(e) => setIncludeDuplicates(e.target.checked)} />
-                  <span>{t('data.import.includeDuplicates', { count: preview.duplicates })}</span>
-                </label>
+                <CheckboxField className="mt-3"><Checkbox checked={includeDuplicates} onChange={(checked) => setIncludeDuplicates(checked)} /><Label>{t('data.import.includeDuplicates', { count: preview.duplicates })}</Label></CheckboxField>
               ) : null}
               <div className="mt-4 flex gap-3">
-                <button type="button" className={buttonClass} disabled={busy || preview.ok - (includeDuplicates ? 0 : preview.duplicates) <= 0} onClick={() => void runImport()}>{t('data.import.submit')}</button>
-                <button type="button" className={secondaryButtonClass} onClick={() => setPreview(undefined)}>{t('ledger.cancel')}</button>
+                <Button type="button" disabled={busy || preview.ok - (includeDuplicates ? 0 : preview.duplicates) <= 0} onClick={() => void runImport()}>{t('data.import.submit')}</Button>
+                <Button outline type="button" onClick={() => setPreview(undefined)}>{t('ledger.cancel')}</Button>
               </div>
             </div>
           ) : null}
@@ -237,7 +233,7 @@ export function CsvImportPanel() {
           {result !== undefined ? (
             <div role="status" className="mt-4" data-testid="import-result">
               <p>{t('data.import.done', { imported: result.imported, skipped: result.skipped, problems: result.problems })}</p>
-              <button type="button" className={`${secondaryButtonClass} mt-2`} onClick={() => void undo(result.batch)}>{t('data.import.undo')}</button>
+              <Button outline className="mt-2" type="button" onClick={() => void undo(result.batch)}>{t('data.import.undo')}</Button>
             </div>
           ) : null}
         </div>
@@ -250,7 +246,7 @@ export function CsvImportPanel() {
             {batches.map((b) => (
               <li key={b.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
                 <span>{t('data.import.batch', { source: b.source, count: b.count, when: new Date(b.importedUtcMs).toLocaleDateString(locale) })}</span>
-                {b.undone ? <span className="text-muted">{t('data.import.undone')}</span> : <button type="button" className={secondaryButtonClass} onClick={() => void undo(b.id)}>{t('data.import.undo')}</button>}
+                {b.undone ? <span className="text-muted">{t('data.import.undone')}</span> : <Button outline type="button" onClick={() => void undo(b.id)}>{t('data.import.undo')}</Button>}
               </li>
             ))}
           </ul>

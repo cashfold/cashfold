@@ -3,11 +3,12 @@
 import type { Category, Label, UsageCounts } from '@cashfold/core';
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { Modal } from '../forms/Modal';
-import { TextField, buttonClass, secondaryButtonClass } from '../forms/TextField';
+import { TextField } from '../forms/TextField';
 import { useI18n } from '../i18n/I18nProvider';
 import { LedgerFrame } from './LedgerFrame';
 import { useLedger } from './LedgerProvider';
 import { COLOR_COUNT, ICON_KEYS, colorFor, iconFor } from './palette';
+import { Button, Tabs, Select } from '../kit';
 
 type Direction = 'expense' | 'income';
 type Dialog =
@@ -19,7 +20,6 @@ type Dialog =
   | { kind: 'mergeLabel'; table: 'payee' | 'tag'; label: Label }
   | { kind: 'deleteLabel'; table: 'payee' | 'tag'; label: Label };
 
-const select = 'mt-1 block w-full rounded-ui border border-border-strong bg-bg px-3 py-2';
 
 /** Waits for the Fold's lists, then shows the screen: the body below can rely on them being there. */
 export function CategoriesScreen() {
@@ -35,6 +35,7 @@ function CategoriesBody() {
   const [usage, setUsage] = useState<UsageCounts | undefined>();
   const [dialog, setDialog] = useState<Dialog | undefined>();
   const [message, setMessage] = useState<string | undefined>();
+  const [tab, setTab] = useState<'expense' | 'income' | 'tag' | 'payee'>('expense');
 
   useEffect(() => {
     let live = true;
@@ -69,14 +70,19 @@ function CategoriesBody() {
       <p className="mt-3 text-muted">{t('ledger.categories.lede')}</p>
       {message ? <p role="alert" className="mt-3 text-danger">{message}</p> : null}
 
-      {(['expense', 'income'] as const).map((direction) => {
+      <Tabs
+        className="mt-6" label={t('ledger.categories.tabs')} value={tab} onChange={(v) => setTab(v as typeof tab)}
+        items={[{ value: 'expense', label: t('ledger.kind.expense') }, { value: 'income', label: t('ledger.kind.income') }, { value: 'tag', label: t('ledger.tag.title') }, { value: 'payee', label: t('ledger.payee.title') }]}
+      />
+
+      {(['expense', 'income'] as const).filter((direction) => tab === direction).map((direction) => {
         const inDirection = basics.categories.filter((c) => c.direction === direction);
         const roots = inDirection.filter((c) => c.parentId === null);
         return (
           <section key={direction} className="mt-8" aria-labelledby={`cat-${direction}`}>
             <div className="flex flex-wrap items-center justify-between gap-3">
               <h2 id={`cat-${direction}`} className="text-lg font-semibold">{t(`ledger.categories.${direction}`)}</h2>
-              <button type="button" className={buttonClass} onClick={() => setDialog({ kind: 'new', direction, parentId: null })}>{t('ledger.categories.add', { kind: t(`ledger.kind.${direction}`) })}</button>
+              <Button type="button" onClick={() => setDialog({ kind: 'new', direction, parentId: null })}>{t('ledger.categories.add', { kind: t(`ledger.kind.${direction}`) })}</Button>
             </div>
             {roots.length === 0 ? <p className="mt-2 text-muted">{t('ledger.categories.empty')}</p> : null}
             <ul className="mt-2 space-y-3" aria-label={t(`ledger.categories.${direction}`)}>
@@ -111,8 +117,8 @@ function CategoriesBody() {
         );
       })}
 
-      <LabelSection table="payee" labels={basics.payees} usage={usage?.payees} onNew={() => setDialog({ kind: 'label', table: 'payee' })} onEdit={(label) => setDialog({ kind: 'label', table: 'payee', label })} onMerge={(label) => setDialog({ kind: 'mergeLabel', table: 'payee', label })} onDelete={(label) => setDialog({ kind: 'deleteLabel', table: 'payee', label })} />
-      <LabelSection table="tag" labels={basics.tags} usage={usage?.tags} onNew={() => setDialog({ kind: 'label', table: 'tag' })} onEdit={(label) => setDialog({ kind: 'label', table: 'tag', label })} onMerge={(label) => setDialog({ kind: 'mergeLabel', table: 'tag', label })} onDelete={(label) => setDialog({ kind: 'deleteLabel', table: 'tag', label })} />
+      {tab === 'payee' ? <LabelSection table="payee" labels={basics.payees} usage={usage?.payees} onNew={() => setDialog({ kind: 'label', table: 'payee' })} onEdit={(label) => setDialog({ kind: 'label', table: 'payee', label })} onMerge={(label) => setDialog({ kind: 'mergeLabel', table: 'payee', label })} onDelete={(label) => setDialog({ kind: 'deleteLabel', table: 'payee', label })} /> : null}
+      {tab === 'tag' ? <LabelSection table="tag" labels={basics.tags} usage={usage?.tags} onNew={() => setDialog({ kind: 'label', table: 'tag' })} onEdit={(label) => setDialog({ kind: 'label', table: 'tag', label })} onMerge={(label) => setDialog({ kind: 'mergeLabel', table: 'tag', label })} onDelete={(label) => setDialog({ kind: 'deleteLabel', table: 'tag', label })} /> : null}
 
       <Modal open={dialog?.kind === 'new' || dialog?.kind === 'edit'} title={dialog?.kind === 'edit' ? t('ledger.categories.edit', { name: dialog.category.name }) : t('ledger.categories.new')} onClose={close}>
         {dialog?.kind === 'new' || dialog?.kind === 'edit' ? <CategoryForm key={dialog.kind === 'edit' ? dialog.category.id : 'new'} dialog={dialog} onDone={close} /> : null}
@@ -127,8 +133,8 @@ function CategoriesBody() {
           <div>
             <p className="mt-3">{count(usage?.categories, dialog.category.id) > 0 || basics.categories.some((c) => c.parentId === dialog.category.id) ? t('ledger.categories.delete.inUse') : t('ledger.categories.delete.consequence')}</p>
             <div className="mt-6 flex gap-3">
-              <button
-                type="button" className={buttonClass}
+              <Button
+                type="button" 
                 onClick={async () => {
                   const r = await ledger.run('ledger.deleteCategory', { id: dialog.category.id });
                   if (r.ok) close();
@@ -137,8 +143,8 @@ function CategoriesBody() {
                     fail(r.error.code);
                   }
                 }}
-              >{t('ledger.delete')}</button>
-              <button type="button" className={secondaryButtonClass} onClick={close}>{t('ledger.cancel')}</button>
+              >{t('ledger.delete')}</Button>
+              <Button outline type="button" onClick={close}>{t('ledger.cancel')}</Button>
             </div>
           </div>
         ) : null}
@@ -157,15 +163,15 @@ function CategoriesBody() {
           <div>
             <p className="mt-3">{t('ledger.label.delete.consequence', { count: count(dialog.table === 'payee' ? usage?.payees : usage?.tags, dialog.label.id) })}</p>
             <div className="mt-6 flex gap-3">
-              <button
-                type="button" className={buttonClass}
+              <Button
+                type="button" 
                 onClick={async () => {
                   const r = await ledger.run(dialog.table === 'payee' ? 'ledger.deletePayee' : 'ledger.deleteTag', { id: dialog.label.id });
                   close();
                   if (!r.ok) fail(r.error.code);
                 }}
-              >{t('ledger.delete')}</button>
-              <button type="button" className={secondaryButtonClass} onClick={close}>{t('ledger.cancel')}</button>
+              >{t('ledger.delete')}</Button>
+              <Button outline type="button" onClick={close}>{t('ledger.cancel')}</Button>
             </div>
           </div>
         ) : null}
@@ -189,13 +195,13 @@ function CategoryRow({ c, used, onEdit, onMerge, onDelete, onArchive, onUp, onDo
         {c.archived ? <span className="rounded-ui border border-border-strong px-2 text-sm">{t('ledger.accounts.archived')}</span> : null}
       </div>
       <div className="flex flex-wrap gap-2">
-        <button type="button" className={secondaryButtonClass} onClick={onUp} disabled={onUp === undefined} aria-label={t('ledger.accounts.moveUp', { name: c.name })}>↑</button>
-        <button type="button" className={secondaryButtonClass} onClick={onDown} disabled={onDown === undefined} aria-label={t('ledger.accounts.moveDown', { name: c.name })}>↓</button>
-        {onAddChild ? <button type="button" className={secondaryButtonClass} onClick={onAddChild} aria-label={t('ledger.categories.addChild', { name: c.name })}>{t('ledger.categories.sub')}</button> : null}
-        <button type="button" className={secondaryButtonClass} onClick={onEdit} aria-label={`${t('ledger.edit')} ${c.name}`}>{t('ledger.edit')}</button>
-        <button type="button" className={secondaryButtonClass} onClick={onMerge} aria-label={`${t('ledger.categories.merge')} ${c.name}`}>{t('ledger.categories.merge')}</button>
-        <button type="button" className={secondaryButtonClass} onClick={onArchive} aria-label={`${c.archived ? t('ledger.accounts.unarchive') : t('ledger.accounts.archive')} ${c.name}`}>{c.archived ? t('ledger.accounts.unarchive') : t('ledger.accounts.archive')}</button>
-        <button type="button" className={secondaryButtonClass} onClick={onDelete} aria-label={`${t('ledger.delete')} ${c.name}`}>{t('ledger.delete')}</button>
+        <Button outline type="button" onClick={onUp} disabled={onUp === undefined} aria-label={t('ledger.accounts.moveUp', { name: c.name })}>↑</Button>
+        <Button outline type="button" onClick={onDown} disabled={onDown === undefined} aria-label={t('ledger.accounts.moveDown', { name: c.name })}>↓</Button>
+        {onAddChild ? <Button outline type="button" onClick={onAddChild} aria-label={t('ledger.categories.addChild', { name: c.name })}>{t('ledger.categories.sub')}</Button> : null}
+        <Button outline type="button" onClick={onEdit} aria-label={`${t('ledger.edit')} ${c.name}`}>{t('ledger.edit')}</Button>
+        <Button outline type="button" onClick={onMerge} aria-label={`${t('ledger.categories.merge')} ${c.name}`}>{t('ledger.categories.merge')}</Button>
+        <Button outline type="button" onClick={onArchive} aria-label={`${c.archived ? t('ledger.accounts.unarchive') : t('ledger.accounts.archive')} ${c.name}`}>{c.archived ? t('ledger.accounts.unarchive') : t('ledger.accounts.archive')}</Button>
+        <Button outline type="button" onClick={onDelete} aria-label={`${t('ledger.delete')} ${c.name}`}>{t('ledger.delete')}</Button>
       </div>
     </div>
   );
@@ -238,29 +244,29 @@ function CategoryForm({ dialog, onDone }: { dialog: Extract<Dialog, { kind: 'new
       <TextField label={t('ledger.categories.form.name')} value={name} onChange={(e) => setName(e.target.value)} required maxLength={80} autoFocus />
       <div className="mt-4">
         <label htmlFor="cat-parent" className="block font-medium">{t('ledger.categories.form.parent')}</label>
-        <select id="cat-parent" className={select} value={parentId} onChange={(e) => setParentId(e.target.value)} disabled={hasChildren}>
+        <Select id="cat-parent" value={parentId} onChange={(e) => setParentId(e.target.value)} disabled={hasChildren}>
           <option value="">{t('ledger.categories.form.topLevel')}</option>
           {roots.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
-        </select>
+        </Select>
       </div>
       <div className="mt-4">
         <label htmlFor="cat-icon" className="block font-medium">{t('ledger.categories.form.icon')}</label>
-        <select id="cat-icon" className={select} value={icon} onChange={(e) => setIcon(e.target.value)}>
+        <Select id="cat-icon" value={icon} onChange={(e) => setIcon(e.target.value)}>
           <option value="">{t('ledger.categories.form.noIcon')}</option>
           {ICON_KEYS.map((k) => <option key={k} value={k}>{iconFor(k)} {t(`ledger.icon.${k}`)}</option>)}
-        </select>
+        </Select>
       </div>
       <div className="mt-4">
         <label htmlFor="cat-color" className="block font-medium">{t('ledger.categories.form.color')}</label>
-        <select id="cat-color" className={select} value={color} onChange={(e) => setColor(Number(e.target.value))}>
+        <Select id="cat-color" value={color} onChange={(e) => setColor(Number(e.target.value))}>
           {Array.from({ length: COLOR_COUNT }, (_, i) => <option key={i} value={i}>{t(`ledger.color.${i}`)}</option>)}
-        </select>
+        </Select>
         <span aria-hidden="true" className="mt-2 inline-block h-4 w-12 rounded-ui" style={{ background: colorFor(color) }} />
       </div>
       {error ? <p role="alert" className="mt-3 text-danger">{error}</p> : null}
       <div className="mt-6 flex gap-3">
-        <button type="submit" className={buttonClass}>{t('ledger.save')}</button>
-        <button type="button" className={secondaryButtonClass} onClick={onDone}>{t('ledger.cancel')}</button>
+        <Button type="submit" >{t('ledger.save')}</Button>
+        <Button outline type="button" onClick={onDone}>{t('ledger.cancel')}</Button>
       </div>
     </form>
   );
@@ -286,16 +292,16 @@ function MergeCategory({ from, used, onDone }: { from: Category; used: number; o
       <p className="mt-3">{t('ledger.categories.merge.explain')}</p>
       <div className="mt-4">
         <label htmlFor="merge-into" className="block font-medium">{t('ledger.categories.merge.into')}</label>
-        <select id="merge-into" className={select} value={into} onChange={(e) => setInto(e.target.value)} required>
+        <Select id="merge-into" value={into} onChange={(e) => setInto(e.target.value)} required>
           <option value="" disabled>{t('ledger.categories.merge.choose')}</option>
           {targets.map((c) => <option key={c.id} value={c.id}>{c.parentId === null ? c.name : `${targets.find((p) => p.id === c.parentId)?.name ?? ''} › ${c.name}`}</option>)}
-        </select>
+        </Select>
       </div>
       {target ? <p className="mt-3">{t('ledger.categories.merge.consequence', { count: used, from: from.name, into: target.name })}</p> : null}
       {error ? <p role="alert" className="mt-3 text-danger">{error}</p> : null}
       <div className="mt-6 flex gap-3">
-        <button type="submit" className={buttonClass} disabled={into === ''}>{t('ledger.categories.merge.confirm')}</button>
-        <button type="button" className={secondaryButtonClass} onClick={onDone}>{t('ledger.cancel')}</button>
+        <Button type="submit" disabled={into === ''}>{t('ledger.categories.merge.confirm')}</Button>
+        <Button outline type="button" onClick={onDone}>{t('ledger.cancel')}</Button>
       </div>
     </form>
   );
@@ -311,7 +317,7 @@ function LabelSection({ table, labels, usage, onNew, onEdit, onMerge, onDelete }
     <section className="mt-10" aria-labelledby={titleId}>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 id={titleId} className="text-lg font-semibold">{t(`ledger.${table}.title`)}</h2>
-        <button type="button" className={buttonClass} onClick={onNew}>{t(`ledger.${table}.new`)}</button>
+        <Button type="button" onClick={onNew}>{t(`ledger.${table}.new`)}</Button>
       </div>
       {labels.length === 0 ? <p className="mt-2 text-muted">{t(`ledger.${table}.empty`)}</p> : null}
       <ul className="mt-2 divide-y divide-border-strong rounded-ui border border-border-strong empty:hidden" aria-label={t(`ledger.${table}.title`)}>
@@ -323,9 +329,9 @@ function LabelSection({ table, labels, usage, onNew, onEdit, onMerge, onDelete }
               <span className="text-sm text-muted">{t('ledger.categories.used', { count: usage?.get(l.id as never) ?? 0 })}</span>
             </div>
             <div className="flex flex-wrap gap-2">
-              <button type="button" className={secondaryButtonClass} onClick={() => onEdit(l)} aria-label={`${t('ledger.edit')} ${l.name}`}>{t('ledger.edit')}</button>
-              <button type="button" className={secondaryButtonClass} onClick={() => onMerge(l)} aria-label={`${t('ledger.categories.merge')} ${l.name}`}>{t('ledger.categories.merge')}</button>
-              <button type="button" className={secondaryButtonClass} onClick={() => onDelete(l)} aria-label={`${t('ledger.delete')} ${l.name}`}>{t('ledger.delete')}</button>
+              <Button outline type="button" onClick={() => onEdit(l)} aria-label={`${t('ledger.edit')} ${l.name}`}>{t('ledger.edit')}</Button>
+              <Button outline type="button" onClick={() => onMerge(l)} aria-label={`${t('ledger.categories.merge')} ${l.name}`}>{t('ledger.categories.merge')}</Button>
+              <Button outline type="button" onClick={() => onDelete(l)} aria-label={`${t('ledger.delete')} ${l.name}`}>{t('ledger.delete')}</Button>
             </div>
           </li>
         ))}
@@ -356,14 +362,14 @@ function LabelForm({ table, label, onDone }: { table: 'payee' | 'tag'; label?: L
       <TextField label={t('ledger.categories.form.name')} value={name} onChange={(e) => setName(e.target.value)} required maxLength={80} autoFocus />
       <div className="mt-4">
         <label htmlFor="label-color" className="block font-medium">{t('ledger.categories.form.color')}</label>
-        <select id="label-color" className={select} value={color} onChange={(e) => setColor(Number(e.target.value))}>
+        <Select id="label-color" value={color} onChange={(e) => setColor(Number(e.target.value))}>
           {Array.from({ length: COLOR_COUNT }, (_, i) => <option key={i} value={i}>{t(`ledger.color.${i}`)}</option>)}
-        </select>
+        </Select>
       </div>
       {error ? <p role="alert" className="mt-3 text-danger">{error}</p> : null}
       <div className="mt-6 flex gap-3">
-        <button type="submit" className={buttonClass}>{t('ledger.save')}</button>
-        <button type="button" className={secondaryButtonClass} onClick={onDone}>{t('ledger.cancel')}</button>
+        <Button type="submit" >{t('ledger.save')}</Button>
+        <Button outline type="button" onClick={onDone}>{t('ledger.cancel')}</Button>
       </div>
     </form>
   );
@@ -390,16 +396,16 @@ function MergeLabel({ table, from, used, onDone }: { table: 'payee' | 'tag'; fro
       <p className="mt-3">{t('ledger.label.merge.explain')}</p>
       <div className="mt-4">
         <label htmlFor="merge-label-into" className="block font-medium">{t('ledger.categories.merge.into')}</label>
-        <select id="merge-label-into" className={select} value={into} onChange={(e) => setInto(e.target.value)} required>
+        <Select id="merge-label-into" value={into} onChange={(e) => setInto(e.target.value)} required>
           <option value="" disabled>{t('ledger.categories.merge.choose')}</option>
           {targets.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
-        </select>
+        </Select>
       </div>
       {target ? <p className="mt-3">{t('ledger.categories.merge.consequence', { count: used, from: from.name, into: target.name })}</p> : null}
       {error ? <p role="alert" className="mt-3 text-danger">{error}</p> : null}
       <div className="mt-6 flex gap-3">
-        <button type="submit" className={buttonClass} disabled={into === ''}>{t('ledger.categories.merge.confirm')}</button>
-        <button type="button" className={secondaryButtonClass} onClick={onDone}>{t('ledger.cancel')}</button>
+        <Button type="submit" disabled={into === ''}>{t('ledger.categories.merge.confirm')}</Button>
+        <Button outline type="button" onClick={onDone}>{t('ledger.cancel')}</Button>
       </div>
     </form>
   );

@@ -5,9 +5,10 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, type FormEvent } from 'react';
 import { useCore, withPasswordBytes } from '../core/CoreProvider';
-import { TextField, buttonClass } from '../forms/TextField';
+import { TextField } from '../forms/TextField';
 import { useI18n } from '../i18n/I18nProvider';
 import { ServerAddress } from '../settings/ServerAddress';
+import { Button, Checkbox, CheckboxField, Label } from '../kit';
 
 type Result = { ok: true } | { ok: false; error: { code: string; retryAfterS?: number } };
 
@@ -75,16 +76,16 @@ export function AddDeviceScreen() {
 
   if (core.phase === 'locked' || core.phase === 'unlocked') {
     return (
-      <main id="main" tabIndex={-1}>
+      <div>
         <h1 className="text-2xl font-semibold">{t('page.addDevice.title')}</h1>
         <p className="mt-3">{t('adddevice.alreadyHasAccount')}</p>
         <p className="mt-3"><Link className="underline" href="/settings/sync/">{t('adddevice.goDevices')}</Link></p>
-      </main>
+      </div>
     );
   }
 
   return (
-    <main id="main" tabIndex={-1}>
+    <div>
       <h1 className="text-2xl font-semibold">{t('page.addDevice.title')}</h1>
       {core.removed ? <p role="status" className="mt-3 rounded-ui border border-border-strong p-3">{t('adddevice.removedNotice')}</p> : null}
       <p className="mt-3 text-muted">{fromLink ? t('adddevice.lede.link') : t('adddevice.lede')}</p>
@@ -96,14 +97,11 @@ export function AddDeviceScreen() {
           value={secretKey} onChange={(e) => setSecretKey(e.target.value)}
         />
         <TextField label={t('unlock.password.label')} type={reveal ? 'text' : 'password'} autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} />
-        <label className="mt-3 flex items-center gap-2">
-          <input type="checkbox" checked={reveal} onChange={(e) => setReveal(e.target.checked)} />
-          <span>{t('adddevice.reveal')}</span>
-        </label>
+        <CheckboxField className="mt-3"><Checkbox checked={reveal} onChange={(checked) => setReveal(checked)} /><Label>{t('adddevice.reveal')}</Label></CheckboxField>
         {error ? <p role="alert" className="mt-4 text-danger">{error}</p> : null}
-        <button type="submit" className={`${buttonClass} mt-6`} disabled={busy}>{busy ? t('adddevice.working') : t('adddevice.submit')}</button>
+        <Button className="mt-6" type="submit" disabled={busy}>{busy ? t('adddevice.working') : t('adddevice.submit')}</Button>
       </form>
       <p className="mt-6"><Link className="underline" href="/recover/">{t('adddevice.lostAccess')}</Link></p>
-    </main>
+    </div>
   );
 }
