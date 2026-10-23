@@ -149,6 +149,9 @@ test.describe('@us4 sync', () => {
     await throttle(page, browserName);
     await throttle(b.page, browserName);
     await go(page, 'Transactions');
+    // The second device is only ready once it has the account: a test that cuts the connection straight away would otherwise leave it with nothing.
+    await go(b.page, 'Accounts');
+    await expect(b.page.getByTestId('account-row').filter({ hasText: 'Everyday' })).toHaveCount(1, { timeout: 60_000 });
     await go(b.page, 'Transactions');
     return { email, secretKey, b, linkA, linkB };
   }
