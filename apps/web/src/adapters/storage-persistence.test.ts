@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { readPersistence, requestPersistence, type StorageLike } from './storage-persistence';
+import { readPersistence, requestPersistence, requestPersistenceWithin, type StorageLike } from './storage-persistence';
 
 const storage = (over: Partial<StorageLike> = {}): StorageLike => ({ persisted: async () => false, persist: async () => true, estimate: async () => ({ usage: 10, quota: 1000 }), ...over });
 
@@ -33,5 +33,23 @@ describe('asking the browser to keep the data', () => {
     expect(state).toEqual({ supported: true, persisted: false, usageBytes: undefined, quotaBytes: undefined });
     expect(persist).not.toHaveBeenCalled();
     expect((await readPersistence(storage({ estimate: async () => { throw new Error('x'); } }))).usageBytes).toBeUndefined();
+  });
+});
+
+describe('asking without waiting on the person', () => {
+  it('returns the answer at once when the browser gives one', async () => {
+    const onAnswer = vi.fn();
+    expect((await requestPersistenceWithin(50, onAnswer, storage())).persisted).toBe(true);
+    expect(onAnswer).not.toHaveBeenCalled();
+  });
+
+  it('says "cannot tell" when the browser is still asking the person, and hands over the answer when it comes', async () => {
+    let answer: (yes: boolean) => void = () => undefined;
+    const onAnswer = vi.fn();
+    const asking = storage({ persist: () => new Promise<boolean>((resolve) => (answer = resolve)) });
+    expect(await requestPersistenceWithin(10, onAnswer, asking)).toMatchObject({ supported: true, persisted: undefined });
+    expect(onAnswer).not.toHaveBeenCalled();
+    answer(false);
+    await vi.waitFor(() => expect(onAnswer).toHaveBeenCalledWith(expect.objectContaining({ persisted: false })));
   });
 });
