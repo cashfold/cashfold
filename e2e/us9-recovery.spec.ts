@@ -262,7 +262,8 @@ test.describe('@us9 portability and recovery', () => {
     await expect(exporting.getByRole('note')).toContainText('not encrypted');
     await exporting.getByLabel('Current password').fill('not the password');
     await exporting.getByRole('button', { name: 'Export' }).click();
-    await expect(exporting.getByRole('alert')).toContainText('not right');
+    // Checking the password is a full key derivation (Argon2id), which a shared runner takes seconds over right after a 5,000-row import.
+    await expect(exporting.getByRole('alert')).toContainText('not right', { timeout: 30_000 });
     await exporting.getByLabel('Current password').fill(PASSWORD);
     const [download] = await Promise.all([page.waitForEvent('download'), exporting.getByRole('button', { name: 'Export' }).click()]);
     const text = readFileSync(await download.path(), 'utf8');
