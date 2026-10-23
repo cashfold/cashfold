@@ -79,10 +79,10 @@ export function ProfileSecurity() {
       <section aria-labelledby="account-heading" className="mt-8">
         <h2 id="account-heading" className="text-lg font-semibold">{t('settings.account.title')}</h2>
         {core.account ? (
-          <dl className="mt-2 grid max-w-md grid-cols-[max-content_minmax(0,1fr)] gap-x-4 gap-y-1">
-            <dt className="font-medium">{t('signup.email.label')}</dt><dd className="break-all">{core.account.email}</dd>
-            <dt className="font-medium">{t('signup.server.label')}</dt><dd className="break-all">{core.account.server}</dd>
-            <dt className="font-medium">{t('settings.account.registration')}</dt><dd>{core.account.registration === 'done' ? t('settings.account.registered') : t('settings.account.pending')}</dd>
+          <dl className="mt-2 grid max-w-md grid-cols-1 gap-x-4 gap-y-0 sm:grid-cols-[max-content_minmax(0,1fr)] sm:gap-y-1">
+            <dt className="font-medium">{t('signup.email.label')}</dt><dd className="break-all max-sm:mb-2">{core.account.email}</dd>
+            <dt className="font-medium">{t('signup.server.label')}</dt><dd className="break-all max-sm:mb-2">{core.account.server}</dd>
+            <dt className="font-medium">{t('settings.account.registration')}</dt><dd className="max-sm:mb-2">{core.account.registration === 'done' ? t('settings.account.registered') : t('settings.account.pending')}</dd>
           </dl>
         ) : null}
       </section>
