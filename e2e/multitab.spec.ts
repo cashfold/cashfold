@@ -1,6 +1,6 @@
 import type { Page } from '@playwright/test';
 import { expect, test } from './fixtures/index.js';
-import { go } from './fixtures/nav.js';
+import { go, unlock } from './fixtures/nav.js';
 
 // Durability and several tabs (ARCHITECTURE 8.1a, FR-072): the app asks the browser to keep its data and says so when it will not, reminds
 // people whose data is only on their device to make a backup, and keeps one writer however many tabs are open.
@@ -145,8 +145,7 @@ test.describe('@durability storage and tabs', () => {
     await page.close();
     await expect(second.getByRole('heading', { name: 'Unlock Cashfold' })).toBeVisible({ timeout: 90_000 });
     await expect(second.getByText('Before')).toHaveCount(0);
-    await second.getByLabel('Password').fill(PASSWORD);
-    await second.getByRole('button', { name: 'Unlock' }).click();
+    await unlock(second, PASSWORD);
     await go(second, 'Accounts');
     await expect(second.getByRole('link', { name: 'Before', exact: true })).toBeVisible({ timeout: 60_000 });
     await addAccount(second, 'After');

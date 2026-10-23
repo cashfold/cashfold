@@ -1,6 +1,6 @@
 import type { Page } from '@playwright/test';
 import { expect, test } from './fixtures/index.js';
-import { go, moreDetails } from './fixtures/nav.js';
+import { go, moreDetails, unlock, openAddTransaction } from './fixtures/nav.js';
 
 // User story 5: envelope budgets with rollover (FR-054 to FR-061), offline.
 // The scenario runs against the device clock: the budget starts at the first day of last month, so "month one" is
@@ -45,7 +45,7 @@ test.describe('@us5 budgets', () => {
   }
 
   async function spendLastMonth(page: Page, amount: string, note: string): Promise<void> {
-    await page.getByRole('button', { name: 'Add transaction', exact: true }).click();
+    await openAddTransaction(page);
     const dialog = page.getByRole('dialog');
     await dialog.getByLabel('Amount (USD)').fill(amount);
     await dialog.getByLabel('Date and time').fill(TENTH_OF_LAST_MONTH);
@@ -75,8 +75,7 @@ test.describe('@us5 budgets', () => {
     await page.reload();
     await expect.poll(() => page.evaluate(() => navigator.serviceWorker.controller !== null)).toBe(true);
     await context.setOffline(true);
-    await page.getByLabel('Password').fill(PASSWORD);
-    await page.getByRole('button', { name: 'Unlock' }).click();
+    await unlock(page, PASSWORD);
 
     await go(page, 'Accounts');
     await addAccount(page, 'Everyday', '1000.00');
@@ -120,8 +119,7 @@ test.describe('@us5 budgets', () => {
 
     // --- everything survives a reload
     await page.reload();
-    await page.getByLabel('Password').fill(PASSWORD);
-    await page.getByRole('button', { name: 'Unlock' }).click();
+    await unlock(page, PASSWORD);
     await go(page, 'Budgets');
     await expect(figure(page, 'Strict')).toHaveText('200.00 USD');
     await expect(page.getByTestId('budget-row')).toHaveCount(3);

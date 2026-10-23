@@ -1,6 +1,6 @@
 import type { Page } from '@playwright/test';
 import { expect, test } from './fixtures/index.js';
-import { go, moreDetails, cancelAdd, openRowAction, toggleRecentlyDeleted } from './fixtures/nav.js';
+import { go, moreDetails, cancelAdd, openRowAction, toggleRecentlyDeleted, unlock, openAddTransaction } from './fixtures/nav.js';
 
 // User story 3: move money between accounts and currencies (FR-043 to FR-046), offline.
 
@@ -66,8 +66,7 @@ test.describe('@us3 transfers', () => {
     await page.reload();
     await expect.poll(() => page.evaluate(() => navigator.serviceWorker.controller !== null)).toBe(true);
     await context.setOffline(true);
-    await page.getByLabel('Password').fill(PASSWORD);
-    await page.getByRole('button', { name: 'Unlock' }).click();
+    await unlock(page, PASSWORD);
 
     await go(page, 'Accounts');
     await addAccount(page, 'Everyday', '1000.00');
@@ -136,7 +135,7 @@ test.describe('@us3 transfers', () => {
 
     // --- a goal account takes transfers, but not plain income
     await go(page, 'Transactions');
-    await page.getByRole('button', { name: 'Add transaction', exact: true }).click();
+    await openAddTransaction(page);
     dialog = page.getByRole('dialog');
     await dialog.getByRole('tab', { name: 'Income' }).click();
     await dialog.getByLabel('Account').selectOption({ label: 'Holiday fund (USD)' });

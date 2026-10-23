@@ -3,7 +3,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { expect, test } from './fixtures/index.js';
-import { chooseFold, go, moreDetails, editRow } from './fixtures/nav.js';
+import { chooseFold, go, moreDetails, editRow, openAddTransaction } from './fixtures/nav.js';
 
 // User story 9: take your data with you, and get back in (FR-008, FR-009, FR-090 to FR-092, FR-101, SC-013, SC-014). Real browsers
 // on the real relay built from this checkout: each has its own account, its own encrypted database and its own keys.
@@ -45,7 +45,7 @@ async function addAccount(page: Page, name: string, opening: string): Promise<vo
 
 async function addExpense(page: Page, account: string, amount: string, note: string): Promise<void> {
   await go(page, 'Transactions');
-  await page.getByRole('button', { name: 'Add transaction', exact: true }).click();
+  await openAddTransaction(page);
   const dialog = page.getByRole('dialog');
   await dialog.getByLabel('Account').selectOption({ label: `${account} (USD)` });
   await dialog.getByLabel('Amount (USD)').fill(amount);
@@ -317,7 +317,7 @@ test.describe('@us9 portability and recovery', () => {
     expect(contents.length).toBeGreaterThan(65_536);
 
     await go(page, 'Transactions');
-    await page.getByRole('button', { name: 'Add transaction', exact: true }).click();
+    await openAddTransaction(page);
     const dialog = page.getByRole('dialog');
     await dialog.getByLabel('Account').selectOption({ label: 'Everyday (USD)' });
     await dialog.getByLabel('Amount (USD)').fill('12.50');

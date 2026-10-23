@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { chromium, type BrowserContext, type Page } from '@playwright/test';
 import { expect, test } from './fixtures/index.js';
-import { chooseFold, go, moreDetails } from './fixtures/nav.js';
+import { chooseFold, go, moreDetails, openAddTransaction } from './fixtures/nav.js';
 
 // A device whose storage misbehaves (FR-072, FR-016, edge cases): the browser is shut down the moment a change was confirmed; a page of the
 // encrypted database is overwritten while the app is locked. Confirmed changes are never lost without a word, a damaged file is kept, what can
@@ -43,7 +43,7 @@ async function addAccount(page: Page, name: string): Promise<void> {
 
 async function addExpense(page: Page, account: string, amount: string, note: string): Promise<void> {
   await go(page, 'Transactions');
-  await page.getByRole('button', { name: 'Add transaction', exact: true }).click();
+  await openAddTransaction(page);
   const dialog = page.getByRole('dialog');
   await dialog.getByLabel('Account').selectOption({ label: `${account} (USD)` });
   await dialog.getByLabel('Amount (USD)').fill(amount);

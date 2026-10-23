@@ -1,6 +1,6 @@
 import type { Page } from '@playwright/test';
 import { expect, test } from './fixtures/index.js';
-import { go } from './fixtures/nav.js';
+import { go, unlock, openAddTransaction } from './fixtures/nav.js';
 
 // User story 8: savings goals backed by goal accounts (FR-067, FR-068, FR-029), offline.
 
@@ -81,8 +81,7 @@ test.describe('@us8 goals', () => {
     await page.reload();
     await expect.poll(() => page.evaluate(() => navigator.serviceWorker.controller !== null)).toBe(true);
     await context.setOffline(true);
-    await page.getByLabel('Password').fill(PASSWORD);
-    await page.getByRole('button', { name: 'Unlock' }).click();
+    await unlock(page, PASSWORD);
 
     await go(page, 'Goals');
     await expect(page.getByTestId('goals-need-account')).toBeVisible();
@@ -125,7 +124,7 @@ test.describe('@us8 goals', () => {
 
     // --- a goal account takes no ordinary transactions (FR-029)
     await go(page, 'Transactions');
-    await page.getByRole('button', { name: 'Add transaction', exact: true }).click();
+    await openAddTransaction(page);
     const dialog = page.getByRole('dialog');
     await dialog.getByLabel('Account').selectOption({ label: 'Car fund (USD)' });
     await dialog.getByLabel('Amount (USD)').fill('5.00');

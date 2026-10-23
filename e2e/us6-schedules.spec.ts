@@ -1,6 +1,6 @@
 import type { Page } from '@playwright/test';
 import { expect, test } from './fixtures/index.js';
-import { go, moreDetails } from './fixtures/nav.js';
+import { go, moreDetails, unlock } from './fixtures/nav.js';
 
 // User story 6: recurring transactions (FR-062 to FR-066), offline. Dates are relative to the device clock.
 
@@ -71,8 +71,7 @@ test.describe('@us6 schedules', () => {
     await page.reload();
     await expect.poll(() => page.evaluate(() => navigator.serviceWorker.controller !== null)).toBe(true);
     await context.setOffline(true);
-    await page.getByLabel('Password').fill(PASSWORD);
-    await page.getByRole('button', { name: 'Unlock' }).click();
+    await unlock(page, PASSWORD);
 
     await go(page, 'Accounts');
     await addAccount(page, 'Everyday', '1000.00');
@@ -122,8 +121,7 @@ test.describe('@us6 schedules', () => {
 
     // --- nothing is made twice by reloading
     await page.reload();
-    await page.getByLabel('Password').fill(PASSWORD);
-    await page.getByRole('button', { name: 'Unlock' }).click();
+    await unlock(page, PASSWORD);
     await go(page, 'Transactions');
     await expect(page.getByTestId('tx-row')).toHaveCount(3);
   });

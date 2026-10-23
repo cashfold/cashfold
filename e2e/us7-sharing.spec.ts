@@ -1,6 +1,6 @@
 import type { Browser, BrowserContext, Page } from '@playwright/test';
 import { expect, test } from './fixtures/index.js';
-import { cancelAdd, chooseFold, go, moreDetails } from './fixtures/nav.js';
+import { cancelAdd, chooseFold, go, moreDetails, openAddTransaction } from './fixtures/nav.js';
 
 // User story 7: share a Fold with other people (FR-083 to FR-089, FR-102, FR-104). Three real browsers on the real relay
 // built from this checkout: each has its own account, its own encrypted database and its own keys.
@@ -51,7 +51,7 @@ async function addAccount(page: Page, name: string, opening: string, fold = 'Per
 
 async function addExpense(page: Page, account: string, amount: string, note: string, daysAgo = 0): Promise<void> {
   await goIn(page, 'Transactions');
-  await page.getByRole('button', { name: 'Add transaction', exact: true }).click();
+  await openAddTransaction(page);
   const dialog = page.getByRole('dialog');
   await dialog.getByLabel('Account').selectOption({ label: `${account} (USD)` });
   await dialog.getByLabel('Amount (USD)').fill(amount);
@@ -194,7 +194,7 @@ test.describe('@us7 sharing', () => {
 
     await expect(async () => {
       await goIn(bob.page, 'Transactions');
-      await bob.page.getByRole('button', { name: 'Add transaction', exact: true }).click();
+      await openAddTransaction(bob.page);
       const dialog = bob.page.getByRole('dialog');
       await dialog.getByLabel('Amount (USD)').fill('1.00');
       await moreDetails(dialog);

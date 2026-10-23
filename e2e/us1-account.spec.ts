@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { expect, test } from './fixtures/index.js';
-import { go } from './fixtures/nav.js';
+import { go, unlock } from './fixtures/nav.js';
 
 // User story 1: create a private account and a first Fold, entirely on this device (FR-001 to FR-007, FR-020, FR-022).
 // Runs on the production build with the real encrypted database in a real worker.
@@ -210,8 +210,7 @@ test.describe('@us1 account', () => {
 
     // the preference survives a full reload (unlock again first)
     await page.reload();
-    await page.getByLabel('Password').fill(PASSWORD);
-    await page.getByRole('button', { name: 'Unlock' }).click();
+    await unlock(page, PASSWORD);
     await go(page, 'Settings');
     await expect(page.getByLabel('Lock after no activity for')).toHaveValue('15');
   });
