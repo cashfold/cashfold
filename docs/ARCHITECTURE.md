@@ -680,7 +680,7 @@ The removed member may already have copied data from epoch ≤ e. This cannot be
 - **Eviction risk.** Browsers may evict site storage under pressure. The app MUST call `navigator.storage.persist()` at first run, show a warning when persistence is denied, and nag for an encrypted backup (§5.8). Because every change is also uploaded as an op, a signed-in user can always rebuild from the server; a never-synced user cannot, so the backup nag is stronger for them.
 - **Single writer.** Exactly one Core Worker may open the database at a time, arbitrated with the Web Locks API; other tabs use RPC to the leader and receive change notifications over a `BroadcastChannel`.
 - **Crash safety.** Every command is one SQLite transaction (op log + projections). On start-up the worker verifies the encrypted header and replays any unapplied ops.
-- **Capacity and speed.** The 50,000-transaction target (SC-008) is validated by a benchmark in CI using a headless browser; query plans for the indexes in §8.2 are asserted.
+- **Capacity and speed.** The 50,000-transaction target (SC-008) is validated by a benchmark that runs in a headless browser on demand (the `Benchmarks` workflow, `bench.yml`; too long for every pull request); query plans for the indexes in §8.2 are asserted.
 
 ### 8.2 Schema (DDL)
 
