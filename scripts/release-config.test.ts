@@ -45,9 +45,10 @@ describe('release-please configuration', () => {
     expect(pkg['initial-version']).toBe('0.1.0');
   });
 
-  it('starts at 0.0.0, which is also the version in package.json', () => {
-    expect(manifest).toEqual({ '.': '0.0.0' });
-    expect((JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')) as { version: string }).version).toBe('0.0.0');
+  it('keeps the manifest and package.json at the same version, which every release proposal moves together', () => {
+    expect(Object.keys(manifest)).toEqual(['.']);
+    expect(manifest['.']).toMatch(/^\d+\.\d+\.\d+$/);
+    expect((JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')) as { version: string }).version).toBe(manifest['.']);
   });
 
   it('does not count changes that do not reach the people who run the app', () => {
