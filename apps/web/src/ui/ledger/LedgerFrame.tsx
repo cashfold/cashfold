@@ -13,7 +13,7 @@ export function LedgerFrame({ titleKey, children, actions, withoutFold }: { titl
     <div>
       <KitReminder />
       <div className="flex flex-wrap items-center justify-between gap-3 *:min-w-0">
-        <h1 className="text-2xl font-semibold">{t(titleKey)}</h1>
+        <h1 className="text-2xl font-semibold break-words">{t(titleKey)}</h1>
         {actions}
       </div>
       {ledger.failed ? (
