@@ -130,11 +130,11 @@ function SyncPanel({ status, onSyncNow }: { status: SyncView | undefined; onSync
   return (
     <section aria-labelledby="sync-heading" className="mt-6">
       <h2 id="sync-heading" className="text-lg font-semibold">{t('sync.title')}</h2>
-      <dl className="mt-2 grid max-w-md grid-cols-[max-content_1fr] gap-x-4 gap-y-1">
-        <dt className="font-medium">{t('sync.service')}</dt><dd className="break-all">{status.server ?? '—'}</dd>
+      <dl className="mt-2 grid max-w-md grid-cols-1 gap-x-4 gap-y-0 sm:grid-cols-[max-content_minmax(0,1fr)] sm:gap-y-1">
+        <dt className="font-medium">{t('sync.service')}</dt><dd className="break-all max-sm:mb-2">{status.server ?? '—'}</dd>
         <dt className="font-medium">{t('sync.last')}</dt>
-        <dd>{last === undefined ? t('sync.never') : new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'medium' }).format(new Date(last))}</dd>
-        <dt className="font-medium">{t('sync.pending')}</dt><dd>{pending}</dd>
+        <dd className="max-sm:mb-2">{last === undefined ? t('sync.never') : new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'medium' }).format(new Date(last))}</dd>
+        <dt className="font-medium">{t('sync.pending')}</dt><dd className="max-sm:mb-2">{pending}</dd>
       </dl>
       {status.connection === 'needs_password' ? <p role="alert" className="mt-2">{t('sync.needsPassword')}</p> : null}
       {status.connection === 'not_registered' ? <p className="mt-2"><Link className="underline" href="/settings/">{t('sync.enableLink')}</Link></p> : null}
