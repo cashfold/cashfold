@@ -1,6 +1,6 @@
 import type { Page } from '@playwright/test';
 import { expect, test } from './fixtures/index.js';
-import { go, moreDetails, cancelAdd, openRowAction, toggleRecentlyDeleted, editRow, accountAction } from './fixtures/nav.js';
+import { go, moreDetails, cancelAdd, openRowAction, toggleRecentlyDeleted, editRow, accountAction, unlock, openAddTransaction } from './fixtures/nav.js';
 
 // User story 2: accounts, categories and transactions, entirely offline (FR-023 to FR-036, FR-051, FR-072).
 // Runs on the production build with the real encrypted database. The network goes away after the app has loaded.
@@ -47,7 +47,7 @@ test.describe('@us2 ledger', () => {
   }
 
   async function addExpense(page: Page, account: string, amount: string, note: string): Promise<void> {
-    await page.getByRole('button', { name: 'Add transaction', exact: true }).click();
+    await openAddTransaction(page);
     const dialog = page.getByRole('dialog');
     await dialog.getByLabel('Account').selectOption({ label: `${account} (USD)` });
     await dialog.getByLabel('Amount (USD)').fill(amount);
@@ -67,8 +67,7 @@ test.describe('@us2 ledger', () => {
     await page.reload();
     await expect.poll(() => page.evaluate(() => navigator.serviceWorker.controller !== null)).toBe(true);
     await context.setOffline(true);
-    await page.getByLabel('Password').fill(PASSWORD);
-    await page.getByRole('button', { name: 'Unlock' }).click();
+    await unlock(page, PASSWORD);
     await expect(page.getByTestId('current-fold')).toHaveText('Personal');
 
     // --- accounts
@@ -90,7 +89,7 @@ test.describe('@us2 ledger', () => {
     let expected = 100_000n - EXPENSES.reduce((sum, a) => sum + cents(a), 0n);
 
     // --- too many decimals is rejected, never rounded
-    await page.getByRole('button', { name: 'Add transaction', exact: true }).click();
+    await openAddTransaction(page);
     let dialog = page.getByRole('dialog');
     await dialog.getByLabel('Amount (USD)').fill('1.234');
     await expect(dialog.getByText('USD has 2 decimal places')).toBeVisible();
@@ -137,7 +136,7 @@ test.describe('@us2 ledger', () => {
     expected -= cents('7.99');
 
     // --- a very large amount stays exact (more than 2^53 minor units)
-    await page.getByRole('button', { name: 'Add transaction', exact: true }).click();
+    await openAddTransaction(page);
     dialog = page.getByRole('dialog');
     await dialog.getByRole('tab', { name: 'Income' }).click();
     await dialog.getByLabel('Account').selectOption({ label: 'Everyday (USD)' });
@@ -149,7 +148,7 @@ test.describe('@us2 ledger', () => {
     expected += 9_007_199_254_740_993n;
 
     // --- category, payee, a new tag and a place on one transaction
-    await page.getByRole('button', { name: 'Add transaction', exact: true }).click();
+    await openAddTransaction(page);
     dialog = page.getByRole('dialog');
     await dialog.getByLabel('Account').selectOption({ label: 'Everyday (USD)' });
     await dialog.getByLabel('Amount (USD)').fill('8.00');
@@ -241,8 +240,7 @@ test.describe('@us2 ledger', () => {
     // --- everything is still there after a reload while offline (the app starts locked)
     await page.reload();
     await expect(page.getByRole('heading', { name: 'Unlock Cashfold' })).toBeVisible({ timeout: 30_000 });
-    await page.getByLabel('Password').fill(PASSWORD);
-    await page.getByRole('button', { name: 'Unlock' }).click();
+    await unlock(page, PASSWORD);
     await go(page, 'Accounts');
     await expect(balanceOf(page, 'Everyday')).toHaveText(fmt(expected));
     await expect(balanceOf(page, 'Rainy day')).toHaveText(fmt(30_000n));

@@ -1,6 +1,6 @@
 import type { Page } from '@playwright/test';
 import { expect, test } from './fixtures/index.js';
-import { go, moreDetails } from './fixtures/nav.js';
+import { go, moreDetails, openAddTransaction } from './fixtures/nav.js';
 
 // The strict Content-Security-Policy (no 'unsafe-inline', Trusted Types) must hold on every screen of the interface (FR-049, R-UX-03). The
 // `cspGuard` fixture fails any test that sees a violation; this spec walks every route so a regression is caught where it is introduced.
@@ -37,7 +37,7 @@ test.describe('@csp no policy violations', () => {
     await expect(page.getByRole('dialog')).toHaveCount(0);
 
     await go(page, 'Transactions');
-    await page.getByRole('button', { name: 'Add transaction', exact: true }).click();
+    await openAddTransaction(page);
     const tx = page.getByRole('dialog');
     await tx.getByLabel('Account').selectOption({ label: 'Everyday (USD)' });
     await tx.getByLabel('Amount (USD)').fill('12.50');

@@ -1,4 +1,4 @@
-import type { Page } from '@playwright/test';
+import { expect, type Page } from '@playwright/test';
 
 // Navigation helper for the specs. It takes the names of the screens as people knew them before the redesign and follows the new structure
 // in the app (no page reload, so the app stays unlocked): five sidebar entries, Plan tabs and the Settings groups.
@@ -136,4 +136,26 @@ export async function createAccount(page: Page, name: string, opening: string): 
   await dialog.getByLabel(/^Opening balance/).fill(opening);
   await dialog.getByRole('button', { name: 'Create account' }).click();
   await page.getByRole('link', { name, exact: true }).waitFor();
+}
+
+/**
+ * Unlocks the app after a reload. The page may show another screen for a moment while the vault state loads (the sign-up form also has a
+ * "Password" field), so it waits for the Unlock screen before it types.
+ */
+export async function unlock(page: Page, password: string): Promise<void> {
+  await expect(page.getByRole('heading', { name: 'Unlock Cashfold' })).toBeVisible({ timeout: 30_000 });
+  await page.getByLabel('Password', { exact: true }).fill(password);
+  await page.getByRole('button', { name: 'Unlock' }).click();
+}
+
+/**
+ * Opens the Add transaction sheet. A click that lands before the screen is ready is swallowed (seen on Firefox), so the click is repeated until
+ * the sheet is open instead of waiting out the test timeout for a dialog that will never come.
+ */
+export async function openAddTransaction(page: Page): Promise<void> {
+  const dialog = page.getByRole('dialog');
+  await expect(async () => {
+    if ((await dialog.count()) === 0) await page.getByRole('button', { name: 'Add transaction', exact: true }).click({ timeout: 5_000 });
+    await expect(dialog).toHaveCount(1, { timeout: 3_000 });
+  }).toPass({ timeout: 30_000 });
 }
