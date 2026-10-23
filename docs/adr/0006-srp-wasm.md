@@ -24,7 +24,7 @@ Use **`crypto-bigint` 0.7.5** (MIT OR Apache-2.0), pinned with `=`, compiled to 
 - `cf_exp_sum(a, u, x, out)`: `a + u·x` for the exponent.
 - `cf_alloc` / `cf_free`: memory management inside the module.
 
-The module has **no imports**, so it can reach nothing outside its own linear memory. The build is reproducible: the script writes the SHA-256 of the artifact next to it (`srp-bigint.wasm.sha256`), the adapter (`packages/crypto/src/adapters/srp-wasm/`) refuses to compile bytes whose hash differs, and CI rebuilds and compares.
+The module has **no imports**, so it can reach nothing outside its own linear memory. The build is reproducible: the script writes the SHA-256 of the artifact next to it (`srp-bigint.wasm.sha256`), the adapter (`packages/crypto/src/adapters/srp-wasm/`) refuses to compile bytes whose hash differs, and CI rebuilds and compares. The compiler's output depends on the host architecture, so the reference build is Linux x86_64: the script builds in an x86_64 Linux container (Docker) on any other machine.
 
 Everything else in the exchange (hashing, `k`, `u`, `M1`, `M2`, padding, transcript binding) stays in TypeScript, where no secret exponent is involved.
 
@@ -43,7 +43,7 @@ The module is about 58 KB (about 24 KB gzipped) and loads on demand the first ti
 
 ## Consequences
 
-- Building the module needs a Rust toolchain with the `wasm32-unknown-unknown` target. It is only needed when the module changes; the built artifact and its hash are committed.
+- Building the module needs Docker (or a Linux x86_64 machine with rustup); the toolchain and target come from the crate's `rust-toolchain.toml`. It is only needed when the module changes; the built artifact and its hash are committed.
 - The content security policy already allows WebAssembly (`'wasm-unsafe-eval'`).
 - Constant-time behaviour is a property of `crypto-bigint` compiled by LLVM; WebAssembly engines do not promise it, so this reduces rather than eliminates timing exposure. The threat model (docs/threat-model.md) records this residual risk.
 - If the group changes (it will not for SRP v1), the sizes in the exports change with it.
