@@ -37,8 +37,8 @@ async function person(browser: Browser, prefix: string): Promise<{ context: Brow
   return { context, page, email };
 }
 
-async function addAccount(page: Page, name: string, opening: string): Promise<void> {
-  await goIn(page, 'Accounts', 'Personal');
+async function addAccount(page: Page, name: string, opening: string, fold = 'Personal'): Promise<void> {
+  await goIn(page, 'Accounts', fold);
   await page.getByRole('button', { name: 'Add account', exact: true }).click();
   const dialog = page.getByRole('dialog');
   await dialog.getByLabel('Name', { exact: true }).fill(name);
@@ -143,7 +143,10 @@ test.describe('@us7 sharing', () => {
     await page.getByLabel('Fold name').first().fill('Household');
     await page.getByRole('button', { name: 'Save name' }).click();
     await expect(page.getByTestId('fold-name').filter({ hasText: 'Household' })).toBeVisible();
-    await addAccount(page, 'Everyday', '1,000.00');
+    // The shell reads the Fold's name again when the person moves to another screen, so wait for the new name rather than race it.
+    await go(page, 'Overview');
+    await expect(page.getByTestId('current-fold')).toHaveText('Household');
+    await addAccount(page, 'Everyday', '1,000.00', 'Household');
     await addExpense(page, 'Everyday', '25.00', 'Old coffee', 10);
     const alice = await myCode(page);
 

@@ -4,7 +4,7 @@ import { decideBackupNag, type NagLevel } from '@cashfold/core';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { requestPersistence, type PersistenceState } from '../../adapters/storage-persistence';
+import { requestPersistenceWithin, type PersistenceState } from '../../adapters/storage-persistence';
 import { useCore } from '../core/CoreProvider';
 
 import { useI18n } from '../i18n/I18nProvider';
@@ -36,7 +36,7 @@ export function StorageNotice() {
   useEffect(() => {
     if (core.phase !== 'unlocked') return;
     let live = true;
-    void requestPersistence().then((p) => live && setPersistence(p));
+    void requestPersistenceWithin(3_000, (p) => live && setPersistence(p)).then((p) => live && setPersistence(p));
     void core.call<Status>('storage.status').then((s) => live && setStatus(s), () => undefined);
     return () => {
       live = false;

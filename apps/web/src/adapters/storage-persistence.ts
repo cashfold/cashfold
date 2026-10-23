@@ -52,3 +52,28 @@ export async function requestPersistence(storage: StorageLike | undefined = type
     return UNKNOWN;
   }
 }
+
+/**
+ * Like `requestPersistence`, but does not wait on the person. Some browsers (Firefox) answer by asking them, and the request stays pending
+ * until they do; the backup reminder must not wait for that. If there is no answer within `waitMs` this reports "cannot say" for now and
+ * calls `onAnswer` with the real answer when it comes.
+ */
+export async function requestPersistenceWithin(
+  waitMs: number,
+  onAnswer: (state: PersistenceState) => void,
+  storage: StorageLike | undefined = typeof navigator === 'undefined' ? undefined : navigator.storage,
+): Promise<PersistenceState> {
+  let answered = false;
+  const asked = requestPersistence(storage).then((state) => {
+    answered = true;
+    return state;
+  });
+  const pending = Symbol('pending');
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const first = await Promise.race([asked, new Promise<typeof pending>((resolve) => (timer = setTimeout(() => resolve(pending), waitMs)))]);
+  clearTimeout(timer);
+  if (first !== pending) return first;
+  void asked.then(onAnswer);
+  const now = await readPersistence(storage);
+  return answered ? await asked : { ...now, persisted: undefined };
+}

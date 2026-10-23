@@ -10,6 +10,8 @@ const relayPort = Number(process.env['E2E_RELAY_PORT'] ?? 3200);
 export default defineConfig({
   testDir: '.',
   testMatch: '**/*.spec.ts',
+  // The default 30 s is tight for the longer journeys on a shared runner (about 20 s on a laptop).
+  timeout: process.env['CI'] ? 90_000 : 30_000,
   fullyParallel: true,
   forbidOnly: !!process.env['CI'],
   retries: process.env['CI'] ? 1 : 0,
