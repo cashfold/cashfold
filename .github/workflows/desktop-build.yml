@@ -54,19 +54,6 @@ jobs:
         with:
           node-version-file: .nvmrc
           cache: pnpm
-      - name: Keep Windows Defender out of the test folders
-        if: matrix.platform == 'win'
-        shell: pwsh
-        run: |
-          # Defender scans every file the app writes, and on these runners that made its first launch in a new data folder stall
-          # ("Access is denied" on the cache). Only the workspace, the temp folder and the app are left out, on a machine that is thrown away
-          # after the job. A runner without Defender, or without the right to change it, only loses the speed-up.
-          try {
-            Add-MpPreference -ExclusionPath $env:GITHUB_WORKSPACE, $env:RUNNER_TEMP -ErrorAction Stop
-            Add-MpPreference -ExclusionProcess 'Cashfold.exe' -ErrorAction Stop
-          } catch {
-            Write-Warning "Could not exclude the test folders from Defender: $($_.Exception.Message)"
-          }
       - run: pnpm install --frozen-lockfile
 
       - name: Log masking canary
