@@ -47,7 +47,15 @@ export const SIGN_IN_BACKOFF: BackoffPolicy = { free: 4, baseMs: 2_000, maxMs: 1
 
 /** Failed attempts per subject (account or stand-in for an unknown address) with exponential back-off after a few free tries. */
 export function createFailureTracker(clock: Clock, policy: BackoffPolicy = SIGN_IN_BACKOFF) {
-  const failures = new Map<string, { count: number; lockedUntil: number }>();
+  const failures = new Map<string, { count: number; lockedUntil: number; at: number }>();
+  let sweepAt = 0;
+  /** Forgets subjects that have not failed for a day, so addresses that were only ever guessed at do not pile up. */
+  const sweep = (): void => {
+    const now = clock.now();
+    if (now < sweepAt) return;
+    sweepAt = now + 60_000;
+    for (const [k, f] of failures) if (now - f.at > 24 * 3_600_000 && f.lockedUntil <= now) failures.delete(k);
+  };
   return {
     /** Milliseconds the subject must wait, or 0. */
     waitMs(key: string): number {
@@ -56,10 +64,11 @@ export function createFailureTracker(clock: Clock, policy: BackoffPolicy = SIGN_
     },
     /** Records a failure. Returns the new count and when the subject may try again. */
     fail(key: string): { count: number; lockedUntil: number | null } {
+      sweep();
       const count = (failures.get(key)?.count ?? 0) + 1;
       const over = count - policy.free;
       const lockedUntil = over > 0 ? clock.now() + Math.min(policy.baseMs * 2 ** (over - 1), policy.maxMs) : 0;
-      failures.set(key, { count, lockedUntil });
+      failures.set(key, { count, lockedUntil, at: clock.now() });
       return { count, lockedUntil: over > 0 ? lockedUntil : null };
     },
     succeed(key: string): void {

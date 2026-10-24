@@ -77,6 +77,8 @@ export interface SyncServiceDeps {
     adopt(): Promise<void>;
     /** Whether this account sees the whole history; only then may it publish a snapshot, which stands in for the log below it. */
     mayPublishSnapshot(fold: Id): Promise<boolean>;
+    /** Whether a snapshot signed by this device may be installed: its member must see the whole history and have held the editor role. */
+    mayTrustSnapshot(fold: Id, device: Id): Promise<boolean>;
   };
   readonly openStream?: typeof openFoldStream;
   readonly timers?: { set(fn: () => void, ms: number): unknown; clear(handle: unknown): void };
@@ -332,6 +334,7 @@ export function createSyncService(deps: SyncServiceDeps): SyncService {
     const snapshots = createSnapshotService({
       codec: snapshotCodec, oplog: s.oplog, projections: s.projections, cursors: s.cursors, keys: { deviceId: () => s.deviceId, currentEpoch: async (f) => (await s.keyImport.epochs(f)).at(-1) },
       sealer: s.snapshotSealer, transport: createRelaySnapshotTransport(l),
+      signerAllowed: (fold, device) => deps.sharing?.mayTrustSnapshot(fold, device) ?? Promise.resolve(true),
     });
     for (const summary of await s.directory.list()) {
       if (!live(g)) return;

@@ -3,5 +3,7 @@
   "appId": "org.cashfold.app",
   "origin": "app://cashfold",
   "sourceRepoUrl": "https://github.com/cashfold/cashfold",
-  "updatePublicKeys": []
+  "updatePublicKeys": [
+    "dVDgUSyuECO183zAH2ZbTfrOBNElJtTpThX5PDSsqFc="
+  ]
 }

@@ -185,4 +185,39 @@ describe('rate limiting and lockout (AUTH-5)', () => {
     expect(locked).toEqual(['ABCDEF']);
     expect((await store.accounts.byId('ABCDEF'))?.failCount).toBe(5);
   });
+
+  it('does not let a handshake that began before a lock finish while the lock lasts', async () => {
+    const { auth, sessions } = await world();
+    const hello = await auth.hello({ email: 'alice@example.com', deviceId: DEVICE, ip: '10.6.0.1' });
+    const session = pake.start(SecretBuf.from(X));
+    const { B } = await auth.proofA({ sessionId: hello.sessionId, A: session.A, ip: '10.6.0.1' });
+    // Someone else's wrong guesses lock the address while this handshake waits for its last message.
+    for (let i = 0; i < 5; i++) await signIn(auth, { x: randomX(), ip: `10.6.1.${i}` }).catch(() => undefined);
+    const done = session.respond({ accountId: hello.accountId, authSalt: hello.authSalt, B });
+    await expect(auth.proofM1({ sessionId: hello.sessionId, M1: done.M1, ip: '10.6.0.1' })).rejects.toMatchObject({ kind: 'rate_limited' });
+    expect(sessions.get(Buffer.from(hello.sessionId).toString('hex'))).toBeUndefined();
+  });
+
+  it('does the same work for an unknown address as for an existing one, so the answer takes the same time', async () => {
+    const calls = { verifier: 0, recovery: 0 };
+    const counting = { ...srp, verifierFrom: (seed: Uint8Array) => (calls.verifier++, srp.verifierFrom(seed)) };
+    const store = createMemoryStore();
+    const getRecovery = store.recovery.get.bind(store.recovery);
+    (store.recovery as { get: typeof store.recovery.get }).get = async (id) => (calls.recovery++, getRecovery(id));
+    const auth = createAuthService({ store, srp: counting, sessions: createSessionStore(clock), limiter: createRateLimiter(clock), clock, secret, defaultKdf: { mKib: 65_536, t: 3, p: 1 } });
+    const { emailMac } = await import('../../common/crypto-util.js');
+    await store.accounts.create({
+      accountId: 'ABCDEF', emailHmac: emailMac(secret, 'alice@example.com'), email: 'alice@example.com', authSalt: randomBytes(16), kdf,
+      srpVerifier: pake.verifier(SecretBuf.from(X)), keyset: Buffer.alloc(100), discoverable: true, createdAtMs: now,
+    });
+    const count = async (email: string, credential?: 'recovery') => {
+      calls.verifier = 0;
+      calls.recovery = 0;
+      await auth.hello({ email, deviceId: DEVICE, ip: `10.7.${Math.floor(Math.random() * 250)}.${Math.floor(Math.random() * 250)}`, ...(credential && { credential }) });
+      return { ...calls };
+    };
+    expect(await count('nobody@example.com')).toEqual(await count('alice@example.com'));
+    expect(await count('nobody@example.com', 'recovery')).toEqual(await count('alice@example.com', 'recovery'));
+  });
 });
+

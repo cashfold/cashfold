@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import type { Id } from '../../shared-kernel/id';
 import { id, setup, snapshotCodec, type Node } from '../../testing/index';
 import type { FieldValue } from '../domain/merge';
 import { createSnapshotService, type RelaySnapshot, type SnapshotService, type SnapshotTransportPort } from './snapshot';
@@ -9,8 +10,9 @@ const state = async (n: Node) => JSON.stringify([...(await n.replica.projections
 
 async function world() {
   const w = await setup();
-  const service = (n: Node, transport?: SnapshotTransportPort): SnapshotService =>
+  const service = (n: Node, transport?: SnapshotTransportPort, signerAllowed?: (fold: Id, device: Id) => Promise<boolean>): SnapshotService =>
     createSnapshotService({
+      ...(signerAllowed && { signerAllowed }),
       codec: snapshotCodec, oplog: n.replica.oplog, projections: n.replica.projections, cursors: n.cursors, sealer: n.replica.snapshots,
       keys: { deviceId: () => n.replica.device, currentEpoch: async () => 1 }, transport: transport ?? w.relay.snapshotTransport(n.replica.device),
     });
@@ -36,6 +38,23 @@ describe('snapshot service', () => {
     const report = await b.client.syncFold(FOLD);
     expect(report).toMatchObject({ applied: 2, pulled: 2 });
     expect(report.failure).toBeUndefined();
+    expect(await state(b)).toBe(await state(a));
+  });
+
+  it('ignores a snapshot whose signer may not make one, and installs it when the signer is allowed', async () => {
+    const w = await world();
+    const [a, b] = [await w.node(0), await w.node(1)];
+    for (let i = 1; i <= 3; i++) await a.replica.writePath.submit(draft(i, i));
+    await a.client.syncFold(FOLD);
+    expect(await w.service(a).publish(FOLD)).toBe('published');
+
+    const asked: Array<[string, string]> = [];
+    expect(await w.service(b, undefined, async (fold, device) => (asked.push([fold, device]), false)).bootstrap(FOLD)).toBe('refused');
+    expect(asked).toEqual([[FOLD, a.replica.device]]);
+    expect(await b.replica.projections.listRecords(FOLD)).toHaveLength(0);
+    expect(await b.cursors.get(FOLD)).toMatchObject({ serverSeq: 0n });
+
+    expect(await w.service(b, undefined, async () => true).bootstrap(FOLD)).toBe('installed');
     expect(await state(b)).toBe(await state(a));
   });
 

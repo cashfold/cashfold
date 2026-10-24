@@ -181,8 +181,12 @@ export interface Store {
   };
   /** Sealed attachment pieces (FR-093). Immutable once stored; the relay sees sizes and nothing else. */
   readonly attachments: {
-    /** `conflict` when a different piece is already stored at this place: a piece is written once. The same bytes again are accepted. */
-    putChunk(foldId: Bytes, attId: Bytes, index: number, data: Bytes): Promise<'ok' | 'conflict'>;
+    /**
+     * `conflict` when a different piece is already stored at this place: a piece is written once. The same bytes again are accepted.
+     * With `quota`, a piece that would take the Fold past that many pieces is refused with `quota`; the count and the write happen as one
+     * step, so pieces uploaded at the same moment cannot overshoot it.
+     */
+    putChunk(foldId: Bytes, attId: Bytes, index: number, data: Bytes, quota?: number): Promise<'ok' | 'conflict' | 'quota'>;
     getChunk(foldId: Bytes, attId: Bytes, index: number): Promise<Bytes | undefined>;
     /** How many pieces the Fold holds in all, for its quota. */
     chunkCount(foldId: Bytes): Promise<number>;

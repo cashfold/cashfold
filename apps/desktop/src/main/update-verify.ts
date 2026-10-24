@@ -31,12 +31,22 @@ export function signatureUrl(base: string, version: string, fileName: string): s
 }
 
 /**
+ * Whether the installer's own name says it is this version: `Cashfold-<version>-<os>-<arch>.<ext>`. The signature covers the name but not
+ * the version the feed announces, so without this check a feed could offer an old, genuinely signed installer as a new version.
+ */
+export function nameIsForVersion(fileName: string, version: string): boolean {
+  const escaped = version.replace(/[.+]/g, '\\$&');
+  return new RegExp(`^[^-/\\\\]+-${escaped}-(?:win|mac|linux)-[A-Za-z0-9_]+\\.[A-Za-z0-9.]+$`).test(fileName);
+}
+
+/**
  * True only when the project's signature on exactly these bytes can be fetched and checked. The hash is computed from the file on disk,
  * not taken from the feed, so the signature is tied to what would actually be installed. Any failure is "no".
  */
 export async function verifyDownload(options: VerifyDownloadOptions): Promise<boolean> {
   try {
     const name = basename(options.file);
+    if (!nameIsForVersion(name, options.version)) return false;
     const [hash, signature] = await Promise.all([options.hashFile(options.file), options.fetchText(signatureUrl(options.signaturesFrom, options.version, name))]);
     return (await verifyUpdate([...options.publicKeys], name, hash, signature.trim())) === true;
   } catch {

@@ -61,8 +61,10 @@ export function createSnapshotService(deps: {
   keys: KeyStorePort;
   sealer: SealedSnapshotPort;
   transport: SnapshotTransportPort;
+  /** Whether the device that signed a snapshot may have made one (sharing: its member must be able to see and write the whole history). Absent: any signer the keys know. */
+  signerAllowed?: (fold: Id, device: Id) => Promise<boolean>;
 }): SnapshotService {
-  const { codec, oplog, projections, cursors, keys, sealer, transport } = deps;
+  const { codec, oplog, projections, cursors, keys, sealer, transport, signerAllowed } = deps;
 
   return {
     async publish(fold) {
@@ -94,6 +96,7 @@ export function createSnapshotService(deps: {
       let data: SnapshotData;
       try {
         const opened = await sealer.open({ fold, epoch: snap.epoch, atSeq: snap.atSeq }, snap);
+        if (signerAllowed !== undefined && !(await signerAllowed(fold, opened.dev as Id))) return 'refused'; // signed by a device that may not write a snapshot
         data = codec.decode(opened.payload);
       } catch {
         return 'refused'; // a forged, swapped, rolled-back-to-another-Fold or damaged snapshot: ignore it, sync from the log

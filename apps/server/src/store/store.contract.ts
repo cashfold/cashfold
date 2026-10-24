@@ -329,6 +329,17 @@ export function describeStoreContract(label: string, make: () => Promise<Store>)
         expect(await store.attachments.getChunk(FOLD, b(42), 0)).toBeUndefined();
       });
 
+      it('refuses a new piece past the quota, still accepts one it holds, and cannot be overshot by uploads made at the same moment', async () => {
+        expect(await store.attachments.putChunk(FOLD, ATT, 0, b(1, 50), 3)).toBe('ok');
+        expect(await store.attachments.putChunk(FOLD, ATT, 0, b(1, 50), 3)).toBe('ok');
+        const results = await Promise.all([1, 2, 3, 4, 5, 6].map((i) => store.attachments.putChunk(FOLD, ATT, i, b(i, 50), 3)));
+        expect(results.filter((r) => r === 'ok')).toHaveLength(2);
+        expect(results.filter((r) => r === 'quota')).toHaveLength(4);
+        expect(await store.attachments.chunkCount(FOLD)).toBe(3);
+        expect(await store.attachments.putChunk(FOLD, ATT, 0, b(1, 50), 3)).toBe('ok');
+        expect(await store.attachments.putChunk(FOLD, ATT, 0, b(9, 50), 3)).toBe('conflict');
+      });
+
       it('counts pieces across attachments and drops them with the Fold', async () => {
         await store.attachments.putChunk(FOLD, ATT, 0, b(1, 50));
         await store.attachments.putChunk(FOLD, ATT, 1, b(2, 50));

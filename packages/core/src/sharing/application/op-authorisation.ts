@@ -1,6 +1,6 @@
 import type { Id } from '../../shared-kernel/id';
 import type { WireOp } from '../../sync/ports/index';
-import { roleAt } from '../domain/membership-log';
+import { roleAt, type MembershipState } from '../domain/membership-log';
 import type { MembershipLog } from './membership-log-service';
 import type { OwnDevice } from '../ports/membership';
 
@@ -37,4 +37,17 @@ export function createOpAuthoriser(deps: { log: MembershipLog; ownAccount: () =>
 export async function certifiedDeviceKey(log: MembershipLog, fold: Id, device: string): Promise<Uint8Array | undefined> {
   const s = await log.state(fold);
   return s.ok ? s.value.devices.get(device)?.sigPk : undefined;
+}
+
+/**
+ * Whether the device that signed a snapshot may have made one. A snapshot stands in for the whole log below it, so only a member who sees the
+ * whole history and has held at least the editor role can have written it: never a viewer, and never a member who joined with "from now on"
+ * history (the service refuses their uploads, but a service that is not honest would not). A snapshot carries no time, so this cannot tell an
+ * editor who has since been removed from a current one; it narrows who can forge a snapshot, it does not close that case.
+ * `ownAccount` is given for one of this account's own devices, whose certificate may not be in the log.
+ */
+export function snapshotSignerAllowed(state: MembershipState, device: string, ownAccount?: string): boolean {
+  const account = ownAccount ?? state.devices.get(device)?.account;
+  const member = account === undefined ? undefined : state.members.get(account);
+  return member !== undefined && member.scope === 'full' && member.roles.some((r) => r.role !== undefined && r.role <= 2);
 }

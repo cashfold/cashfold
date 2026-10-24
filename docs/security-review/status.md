@@ -18,3 +18,4 @@ One row per finding, with the reviewer's severity. A **critical** or **high** fi
 ## History
 
 - 2026-10: package prepared (README.md); reviewer not yet engaged.
+- 2026-10-24: internal review by the maintainer (Andrii Pohuliailo), see [internal-review-2026-10.md](internal-review-2026-10.md). It is not independent and does not change the status above.

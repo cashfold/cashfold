@@ -7,7 +7,7 @@ import { Public, ResponseInterceptor } from './common/http.js';
 import { RelayExceptionFilter } from './common/filters.js';
 import { createRateLimiter, type Clock, type RateLimiter } from './common/rate-limit.js';
 import { T } from './common/tokens.js';
-import type { ServerConfig } from './config.js';
+import { DEFAULT_TRUST_PROXY, type ServerConfig } from './config.js';
 import { AccountsController } from './modules/accounts/accounts.controller.js';
 import { createAccountsService } from './modules/accounts/accounts.service.js';
 import { AttachmentsController } from './modules/attachments/attachments.controller.js';
@@ -87,7 +87,7 @@ export async function createRelay(options: RelayOptions): Promise<Relay> {
   const membership = createMembershipService({ store, mail, clock, limiter, config });
   const rates = createRatesService({ store, config: config.rates, now: () => clock.now(), ...(options.fetchRates && { fetchText: options.fetchRates }) });
 
-  const adapter = new FastifyAdapter({ bodyLimit: 6 * 1024 * 1024, trustProxy: true });
+  const adapter = new FastifyAdapter({ bodyLimit: 6 * 1024 * 1024, trustProxy: trustProxyOf(config.trustProxy ?? DEFAULT_TRUST_PROXY) });
   const fastify = adapter.getInstance();
   for (const type of ['application/cbor', 'application/octet-stream']) fastify.addContentTypeParser(type, { parseAs: 'buffer' }, (_req, body, done) => done(null, body));
   fastify.addHook('onRequest', async (req, reply) => {
@@ -124,4 +124,9 @@ export async function createRelay(options: RelayOptions): Promise<Relay> {
       await store.close();
     },
   };
+}
+
+/** Fastify takes a hop count only as a function: trust the first `n` hops, counting the connection itself as hop 0. */
+function trustProxyOf(setting: boolean | number | string): boolean | string | ((address: string, hop: number) => boolean) {
+  return typeof setting === 'number' ? (_address, hop) => hop < setting : setting;
 }
