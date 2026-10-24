@@ -1,4 +1,4 @@
-import { createAccount, go } from '../../../e2e/fixtures/nav.js';
+import { createAccount, go, lock } from '../../../e2e/fixtures/nav.js';
 import { addExpense, APP_ORIGIN, expect, killApp, PASSWORD, Session, signUp, test, unlock } from './fixtures';
 
 // User story 2: the person can see where the data is and open that folder (FR-009), the version and the source (FR-026), and a damaged or
@@ -73,7 +73,7 @@ test('a damaged database is kept and reported, and the app carries on', async ({
   await signUp(page);
   await createAccount(page, 'Everyday', '100.00');
   await addExpense(page, 'Everyday', '12.50', 'Coffee beans');
-  await page.getByRole('button', { name: 'Lock', exact: true }).click();
+  await lock(page);
   await expect(page.getByRole('heading', { name: 'Unlock Cashfold' })).toBeVisible();
   await page.waitForTimeout(1_500); // the worker lets go of the file
 

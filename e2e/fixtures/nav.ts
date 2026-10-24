@@ -160,3 +160,13 @@ export async function openAddTransaction(page: Page): Promise<void> {
     await expect(dialog).toHaveCount(1, { timeout: 3_000 });
   }).toPass({ timeout: 30_000 });
 }
+
+/**
+ * Locks the app. In a narrow window (the Windows runners' small display) the button is inside the menu drawer, behind the first button of the
+ * page header; in a wide one it is in the sidebar.
+ */
+export async function lock(page: Page): Promise<void> {
+  const button = page.getByRole('button', { name: 'Lock', exact: true });
+  if ((await button.count()) === 0) await page.locator('header button:visible').first().click();
+  await button.first().click();
+}
