@@ -50,6 +50,14 @@ export function createAuthService(deps: AuthDeps) {
     if (!d.allowed) throw new AuthError('rate_limited', d.retryAfterSec);
   };
 
+  /** A handshake that began before its subject was locked must not finish while the lock lasts. The subject is the same kind of key for real and unknown addresses. */
+  const stillAllowed = (subject: string, sessionId?: string): void => {
+    const wait = failures.waitMs(subject);
+    if (wait <= 0) return;
+    if (sessionId !== undefined) sessions.end(sessionId);
+    throw new AuthError('rate_limited', Math.ceil(wait / 1000));
+  };
+
   return {
     async hello({ email, deviceId, ip, credential }: { email: string; deviceId: Uint8Array; ip: string; credential?: 'recovery' | undefined }): Promise<HelloReply> {
       const mac = emailMac(secret, email);
@@ -57,21 +65,26 @@ export function createAuthService(deps: AuthDeps) {
       limit(`hello:email:${hex(mac)}`, 10, 60_000);
 
       const account = await store.accounts.byEmailHmac(mac);
+      const stand = fakeAccount(secret, credential === 'recovery' ? `recovery:${email}` : email, deps.defaultKdf);
       // The Recovery Key is a second credential for the same account. An account without one answers exactly as an unknown
       // address does, so asking reveals nothing about whether a Recovery Key was ever set up.
-      const recovery = credential === 'recovery' && account !== undefined ? await store.recovery.get(account.accountId) : undefined;
+      // Both cases do the same work and make the same calls (an unknown address looks the stand-in id up, which finds nothing), so how long
+      // the answer takes says nothing about whether the address has an account.
+      const recoveryRow = credential === 'recovery' ? await store.recovery.get(account?.accountId ?? stand.accountId) : undefined;
+      const recovery = account === undefined ? undefined : recoveryRow;
       const real = credential === 'recovery' ? (recovery === undefined ? undefined : account) : account;
-      const stand = fakeAccount(secret, credential === 'recovery' ? `recovery:${email}` : email, deps.defaultKdf);
       const accountId = real?.accountId ?? stand.accountId;
       const subject = `acct:${account === undefined ? hex(mac) : account.accountId}`;
       const wait = failures.waitMs(subject);
       if (wait > 0) throw new AuthError('rate_limited', Math.ceil(wait / 1000));
 
       const sessionId = randomBytes(16);
+      // Computed for every address, not only the unknown ones: the modular exponentiation is the one step an unknown address would otherwise pay for alone.
+      const standVerifier = srp.verifierFrom(stand.verifierSeed);
       const kdf: KdfRecord = real?.kdf ?? { ...stand.kdf, encSalt: stand.encSalt };
       sessions.startHandshake(hex(sessionId), {
         stage: 'salt_sent', expiresAt: clock.now() + HANDSHAKE_MS, accountId, real: real !== undefined, authSalt: recovery?.authSalt ?? real?.authSalt ?? stand.authSalt,
-        deviceId, subject, ip, verifier: recovery?.srpVerifier ?? real?.srpVerifier ?? srp.verifierFrom(stand.verifierSeed),
+        deviceId, subject, ip, verifier: recovery?.srpVerifier ?? real?.srpVerifier ?? standVerifier,
       });
       return { accountId, authSalt: recovery?.authSalt ?? real?.authSalt ?? stand.authSalt, kdf, sessionId };
     },
@@ -84,6 +97,7 @@ export function createAuthService(deps: AuthDeps) {
         sessions.end(id);
         return reject();
       }
+      stillAllowed(h.subject, id);
       const exchange = srp.begin({ v: h.verifier, A });
       if (exchange === undefined) {
         sessions.end(id);
@@ -99,12 +113,15 @@ export function createAuthService(deps: AuthDeps) {
       const id = hex(sessionId);
       const h = sessions.takeHandshake(id);
       if (h === undefined || h.stage !== 'b_sent' || h.exchange === undefined) return reject();
+      stillAllowed(h.subject);
 
       const done = h.exchange.finish({ accountId: h.accountId, authSalt: h.authSalt, M1 });
       if (!done.ok || !h.real) {
         const f = failures.fail(h.subject);
         if (h.real) {
-          await store.accounts.recordFailure(h.accountId, f.lockedUntil);
+          // Not awaited: an unknown address has nothing to write, and waiting for the database here would make a wrong password on a real
+          // account answer later than on an unknown one. The stored count is a record for the operator; the back-off above is what limits.
+          void store.accounts.recordFailure(h.accountId, f.lockedUntil).catch(() => undefined);
           if (f.lockedUntil !== null && f.count === 5) deps.onLocked?.(h.accountId);
         }
         return reject();
