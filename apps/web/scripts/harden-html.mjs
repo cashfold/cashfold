@@ -16,8 +16,9 @@
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const out = process.argv[2] ?? new URL('../out/', import.meta.url).pathname;
+const out = process.argv[2] ?? fileURLToPath(new URL('../out/', import.meta.url));
 const connect = (process.env.CSP_CONNECT_SOURCES ?? "https: wss:").split(/\s+/).filter(Boolean);
 
 function* walk(dir) {

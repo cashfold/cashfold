@@ -6,7 +6,7 @@
 // Run in CI after the other cheap gates: `pnpm check:desktop-config`.
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const readJson = (path) => JSON.parse(readFileSync(path, 'utf8'));
 
@@ -50,7 +50,7 @@ export async function checkDesktopConfig({ root, release = false, env = process.
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
-  const root = new URL('../', import.meta.url).pathname;
+  const root = fileURLToPath(new URL('../', import.meta.url));
   const release = process.argv.includes('--release') || process.env.RELEASE_BUILD === '1';
   const problems = await checkDesktopConfig({ root, release });
   if (problems.length > 0) {
