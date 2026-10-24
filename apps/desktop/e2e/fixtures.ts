@@ -29,6 +29,25 @@ function cleanEnv(extra: Record<string, string> = {}): Record<string, string> {
   return env;
 }
 
+const LAUNCH_TIMEOUT_MS = 20_000;
+const LAUNCH_ATTEMPTS = 3;
+
+/**
+ * Starts the app, and starts it again when Playwright's start-up handshake never completes. On Linux in CI about one launch in ten leaves
+ * `electron.launch` waiting for ever although the window is up and loaded (the app is fine; the test then waited out its whole timeout, two
+ * minutes, for nothing). A launch that has not finished in twenty seconds is stopped and made again, on the same data folder.
+ */
+async function launchWithRetry(options: { executablePath: string; args: string[]; env: Record<string, string> }): Promise<ElectronApplication> {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await electron.launch({ ...options, timeout: LAUNCH_TIMEOUT_MS });
+    } catch (error) {
+      if (attempt >= LAUNCH_ATTEMPTS) throw error;
+      console.warn(`launch attempt ${attempt} did not finish in ${LAUNCH_TIMEOUT_MS / 1000} s, trying again`);
+    }
+  }
+}
+
 export interface Running {
   readonly app: ElectronApplication;
   readonly page: Page;
@@ -45,7 +64,7 @@ export class Session {
 
   async launch(options: { args?: string[]; env?: Record<string, string> } = {}): Promise<Running> {
     const { executablePath, args } = appUnderTest();
-    const app = await electron.launch({
+    const app = await launchWithRetry({
       executablePath,
       args: [...args, `--user-data-dir=${this.userDataDir}`, ...(options.args ?? [])],
       env: cleanEnv(options.env),
