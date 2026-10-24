@@ -19,9 +19,31 @@ export interface ServerConfig {
   readonly allowedOrigins: readonly string[];
   /** Multiplier on every rate limit. Leave at 1 except in test setups. */
   readonly rateLimitScale?: number;
+  /**
+   * Which peers may set the client address with X-Forwarded-For: true, false, a hop count, or a list of addresses and ranges (Fastify's
+   * `trustProxy`). Per-address limits are only as good as this: trusting everyone lets a client pick its own address.
+   */
+  readonly trustProxy?: boolean | number | string;
 }
 
+/** The peers a reverse proxy on the same machine or the same private network connects from. A relay reached directly from the internet trusts none. */
+export const DEFAULT_TRUST_PROXY = 'loopback,linklocal,uniquelocal';
+
 const flag = (v: string | undefined, fallback: string): string => (v === undefined || v === '' ? fallback : v);
+
+/** A positive, finite number. `Number('abc')` is NaN, which would make every comparison in the limiter false and switch rate limiting off. */
+function positiveNumber(name: string, raw: string): number {
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n <= 0) throw new Error(`${name} must be a number greater than 0 (got "${raw}")`);
+  return n;
+}
+
+function trustProxyOf(raw: string): boolean | number | string {
+  if (raw === 'true') return true;
+  if (raw === 'false') return false;
+  if (/^\d+$/.test(raw)) return Number(raw);
+  return raw;
+}
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
   const store = flag(env['STORE'], env['DATABASE_URL'] ? 'postgres' : 'memory');
@@ -47,7 +69,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
     publicUrl: flag(env['PUBLIC_URL'], 'http://localhost:3000'),
     rates: ratesSource === 'disabled' ? { kind: 'disabled' } : { kind: 'upstream', url: ratesSource, everyHours: Number(flag(env['RATES_EVERY_HOURS'], '12')) },
     defaultKdf: { mKib: 65_536, t: 3, p: 1 },
-    rateLimitScale: Number(flag(env['RATE_LIMIT_SCALE'], '1')),
+    rateLimitScale: positiveNumber('RATE_LIMIT_SCALE', flag(env['RATE_LIMIT_SCALE'], '1')),
+    trustProxy: trustProxyOf(flag(env['TRUST_PROXY'], DEFAULT_TRUST_PROXY)),
     allowedOrigins: (env['ALLOWED_ORIGINS'] ?? '').split(',').map((o) => o.trim()).filter(Boolean),
   };
 }
