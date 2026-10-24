@@ -40,9 +40,29 @@ function cleanEnv(extra: Record<string, string> = {}): Record<string, string> {
 const onCiWindows = process.platform === 'win32' && Boolean(process.env['CI']);
 const tempRoot = process.env['RUNNER_TEMP'] ?? tmpdir();
 
+/** Every app any session of this run has started and not yet seen end. */
+const liveApps = new Set<ElectronApplication>();
+
 function stopLeftoverApps(): void {
   if (!onCiWindows) return;
   spawnSync('taskkill', ['/F', '/T', '/IM', basename(appUnderTest().executablePath)], { stdio: 'ignore' });
+}
+
+/** Stops leftover processes of an app that has ended, but only when no other app of this run is up (two are, on purpose, in some tests). */
+function stopLeftoverAppsIfIdle(): void {
+  if (liveApps.size === 0) stopLeftoverApps();
+}
+
+/**
+ * Kills the app at once, with the processes it started. `ChildProcess.kill` ends only the main process; on Windows the helper processes live on
+ * and keep the data folder open, so an app started on it afterwards finds the folder in use and fails to start.
+ */
+export async function killApp(app: ElectronApplication): Promise<void> {
+  const child = app.process();
+  const exited = new Promise<void>((resolve) => (child.exitCode !== null ? resolve() : child.once('exit', () => resolve())));
+  if (process.platform === 'win32' && child.pid !== undefined) spawnSync('taskkill', ['/PID', String(child.pid), '/T', '/F'], { stdio: 'ignore' });
+  else child.kill('SIGKILL');
+  await exited;
 }
 
 const LAUNCH_TIMEOUT_MS = 20_000;
@@ -88,13 +108,15 @@ export class Session {
         args: [...args, `--user-data-dir=${this.userDataDir}`, ...(onCiWindows ? ['--disable-gpu'] : []), ...(options.args ?? [])],
         env: cleanEnv(options.env),
       },
-      // Only when nothing of this test is running: two apps of one test are sometimes up at the same time on purpose.
-      () => {
-        if (this.running.size === 0) stopLeftoverApps();
-      },
+      // Only when no app is running: two apps of one test are sometimes up at the same time on purpose.
+      stopLeftoverAppsIfIdle,
     );
     this.running.add(app);
-    app.on('close', () => this.running.delete(app));
+    liveApps.add(app);
+    app.on('close', () => {
+      this.running.delete(app);
+      liveApps.delete(app);
+    });
     const page = await app.firstWindow();
     await page.waitForLoadState('domcontentloaded');
     return { app, page };
@@ -103,11 +125,14 @@ export class Session {
   async quit(app: ElectronApplication): Promise<void> {
     await app.close();
     this.running.delete(app);
+    liveApps.delete(app);
+    stopLeftoverAppsIfIdle(); // helper processes of the closed app may still hold its folder
   }
 
   async dispose(): Promise<void> {
     for (const app of this.running) await app.close().catch(() => undefined);
-    stopLeftoverApps();
+    for (const app of this.running) liveApps.delete(app);
+    stopLeftoverAppsIfIdle();
     if (!process.env['CASHFOLD_KEEP_E2E_DATA'] && process.env['CASHFOLD_E2E_USER_DATA'] === undefined) {
       try {
         // Windows refuses to delete a folder while a process still has a file in it, and lets go a moment later.

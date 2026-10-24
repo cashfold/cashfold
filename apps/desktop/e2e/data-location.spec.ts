@@ -1,5 +1,5 @@
 import { createAccount, go } from '../../../e2e/fixtures/nav.js';
-import { addExpense, APP_ORIGIN, expect, PASSWORD, Session, signUp, test, unlock } from './fixtures';
+import { addExpense, APP_ORIGIN, expect, killApp, PASSWORD, Session, signUp, test, unlock } from './fixtures';
 
 // User story 2: the person can see where the data is and open that folder (FR-009), the version and the source (FR-026), and a damaged or
 // abruptly stopped session does not lose confirmed work (FR-007). The pages come from the web app; these tests prove them inside the shell.
@@ -53,11 +53,9 @@ test('a change that was confirmed is there after the app is killed at once', asy
   await signUp(first.page);
   await createAccount(first.page, 'Everyday', '100.00');
   await addExpense(first.page, 'Everyday', '12.50', 'Coffee beans'); // confirmed: the sheet closed and the row shows
-  // Wait until the killed app is really gone: on a slow Windows machine its processes still hold the data folder after half a second, and the
-  // second launch then finds the folder owned, hands over to it and exits (single instance).
-  const gone = new Promise<void>((resolve) => first.app.process().once('exit', () => resolve()));
-  first.app.process().kill('SIGKILL');
-  await gone;
+  // Killed with its helper processes and waited for: on a slow Windows machine they would still hold the data folder, and the second launch
+  // would find it owned, hand over to it and exit (single instance).
+  await killApp(first.app);
   await new Promise((resolve) => setTimeout(resolve, 1_500));
 
   const second = await session.launch();
