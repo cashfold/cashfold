@@ -16,7 +16,9 @@ const env = { ...process.env, CASHFOLD_TEST_BUILD: '1' };
 delete env.ELECTRON_RUN_AS_NODE;
 
 function run(command, args, extraEnv = env) {
-  const result = spawnSync(command, args, { cwd: desktop, stdio: 'inherit', env: extraEnv });
+  // On Windows `pnpm` is pnpm.cmd, which cannot be started without a shell; the other commands are paths that may hold spaces, so they get none.
+  const result = spawnSync(command, args, { cwd: desktop, stdio: 'inherit', env: extraEnv, shell: command === 'pnpm' && process.platform === 'win32' });
+  if (result.error) console.error(`test-packaged: could not start ${command}: ${result.error.message}`);
   if (result.status !== 0) process.exit(result.status ?? 1);
 }
 
