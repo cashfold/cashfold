@@ -6,7 +6,7 @@
 // Rounds alternate between ending the app with a graceful close and with a kill of its whole process tree, so a stall that follows one of them shows.
 import { _electron as electron } from '@playwright/test';
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdtempSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readdirSync, lstatSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -29,6 +29,29 @@ async function killTree(app) {
   await exited;
 }
 
+/** What the app left in its data folder: whether its main process got as far as logging that it started, and what else it wrote. */
+function describeFolder(dir) {
+  const lines = [];
+  const walk = (folder, depth) => {
+    for (const name of readdirSync(folder).sort()) {
+      const path = join(folder, name);
+      const info = lstatSync(path);
+      if (info.isDirectory()) {
+        if (depth < 1) walk(path, depth + 1);
+        else lines.push(`${path.slice(dir.length + 1)}${'\\'}`);
+      } else lines.push(`${path.slice(dir.length + 1)} (${info.size} bytes)`);
+    }
+  };
+  try {
+    walk(dir, 0);
+    const logs = join(dir, 'logs');
+    const logText = existsSync(logs) ? readdirSync(logs).map((f) => readFileSync(join(logs, f), 'utf8')).join('\n') : '';
+    return `    data folder: ${lines.join(', ') || '(empty)'}\n    main process logged app.start: ${logText.includes('app.start') ? 'YES (it was ready)' : 'NO (it never got ready)'}\n    log tail: ${logText.trim().split('\n').slice(-4).join(' | ') || '(no log)'}`;
+  } catch (error) {
+    return `    could not read the data folder: ${error.message}`;
+  }
+}
+
 let stalled = 0;
 for (let round = 1; round <= rounds; round++) {
   const mode = round % 2 === 1 ? 'graceful close' : 'tree kill';
@@ -36,7 +59,7 @@ for (let round = 1; round <= rounds; round++) {
   const t0 = Date.now();
   const mark = () => `${Date.now() - t0} ms`;
   try {
-    const app = await electron.launch({ executablePath: exe, args: [`--user-data-dir=${dir}`], env, timeout: 30_000 });
+    const app = await electron.launch({ executablePath: exe, args: [`--user-data-dir=${dir}`], env, timeout: Number(process.env.DIAG_LAUNCH_TIMEOUT_MS ?? 15_000) });
     const launched = mark();
     const page = await app.firstWindow();
     await page.waitForLoadState('domcontentloaded');
@@ -46,7 +69,7 @@ for (let round = 1; round <= rounds; round++) {
     console.log(`round ${round} (${mode}): launched ${launched}, window ${windowed}, ended ${mark()}`);
   } catch (error) {
     stalled++;
-    console.log(`round ${round} (${mode}): FAILED after ${mark()}\n${String(error.message).split('\n').map((l) => `    ${l}`).join('\n')}`);
+    console.log(`round ${round} (${mode}): FAILED after ${mark()}\n${String(error.message).split('\n').map((l) => `    ${l}`).join('\n')}\n${describeFolder(dir)}`);
   }
   await sleep(500);
   rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 300 });

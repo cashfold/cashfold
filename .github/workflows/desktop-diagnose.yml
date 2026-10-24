@@ -43,4 +43,4 @@ jobs:
         env:
           DEBUG: 'pw:browser'
         working-directory: apps/desktop
-        run: node scripts/diagnose-playwright.mjs release/win-unpacked/Cashfold.exe 16
+        run: node scripts/diagnose-playwright.mjs release/win-unpacked/Cashfold.exe 40
