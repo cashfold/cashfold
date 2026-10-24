@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 // @ts-expect-error a plain script module without types
 import { generateUpdateKeyPair, signUpdate } from '../../../../scripts/lib/update-signature.mjs';
-import { signatureUrl, verifyDownload } from './update-verify';
+import { nameIsForVersion, signatureUrl, verifyDownload } from './update-verify';
 
 // After an update is downloaded and before it can be installed, the app checks the project's signature on exactly the bytes it got (ADR-0010).
 
@@ -70,6 +70,23 @@ describe('checking a downloaded update', () => {
   it('refuses a signature made for another file name or version', async () => {
     const { base } = await setup();
     await expect(verifyDownload({ ...base, file: '/cache/Cashfold-1.3.0-win-x64.exe' })).resolves.toBe(false);
+  });
+
+  it('refuses an old, genuinely signed installer offered as a newer version', async () => {
+    const { base } = await setup();
+    // The signature on Cashfold-1.3.0-… is good, and a feed (or a stolen release) can serve it again under another version number.
+    await expect(verifyDownload({ ...base, version: '9.9.9' })).resolves.toBe(false);
+  });
+
+  it('knows which names belong to a version', () => {
+    expect(nameIsForVersion('Cashfold-1.3.0-linux-x64.AppImage', '1.3.0')).toBe(true);
+    expect(nameIsForVersion('Cashfold-1.3.0-mac-arm64.zip', '1.3.0')).toBe(true);
+    expect(nameIsForVersion('Cashfold-1.3.0-win-x64.exe', '1.3.1')).toBe(false);
+    expect(nameIsForVersion('Cashfold-1.0.0-beta.1-win-x64.exe', '1.0.0')).toBe(false);
+    expect(nameIsForVersion('Cashfold-1.0.0-beta.1-win-x64.exe', '1.0.0-beta.1')).toBe(true);
+    expect(nameIsForVersion('Cashfold-1x3x0-win-x64.exe', '1.3.0')).toBe(false);
+    expect(nameIsForVersion('Cashfold-1.3.0-win-x64.exe.sig', '1.3.0')).toBe(true); // the extension is not this check's business: the signature is
+    expect(nameIsForVersion('x/../Cashfold-1.3.0-win-x64.exe', '1.3.0')).toBe(false);
   });
 
   it('ignores whitespace around the stored signature', async () => {
