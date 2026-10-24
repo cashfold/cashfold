@@ -1,4 +1,5 @@
 # cashfold
+
 Local-first, zero-trust personal finance platform. Zero-knowledge cryptography meets seamless envelope budgeting and cross-device CRDT sync.
 
 ## Downloads
@@ -15,4 +16,3 @@ gh attestation verify <file> --repo cashfold/cashfold
 ```
 
 For developers: `pnpm --filter @cashfold/desktop dev` runs the app from source. How it is built, tested, released and signed is in [docs/desktop.md](docs/desktop.md).
-

@@ -6,14 +6,14 @@ decisions those leave open and what is not built yet.
 
 ## The moving parts
 
-| Part | Where |
-|---|---|
-| SRP sign-in, sealed frames | `packages/crypto/src/{pake,transport}`, `apps/server/src/modules/auth` |
-| Relay (accounts, devices, Folds, ops, snapshots, rates) | `apps/server` |
-| Sync client (push, pull, gap and order checks) | `packages/core/src/sync/application/sync-client.ts` |
-| Background service in the Core Worker | `apps/web/src/worker/sync-service.ts` |
-| New-device sign-in, device management, registering a local account | `packages/core/src/identity/application/` |
-| Whole-stack tests (two devices through the real relay) | `tests/stack`, `e2e/us4-sync.spec.ts` |
+| Part                                                               | Where                                                                  |
+| ------------------------------------------------------------------ | ---------------------------------------------------------------------- |
+| SRP sign-in, sealed frames                                         | `packages/crypto/src/{pake,transport}`, `apps/server/src/modules/auth` |
+| Relay (accounts, devices, Folds, ops, snapshots, rates)            | `apps/server`                                                          |
+| Sync client (push, pull, gap and order checks)                     | `packages/core/src/sync/application/sync-client.ts`                    |
+| Background service in the Core Worker                              | `apps/web/src/worker/sync-service.ts`                                  |
+| New-device sign-in, device management, registering a local account | `packages/core/src/identity/application/`                              |
+| Whole-stack tests (two devices through the real relay)             | `tests/stack`, `e2e/us4-sync.spec.ts`                                  |
 
 ## Decisions
 
@@ -50,33 +50,33 @@ time (so every device writes the same records), and refreshed every six hours wh
 
 ## Budgets and limits
 
-* **Worker size.** The worker bundle is 151.0 KB gzipped against a 153.6 KB budget (`pnpm check:bundle`). Importing the protocol package's
+- **Worker size.** The worker bundle is 151.0 KB gzipped against a 153.6 KB budget (`pnpm check:bundle`). Importing the protocol package's
   zod schemas into the worker costs several hundred kilobytes, so the worker uses hand-written decoders for the op envelope, key set and
   Fold-key grant (`packages/protocol/src/schemas/record-wire.ts`, exported as `@cashfold/protocol/wire`). Differential tests
   (`record-wire.test.ts`) check they accept and reject exactly what the zod schemas do. Do not import `@cashfold/protocol` (the index)
   from the worker.
-* **Rate limits.** The relay limits sign-in, registration and verification attempts per address and per account.
+- **Rate limits.** The relay limits sign-in, registration and verification attempts per address and per account.
   `RATE_LIMIT_SCALE` (default 1) multiplies every limit; leave it at 1 on a real service. The end-to-end relay sets it to 100 because
   many tests sign up from one address.
 
 ## Verification status
 
-* Runs and passes locally: unit, property and fault tests (coverage floors met), the PostgreSQL suites, the browser-adapter tests,
+- Runs and passes locally: unit, property and fault tests (coverage floors met), the PostgreSQL suites, the browser-adapter tests,
   and the Playwright specs on Chromium and the right-to-left project, including `e2e/us4-sync.spec.ts`.
-* **Not run:** Firefox (not installed on the development machine) and WebKit (skipped, OPFS access handles are unverified there).
-* **Not run on GitHub yet:** the CI changes (PostgreSQL integration run, SRP module rebuild check, relay image build). The rebuild and the
+- **Not run:** Firefox (not installed on the development machine) and WebKit (skipped, OPFS access handles are unverified there).
+- **Not run on GitHub yet:** the CI changes (PostgreSQL integration run, SRP module rebuild check, relay image build). The rebuild and the
   image build were run by hand and gave the committed bytes and a working image.
-* Two timing-dependent failures appeared during development and were fixed: a sync round that could start before the service knew the
+- Two timing-dependent failures appeared during development and were fixed: a sync round that could start before the service knew the
   Folds (the connection is now `online` only once it does), and a slow outlier in the 100-change propagation spec (stream reconnects are
   quicker and trigger an immediate round). Both specs pass repeatedly.
-* `e2e/us1-account.spec.ts` was edited: three password lookups are scoped to the Emergency Kit region because the Sync section adds a
+- `e2e/us1-account.spec.ts` was edited: three password lookups are scoped to the Emergency Kit region because the Sync section adds a
   second password field to Settings.
 
 ## Not built yet
 
-* Membership log and role changes (user story 7): devices of one account are the only writers.
-* Rotating a Fold key (epochs above 1) and re-granting; grants are created for epoch 1.
-* Restoring a snapshot's "purged record" markers on a device that starts from it: a record purged after its 30-day window can come
+- Membership log and role changes (user story 7): devices of one account are the only writers.
+- Rotating a Fold key (epochs above 1) and re-granting; grants are created for epoch 1.
+- Restoring a snapshot's "purged record" markers on a device that starts from it: a record purged after its 30-day window can come
   back from a device that still holds an old op for it.
-* Offline-first retry of a Fold's creation on the service is per connection; there is no persisted queue beyond the op log.
-* The browser-only Firefox and WebKit runs of the sync specs; Firefox and WebKit are skipped where OPFS access handles are unverified.
+- Offline-first retry of a Fold's creation on the service is per connection; there is no persisted queue beyond the op log.
+- The browser-only Firefox and WebKit runs of the sync specs; Firefox and WebKit are skipped where OPFS access handles are unverified.

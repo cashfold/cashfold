@@ -15,16 +15,16 @@ If you run your own service, everything below is visible to whoever runs it.
 
 ### About your account
 
-| Information | Why the service has it |
-| --- | --- |
-| Your **email address**, in readable form | To send the confirmation link and invitation notices. Lookup by address uses a keyed hash. It is only findable by others if you leave "let people find me by email" on (the default) |
-| Your **account id** (six characters, not secret) | Names the account |
-| Whether the address is confirmed, and when the account was created | Confirmation and abuse control |
-| The password-stretching settings and salts, and the **SRP verifier** | Needed to sign you in. Neither reveals the password |
-| Your **encrypted key set**, and your public keys | Lets a new device fetch what it needs. The private keys are sealed under a key made from your password *and* Secret Key, neither of which the service has |
-| If you made a **Recovery Key**: a second verifier and your private keys sealed under it | Lets you get back in. The service cannot open them |
-| Failed sign-in attempts and any temporary lock | Brute-force protection |
-| Whether you are discoverable | Your choice |
+| Information                                                                             | Why the service has it                                                                                                                                                               |
+| --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Your **email address**, in readable form                                                | To send the confirmation link and invitation notices. Lookup by address uses a keyed hash. It is only findable by others if you leave "let people find me by email" on (the default) |
+| Your **account id** (six characters, not secret)                                        | Names the account                                                                                                                                                                    |
+| Whether the address is confirmed, and when the account was created                      | Confirmation and abuse control                                                                                                                                                       |
+| The password-stretching settings and salts, and the **SRP verifier**                    | Needed to sign you in. Neither reveals the password                                                                                                                                  |
+| Your **encrypted key set**, and your public keys                                        | Lets a new device fetch what it needs. The private keys are sealed under a key made from your password _and_ Secret Key, neither of which the service has                            |
+| If you made a **Recovery Key**: a second verifier and your private keys sealed under it | Lets you get back in. The service cannot open them                                                                                                                                   |
+| Failed sign-in attempts and any temporary lock                                          | Brute-force protection                                                                                                                                                               |
+| Whether you are discoverable                                                            | Your choice                                                                                                                                                                          |
 
 ### About your devices
 
@@ -46,7 +46,7 @@ For every change you make, the service stores a sealed envelope and can see:
 - the **size** of the encrypted payload, which is not padded in this release. A large payload suggests a large change; a very short one a small edit;
 - when changes arrive and from which connection.
 
-From that it can tell *that* you are active, *when*, *how much* and *on how many devices*, and which members of a shared Fold write to it. It cannot tell what you wrote, what kind of record it was, or whether it was an expense, an account or a note.
+From that it can tell _that_ you are active, _when_, _how much_ and _on how many devices_, and which members of a shared Fold write to it. It cannot tell what you wrote, what kind of record it was, or whether it was an expense, an account or a note.
 
 ### About attachments
 

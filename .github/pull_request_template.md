@@ -21,4 +21,3 @@
 <!-- The title of this pull request decides the next version (see CONTRIBUTING.md, "How a change becomes a release").
      feat = minor, fix/perf = patch, ! or BREAKING CHANGE = major; docs, chore, test, ci, build, style and server-only changes make no release.
      Is the title right for what this changes for the people who run the app? -->
-
