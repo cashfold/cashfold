@@ -1,0 +1,40 @@
+name: Desktop launch diagnostic
+
+# A temporary diagnostic: starts the packaged app on a Windows runner outside Playwright, in several variants, and prints how long each stage of
+# the start takes (see apps/desktop/scripts/diagnose-launch.mjs). It changes nothing and publishes nothing. Remove it once the stalled launches
+# on Windows are understood.
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/desktop-diagnose.yml'
+      - 'apps/desktop/scripts/diagnose-launch.mjs'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: windows-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @cashfold/web build
+      - name: Package the app the way the packaged-app tests do
+        env:
+          CASHFOLD_TEST_BUILD: '1'
+        run: |
+          node apps/desktop/scripts/build.mjs
+          node apps/desktop/scripts/package.mjs --dir --win --x64
+      - name: Time the start of the app
+        run: node apps/desktop/scripts/diagnose-launch.mjs apps/desktop/release/win-unpacked/Cashfold.exe 4
