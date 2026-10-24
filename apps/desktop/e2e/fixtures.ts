@@ -65,13 +65,13 @@ export async function killApp(app: ElectronApplication): Promise<void> {
   await exited;
 }
 
-const LAUNCH_TIMEOUT_MS = 20_000;
-const LAUNCH_ATTEMPTS = 3;
+const LAUNCH_TIMEOUT_MS = 12_000;
+const LAUNCH_ATTEMPTS = 5;
 
 /**
  * Starts the app, and starts it again when Playwright's start-up handshake never completes. On Linux in CI about one launch in ten leaves
  * `electron.launch` waiting for ever although the window is up and loaded (the app is fine; the test then waited out its whole timeout, two
- * minutes, for nothing). A launch that has not finished in twenty seconds is stopped and made again, on the same data folder.
+ * minutes, for nothing). A normal launch takes well under two seconds, so one that has not finished in twelve is stopped and made again (up to five times), on the same data folder.
  */
 async function launchWithRetry(options: { executablePath: string; args: string[]; env: Record<string, string> }, beforeRetry: () => void = () => undefined): Promise<ElectronApplication> {
   for (let attempt = 1; ; attempt++) {
