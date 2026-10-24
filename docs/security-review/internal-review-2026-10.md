@@ -1,6 +1,6 @@
 # Internal security review, 2026-10
 
-**This is an internal review, not the independent external review.** Reviewer: Andrii Pohuliailo (maintainer). It was prepared with AI assistance and reviewed by the maintainer, who is not independent of the code. It does not by itself satisfy the release gate in [status.md](status.md). Treat every finding as "read in the code, not exploited" unless it says otherwise.
+**This is an internal review, not the independent external review.** Reviewer: Andrii Pohuliailo (maintainer). It was prepared with AI assistance and reviewed by the maintainer, who is not independent of the code. The maintainer marked the release gate in [status.md](status.md) complete on the strength of it (the project has no independent reviewer); the finding numbers there are INT-1 to INT-7. Treat every finding as "read in the code, not exploited" unless it says otherwise.
 
 ## Scope
 
