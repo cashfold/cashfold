@@ -69,6 +69,8 @@ export default {
   // The uninstaller keeps the person's data unless they say otherwise (build/installer.nsh asks, default No; updates and silent runs never delete).
   nsis: { oneClick: false, allowToChangeInstallationDirectory: false, perMachine: false, deleteAppDataOnUninstall: false, include: 'build/installer.nsh' },
   linux: {
+    // Without this the binary takes the package name ("@cashfolddesktop"); the packaged-app tests and the fuse check look for this one.
+    executableName: 'cashfold',
     category: 'Office;Finance',
     synopsis: 'Private, local-first personal finance',
     target: [
