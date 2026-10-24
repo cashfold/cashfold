@@ -5,11 +5,12 @@
 import { spawnSync } from 'node:child_process';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { withoutEmptyCredentials } from '../../../scripts/lib/credential-env.mjs';
 
 const desktop = join(dirname(fileURLToPath(import.meta.url)), '..');
 const result = spawnSync('pnpm', ['exec', 'electron-builder', '--config', 'electron-builder.config.mjs', '--publish', 'never', ...process.argv.slice(2).filter((arg) => arg !== '--')], {
   cwd: desktop,
   stdio: 'inherit',
-  env: process.env,
+  env: withoutEmptyCredentials(process.env),
 });
 process.exit(result.status ?? 1);
