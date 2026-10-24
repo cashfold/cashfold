@@ -1,6 +1,6 @@
 import { _electron as electron, expect, test as base, type ElectronApplication, type Page } from '@playwright/test';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { go, moreDetails } from '../../../e2e/fixtures/nav.js';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
@@ -98,6 +98,13 @@ export interface Running {
 export class Session {
   /** A fresh folder per session; CASHFOLD_E2E_USER_DATA names one to reuse (a seeded profile for the benchmark), which is then never deleted. */
   readonly userDataDir = process.env['CASHFOLD_E2E_USER_DATA'] ?? mkdtempSync(join(tempRoot, 'cashfold-e2e-'));
+
+  constructor() {
+    // CASHFOLD_E2E_WINDOW_WIDTH starts every app of the run with a window of that width, to run the tests in the narrow layout (the Windows runners'
+    // small display gives it without asking, and it has the menu in a drawer).
+    const width = Number(process.env['CASHFOLD_E2E_WINDOW_WIDTH']);
+    if (Number.isInteger(width) && width > 0) writeFileSync(join(this.userDataDir, 'desktop-state.json'), JSON.stringify({ width, height: 700, maximized: false, autoCheck: true }));
+  }
   private readonly running = new Set<ElectronApplication>();
 
   async launch(options: { args?: string[]; env?: Record<string, string> } = {}): Promise<Running> {

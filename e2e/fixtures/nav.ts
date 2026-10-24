@@ -62,15 +62,32 @@ export async function chooseFold(page: Page, name: string, screen?: string): Pro
   const current = page.getByTestId('current-fold').first();
   if ((await current.textContent())?.trim() === name) return;
   const switcher = page.getByRole('button', { name: /^Switch Fold/ });
+  // A narrow window keeps the navigation, the switcher with it, in a drawer behind the first button of the header (the large layout shows the links).
+  const narrow = async () => (await page.locator('nav a[href="/overview/"]:visible').count()) === 0;
+  const menu = page.locator('header button:visible').first();
   let moved = false;
-  for (let attempt = 0; attempt < 40 && (await switcher.count()) === 0; attempt++) {
+  for (let attempt = 0; attempt < 40; attempt++) {
+    if ((await switcher.count()) > 0) break;
+    if ((await narrow()) && (await menu.count()) > 0) {
+      await menu.click();
+      await page.waitForTimeout(300);
+      const found = (await switcher.count()) > 0;
+      await page.keyboard.press('Escape'); // the drawer is opened again below, for the click
+      if (found) break;
+    }
     await go(page, attempt % 2 === 0 ? 'Overview' : 'Accounts');
     moved = true;
     await page.waitForTimeout(1_000);
   }
-  await switcher.click();
-  await page.getByRole('menuitem', { name }).click();
-  await page.getByTestId('current-fold').filter({ hasText: name }).waitFor();
+  // In the drawer the switcher is taken out of the page when the drawer re-renders, so the whole step is repeated, with the menu opened again.
+  await expect(async () => {
+    if ((await switcher.count()) === 0 && (await narrow()) && (await menu.count()) > 0) await menu.click();
+    await page.waitForFunction(() => document.querySelector('[data-enter],[data-leave],[data-closed]') === null, undefined, { timeout: 3_000 });
+    await switcher.first().click({ timeout: 4_000 });
+    await page.getByRole('menuitem', { name }).click({ timeout: 4_000 });
+  }).toPass({ timeout: 30_000 });
+  // Attached, not visible: a narrow window shows the name only inside the closed drawer.
+  await page.getByTestId('current-fold').filter({ hasText: name }).first().waitFor({ state: 'attached' });
   if (moved && screen !== undefined) await go(page, screen);
 }
 
