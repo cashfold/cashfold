@@ -260,12 +260,13 @@ export function createMemoryStore(): Store {
       },
     },
     attachments: {
-      async putChunk(foldId, attId, index, data) {
+      async putChunk(foldId, attId, index, data, quota) {
         const f = fold(foldId);
         if (f === undefined) return 'conflict';
         const key = `${hex(attId)}:${index}`;
         const had = f.chunks.get(key);
         if (had !== undefined) return Buffer.from(had).equals(Buffer.from(data)) ? 'ok' : 'conflict';
+        if (quota !== undefined && f.chunks.size >= quota) return 'quota';
         f.chunks.set(key, Uint8Array.from(data));
         return 'ok';
       },

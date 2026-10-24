@@ -35,8 +35,10 @@ export class AttachmentsController {
     if (role === undefined || role > 2) fail(403, 'forbidden');
     if (!(inner instanceof Uint8Array) || inner.length === 0 || inner.length > MAX_CHUNK_BYTES) fail(400, 'bad_request');
     const data = inner as Uint8Array;
-    if ((await this.store.attachments.getChunk(foldId, attId, at)) === undefined && (await this.store.attachments.chunkCount(foldId)) >= FOLD_CHUNK_QUOTA) fail(413, 'quota_exceeded');
-    if ((await this.store.attachments.putChunk(foldId, attId, at, data)) === 'conflict') fail(409, 'conflict');
+    // The store counts and writes as one step, so uploads that arrive together cannot take a Fold past its quota.
+    const outcome = await this.store.attachments.putChunk(foldId, attId, at, data, FOLD_CHUNK_QUOTA);
+    if (outcome === 'quota') fail(413, 'quota_exceeded');
+    if (outcome === 'conflict') fail(409, 'conflict');
   }
 
   @Get(':fold/attachments/:att/chunks/:index')

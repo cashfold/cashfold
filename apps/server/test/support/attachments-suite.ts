@@ -71,13 +71,15 @@ export function describeAttachments(label: string, makeStore: () => Promise<Stor
       const { a, fold, att, store } = await world();
       const first = randomBytes(20);
       await a.request('PUT', path(fold, att, 0), first);
-      // Fill the Fold straight through the store, then try one more through the relay.
+      // The store is told the quota the relay passes it; make that quota one piece, which this Fold already holds.
       const filler = randomBytes(16);
-      const real = store.attachments.chunkCount.bind(store.attachments);
-      (store.attachments as { chunkCount: typeof real }).chunkCount = async () => FOLD_CHUNK_QUOTA;
+      const real = store.attachments.putChunk.bind(store.attachments);
+      let passed: number | undefined;
+      (store.attachments as { putChunk: typeof real }).putChunk = (f, at, i, d, quota) => ((passed = quota), real(f, at, i, d, 1));
       expect(await status(a.request('PUT', path(fold, filler, 0), randomBytes(20)))).toBe(413);
+      expect(passed).toBe(FOLD_CHUNK_QUOTA);
       expect(await status(a.request('PUT', path(fold, att, 0), first))).toBe(200);
-      (store.attachments as { chunkCount: typeof real }).chunkCount = real;
+      (store.attachments as { putChunk: typeof real }).putChunk = real;
       expect(await status(a.request('PUT', path(fold, filler, 0), randomBytes(20)))).toBe(200);
     });
 

@@ -359,11 +359,19 @@ export async function createPgStore(databaseUrl: string, options: { migrations?:
       },
     },
     attachments: {
-      async putChunk(foldId, attId, index, data) {
-        const made = await q('INSERT INTO attachment_chunk(fold_id, att_id, idx, data) VALUES ($1,$2,$3,$4) ON CONFLICT DO NOTHING RETURNING 1', [buf(foldId), buf(attId), index, buf(data)]);
-        if (made.length > 0) return 'ok';
-        const had = await q('SELECT data FROM attachment_chunk WHERE fold_id = $1 AND att_id = $2 AND idx = $3', [buf(foldId), buf(attId), index]);
-        return had[0] !== undefined && (had[0]['data'] as Buffer).equals(buf(data)) ? 'ok' : 'conflict';
+      async putChunk(foldId, attId, index, data, quota) {
+        // One writer at a time per Fold, so the count and the insert cannot be separated by another upload (the lock ends with the transaction).
+        return inTransaction(async (c) => {
+          await c.query(`SELECT pg_advisory_xact_lock(hashtextextended('attachment:' || encode($1::bytea, 'hex'), 0))`, [buf(foldId)]);
+          const had = await c.query('SELECT data FROM attachment_chunk WHERE fold_id = $1 AND att_id = $2 AND idx = $3', [buf(foldId), buf(attId), index]);
+          if (had.rows[0] !== undefined) return (had.rows[0]['data'] as Buffer).equals(buf(data)) ? 'ok' : 'conflict';
+          if (quota !== undefined) {
+            const n = num((await c.query('SELECT count(*) AS n FROM attachment_chunk WHERE fold_id = $1', [buf(foldId)])).rows[0]['n']);
+            if (n >= quota) return 'quota';
+          }
+          await c.query('INSERT INTO attachment_chunk(fold_id, att_id, idx, data) VALUES ($1,$2,$3,$4)', [buf(foldId), buf(attId), index, buf(data)]);
+          return 'ok';
+        });
       },
       async getChunk(foldId, attId, index) {
         const r = await q('SELECT data FROM attachment_chunk WHERE fold_id = $1 AND att_id = $2 AND idx = $3', [buf(foldId), buf(attId), index]);
