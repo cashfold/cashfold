@@ -3,9 +3,10 @@
 import { createHash } from 'node:crypto';
 import { readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { build } from 'esbuild';
 
-const out = new URL('../out/', import.meta.url).pathname;
+const out = fileURLToPath(new URL('../out/', import.meta.url));
 const EXCLUDE = new Set(['sw.js', 'precache-manifest.json']);
 
 function* walk(dir) {
@@ -27,7 +28,7 @@ const manifest = { version, files };
 writeFileSync(join(out, 'precache-manifest.json'), `${JSON.stringify(manifest)}\n`);
 
 await build({
-  entryPoints: [new URL('../src/sw/service-worker.ts', import.meta.url).pathname],
+  entryPoints: [fileURLToPath(new URL('../src/sw/service-worker.ts', import.meta.url))],
   outfile: join(out, 'sw.js'),
   bundle: true,
   format: 'iife',

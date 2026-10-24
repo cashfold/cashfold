@@ -1,0 +1,13 @@
+# Text files are checked out with LF on every system. Several scripts read committed text files line by line (the SQLite hash manifest,
+# the review status) and the release compares hashes of files; a Windows checkout with CRLF line endings broke the first of these.
+* text=auto eol=lf
+
+# Never touched by line-ending conversion.
+*.wasm binary
+*.png binary
+*.jpg binary
+*.ico binary
+*.icns binary
+*.woff2 binary
+*.woff binary
+*.sqlite binary

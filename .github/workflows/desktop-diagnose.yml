@@ -1,0 +1,56 @@
+name: Desktop launch diagnostic
+
+# A temporary diagnostic: starts the packaged app on a Windows runner outside Playwright, in several variants, and prints how long each stage of
+# the start takes (see apps/desktop/scripts/diagnose-launch.mjs). It changes nothing and publishes nothing. Remove it once the stalled launches
+# on Windows are understood.
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/desktop-diagnose.yml'
+      - 'apps/desktop/scripts/diagnose-launch.mjs'
+      - 'apps/desktop/scripts/diagnose-playwright.mjs'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: windows-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @cashfold/web build
+      - name: Package the app the way the packaged-app tests do
+        env:
+          CASHFOLD_TEST_BUILD: '1'
+        run: |
+          node apps/desktop/scripts/build.mjs
+          node apps/desktop/scripts/package.mjs --dir --win --x64
+      - name: Time the start of the app
+        run: node apps/desktop/scripts/diagnose-launch.mjs apps/desktop/release/win-unpacked/Cashfold.exe 4
+      - name: Start and stop the app through Playwright, with several Playwright versions
+        env:
+          DIAG_LAUNCH_TIMEOUT_MS: '10000'
+        run: |
+          # Stalls were seen with the pinned 1.64.1 (about one launch in three here, with the app itself ready within 0.4 s). The same twenty
+          # rounds with the releases before it and the newest daily build show whether it is a regression or already fixed.
+          exe="$GITHUB_WORKSPACE/apps/desktop/release/win-unpacked/Cashfold.exe"
+          for version in 1.62.1 1.63.0 1.64.1 1.65.0-alpha-2026-10-24; do
+            dir="$RUNNER_TEMP/playwright-$version"
+            mkdir -p "$dir"
+            cp apps/desktop/scripts/diagnose-playwright.mjs "$dir/"
+            (cd "$dir" && npm init -y >/dev/null && npm install --no-audit --no-fund "@playwright/test@$version" >/dev/null 2>&1)
+            echo "=================== Playwright $(node -p "require('$dir/node_modules/@playwright/test/package.json').version")"
+            (cd "$dir" && node diagnose-playwright.mjs "$exe" 20 | grep -E "^round|rounds started") || true
+          done

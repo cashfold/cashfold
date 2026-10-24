@@ -6,9 +6,10 @@
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { digestOfSums, hashTree, sumsOf } from './lib/tree-digest.mjs';
 
-const root = new URL('../', import.meta.url).pathname;
+const root = fileURLToPath(new URL('../', import.meta.url));
 const exportDir = join(root, 'apps/web/out');
 const args = process.argv.slice(2);
 const outDir = join(root, args.includes('--out') ? args[args.indexOf('--out') + 1] : 'build-hashes');

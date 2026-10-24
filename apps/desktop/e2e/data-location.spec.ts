@@ -1,5 +1,5 @@
-import { createAccount, go } from '../../../e2e/fixtures/nav.js';
-import { addExpense, APP_ORIGIN, expect, PASSWORD, Session, signUp, test, unlock } from './fixtures';
+import { createAccount, go, lock } from '../../../e2e/fixtures/nav.js';
+import { addExpense, APP_ORIGIN, expect, killApp, PASSWORD, Session, signUp, test, unlock } from './fixtures';
 
 // User story 2: the person can see where the data is and open that folder (FR-009), the version and the source (FR-026), and a damaged or
 // abruptly stopped session does not lose confirmed work (FR-007). The pages come from the web app; these tests prove them inside the shell.
@@ -53,8 +53,10 @@ test('a change that was confirmed is there after the app is killed at once', asy
   await signUp(first.page);
   await createAccount(first.page, 'Everyday', '100.00');
   await addExpense(first.page, 'Everyday', '12.50', 'Coffee beans'); // confirmed: the sheet closed and the row shows
-  first.app.process().kill('SIGKILL');
-  await new Promise((resolve) => setTimeout(resolve, 500));
+  // Killed with its helper processes and waited for: on a slow Windows machine they would still hold the data folder, and the second launch
+  // would find it owned, hand over to it and exit (single instance).
+  await killApp(first.app);
+  await new Promise((resolve) => setTimeout(resolve, 1_500));
 
   const second = await session.launch();
   await second.page.goto(`${APP_ORIGIN}/transactions/`);
@@ -71,7 +73,7 @@ test('a damaged database is kept and reported, and the app carries on', async ({
   await signUp(page);
   await createAccount(page, 'Everyday', '100.00');
   await addExpense(page, 'Everyday', '12.50', 'Coffee beans');
-  await page.getByRole('button', { name: 'Lock', exact: true }).click();
+  await lock(page);
   await expect(page.getByRole('heading', { name: 'Unlock Cashfold' })).toBeVisible();
   await page.waitForTimeout(1_500); // the worker lets go of the file
 

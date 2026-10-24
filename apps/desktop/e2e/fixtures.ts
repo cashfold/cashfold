@@ -1,9 +1,10 @@
 import { _electron as electron, expect, test as base, type ElectronApplication, type Page } from '@playwright/test';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { go, moreDetails } from '../../../e2e/fixtures/nav.js';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
-import { dirname, join } from 'node:path';
+import { basename, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 export { expect };
@@ -29,6 +30,62 @@ function cleanEnv(extra: Record<string, string> = {}): Record<string, string> {
   return env;
 }
 
+/**
+ * GitHub's Windows runners stall about every third launch of the app (Chromium reports "Access is denied" on its cache files, and
+ * Playwright's connection to the app's DevTools port never completes), and the stalls come in runs. Three things are done there, and only there:
+ * the data folders go on the runner's fast drive (RUNNER_TEMP, not the scanned system drive), helper processes a stuck launch leaves behind are
+ * stopped between tests, and the GPU is off (the runners have none). On a developer's machine none of this applies: stopping every Cashfold
+ * process there would close the real app.
+ */
+const onCiWindows = process.platform === 'win32' && Boolean(process.env['CI']);
+const tempRoot = process.env['RUNNER_TEMP'] ?? tmpdir();
+
+/** Every app any session of this run has started and not yet seen end. */
+const liveApps = new Set<ElectronApplication>();
+
+function stopLeftoverApps(): void {
+  if (!onCiWindows) return;
+  spawnSync('taskkill', ['/F', '/T', '/IM', basename(appUnderTest().executablePath)], { stdio: 'ignore' });
+}
+
+/** Stops leftover processes of an app that has ended, but only when no other app of this run is up (two are, on purpose, in some tests). */
+function stopLeftoverAppsIfIdle(): void {
+  if (liveApps.size === 0) stopLeftoverApps();
+}
+
+/**
+ * Kills the app at once, with the processes it started. `ChildProcess.kill` ends only the main process; on Windows the helper processes live on
+ * and keep the data folder open, so an app started on it afterwards finds the folder in use and fails to start.
+ */
+export async function killApp(app: ElectronApplication): Promise<void> {
+  const child = app.process();
+  const exited = new Promise<void>((resolve) => (child.exitCode !== null ? resolve() : child.once('exit', () => resolve())));
+  if (process.platform === 'win32' && child.pid !== undefined) spawnSync('taskkill', ['/PID', String(child.pid), '/T', '/F'], { stdio: 'ignore' });
+  else child.kill('SIGKILL');
+  await exited;
+}
+
+const LAUNCH_TIMEOUT_MS = 6_000;
+const LAUNCH_ATTEMPTS = 8;
+
+/**
+ * Starts the app, and starts it again when Playwright's start-up handshake never completes. On Linux in CI about one launch in ten leaves
+ * `electron.launch` waiting for ever although the window is up and loaded (the app is fine; the test then waited out its whole timeout, two
+ * minutes, for nothing). A normal launch takes well under two seconds, so one that has not finished in six is stopped and made again (up to eight times), on the same data folder.
+ */
+async function launchWithRetry(options: { executablePath: string; args: string[]; env: Record<string, string> }, beforeRetry: () => void = () => undefined): Promise<ElectronApplication> {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await electron.launch({ ...options, timeout: LAUNCH_TIMEOUT_MS });
+    } catch (error) {
+      if (attempt >= LAUNCH_ATTEMPTS) throw error;
+      console.warn(`launch attempt ${attempt} did not finish in ${LAUNCH_TIMEOUT_MS / 1000} s, trying again`);
+      beforeRetry();
+      await new Promise((resolve) => setTimeout(resolve, 1_000)); // let the stopped app release its data folder
+    }
+  }
+}
+
 export interface Running {
   readonly app: ElectronApplication;
   readonly page: Page;
@@ -40,18 +97,33 @@ export interface Running {
  */
 export class Session {
   /** A fresh folder per session; CASHFOLD_E2E_USER_DATA names one to reuse (a seeded profile for the benchmark), which is then never deleted. */
-  readonly userDataDir = process.env['CASHFOLD_E2E_USER_DATA'] ?? mkdtempSync(join(tmpdir(), 'cashfold-e2e-'));
+  readonly userDataDir = process.env['CASHFOLD_E2E_USER_DATA'] ?? mkdtempSync(join(tempRoot, 'cashfold-e2e-'));
+
+  constructor() {
+    // CASHFOLD_E2E_WINDOW_WIDTH starts every app of the run with a window of that width, to run the tests in the narrow layout (the Windows runners'
+    // small display gives it without asking, and it has the menu in a drawer).
+    const width = Number(process.env['CASHFOLD_E2E_WINDOW_WIDTH']);
+    if (Number.isInteger(width) && width > 0) writeFileSync(join(this.userDataDir, 'desktop-state.json'), JSON.stringify({ width, height: 700, maximized: false, autoCheck: true }));
+  }
   private readonly running = new Set<ElectronApplication>();
 
   async launch(options: { args?: string[]; env?: Record<string, string> } = {}): Promise<Running> {
     const { executablePath, args } = appUnderTest();
-    const app = await electron.launch({
-      executablePath,
-      args: [...args, `--user-data-dir=${this.userDataDir}`, ...(options.args ?? [])],
-      env: cleanEnv(options.env),
-    });
+    const app = await launchWithRetry(
+      {
+        executablePath,
+        args: [...args, `--user-data-dir=${this.userDataDir}`, ...(onCiWindows ? ['--disable-gpu'] : []), ...(options.args ?? [])],
+        env: cleanEnv(options.env),
+      },
+      // Only when no app is running: two apps of one test are sometimes up at the same time on purpose.
+      stopLeftoverAppsIfIdle,
+    );
     this.running.add(app);
-    app.on('close', () => this.running.delete(app));
+    liveApps.add(app);
+    app.on('close', () => {
+      this.running.delete(app);
+      liveApps.delete(app);
+    });
     const page = await app.firstWindow();
     await page.waitForLoadState('domcontentloaded');
     return { app, page };
@@ -60,16 +132,29 @@ export class Session {
   async quit(app: ElectronApplication): Promise<void> {
     await app.close();
     this.running.delete(app);
+    liveApps.delete(app);
+    stopLeftoverAppsIfIdle(); // helper processes of the closed app may still hold its folder
   }
 
   async dispose(): Promise<void> {
     for (const app of this.running) await app.close().catch(() => undefined);
-    if (!process.env['CASHFOLD_KEEP_E2E_DATA'] && process.env['CASHFOLD_E2E_USER_DATA'] === undefined) rmSync(this.userDataDir, { recursive: true, force: true });
+    for (const app of this.running) liveApps.delete(app);
+    stopLeftoverAppsIfIdle();
+    if (!process.env['CASHFOLD_KEEP_E2E_DATA'] && process.env['CASHFOLD_E2E_USER_DATA'] === undefined) {
+      try {
+        // Windows refuses to delete a folder while a process still has a file in it, and lets go a moment later.
+        rmSync(this.userDataDir, { recursive: true, force: true, maxRetries: 10, retryDelay: 500 });
+      } catch (error) {
+        // A leftover temp folder is not a failed test.
+        console.warn(`could not remove ${this.userDataDir}: ${(error as Error).message}`);
+      }
+    }
   }
 }
 
 export const test = base.extend<{ session: Session }>({
   session: async ({}, use) => {
+    stopLeftoverApps(); // from a test that timed out before it could clean up
     const session = new Session();
     await use(session);
     await session.dispose();

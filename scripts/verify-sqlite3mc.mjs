@@ -2,11 +2,9 @@
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { parseHashManifest } from './lib/hash-manifest.mjs';
 
-const manifest = readFileSync('apps/web/vendor/sqlite3mc.sha256', 'utf8')
-  .split('\n')
-  .filter((l) => l && !l.startsWith('#'))
-  .map((l) => l.split(/\s+/));
+const manifest = parseHashManifest(readFileSync('apps/web/vendor/sqlite3mc.sha256', 'utf8'));
 
 const pkgDir = join(process.cwd(), 'apps/web/node_modules/@aztec/sqlite3mc-wasm');
 let failed = false;
