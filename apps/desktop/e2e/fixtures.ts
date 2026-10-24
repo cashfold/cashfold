@@ -44,6 +44,7 @@ async function launchWithRetry(options: { executablePath: string; args: string[]
     } catch (error) {
       if (attempt >= LAUNCH_ATTEMPTS) throw error;
       console.warn(`launch attempt ${attempt} did not finish in ${LAUNCH_TIMEOUT_MS / 1000} s, trying again`);
+      await new Promise((resolve) => setTimeout(resolve, 2_000)); // let the stopped app release its data folder
     }
   }
 }

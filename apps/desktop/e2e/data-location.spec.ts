@@ -53,8 +53,12 @@ test('a change that was confirmed is there after the app is killed at once', asy
   await signUp(first.page);
   await createAccount(first.page, 'Everyday', '100.00');
   await addExpense(first.page, 'Everyday', '12.50', 'Coffee beans'); // confirmed: the sheet closed and the row shows
+  // Wait until the killed app is really gone: on a slow Windows machine its processes still hold the data folder after half a second, and the
+  // second launch then finds the folder owned, hands over to it and exits (single instance).
+  const gone = new Promise<void>((resolve) => first.app.process().once('exit', () => resolve()));
   first.app.process().kill('SIGKILL');
-  await new Promise((resolve) => setTimeout(resolve, 500));
+  await gone;
+  await new Promise((resolve) => setTimeout(resolve, 1_500));
 
   const second = await session.launch();
   await second.page.goto(`${APP_ORIGIN}/transactions/`);
