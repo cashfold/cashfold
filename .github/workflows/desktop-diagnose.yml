@@ -9,6 +9,7 @@ on:
     paths:
       - '.github/workflows/desktop-diagnose.yml'
       - 'apps/desktop/scripts/diagnose-launch.mjs'
+      - 'apps/desktop/scripts/diagnose-playwright.mjs'
   workflow_dispatch:
 
 permissions:
@@ -38,3 +39,8 @@ jobs:
           node apps/desktop/scripts/package.mjs --dir --win --x64
       - name: Time the start of the app
         run: node apps/desktop/scripts/diagnose-launch.mjs apps/desktop/release/win-unpacked/Cashfold.exe 4
+      - name: Start and stop the app through Playwright, round after round
+        env:
+          DEBUG: 'pw:browser'
+        working-directory: apps/desktop
+        run: node scripts/diagnose-playwright.mjs release/win-unpacked/Cashfold.exe 16
