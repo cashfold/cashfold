@@ -45,6 +45,7 @@ Security-sensitive changes (crypto, auth, sync, sharing) append a note under *Ch
 7. **A Secret Key rotation does not re-encrypt old data.** Records and Fold keys are unchanged; only the key set that wraps the account keys is replaced. Someone who captured the old key set *and* the old Secret Key and password can still open the old key set (but cannot get new sign-ins to work).
 8. **Shared Folds do not move with the account.** Moving to another service moves private Folds; shared Folds stay until their members agree, because their signed membership entries can only be replayed by their authors.
 9. **QR codes are shown but not scanned** (no camera access): a fingerprint is compared by reading or typing it. This removes a camera permission at the cost of a manual step.
+10. **A snapshot carries no time.** A new device installs a snapshot only if its signer's member sees the whole history and has held the editor role, so a viewer or a member who joined with "from now on" history cannot supply one. An editor who has since been removed cannot be told from a current one, so that member, together with a service that is not honest, could serve a snapshot they signed (or altered) while they were an editor. Closing this needs a signed time in the snapshot format and a check of the signer's role at that time; it is a protocol change, left for a later version (internal security review, 2026-10, INT-5).
 
 ## Abuse and availability
 
