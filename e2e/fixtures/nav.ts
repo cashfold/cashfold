@@ -58,7 +58,8 @@ export async function go(page: Page, name: string): Promise<void> {
  * two screens until the switcher appears and then returns to `screen`, the one the caller wants to be on.
  */
 export async function chooseFold(page: Page, name: string, screen?: string): Promise<void> {
-  const current = page.getByTestId('current-fold');
+  // Both the navigation and the header of a narrow window show it, with the same text: the first one will do.
+  const current = page.getByTestId('current-fold').first();
   if ((await current.textContent())?.trim() === name) return;
   const switcher = page.getByRole('button', { name: /^Switch Fold/ });
   let moved = false;
