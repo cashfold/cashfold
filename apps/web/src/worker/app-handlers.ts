@@ -6,7 +6,7 @@ import {
 import { SecretBuf } from '@cashfold/crypto';
 import { createWebSession } from '../adapters/sqlite-opfs/web-session';
 import type { SqliteRuntime } from '../adapters/sqlite-opfs/runtime';
-import { createAttachments } from '@cashfold/core';
+import { createAttachments, snapshotSignerAllowed } from '@cashfold/core';
 import { createWebAttachmentCrypto } from '../adapters/attachment-crypto';
 import { createWebAttachmentTransport } from '../adapters/transport/attachment-transport';
 import { createAccountHandlers } from './account-handlers';
@@ -172,6 +172,15 @@ export function createAppHandlers(deps: AppHandlerDeps): AppRuntime {
           const state = await current.membership.state(fold);
           const mine = state.ok ? state.value.members.get(me) : undefined;
           return mine === undefined || mine.scope === 'full';
+        },
+        async mayTrustSnapshot(fold, device) {
+          const current = webSession?.current();
+          if (current === undefined) return true;
+          const state = await current.membership.state(fold);
+          // A Fold that was never shared has no log: only this account's own devices write to it.
+          if (!state.ok || state.value.length === 0) return true;
+          const own = device === current.deviceId || current.deviceKeys.publicKey(device) !== undefined;
+          return snapshotSignerAllowed(state.value, device, own ? sharingIdentity?.accountId : undefined);
         },
       },
       publish: (event) => {
