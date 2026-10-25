@@ -87,7 +87,7 @@ test('exposes one frozen bridge and nothing else of the shell', async ({ session
       electronGlobals: [typeof (window as unknown as Record<string, unknown>)['electron'], typeof (window as unknown as Record<string, unknown>)['ipcRenderer']],
     };
   });
-  expect(shape).toEqual({ present: true, frozen: true, keys: ['about', 'revealDataFolder', 'updates'], electronGlobals: ['undefined', 'undefined'] });
+  expect(shape).toEqual({ present: true, frozen: true, keys: ['about', 'revealDataFolder', 'setLanguage', 'updates'], electronGlobals: ['undefined', 'undefined'] });
 });
 
 test('grants the page persistent storage and nothing sensitive', async ({ session }) => {
