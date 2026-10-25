@@ -110,10 +110,10 @@ export function createAppHandlers(deps: AppHandlerDeps): AppRuntime {
   };
 
   /** A new Fold gets the default categories as ordinary records (FR-048). Best effort: the Fold exists either way. */
-  const seedCategories = async (fold: Id): Promise<void> => {
+  const seedCategories = async (fold: Id, names?: Readonly<Record<string, string>>): Promise<void> => {
     const current = webSession?.current();
     if (current === undefined) return;
-    await current.commandBus.execute(createCategoryCommands().seedDefaultCategories, { fold }).catch(() => undefined);
+    await current.commandBus.execute(createCategoryCommands().seedDefaultCategories, { fold, ...(names === undefined ? {} : { names }) }).catch(() => undefined);
   };
 
   // Occurrences that fell due while this device was away, or arrived with another device's changes, are created now.
@@ -271,13 +271,13 @@ export function createAppHandlers(deps: AppHandlerDeps): AppRuntime {
         : { phase, email: stored.email, accountId: stored.accountId, server: stored.server, registration: stored.registration };
     },
 
-    async createAccount(args: { email: string; password: Uint8Array; server: string; discoverable: boolean; foldName?: string; baseCurrency?: string }) {
+    async createAccount(args: { email: string; password: Uint8Array; server: string; discoverable: boolean; foldName?: string; baseCurrency?: string; categoryNames?: Record<string, string> }) {
       const sessionPort = await newWebSession();
       const input = { email: args.email, password: secretFrom(args.password), server: args.server, discoverable: args.discoverable, ...(args.foldName === undefined ? {} : { foldName: args.foldName }), ...(args.baseCurrency === undefined ? {} : { baseCurrency: args.baseCurrency }) };
       const result = await createAccount({ crypto: deps.accountCrypto, registration: deps.registration ?? { register: async () => ({ ok: false, reason: 'offline' }) }, credentials: deps.credentials, sessionPort, session, random: deps.rng })(input);
       if (result.ok) {
         await applySettings();
-        await seedCategories(result.value.fold.id); // the first Fold starts with the default category set
+        await seedCategories(result.value.fold.id, args.categoryNames); // the first Fold starts with the default category set, in the person's language
         if (result.value.sync !== undefined) startSync({ email: args.email.trim().toLowerCase(), accountId: result.value.accountId, server: args.server, ...result.value.sync }, result.value.registration);
       }
       return result.ok ? { ok: true, value: { secretKeyText: result.value.secretKeyText, accountId: result.value.accountId, fold: result.value.fold, registration: result.value.registration } } : result;
@@ -497,11 +497,11 @@ export function createAppHandlers(deps: AppHandlerDeps): AppRuntime {
       return [...(await open().directory.list())];
     },
 
-    async 'folds.create'(args: { name: string; baseCurrency: string }) {
+    async 'folds.create'(args: { name: string; baseCurrency: string; categoryNames?: Record<string, string> }) {
       const s = open();
       const commands = createFoldCommands({ directory: s.directory, foldKeys: s.keyring });
       const created = await s.commandBus.execute(commands.createFold, { fold: newIdV4((n) => deps.rng.bytes(n)), name: args.name, baseCurrency: args.baseCurrency });
-      if (created.ok) await seedCategories(created.value.id);
+      if (created.ok) await seedCategories(created.value.id, args.categoryNames);
       return created;
     },
 

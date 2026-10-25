@@ -7,6 +7,7 @@ import { useCore, withPasswordBytes } from '../core/CoreProvider';
 import { TextField } from '../forms/TextField';
 import { useI18n } from '../i18n/I18nProvider';
 import { ServerAddress } from '../settings/ServerAddress';
+import { starterCategoryNames, starterFoldName } from '../i18n/starter-names';
 import { SecretKeyScreen, type CreatedAccount } from './SecretKeyScreen';
 import { Button, Checkbox, CheckboxField, Label } from '../kit';
 
@@ -35,7 +36,7 @@ export function SignUpForm() {
     setBusy(true);
     setErrors({});
     try {
-      const result = await withPasswordBytes(password, (bytes) => core.call<CreateResult>('createAccount', { email, password: bytes, server, discoverable }));
+      const result = await withPasswordBytes(password, (bytes) => core.call<CreateResult>('createAccount', { email, password: bytes, server, discoverable, foldName: starterFoldName(t), categoryNames: starterCategoryNames(t) }));
       if (result.ok) {
         setPassword('');
         setConfirm('');
