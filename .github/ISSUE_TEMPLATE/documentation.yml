@@ -1,0 +1,23 @@
+name: Documentation problem
+description: Something in the documentation is missing, unclear, wrong or out of date.
+labels: ['documentation']
+body:
+  - type: input
+    id: page
+    attributes:
+      label: Which page?
+      description: A link or a path, for example docs/self-hosting.md.
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: What is wrong or missing?
+      description: What did you try to do, and where did the page leave you stuck or misled?
+    validations:
+      required: true
+  - type: textarea
+    id: suggestion
+    attributes:
+      label: What would help?
+      description: A suggested wording is welcome, and so is a pull request.

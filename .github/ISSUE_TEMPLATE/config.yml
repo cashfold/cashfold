@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security vulnerability
+    url: https://github.com/cashfold/cashfold/security/advisories/new
+    about: Report vulnerabilities privately. Do not open a public issue for them.
+  - name: Documentation
+    url: https://github.com/cashfold/cashfold/blob/main/docs/README.md
+    about: Guides for running a relay, privacy, the desktop app and the design.
+  - name: Getting help
+    url: https://github.com/cashfold/cashfold/blob/main/SUPPORT.md
+    about: Where to look and how to ask before opening an issue.
