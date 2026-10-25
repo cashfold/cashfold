@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.1](https://github.com/cashfold/cashfold/compare/v0.1.0...v0.1.1) (2026-10-24)
+
+
+### Bug Fixes
+
+* **desktop:** make the release builds work on macOS, Windows and Linux ([#29](https://github.com/cashfold/cashfold/issues/29)) ([0d96847](https://github.com/cashfold/cashfold/commit/0d96847343c704048f72310d1be70d9010239a97))
+
 ## 0.1.0 (2026-10-24)
 
 
