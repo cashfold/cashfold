@@ -27,6 +27,7 @@ function setup(overrides: Partial<IpcHandlers> = {}) {
   const impl: IpcHandlers = {
     about: vi.fn(() => about),
     revealDataFolder: vi.fn(async () => undefined),
+    setLanguage: vi.fn(),
     updateState: vi.fn(() => ({ kind: 'idle' as const })),
     updateCheck: vi.fn(async () => ({ kind: 'none' as const })),
     updateDownload: vi.fn(async () => ({ kind: 'ready' as const, version: '1.3.0' })),
@@ -93,8 +94,8 @@ describe('what may be asked', () => {
   it('refuses every channel to a caller that is not the app, including the update ones', async () => {
     const { call, impl } = setup();
     const stranger = { senderFrame: { url: 'https://example.com/' } };
-    for (const channel of [CHANNELS.updateCheck, CHANNELS.updateDownload, CHANNELS.updateInstall, CHANNELS.updateReleasePage, CHANNELS.updateAutoCheck, CHANNELS.revealDataFolder]) {
-      await expect(Promise.resolve().then(() => call(channel, stranger)), channel).rejects.toThrow('refused');
+    for (const channel of [CHANNELS.updateCheck, CHANNELS.updateDownload, CHANNELS.updateInstall, CHANNELS.updateReleasePage, CHANNELS.updateAutoCheck, CHANNELS.revealDataFolder, CHANNELS.setLanguage]) {
+      await expect(Promise.resolve().then(() => call(channel, stranger, { language: 'pl' })), channel).rejects.toThrow('refused');
     }
     expect(impl.updateDownload).not.toHaveBeenCalled();
     expect(impl.updateInstall).not.toHaveBeenCalled();
@@ -116,6 +117,18 @@ describe('what may be asked', () => {
     const { call, fromApp } = setup({ updateInstall: vi.fn(async () => { throw new Error('nothing is ready to install: /secret'); }) });
     const failure = await Promise.resolve(call(CHANNELS.updateInstall, fromApp)).catch((e: unknown) => e as Error);
     expect((failure as Error).message).toBe('failed');
+  });
+
+  it('takes exactly one language the shell has words for, and nothing else', async () => {
+    const { call, fromApp, impl } = setup();
+    await expect(Promise.resolve(call(CHANNELS.setLanguage, fromApp, { language: 'uk' }))).resolves.toBeUndefined();
+    expect(impl.setLanguage).toHaveBeenCalledWith('uk');
+    for (const bad of [{ language: 'ar' }, { language: 'xx' }, { language: 'pl', extra: 1 }, { language: 7 }, {}, 'pl', null, undefined]) {
+      await expect(Promise.resolve().then(() => call(CHANNELS.setLanguage, fromApp, bad)), JSON.stringify(bad)).rejects.toThrow('refused');
+    }
+    await expect(Promise.resolve().then(() => call(CHANNELS.setLanguage, fromApp))).rejects.toThrow('refused');
+    await expect(Promise.resolve().then(() => call(CHANNELS.setLanguage, fromApp, { language: 'pl' }, 'second'))).rejects.toThrow('refused');
+    expect(impl.setLanguage).toHaveBeenCalledTimes(1);
   });
 
   it('opens the data folder without being told which one: the path comes from main only', async () => {

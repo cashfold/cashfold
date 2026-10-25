@@ -1,5 +1,7 @@
 import { mkdirSync, rmSync, statfsSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import type { ShellLanguage } from '@cashfold/platform';
+import { labelsFor } from './menu-labels';
 
 // Before the app opens its data it makes sure it can save: a folder that cannot be written (read-only volume, wrong permissions) would let
 // the app start and then lose the work of the session, so the app says so and stops instead. Running low on space is not a reason to stop
@@ -45,10 +47,8 @@ export function checkDataFolder(userData: string, deps: DataFolderDeps = default
 }
 
 /** The message for a problem that stops the app; nothing for the ones that do not. */
-export function problemMessage(status: DataFolderStatus, userData: string): { title: string; detail: string } | undefined {
+export function problemMessage(status: DataFolderStatus, userData: string, language: ShellLanguage = 'en'): { title: string; detail: string } | undefined {
   if (status.kind !== 'not-writable') return undefined;
-  return {
-    title: 'Cashfold cannot save your data here',
-    detail: `The folder that holds your data is not writable:\n\n${userData}\n\nYour data has not been changed. Check that the folder and its disk are not read-only and that you may write to them, then start Cashfold again.`,
-  };
+  const labels = labelsFor(language);
+  return { title: labels.notWritableTitle, detail: labels.notWritableDetail(userData) };
 }

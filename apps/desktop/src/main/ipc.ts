@@ -3,9 +3,11 @@ import {
   AutoCheckRequestSchema,
   AutoCheckResponseSchema,
   CHANNELS,
+  LanguageRequestSchema,
   UpdateStateSchema,
   VoidResponseSchema,
   type AboutInfo,
+  type ShellLanguage,
   type UpdateState,
 } from '@cashfold/platform';
 import type { z } from 'zod';
@@ -27,6 +29,8 @@ export interface IpcMainLike {
 export interface IpcHandlers {
   about(): AboutInfo;
   revealDataFolder(): Promise<void>;
+  /** The app changed its language: rebuild the menus in it. */
+  setLanguage(language: ShellLanguage): void;
   updateState(): UpdateState;
   updateCheck(): Promise<UpdateState>;
   /** Only valid in `available` (in-app); rejects otherwise. */
@@ -95,6 +99,16 @@ export function registerIpc({ ipcMain, log, handlers, extraOrigins = [] }: Regis
 
   serve(CHANNELS.about, none, AboutInfoSchema, () => handlers.about());
   serve(CHANNELS.revealDataFolder, none, VoidResponseSchema, () => handlers.revealDataFolder());
+  serve(
+    CHANNELS.setLanguage,
+    (args) => {
+      if (args.length !== 1) return undefined;
+      const parsed = LanguageRequestSchema.safeParse(args[0]);
+      return parsed.success ? parsed.data : undefined;
+    },
+    VoidResponseSchema,
+    (request) => handlers.setLanguage(request.language),
+  );
   serve(CHANNELS.updateState, none, UpdateStateSchema, () => handlers.updateState());
   serve(CHANNELS.updateCheck, none, UpdateStateSchema, () => handlers.updateCheck());
   serve(CHANNELS.updateDownload, none, UpdateStateSchema, () => handlers.updateDownload());

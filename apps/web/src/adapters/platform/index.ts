@@ -34,6 +34,7 @@ function harden(bridge: DesktopBridge): DesktopBridge {
   return {
     about: async () => AboutInfoSchema.parse(await bridge.about()),
     revealDataFolder: () => bridge.revealDataFolder(),
+    setLanguage: (language) => bridge.setLanguage(language),
     updates: {
       state: () => asState(() => updates.state()),
       check: () => asState(() => updates.check()),

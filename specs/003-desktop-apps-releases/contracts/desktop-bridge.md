@@ -36,6 +36,7 @@ export type UpdateState =
 export interface DesktopBridge {
   about(): Promise<AboutInfo>;
   revealDataFolder(): Promise<void>;
+  setLanguage(language: 'en' | 'uk' | 'pl'): Promise<void>; // spec 004: the shell's menus follow the app's language
   updates: {
     state(): Promise<UpdateState>;
     check(): Promise<UpdateState>;
@@ -57,6 +58,7 @@ All use `ipcMain.handle` (request/response) except `update:changed` (main → re
 |---|---|---|---|
 | `cashfold:about` | none | `AboutInfo` | |
 | `cashfold:data:reveal` | none | `void` | Calls `shell.openPath(userData)`. The path is never taken from the renderer. |
+| `cashfold:language` | `{ language: 'en' \| 'uk' \| 'pl' }` | `void` | Spec 004. A closed list, never free text: anything else is refused. Rebuilds the application menu in that language. |
 | `cashfold:update:state` | none | `UpdateState` | |
 | `cashfold:update:check` | none | `UpdateState` | Non-blocking for the app; errors become `{kind:'error'}`, never exceptions. |
 | `cashfold:update:download` | none | `UpdateState` | Rejected unless the current state is `available` and mode `in-app`. |

@@ -48,6 +48,12 @@ export const AutoCheckRequestSchema = z.strictObject({ set: z.boolean().optional
 export type AutoCheckRequest = z.infer<typeof AutoCheckRequestSchema>;
 export const AutoCheckResponseSchema = z.boolean();
 
+/** `cashfold:language`: the languages the shell has words for. Anything else is refused. */
+export const SHELL_LANGUAGES = ['en', 'uk', 'pl'] as const;
+export const LanguageRequestSchema = z.strictObject({ language: z.enum(SHELL_LANGUAGES) });
+export type LanguageRequest = z.infer<typeof LanguageRequestSchema>;
+export type ShellLanguage = (typeof SHELL_LANGUAGES)[number];
+
 /** Calls that take no argument. */
 export const NoRequestSchema = z.undefined();
 export const VoidResponseSchema = z.undefined();
