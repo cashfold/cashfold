@@ -10,8 +10,8 @@ import { expect, signUp, test } from './fixtures';
 const emitPower = (app: ElectronApplication, event: 'lock-screen' | 'suspend' | 'resume') =>
   app.evaluate((_electron, name) => (globalThis as unknown as { __cashfoldTest: { emitPower(event: string): void } }).__cashfoldTest.emitPower(name), event);
 
-/** What the window shows besides the unlock screen: the app's own content. */
-const showsContent = (page: Page) => page.getByTestId('current-fold').first();
+/** What the window shows besides the unlock screen: the app's own content (the navigation is in a drawer in a narrow window, so look at the page itself). */
+const showsContent = (page: Page) => page.locator('main h1').first();
 const unlockScreen = (page: Page) => page.getByRole('heading', { name: 'Unlock Cashfold' });
 
 async function setIdleMinutes(page: Page, minutes: number): Promise<void> {
