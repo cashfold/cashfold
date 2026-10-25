@@ -12,6 +12,7 @@ import { InvitationsSection } from '../sharing/InvitationsSection';
 import { MyCode } from '../sharing/MyCode';
 import { SharingPanel } from '../sharing/SharingPanel';
 import { KitReminder } from '../shell/KitReminder';
+import { starterCategoryNames } from '../i18n/starter-names';
 import { Badge, Button, Sheet, Select } from '../kit';
 
 type Outcome<T> = { ok: true; value: T } | { ok: false; error: { code: string } };
@@ -51,7 +52,7 @@ export function FoldsAndSharing() {
   async function create(event: FormEvent) {
     event.preventDefault();
     setError(undefined);
-    const result = await core.call<Outcome<FoldSummary>>('folds.create', { name, baseCurrency: currency });
+    const result = await core.call<Outcome<FoldSummary>>('folds.create', { name, baseCurrency: currency, categoryNames: starterCategoryNames(t) });
     if (result.ok) {
       setName('');
       setCreating(false);

@@ -33,7 +33,7 @@ export function MyCode() {
       <h3 className="mt-3 font-medium">{t('sharing.mine.fingerprint')}</h3>
       <Fingerprint groups={data.fingerprint} qr={data.fingerprintQr} label={t('sharing.mine.fingerprint')} testId="my-fingerprint" />
       <h3 className="mt-4 font-medium">{t('sharing.mine.code')}</h3>
-      <p className="mt-1 break-all rounded-ui border border-border-strong p-2 font-mono text-sm" data-testid="my-code">{data.code}</p>
+      <p className="mt-1 break-all rounded-ui border border-border-strong p-2 font-mono text-sm" data-testid="my-code" data-own-data>{data.code}</p>
       <Button outline className="mt-2"
         type="button" 
         onClick={() => void navigator.clipboard?.writeText(data.code).then(() => setCopied(true), () => undefined)}

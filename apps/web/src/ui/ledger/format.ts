@@ -27,10 +27,24 @@ export function formatPlain(minor: bigint, currency: string, locale: string): st
 /** Exact parse of what a person typed. */
 export type MoneyTextError = AmountTextError | DomainError<'unknown_currency'>;
 
+/**
+ * What a person types is not always what the locale prints. Where the thousands mark is a space (Polish, Ukrainian) people type an ordinary
+ * space, a no-break space or a narrow one; where the decimal mark is a comma they often type a dot. Both are read as the locale's own marks,
+ * but only when that cannot be ambiguous: an entry that already contains the decimal mark, or a dot where the locale uses dots for thousands,
+ * is left alone and the exact parser decides. Nothing here touches digits, so the result is still exact.
+ */
+export function normalizeAmountText(text: string, locale: string): string {
+  const { decimal, group } = separatorsFor(locale);
+  let out = text.trim();
+  if (/^\s$/u.test(group)) out = out.replace(/[\s\u00A0\u202F]+/gu, group);
+  if (decimal === ',' && group !== '.' && !out.includes(',') && out.split('.').length === 2) out = out.replace('.', decimal);
+  return out;
+}
+
 export function parseMoney(text: string, currency: string, locale: string): Result<bigint, MoneyTextError> {
   const code = parseCurrency(currency);
   if (!code.ok) return code;
-  const r = parseAmountText(text, code.value, separatorsFor(locale));
+  const r = parseAmountText(normalizeAmountText(text, locale), code.value, separatorsFor(locale));
   return r.ok ? { ok: true, value: r.value.minor } : r;
 }
 

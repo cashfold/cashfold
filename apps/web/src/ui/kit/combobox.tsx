@@ -4,6 +4,7 @@
 import * as Headless from '@headlessui/react'
 import clsx from 'clsx'
 import { useState } from 'react'
+import { includesLetters } from '../i18n/collation'
 
 export function Combobox<T>({
   options,
@@ -41,7 +42,7 @@ export function Combobox<T>({
     query === ''
       ? options
       : options.filter((option) =>
-          filter ? filter(option, query) : displayValue(option)?.toLowerCase().includes(query.toLowerCase())
+          filter ? filter(option, query) : includesLetters(displayValue(option) ?? '', query)
         )
 
   const typed = query.trim()

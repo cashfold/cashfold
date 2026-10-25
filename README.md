@@ -71,6 +71,10 @@ The web app is a static site, and the relay is a small service you can run yours
 [Running your own relay](docs/self-hosting.md) walks through both. Without a relay, everything stays
 on one device. Read [what the service can see](docs/privacy.md) before you pick one.
 
+## Languages
+
+Cashfold is available in **English**, **Українська** (Ukrainian) and **Polski** (Polish). It follows your browser's or system's language, and you can choose another while creating your account and change it later in Settings → Appearance. The choice stays on your device. How the translations work, and how to add a language, is in [docs/i18n.md](docs/i18n.md).
+
 ## How your data is protected
 
 - Everything is encrypted on your device before it leaves it. The relay stores and forwards

@@ -19,6 +19,7 @@ import { ScheduleInboxBanner } from './ScheduleInboxBanner';
 import { groupByDay, type DayGroup as DayGroupData, type DayRow } from './day-groups';
 import { useWindowedBlock } from './useWindowedRows';
 import { NO_FILTERS, appliedChips, filtersFromQuery, filtersToQuery, removeFilter, type Filters, type StatusFilter } from './filters';
+import { foldLetters } from '../i18n/collation';
 
 const PAGE = 100;
 /** Day groups below the first screenful are rendered only while they are near the viewport (FR-027); these size the ones not yet seen. */
@@ -142,14 +143,14 @@ function TransactionsBody() {
     const from = inputToDate(filters.from);
     const to = inputToDate(filters.to);
     const oldest = rows.count > rows.items.length ? rows.items.at(-1)?.localDate : undefined;
-    const needle = filters.text.trim().toLowerCase();
+    const needle = foldLetters(filters.text.trim());
     return transfers.filter(
       (x) =>
         (filters.account === '' || x.fromAccountId === filters.account || x.toAccountId === filters.account) &&
         (filters.status === '' || x.status === filters.status) &&
         (from === undefined || x.localDate >= from) && (to === undefined || x.localDate <= to) &&
         (oldest === undefined || x.localDate >= oldest) &&
-        (needle === '' || x.note.toLowerCase().includes(needle)),
+        (needle === '' || foldLetters(x.note).includes(needle)),
     );
   }, [transfers, filters, rows]);
 

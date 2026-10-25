@@ -5,8 +5,8 @@ import { AppProviders } from './providers';
 import './globals.css';
 
 export const metadata: Metadata = {
+  // The title is the brand, the same in every language; a description would have to be in one language only (spec 004, FR-008, FR-009).
   title: 'Cashfold',
-  description: 'Private personal finance, encrypted on your device.',
   // The files are in public/ and made by `pnpm gen:assets` from assets/logo/mark.svg.
   manifest: '/manifest.webmanifest',
   icons: {

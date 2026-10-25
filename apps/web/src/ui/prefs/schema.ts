@@ -5,10 +5,14 @@ export type PeriodKind = 'thisMonth' | 'lastMonth' | 'thisYear' | 'lastYear' | '
 export type PeriodChoice = { kind: PeriodKind } | { kind: 'custom'; from: string; to: string };
 export type OverviewSectionId = 'category' | 'tag' | 'trend' | 'balance' | 'accounts';
 export type PlanView = 'budgets' | 'goals' | 'schedules';
+/** `auto` follows the browser's languages; the others are the person's own choice. */
+export const LANGUAGE_CHOICES = ['auto', 'en', 'uk', 'pl'] as const;
+export type LanguageChoice = (typeof LANGUAGE_CHOICES)[number];
 
 export interface Prefs {
   v: 1;
   theme: ThemeChoice;
+  language: LanguageChoice;
   moreDetailsOpen: boolean;
   optionalFields: Record<string, boolean>;
   overview: { period: PeriodChoice; collapsed: OverviewSectionId[] };
@@ -35,6 +39,7 @@ const FIELD_ID = /^[a-z]{2}\.[a-zA-Z]+$/;
 export const DEFAULT_PREFS: Prefs = {
   v: 1,
   theme: 'system',
+  language: 'auto',
   moreDetailsOpen: false,
   optionalFields: {},
   overview: { period: { kind: 'thisMonth' }, collapsed: [] },
@@ -104,6 +109,7 @@ export function parsePrefs(raw: string | null | undefined): Prefs {
   return {
     v: 1,
     theme: oneOf(data['theme'], ['system', 'light', 'dark'] as const, 'system'),
+    language: oneOf(data['language'], LANGUAGE_CHOICES, 'auto'),
     moreDetailsOpen: bool(data['moreDetailsOpen'], false),
     optionalFields,
     overview: { period: parsePeriod(overview['period']), collapsed },

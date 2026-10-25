@@ -3,6 +3,7 @@ import {
   AutoCheckResponseSchema,
   BRIDGE_GLOBAL,
   CHANNELS,
+  LanguageRequestSchema,
   UpdateStateSchema,
   VoidResponseSchema,
   type DesktopBridge,
@@ -29,6 +30,9 @@ export function createBridge(ipc: IpcRendererLike): DesktopBridge {
   return {
     about: () => call(CHANNELS.about, AboutInfoSchema),
     revealDataFolder: () => call(CHANNELS.revealDataFolder, VoidResponseSchema),
+    setLanguage: async (language) => {
+      await call(CHANNELS.setLanguage, VoidResponseSchema, LanguageRequestSchema.parse({ language }));
+    },
     updates: {
       state: () => call(CHANNELS.updateState, UpdateStateSchema),
       check: () => call(CHANNELS.updateCheck, UpdateStateSchema),

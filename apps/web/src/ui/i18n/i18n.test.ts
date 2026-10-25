@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createTranslator, directionOf, resolveLocale, separatorsFor, SUPPORTED_LOCALES } from './i18n';
+import { createTranslator, directionOf, LANGUAGE_NAMES, loadCatalogue, resolveLanguage, resolveLocale, SELECTABLE_LOCALES, separatorsFor, SUPPORTED_LOCALES } from './i18n';
 
 describe('resolveLocale', () => {
   it('picks the first preferred language we support, matching on language', () => {
@@ -65,5 +65,55 @@ describe('separatorsFor (decimal and grouping symbols that amount parsing and fo
     ['ar', '.', ','], // with Latin digits (-u-nu-latn) Arabic uses the same symbols as English
   ] as const)('%s', (locale, decimal, group) => {
     expect(separatorsFor(locale)).toEqual({ decimal, group });
+  });
+});
+
+describe('Ukrainian and Polish', () => {
+  it('are picked from the browser\'s languages, by base language', () => {
+    expect(resolveLocale(['pl-PL'])).toBe('pl');
+    expect(resolveLocale(['uk-UA'])).toBe('uk');
+    expect(resolveLocale(['ru', 'pl'])).toBe('pl'); // unsupported languages are skipped
+    expect(resolveLocale(['de', 'uk', 'pl'])).toBe('uk'); // the browser's order wins
+    expect(resolveLocale(['de'])).toBe('en');
+  });
+
+  it('are supported, left to right, and offered under their own names', () => {
+    expect(SUPPORTED_LOCALES).toEqual(expect.arrayContaining(['uk', 'pl']));
+    expect(directionOf('uk')).toBe('ltr');
+    expect(directionOf('pl-PL')).toBe('ltr');
+    expect(LANGUAGE_NAMES).toEqual({ en: 'English', uk: 'Українська', pl: 'Polski' });
+    expect(SELECTABLE_LOCALES).toEqual(['en', 'uk', 'pl']);
+  });
+
+  it('use a space as the thousands mark and a comma as the decimal mark', () => {
+    for (const locale of ['uk', 'pl']) {
+      const { decimal, group } = separatorsFor(locale);
+      expect(decimal).toBe(',');
+      expect(group).toMatch(/^[\u00A0\u202F ]$/u);
+    }
+  });
+
+  it('load as catalogues, and an unknown locale loads as empty', async () => {
+    expect(typeof (await loadCatalogue('uk'))).toBe('object');
+    expect(typeof (await loadCatalogue('pl'))).toBe('object');
+    expect(await loadCatalogue('xx')).toEqual({});
+  });
+
+  it('show English for a key the loaded catalogue lacks', () => {
+    const t = createTranslator('pl', { en: { a: 'Hello' }, pl: {} });
+    expect(t('a')).toBe('Hello');
+  });
+});
+
+describe('resolveLanguage (the person\'s choice against the browser)', () => {
+  it('a saved language wins over the browser', () => {
+    expect(resolveLanguage('uk', ['pl'])).toBe('uk');
+    expect(resolveLanguage('en', ['pl', 'uk'])).toBe('en');
+  });
+
+  it('auto follows the browser, and gives English when nothing matches', () => {
+    expect(resolveLanguage('auto', ['pl-PL', 'en'])).toBe('pl');
+    expect(resolveLanguage('auto', ['de'])).toBe('en');
+    expect(resolveLanguage('auto', undefined)).toBe('en');
   });
 });

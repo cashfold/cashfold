@@ -1,30 +1,66 @@
 'use client';
 
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { createTranslator, DEFAULT_LOCALE, directionOf, resolveLocale, type Locale, type Translate } from './i18n';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import type { ShellLanguage } from '@cashfold/platform';
+import { isDesktopApp } from '../../adapters/platform/detect';
+import { prefsStore, usePrefs } from '../prefs/usePrefs';
+import { CATALOGS, createTranslator, DEFAULT_LOCALE, directionOf, loadCatalogue, resolveLanguage, type Catalog, type LanguageChoice, type Locale, type Translate } from './i18n';
 
 interface I18n {
   readonly locale: Locale;
   readonly dir: 'ltr' | 'rtl';
   readonly t: Translate;
+  /** What the person chose (`auto` follows the browser). */
+  readonly language: LanguageChoice;
+  readonly setLanguage: (choice: LanguageChoice) => void;
 }
 
 const Context = createContext<I18n | null>(null);
 
-/** Chooses the locale from the browser's languages after mount and keeps <html lang dir> in step. */
+const selectLanguage = (p: { language: LanguageChoice }): LanguageChoice => p.language;
+
+/**
+ * Chooses the locale after mount (the person's saved choice, else the browser's languages, else English) and keeps <html lang dir> in step.
+ * Ukrainian and Polish are separate chunks: until one arrives the words are English, then they swap without losing the page or any input.
+ */
 export function I18nProvider({ children }: { children: ReactNode }) {
+  const language = usePrefs(selectLanguage);
   const [locale, setLocale] = useState<Locale>(DEFAULT_LOCALE);
+  const [loaded, setLoaded] = useState<{ locale: string; catalogue: Catalog } | null>(null);
 
   useEffect(() => {
-    setLocale(resolveLocale(navigator.languages ?? [navigator.language]));
-  }, []);
+    setLocale(resolveLanguage(language, navigator.languages ?? [navigator.language]));
+  }, [language]);
 
-  const value = useMemo<I18n>(() => ({ locale, dir: directionOf(locale), t: createTranslator(locale) }), [locale]);
+  useEffect(() => {
+    let current = true;
+    void loadCatalogue(locale).then((catalogue) => {
+      if (current) setLoaded({ locale, catalogue });
+    });
+    return () => {
+      current = false;
+    };
+  }, [locale]);
+
+  const setLanguage = useCallback((choice: LanguageChoice) => prefsStore.update((p) => ({ ...p, language: choice })), []);
+
+  const value = useMemo<I18n>(() => {
+    // English words until the chosen language has loaded, but the direction and `lang` follow at once.
+    const ready = loaded?.locale === locale ? loaded.catalogue : undefined;
+    const t = createTranslator(locale, { ...CATALOGS, ...(ready === undefined ? {} : { [locale]: ready }) });
+    return { locale, dir: directionOf(locale), t, language, setLanguage };
+  }, [locale, loaded, language, setLanguage]);
 
   useEffect(() => {
     document.documentElement.lang = value.locale;
     document.documentElement.dir = value.dir;
-  }, [value]);
+  }, [value.locale, value.dir]);
+
+  // The desktop app's own menus follow the language shown here. The plain web app has no bridge, and the validating code is loaded only where it is used.
+  useEffect(() => {
+    if (!isDesktopApp() || !['en', 'uk', 'pl'].includes(locale)) return;
+    void import('../../adapters/platform').then(({ getDesktopBridge }) => getDesktopBridge()?.setLanguage(locale as ShellLanguage)).catch(() => undefined);
+  }, [locale]);
 
   return <Context.Provider value={value}>{children}</Context.Provider>;
 }

@@ -47,6 +47,15 @@ describe('default categories', () => {
     expect((await h.ledger()).categories.get(food.id)!.name).toBe('Eating');
   });
 
+  it('seeds with the names it is given, under the same ids as the English set', async () => {
+    const food = defaultCategories(h.fold).find((c) => c.key === 'expense.food')!;
+    const seeded = await h.run(categories.seedDefaultCategories, { fold: h.fold, names: { 'expense.food': 'Їжа та напої' } });
+    expect(seeded.ok && seeded.value).toBe(defaultCategories(h.fold).length);
+    const ledger = await h.ledger();
+    expect(ledger.categories.get(food.id)).toMatchObject({ name: 'Їжа та напої', parentId: null });
+    expect(ledger.categories.size).toBe(defaultCategories(h.fold).length);
+  });
+
   it('seeding on two devices converges on the same records', async () => {
     const a = new LedgerFixture();
     const b = new LedgerFixture();

@@ -4,6 +4,7 @@ import type { TransactionRow } from '@cashfold/core';
 import { useState } from 'react';
 import { useCore } from '../core/CoreProvider';
 
+import type { Translate } from '../i18n/i18n';
 import { useI18n } from '../i18n/I18nProvider';
 import { useLedger } from './LedgerProvider';
 import { Button } from '../kit';
@@ -17,11 +18,11 @@ function save(name: string, mime: string, bytes: Uint8Array): void {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-const sizeText = (bytes: number, locale: string): string => {
+const sizeText = (bytes: number, locale: string, t: Translate): string => {
   const whole = new Intl.NumberFormat(locale, { maximumFractionDigits: 0 });
   const tenths = new Intl.NumberFormat(locale, { maximumFractionDigits: 1 });
   const size = BigInt(bytes);
-  return size < 1024n * 1024n ? `${whole.format(Number((size + 1023n) / 1024n))} KB` : `${tenths.format(Number((size * 10n) / (1024n * 1024n)) / 10)} MB`;
+  return size < 1024n * 1024n ? t('unit.kb', { value: whole.format(Number((size + 1023n) / 1024n)) }) : t('unit.mb', { value: tenths.format(Number((size * 10n) / (1024n * 1024n)) / 10) });
 };
 
 /** What the form needs to know once the person has chosen: a file to attach, or to take the current one off. */
@@ -63,7 +64,7 @@ export function AttachmentField({ existing, choice, onChange }: { existing?: Tra
       <legend className="font-medium">{t('ledger.attachment.title')}</legend>
       {current !== undefined && !choice.remove && choice.file === undefined ? (
         <p className="mt-1 flex flex-wrap items-center gap-3" data-testid="attachment-current">
-          <span dir="auto">{current.name} <span className="text-muted">({sizeText(current.size, locale)})</span></span>
+          <span dir="auto">{current.name} <span className="text-muted">({sizeText(current.size, locale, t)})</span></span>
           <Button outline type="button" disabled={opening} aria-label={t('ledger.attachment.open.label', { name: current.name })} onClick={() => void open()}>{t('ledger.attachment.open')}</Button>
           <Button outline type="button" aria-label={t('ledger.attachment.remove.label', { name: current.name })} onClick={() => onChange({ file: undefined, remove: true })}>{t('ledger.attachment.remove')}</Button>
         </p>

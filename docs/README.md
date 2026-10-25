@@ -20,6 +20,7 @@ Everything about running, understanding and changing Cashfold. If you are new, r
 | [The ledger](ledger.md)         | How accounts, transactions and exchange rates are stored, merged and read                     |
 | [Sync across devices](sync.md)  | How devices stay in step through a relay that sees only ciphertext, and what is not built yet |
 | [Wire protocol](protocol.md)    | The relay's endpoints and wire formats. Generated from the schemas; do not edit by hand       |
+| [Languages](i18n.md)            | How the language is chosen, where the text lives, and how to add or change a message          |
 
 ## Decisions and quality
 

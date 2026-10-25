@@ -40,7 +40,7 @@ describe('what the page can reach', () => {
     expect(name).toBe('cashfoldDesktop');
     expect(Object.isFrozen(api)).toBe(true);
     expect(Object.isFrozen(api['updates'])).toBe(true);
-    expect(Object.keys(api).sort()).toEqual(['about', 'revealDataFolder', 'updates']);
+    expect(Object.keys(api).sort()).toEqual(['about', 'revealDataFolder', 'setLanguage', 'updates']);
     expect(Object.keys(api['updates'] as object).sort()).toEqual(['autoCheck', 'check', 'download', 'install', 'onChange', 'openReleasePage', 'setAutoCheck', 'state']);
   });
 
@@ -69,7 +69,17 @@ describe('calls', () => {
     await expect(bridge.updates.state()).rejects.toThrow();
   });
 
-  it('sends nothing the page chose, except the auto-check switch', async () => {
+  it('sends the language only as one of the languages the shell knows', async () => {
+    const { ipc } = fakeIpc({ [CHANNELS.setLanguage]: undefined });
+    const bridge = createBridge(ipc);
+    await bridge.setLanguage('pl');
+    expect(ipc.invoke).toHaveBeenCalledWith(CHANNELS.setLanguage, { language: 'pl' });
+    await expect(bridge.setLanguage('ar' as never)).rejects.toThrow();
+    await expect(bridge.setLanguage('/etc/passwd' as never)).rejects.toThrow();
+    expect(ipc.invoke).toHaveBeenCalledTimes(1);
+  });
+
+  it('sends nothing else the page chose, except the auto-check switch', async () => {
     const { ipc } = fakeIpc({ [CHANNELS.updateAutoCheck]: true, [CHANNELS.updateState]: { kind: 'idle' }, [CHANNELS.revealDataFolder]: undefined });
     const bridge = createBridge(ipc);
     await bridge.revealDataFolder();

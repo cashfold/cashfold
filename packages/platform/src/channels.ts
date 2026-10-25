@@ -8,6 +8,8 @@ export const CHANNELS = {
   updateInstall: 'cashfold:update:install',
   updateReleasePage: 'cashfold:update:release-page',
   updateAutoCheck: 'cashfold:update:auto-check',
+  /** The language the app is shown in, so the shell's own menus and dialogs follow it. */
+  setLanguage: 'cashfold:language',
   /** main → renderer event */
   updateChanged: 'cashfold:update:changed',
 } as const;

@@ -1,4 +1,5 @@
 import qrcode from 'qrcode-generator';
+import type { Translate } from '../i18n/i18n';
 
 // The Emergency Kit (FR-003): a printable, self-contained page with the account details and the Secret Key, an empty line
 // for the password, and a QR code that adds another device. It contains no script, no external resource and no link
@@ -40,15 +41,23 @@ export function escapeHtml(text: string): string {
   return text.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
 }
 
-export function buildEmergencyKitHtml(kit: KitDetails, appOrigin: string): string {
+/** The language the page is written in: the page itself is a plain file with no script, so everything is fixed when it is built. */
+export interface KitLanguage {
+  readonly t: Translate;
+  readonly locale: string;
+  readonly dir: 'ltr' | 'rtl';
+}
+
+export function buildEmergencyKitHtml(kit: KitDetails, appOrigin: string, language: KitLanguage): string {
   const e = escapeHtml;
-  const qr = qrSvg(qrMatrix(addDeviceUrl(appOrigin, kit)), 'QR code that adds a device to this account');
+  const { t } = language;
+  const qr = qrSvg(qrMatrix(addDeviceUrl(appOrigin, kit)), t('kit.doc.qr.label'));
   return `<!doctype html>
-<html lang="en" dir="ltr">
+<html lang="${e(language.locale)}" dir="${language.dir}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Cashfold Emergency Kit</title>
+<title>${e(t('kit.doc.title'))}</title>
 <style>
   body { font: 16px/1.5 system-ui, sans-serif; color: #111; background: #fff; margin: 2rem auto; max-width: 42rem; padding: 0 1rem; }
   h1 { font-size: 1.6rem; margin: 0 0 .25rem; }
@@ -63,20 +72,20 @@ export function buildEmergencyKitHtml(kit: KitDetails, appOrigin: string): strin
 </style>
 </head>
 <body>
-<h1>Cashfold Emergency Kit</h1>
-<p>Generated on ${e(kit.generatedOn)}. Keep this page somewhere safe.</p>
+<h1>${e(t('kit.doc.title'))}</h1>
+<p>${e(t('kit.doc.generated', { date: kit.generatedOn }))}</p>
 <dl>
-  <dt>Account ID</dt><dd>${e(kit.accountId)}</dd>
-  <dt>Email</dt><dd>${e(kit.email)}</dd>
-  <dt>Service</dt><dd>${e(kit.server)}</dd>
-  <dt>Secret Key</dt><dd class="secret">${e(kit.secretKeyText)}</dd>
-  <dt>Master password</dt><dd><span class="blank">________________</span> (write it here only if you keep this page locked away)</dd>
+  <dt>${e(t('kit.doc.accountId'))}</dt><dd>${e(kit.accountId)}</dd>
+  <dt>${e(t('kit.doc.email'))}</dt><dd>${e(kit.email)}</dd>
+  <dt>${e(t('kit.doc.service'))}</dt><dd>${e(kit.server)}</dd>
+  <dt>${e(t('kit.doc.secretKey'))}</dt><dd class="secret">${e(kit.secretKeyText)}</dd>
+  <dt>${e(t('kit.doc.password'))}</dt><dd><span class="blank">________________</span> ${e(t('kit.doc.passwordNote'))}</dd>
 </dl>
 <div class="warning">
-  <p><strong>Do not store your password with this page.</strong> You need both the password and the Secret Key to sign in on a new device. Either one alone gets nobody into your data.</p>
-  <p>Lost credentials cannot be recovered by anyone, including Cashfold, unless you set up a Recovery Key.</p>
+  <p><strong>${e(t('kit.doc.warning.strong'))}</strong> ${e(t('kit.doc.warning.rest'))}</p>
+  <p>${e(t('kit.doc.warning.lost'))}</p>
 </div>
-<div class="qr">${qr}<p>Scan this code on a new device to start adding it. It contains your Secret Key, so treat it like the Secret Key itself.</p></div>
+<div class="qr">${qr}<p>${e(t('kit.doc.qr.text'))}</p></div>
 </body>
 </html>
 `;

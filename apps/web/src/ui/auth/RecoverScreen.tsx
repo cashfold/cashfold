@@ -17,7 +17,7 @@ import { Button } from '../kit';
  * new Secret Key replace the old ones, so the Secret Key is shown once before the person goes on.
  */
 export function RecoverScreen() {
-  const { t } = useI18n();
+  const { t, locale, dir } = useI18n();
   const core = useCore();
   const router = useRouter();
   const [email, setEmail] = useState('');
@@ -61,8 +61,8 @@ export function RecoverScreen() {
           fileName="cashfold-secret-key.txt"
           extra={(
             <>
-              <Button outline type="button" onClick={() => downloadKit(kit)}>{t('secretkey.download')}</Button>
-              <Button outline type="button" onClick={() => printKit(kit)}>{t('secretkey.print')}</Button>
+              <Button outline type="button" onClick={() => downloadKit(kit, { t, locale, dir })}>{t('secretkey.download')}</Button>
+              <Button outline type="button" onClick={() => printKit(kit, { t, locale, dir })}>{t('secretkey.print')}</Button>
             </>
           )}
           onDone={() => void core.markUnlocked().then(() => router.replace('/overview/'))}

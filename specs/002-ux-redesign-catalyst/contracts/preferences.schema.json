@@ -8,6 +8,7 @@
   "properties": {
     "v": { "const": 1 },
     "theme": { "enum": ["system", "light", "dark"], "default": "system" },
+    "language": { "enum": ["auto", "en", "uk", "pl"], "default": "auto", "description": "The interface language; auto follows the browser (spec 004)." },
     "moreDetailsOpen": { "type": "boolean", "default": false },
     "optionalFields": {
       "type": "object",

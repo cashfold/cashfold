@@ -15,7 +15,7 @@ export interface CreatedAccount {
 
 /** Shown once, right after sign-up (FR-002, FR-003). Leaving it drops the Secret Key from the page. */
 export function SecretKeyScreen({ created, email, server, onDone }: { created: CreatedAccount; email: string; server: string; onDone: () => Promise<void> }) {
-  const { t } = useI18n();
+  const { t, locale, dir } = useI18n();
   const [saved, setSaved] = useState(false);
   const [copy, setCopy] = useState<'idle' | 'copied' | 'failed'>('idle');
 
@@ -30,8 +30,8 @@ export function SecretKeyScreen({ created, email, server, onDone }: { created: C
       <p className="mt-1 break-all rounded-ui border border-border-strong bg-surface p-4 font-mono text-xl tracking-wide" data-testid="secret-key" dir="ltr">{created.secretKeyText}</p>
       <div className="mt-4 flex flex-wrap gap-3">
         <Button outline type="button" onClick={async () => setCopy((await copyWithAutoClear(created.secretKeyText, 60_000)) ? 'copied' : 'failed')}>{t('secretkey.copy')}</Button>
-        <Button outline type="button" onClick={() => downloadKit(kit)}>{t('secretkey.download')}</Button>
-        <Button outline type="button" onClick={() => printKit(kit)}>{t('secretkey.print')}</Button>
+        <Button outline type="button" onClick={() => downloadKit(kit, { t, locale, dir })}>{t('secretkey.download')}</Button>
+        <Button outline type="button" onClick={() => printKit(kit, { t, locale, dir })}>{t('secretkey.print')}</Button>
       </div>
       <p className="mt-2 text-sm" role="status">{copy === 'copied' ? t('secretkey.copied') : copy === 'failed' ? t('secretkey.copyFailed') : ''}</p>
       {created.registration === 'pending' ? <p className="mt-4 text-muted">{t('secretkey.pending')}</p> : null}

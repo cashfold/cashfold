@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { dateOfUtcSeconds, dateToInput, deviceOffsetAt, startOfDayUtcS, startOfLocalDayUtcS, localDateOfUtcSeconds, formatDate, inputToDate, inputToMoment, momentToInput, nowInput, todayLocal } from './dates';
+import { dateOfUtcSeconds, dateToInput, deviceOffsetAt, startOfDayUtcS, startOfLocalDayUtcS, localDateOfUtcSeconds, formatDate, formatDateTime, inputToDate, inputToMoment, momentToInput, nowInput, todayLocal } from './dates';
 
 describe('civil dates', () => {
   it('round-trips to and from the date field text', () => {
@@ -87,6 +87,17 @@ describe('the start of a day in the device time zone (rates)', () => {
     } finally {
       if (was === undefined) delete process.env['TZ'];
       else process.env['TZ'] = was;
+    }
+  });
+});
+
+describe('dates in Ukrainian and Polish', () => {
+  it('uses the language\'s own month names and keeps Latin digits', () => {
+    expect(formatDate(20_260_305 as never, 'pl')).toMatch(/^5 mar 2026/);
+    expect(formatDate(20_260_305 as never, 'uk')).toMatch(/^5 бер\. 2026/);
+    for (const locale of ['pl', 'uk']) {
+      expect(formatDate(20_261_231 as never, locale)).toMatch(/2026/);
+      expect(formatDateTime(Date.UTC(2026, 2, 5, 14, 30), locale)).toMatch(/[0-9]{1,2}:[0-9]{2}/);
     }
   });
 });

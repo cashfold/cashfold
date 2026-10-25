@@ -1,7 +1,7 @@
 import { existsSync } from 'node:fs';
 import { rm } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
-import { CHANNELS } from '@cashfold/platform';
+import { CHANNELS, type ShellLanguage } from '@cashfold/platform';
 import { app, BrowserWindow, dialog, ipcMain, Menu, protocol, screen, session, shell } from 'electron';
 import { autoUpdater } from 'electron-updater';
 import { buildAbout } from './about';
@@ -15,6 +15,7 @@ import { registerIpc } from './ipc';
 import { APP_ID, APP_NAME, RELEASE_PAGE_BASE, SOURCE_REPO_URL, UPDATE_PUBLIC_KEYS } from './identity';
 import { createLogger } from './log';
 import { buildMenu } from './menu';
+import { languageFromSystem } from './menu-labels';
 import { registerAppScheme, serveApp } from './protocol';
 import { installSessionPolicy, isAllowedExternalUrl } from './security';
 import { createUpdaterService, type UpdaterLike } from './updater';
@@ -32,7 +33,8 @@ registerAppScheme(protocol);
 
 // Make sure the data can be saved before anything opens it: a folder that cannot be written would let the session's work be lost.
 const dataFolder = checkDataFolder(app.getPath('userData'));
-const blocking = problemMessage(dataFolder, app.getPath('userData'));
+// No window and no saved choice exist yet, so this dialog follows the operating system's language.
+const blocking = problemMessage(dataFolder, app.getPath('userData'), languageFromSystem(app.getPreferredSystemLanguages()));
 
 if (blocking !== undefined) {
   dialog.showErrorBox(blocking.title, blocking.detail);
@@ -53,6 +55,10 @@ async function main(): Promise<void> {
   const log = createLogger({ dir: join(userData, 'logs'), dataDir: userData, console: !app.isPackaged });
   if (dataFolder.kind === 'low-space') log.warn('storage.low-space', { freeMiB: Math.floor(dataFolder.freeBytes / (1024 * 1024)) });
   const openExternal = (url: string): Promise<void> => shell.openExternal(url);
+  /** The application menu, in a language; called at start and again whenever the app tells us it changed. */
+  const installMenu = (language: ShellLanguage): void => {
+    Menu.setApplicationMenu(buildMenu({ menu: Menu, isMac: process.platform === 'darwin', isDev: !app.isPackaged, openExternal, language }));
+  };
   const devUrl = app.isPackaged ? undefined : process.env['CASHFOLD_DEV_URL'];
   let mainWindow: BrowserWindow | undefined;
 
@@ -132,6 +138,7 @@ async function main(): Promise<void> {
     handlers: {
       about: () => aboutInfo,
       revealDataFolder: () => revealDataFolder({ userData, openPath: (path) => shell.openPath(path) }),
+      setLanguage: (language) => installMenu(language),
       updateState: () => updates.state(),
       updateCheck: () => updates.check(),
       updateDownload: () => updates.download(),
@@ -159,7 +166,7 @@ async function main(): Promise<void> {
       saveFolder = dirname(savedPath);
     },
   });
-  Menu.setApplicationMenu(buildMenu({ menu: Menu, isMac: process.platform === 'darwin', isDev: !app.isPackaged, openExternal }));
+  installMenu(languageFromSystem(app.getPreferredSystemLanguages()));
   mainWindow = openWindow();
   updates.start();
 }

@@ -13,7 +13,7 @@ type Changed = { secretKeyText?: string; otherDevicesSignedOut: true };
 
 /** Changing the password and getting a new Secret Key (FR-008). Both ask for the current password and sign the other devices out. */
 export function CredentialsSection() {
-  const { t } = useI18n();
+  const { t, locale, dir } = useI18n();
   const core = useCore();
   const [current, setCurrent] = useState('');
   const [next, setNext] = useState('');
@@ -81,8 +81,8 @@ export function CredentialsSection() {
           fileName="cashfold-secret-key.txt" onDone={() => setNewKey(undefined)}
           extra={(
             <>
-              <Button outline type="button" onClick={() => downloadKit(kit)}>{t('secretkey.download')}</Button>
-              <Button outline type="button" onClick={() => printKit(kit)}>{t('secretkey.print')}</Button>
+              <Button outline type="button" onClick={() => downloadKit(kit, { t, locale, dir })}>{t('secretkey.download')}</Button>
+              <Button outline type="button" onClick={() => printKit(kit, { t, locale, dir })}>{t('secretkey.print')}</Button>
             </>
           )}
         />

@@ -1,7 +1,6 @@
 {
   "name": "Cashfold",
   "short_name": "Cashfold",
-  "description": "Local-first, zero-trust personal finance",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

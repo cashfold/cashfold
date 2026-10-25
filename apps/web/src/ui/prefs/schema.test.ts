@@ -103,3 +103,28 @@ describe('the JSON schema contract', () => {
     expect(Object.keys(schema.properties).sort()).toEqual(Object.keys(DEFAULT_PREFS).sort());
   });
 });
+
+describe('the language preference', () => {
+  it('defaults to following the browser', () => {
+    expect(DEFAULT_PREFS.language).toBe('auto');
+    expect(parsePrefs(null).language).toBe('auto');
+  });
+
+  it.each(['auto', 'en', 'uk', 'pl'])('keeps %s', (language) => {
+    expect(parse({ v: 1, language }).language).toBe(language);
+  });
+
+  it.each(['xx', 'ar', 'en-XA', 7, null, {}, ['pl']])('falls back to auto for %j without touching the rest', (language) => {
+    const prefs = parse({ v: 1, theme: 'dark', language });
+    expect(prefs.language).toBe('auto');
+    expect(prefs.theme).toBe('dark');
+  });
+
+  it('reads an older store with no language field', () => {
+    expect(parse({ v: 1, theme: 'light' }).language).toBe('auto');
+  });
+
+  it('survives a save and a load', () => {
+    expect(parsePrefs(serializePrefs({ ...DEFAULT_PREFS, language: 'pl' })).language).toBe('pl');
+  });
+});
