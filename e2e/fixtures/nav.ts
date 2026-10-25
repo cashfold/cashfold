@@ -142,7 +142,8 @@ export async function signUpAndEnter(page: Page, email = 'alice@example.com'): P
   await page.getByTestId('secret-key').waitFor({ timeout: 60_000 });
   await page.locator('[role=checkbox]').first().check();
   await page.locator('main button:not([disabled])').last().click();
-  await page.getByTestId('current-fold').filter({ hasText: 'Personal' }).waitFor({ state: 'attached' });
+  // The first Fold is named in the language of the sign-up page (spec 004, FR-015), so any Fold will do.
+  await page.getByTestId('current-fold').first().waitFor({ state: 'attached' });
 }
 
 /** Creates an account through the Accounts screen. */

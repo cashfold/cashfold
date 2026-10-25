@@ -21,6 +21,16 @@ describe('CSV export (FR-092)', () => {
     expect(lines[3]).toBe('2026-02-03,Main,expense,-123.45,USD,Food > Veg,,,Market,posted,,,');
   });
 
+  it('keeps fixed English column names and dot decimals whatever language the names are in (spec 004)', () => {
+    const f = new LedgerFixture();
+    const main = f.account({ name: 'Рахунок' });
+    const food = f.category({ name: 'Їжа та напої' });
+    f.transaction(main, { amountMinor: -123_456n, categoryId: food, localDate: date(2026, 2, 3), note: 'Zakupy w Łodzi' });
+    const lines = exportLedgerCsv(buildLedger(f.fold)).trimEnd().split('\r\n');
+    expect(lines[0]).toBe('date,account,type,amount,currency,category,payee,tags,note,status,to_account,to_amount,to_currency');
+    expect(lines[1]).toBe('2026-02-03,Рахунок,expense,-1234.56,USD,Їжа та напої,,,Zakupy w Łodzi,posted,,,');
+  });
+
   it('quotes cells that need it and marks text a spreadsheet would run as a formula', () => {
     expect(csvCell('plain')).toBe('plain');
     expect(csvCell('a,b')).toBe('"a,b"');
