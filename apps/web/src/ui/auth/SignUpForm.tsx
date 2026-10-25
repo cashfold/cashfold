@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useState, type FormEvent } from 'react';
 import { useCore, withPasswordBytes } from '../core/CoreProvider';
 import { TextField } from '../forms/TextField';
+import { LanguagePicker } from '../i18n/LanguagePicker';
 import { useI18n } from '../i18n/I18nProvider';
 import { ServerAddress } from '../settings/ServerAddress';
 import { starterCategoryNames, starterFoldName } from '../i18n/starter-names';
@@ -73,6 +74,8 @@ export function SignUpForm() {
 
   return (
     <div>
+      {/* The one place before sign-in that offers the language; the Secret Key step that follows has none (spec 005). */}
+      <div className="mb-4 flex justify-end"><LanguagePicker id="language-signup" className="max-w-56" /></div>
       <h1 className="text-2xl font-semibold">{t('page.signUp.title')}</h1>
       <p className="mt-3 text-muted">{t('signup.lede')}</p>
       <form onSubmit={submit} noValidate aria-busy={busy}>
