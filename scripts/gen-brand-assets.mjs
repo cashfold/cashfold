@@ -138,7 +138,7 @@ try {
       {
         name: NAME,
         short_name: NAME,
-        description: TAGLINE,
+        // No description: a static web app cannot offer one per language, so the installed app is known by its name alone (spec 004, FR-009).
         start_url: '/',
         scope: '/',
         display: 'standalone',
