@@ -44,15 +44,23 @@ export interface DefaultCategory {
 
 const PALETTE_SIZE = 12;
 
-export function defaultCategories(fold: Id): readonly DefaultCategory[] {
+/**
+ * The set for one Fold. Ids and keys come from the English names and never change; `names` (key to display name) lets the app create the
+ * records in the person's language. A key it does not mention, or a blank name, keeps the English one. `core` holds no translations itself.
+ */
+export function defaultCategories(fold: Id, names: Readonly<Record<string, string>> = {}): readonly DefaultCategory[] {
+  const nameOf = (key: string, english: string): string => {
+    const given = names[key]?.trim();
+    return given === undefined || given === '' ? english : given;
+  };
   const out: DefaultCategory[] = [];
   ROOTS.forEach((root, rootIndex) => {
     const rootId = uuidV5(fold, root.key);
     const color = rootIndex % PALETTE_SIZE;
-    out.push({ key: root.key, id: rootId, parentId: null, direction: root.direction, name: root.name, icon: root.icon, color, sortOrder: rootIndex });
+    out.push({ key: root.key, id: rootId, parentId: null, direction: root.direction, name: nameOf(root.key, root.name), icon: root.icon, color, sortOrder: rootIndex });
     root.children.forEach((child, i) => {
       const key = `${root.key}.${slug(child)}`;
-      out.push({ key, id: uuidV5(fold, key), parentId: rootId, direction: root.direction, name: child, icon: root.icon, color, sortOrder: i });
+      out.push({ key, id: uuidV5(fold, key), parentId: rootId, direction: root.direction, name: nameOf(key, child), icon: root.icon, color, sortOrder: i });
     });
   });
   return out;

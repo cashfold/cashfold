@@ -42,13 +42,13 @@ export function createCategoryCommands() {
   };
 
   /** Creates the default set once per Fold. Ids are derived from the Fold id, so it is safe to run on every device. */
-  const seedDefaultCategories: CommandDef<{ fold: Id }, number, never> = {
+  const seedDefaultCategories: CommandDef<{ fold: Id; names?: Readonly<Record<string, string>> }, number, never> = {
     name: 'seedDefaultCategories',
     requires: 'editor',
     foldOf: (c) => c.fold,
     async handle(c, ctx) {
       const drafts = [];
-      for (const d of defaultCategories(c.fold)) {
+      for (const d of defaultCategories(c.fold, c.names)) {
         if ((await ctx.reader.getRecord(c.fold, d.id)) !== undefined) continue; // already there, or the user changed or deleted it
         drafts.push({
           fold: c.fold, rec: d.id, table: TABLE.category, sets: noSets,
