@@ -76,6 +76,7 @@ describe('the release notes', () => {
   it('say loudly, first of all, that an unsigned build is unsigned, and how to open it anyway', () => {
     const notes = renderNotes({ ...base, signed: false }) as string;
     expect(notes.split('\n')[0]).toMatch(/UNSIGNED BUILD/);
+    expect(notes.split('\n')[0]).toMatch(/Open Anyway/); // recent macOS no longer offers Control-click, then Open
     expect(notes).toMatch(/warn/i);
     expect(renderNotes(base)).not.toMatch(/UNSIGNED BUILD/);
   });

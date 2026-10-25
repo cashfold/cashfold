@@ -18,15 +18,15 @@ Out of scope: the hosting environment of any particular operator, third-party li
 
 ## Documents to read first
 
-| Document | What it gives you |
-| --- | --- |
-| [threat-model.md](../threat-model.md) | Assets, adversaries, trust boundaries, accepted residual risks |
-| [privacy.md](../privacy.md) | Exactly what the service can see |
-| [ARCHITECTURE.md](../ARCHITECTURE.md) | §5 keys and sign-in, §6 sync, §7 sharing, §9 service, §10 client hardening |
-| [protocol.md](../protocol.md) | The generated API reference (from the OpenAPI and CDDL contracts) |
-| `specs/001-secure-finance-core/contracts/` | The wire contracts: `op-envelope.cddl`, `sync-api.openapi.yaml`, `auth-srp.md` |
-| [adr/](../adr/) | Why the stack is what it is (SQLite cipher, CBOR, Argon2 in WASM, SRP in WASM, the Fold sequence) |
-| `vectors/` | Frozen known-answer and cross-implementation vectors: `kat/` (primitives), `2skd/`, `srp/`, `ops/`, `cbor/`, `recurrence/` |
+| Document                                   | What it gives you                                                                                                          |
+| ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------- |
+| [threat-model.md](../threat-model.md)      | Assets, adversaries, trust boundaries, accepted residual risks                                                             |
+| [privacy.md](../privacy.md)                | Exactly what the service can see                                                                                           |
+| [ARCHITECTURE.md](../ARCHITECTURE.md)      | §5 keys and sign-in, §6 sync, §7 sharing, §9 service, §10 client hardening                                                 |
+| [protocol.md](../protocol.md)              | The generated API reference (from the OpenAPI and CDDL contracts)                                                          |
+| `specs/001-secure-finance-core/contracts/` | The wire contracts: `op-envelope.cddl`, `sync-api.openapi.yaml`, `auth-srp.md`                                             |
+| [adr/](../adr/)                            | Why the stack is what it is (SQLite cipher, CBOR, Argon2 in WASM, SRP in WASM, the Fold sequence)                          |
+| `vectors/`                                 | Frozen known-answer and cross-implementation vectors: `kat/` (primitives), `2skd/`, `srp/`, `ops/`, `cbor/`, `recurrence/` |
 
 ## Building and running it
 
@@ -52,7 +52,7 @@ A released build's file hashes are published with the release (`SHA256SUMS.tree`
 
 ## Known weaknesses and open questions
 
-All listed in the threat model under *Residual risks*. Notably: the JavaScript memory-erasure limit; web code delivery; no detection of whole-database rollback; operation and attachment sizes are not padded; the database cipher is not independently audited; QR codes are shown but never scanned; QR/fingerprint comparison is manual.
+All listed in the threat model under _Residual risks_. Notably: the JavaScript memory-erasure limit; web code delivery; no detection of whole-database rollback; operation and attachment sizes are not padded; the database cipher is not independently audited; QR codes are shown but never scanned; QR/fingerprint comparison is manual.
 
 ## Contact
 

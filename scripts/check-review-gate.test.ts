@@ -34,7 +34,7 @@ describe('the external review release gate', () => {
     const { readFileSync } = await import('node:fs');
     const text = readFileSync(new URL('../docs/security-review/status.md', import.meta.url), 'utf8');
     expect(text).toMatch(/^- Status: /m);
-    expect(text).toMatch(/\| ID \| Severity \| Status \|/);
+    expect(text).toMatch(/\|\s*ID\s*\|\s*Severity\s*\|\s*Status\s*\|/); // however the table is aligned
     expect(typeof checkReviewStatus(text).ok).toBe('boolean');
   });
 });

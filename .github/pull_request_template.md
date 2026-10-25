@@ -1,24 +1,40 @@
 ## Summary
 
-<!-- What and why. -->
+<!-- What does this change, and why? One or two sentences. -->
 
-## Tasks / requirements
+## Related issues and specs
 
-<!-- T-numbers and FR-/SC- references from specs/001-secure-finance-core/tasks.md -->
+<!-- "Closes #123". For work from a spec, name the task and requirement, for example T123 and FR-045
+     from specs/<feature>/tasks.md. -->
 
-## Tests
+## How it was tested
 
-- [ ] Failing test committed before the implementation (domain, crypto, sync)
-- [ ] Accessibility and RTL checked for UI changes
+<!-- Which checks you ran (see CONTRIBUTING.md, "Check your change") and anything you tried by hand. -->
+
+- [ ] `pnpm verify` passes (type-check, lint, unit and property tests)
+- [ ] For domain, crypto and sync code: the failing test was committed before the implementation
+- [ ] For user interface changes: checked with the keyboard, in a right-to-left layout and for accessibility
+
+## Documentation
+
+- [ ] User-facing behaviour changed, and the docs are updated (or there is nothing to update)
+- [ ] Generated files are regenerated (`docs/protocol.md`, `THIRD_PARTY_NOTICES.md`, migrations), if affected
 
 ## Threat-model note
 
-<!-- MANDATORY for changes to crypto, auth, sync or sharing (append to docs/threat-model.md).
-     What new asset, trust boundary or attacker capability does this touch? Write "n/a" otherwise. -->
+<!-- MANDATORY for changes to cryptography, authentication, sync or sharing: append a note to
+     docs/threat-model.md and say here what new asset, trust boundary or attacker capability this
+     touches. Changes to cryptography, the protocol or a wire format also need an ADR and an update to
+     docs/ARCHITECTURE.md. Write "n/a" otherwise. -->
 
 ## Release impact
 
-<!-- The title of this pull request decides the next version (see CONTRIBUTING.md, "How a change becomes a release").
-     feat = minor, fix/perf = patch, ! or BREAKING CHANGE = major; docs, chore, test, ci, build, style and server-only changes make no release.
+<!-- The title of this pull request is the commit that lands on main, and it decides the next version
+     (CONTRIBUTING.md, "How a change becomes a release"): feat = minor, fix and perf = patch, ! or
+     BREAKING CHANGE = major; docs, chore, test, ci, build, style and refactor make no release.
      Is the title right for what this changes for the people who run the app? -->
 
+## Checklist
+
+- [ ] The title follows Conventional Commits and has no AI-tool attribution
+- [ ] The change is small and has one purpose

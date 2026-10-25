@@ -1,4 +1,5 @@
-# Two reviewers are required on these paths (see docs/repo-settings.md).
+# Security-sensitive paths: the constitution asks for two reviewers and a threat-model note here. GitHub does not enforce the review count
+# while the project has a single maintainer (see docs/repo-settings.md).
 /packages/crypto/        @pogulailo
 /packages/core/src/sync/    @pogulailo
 /packages/core/src/sharing/ @pogulailo

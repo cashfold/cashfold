@@ -21,11 +21,11 @@ Use **`hash-wasm` 4.12.0** (MIT licence; the Argon2 module is about 32 KB minifi
 
 Node 26 on Apple silicon, single run (not representative of a mid-range phone browser; re-measure in the browser during the web unlock work, since the target is about 1 s there):
 
-| m (KiB) | t | p | time |
-|---|---|---|---|
-| 32768 | 2 | 1 | 33 ms |
-| 65536 | 3 | 1 | 91 ms |
-| 65536 | 3 | 4 | 93 ms |
+| m (KiB) | t   | p   | time  |
+| ------- | --- | --- | ----- |
+| 32768   | 2   | 1   | 33 ms |
+| 65536   | 3   | 1   | 91 ms |
+| 65536   | 3   | 4   | 93 ms |
 
 ## Consequences
 

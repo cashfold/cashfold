@@ -11,16 +11,16 @@ sets). The numbers are part of the wire format and live in
 a shipped number is never reused or renumbered. [`vectors/ops/schema-1-ledger.json`](../vectors/ops/schema-1-ledger.json) is a frozen
 set of ops written with schema 1; `frozen-fixture.test.ts` replays it and fails if a number moves.
 
-| Table | Code | Notes |
-|---|---|---|
-| account | 1 | `group_ids` is an add-wins set |
-| account group | 2 | |
-| category | 3 | `parent_id` null for a root; depth at most 2 |
-| payee, tag | 4, 5 | name and colour |
-| transaction | 6 | `tag_ids` is an add-wins set; see the amount group below |
-| transfer | 7 | one record, two amounts; see below |
-| exchange rate | 11 | |
-| settings | 13 | the Fold's name and base currency |
+| Table         | Code | Notes                                                    |
+| ------------- | ---- | -------------------------------------------------------- |
+| account       | 1    | `group_ids` is an add-wins set                           |
+| account group | 2    |                                                          |
+| category      | 3    | `parent_id` null for a root; depth at most 2             |
+| payee, tag    | 4, 5 | name and colour                                          |
+| transaction   | 6    | `tag_ids` is an add-wins set; see the amount group below |
+| transfer      | 7    | one record, two amounts; see below                       |
+| exchange rate | 11   |                                                          |
+| settings      | 13   | the Fold's name and base currency                        |
 
 **Amount group.** `amount_minor`, `currency`, `base_amount_minor`, `base_currency`, `fx_rate_id`, `fx_base_rate_id` and `direction`
 are written together or not at all (`LEDGER_GROUPS`), so a concurrent edit of the amount cannot be torn from its currency or its
@@ -73,7 +73,7 @@ Deleting writes a tombstone. For 30 days the record is in Recently deleted on ev
 a device that was offline during the delete. The 30 days run from the **tombstone's own clock**, not from when a device learned of it.
 
 After 30 days `purgeExpired` removes the record, its field history and the payload of its ops, and remembers its id (`purged_record`). It
-keeps the op *headers* so a re-delivered op is still a duplicate and a device's sequence numbers stay reserved. A late op for a purged
+keeps the op _headers_ so a re-delivered op is still a duplicate and a device's sequence numbers stay reserved. A late op for a purged
 record is quarantined with reason `purged_record` and shown in Needs attention. The purge runs when a session starts.
 
 Known race: a restore authored on one device just inside the window can reach a device that has already purged. That device keeps the
@@ -85,20 +85,20 @@ relay, once every device has confirmed, belongs to the sync story.
 CRDTs converge but do not keep application rules, so [`repair-rules.ts`](../packages/core/src/ledger/application/repair-rules.ts)
 reports violations on merged state. The rules never write; every device repairs identically. Messages carry no amounts, names or notes.
 
-| Finding | Effect |
-|---|---|
-| orphan transaction (its account is gone) | hidden |
-| currency differs from the account | left out of balances |
-| sign contradicts the type | left out of balances |
+| Finding                                                          | Effect                       |
+| ---------------------------------------------------------------- | ---------------------------- |
+| orphan transaction (its account is gone)                         | hidden                       |
+| currency differs from the account                                | left out of balances         |
+| sign contradicts the type                                        | left out of balances         |
 | category cycle, depth over 2, missing parent, direction mismatch | read as a top-level category |
-| two rates for one `(quote, as_of)` | the loser is unused |
-| record that cannot be read | hidden |
+| two rates for one `(quote, as_of)`                               | the loser is unused          |
+| record that cannot be read                                       | hidden                       |
 
 ## What is not built yet
 
-* **SQL read models.** Migration 0002 defines `account`, `txn`, `ledger_entry`, `account_balance` and the rest, but nothing writes them yet.
+- **SQL read models.** Migration 0002 defines `account`, `txn`, `ledger_entry`, `account_balance` and the rest, but nothing writes them yet.
   Screens read a ledger projected in memory from the merge state and cached per Fold until the next change. That is exact and fast enough
   for thousands of transactions; the 50,000-transaction target (SC-008) is measured on the raw tables and needs these read models, or an
   incrementally maintained projection, before the screens can claim it.
-* **A transaction's place** is stored (`place_name`, `lat_e7`, `lon_e7` as integers) but the entry form has no field for it yet.
-* **Attachments** wait for user story 9.
+- **A transaction's place** is stored (`place_name`, `lat_e7`, `lon_e7` as integers) but the entry form has no field for it yet.
+- **Attachments** wait for user story 9.

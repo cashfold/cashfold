@@ -23,6 +23,8 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
       - run: pnpm lint
+      - name: Documentation is formatted
+        run: pnpm check:docs
       - name: Generated migrations are up to date
         run: node scripts/gen-migrations.mjs && git diff --exit-code apps/web/src/adapters/sqlite-opfs/migrations/generated.ts
       - name: Protocol docs are up to date

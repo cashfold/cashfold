@@ -12,13 +12,13 @@ Every operation pushed to a Fold gets a `server_seq`: gapless, increasing, and t
 
 `apps/server/test/load.int.test.ts` (run with `LOAD=1`) against PostgreSQL 17 in a container with default settings on a laptop. Operations are 320-byte sealed blobs pushed in batches of 256, the largest batch a client sends. The store is measured directly, so the figures leave out HTTP, SRP and the sealed frame.
 
-| | per-operation queries (before) | set-based push (after) | memory store |
-| --- | --- | --- | --- |
-| 1 device, 1 Fold | 1,642 ops/s | **28,601 ops/s** | 260,000 ops/s |
-| 4 devices into 1 Fold | 1,667 ops/s, p95 620 ms | **31,636 ops/s**, p95 40 ms | 411,000 ops/s |
-| 16 devices into 1 Fold | 1,628 ops/s, p95 2,555 ms | **25,614 ops/s**, p95 191 ms | 369,000 ops/s |
-| 16 devices into 16 Folds | 7,375 ops/s, p95 696 ms | **151,455 ops/s**, p95 33 ms | 388,000 ops/s |
-| pull, pages of 500 | 177,000 ops/s | 165,000 ops/s | 1.3 million ops/s |
+|                          | per-operation queries (before) | set-based push (after)       | memory store      |
+| ------------------------ | ------------------------------ | ---------------------------- | ----------------- |
+| 1 device, 1 Fold         | 1,642 ops/s                    | **28,601 ops/s**             | 260,000 ops/s     |
+| 4 devices into 1 Fold    | 1,667 ops/s, p95 620 ms        | **31,636 ops/s**, p95 40 ms  | 411,000 ops/s     |
+| 16 devices into 1 Fold   | 1,628 ops/s, p95 2,555 ms      | **25,614 ops/s**, p95 191 ms | 369,000 ops/s     |
+| 16 devices into 16 Folds | 7,375 ops/s, p95 696 ms        | **151,455 ops/s**, p95 33 ms | 388,000 ops/s     |
+| pull, pages of 500       | 177,000 ops/s                  | 165,000 ops/s                | 1.3 million ops/s |
 
 ## Decision
 
