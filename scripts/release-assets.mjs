@@ -49,7 +49,7 @@ export function renderNotes({ version, changelog, treeDigest, commit, signed, as
   const lines = [];
   if (!signed) {
     lines.push(
-      '> **UNSIGNED BUILD.** These installers are not code-signed yet. Your system will warn you when you open them: on macOS Control-click the app and choose Open; on Windows choose More info, then Run anyway. The app still checks the Cashfold project\'s own signature on every update it installs.',
+      '> **UNSIGNED BUILD.** These installers are not code-signed yet. Your system will warn you when you open them: on macOS open System Settings, Privacy & Security, and choose Open Anyway next to the message about Cashfold (on macOS 14 and earlier you can Control-click the app and choose Open instead); on Windows choose More info, then Run anyway. The app still checks the Cashfold project\'s own signature on every update it installs.',
       '',
     );
   }
