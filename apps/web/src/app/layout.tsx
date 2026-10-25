@@ -1,9 +1,27 @@
+import type { Metadata, Viewport } from 'next';
 import type { ReactNode } from 'react';
 import { THEME_BOOTSTRAP } from '../ui/theme/bootstrap';
 import { AppProviders } from './providers';
 import './globals.css';
 
-export const metadata = { title: 'Cashfold', description: 'Private personal finance, encrypted on your device.' };
+export const metadata: Metadata = {
+  title: 'Cashfold',
+  description: 'Private personal finance, encrypted on your device.',
+  // The files are in public/ and made by `pnpm gen:assets` from assets/logo/mark.svg.
+  manifest: '/manifest.webmanifest',
+  icons: {
+    icon: [{ url: '/favicon.ico', sizes: '48x48' }, { url: '/icon.svg', type: 'image/svg+xml' }],
+    apple: '/apple-touch-icon.png',
+  },
+};
+
+// The brand colour of each theme (--primary in src/app/tokens.css): the browser's address bar and task switcher take it.
+export const viewport: Viewport = {
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#047857' },
+    { media: '(prefers-color-scheme: dark)', color: '#10b981' },
+  ],
+};
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
