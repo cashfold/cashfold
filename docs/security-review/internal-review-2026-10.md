@@ -10,15 +10,15 @@ Read in full: `apps/server/src` sign-in (`auth.service.ts`, `srp-server.ts`, `fr
 
 ## Summary
 
-| # | Severity | Area | Finding |
-| --- | --- | --- | --- |
-| 1 | Medium | Server sign-in | Response timing can tell an existing address from an unknown one |
-| 2 | Medium | Desktop updater | A signed installer is not tied to the version the feed names (rollback by replay) |
-| 3 | Medium | Server config | A mistyped `RATE_LIMIT_SCALE` silently turns all rate limiting off |
-| 4 | Low–Medium | Server | `trustProxy: true` is unconditional, so per-address limits can be spoofed when the relay is exposed directly |
-| 5 | Low–Medium | Sharing (to verify) | A snapshot is accepted from any known Fold device, whatever its role |
-| 6 | Low | Server sign-in | The failed-attempt tracker never forgets entries; lockouts are checked only at the start and only in memory |
-| 7 | Low | Server | The attachment quota is checked and then written, so parallel uploads can overshoot it |
+| #   | Severity   | Area                | Finding                                                                                                      |
+| --- | ---------- | ------------------- | ------------------------------------------------------------------------------------------------------------ |
+| 1   | Medium     | Server sign-in      | Response timing can tell an existing address from an unknown one                                             |
+| 2   | Medium     | Desktop updater     | A signed installer is not tied to the version the feed names (rollback by replay)                            |
+| 3   | Medium     | Server config       | A mistyped `RATE_LIMIT_SCALE` silently turns all rate limiting off                                           |
+| 4   | Low–Medium | Server              | `trustProxy: true` is unconditional, so per-address limits can be spoofed when the relay is exposed directly |
+| 5   | Low–Medium | Sharing (to verify) | A snapshot is accepted from any known Fold device, whatever its role                                         |
+| 6   | Low        | Server sign-in      | The failed-attempt tracker never forgets entries; lockouts are checked only at the start and only in memory  |
+| 7   | Low        | Server              | The attachment quota is checked and then written, so parallel uploads can overshoot it                       |
 
 No critical or high finding was found in the code that was read.
 
@@ -26,15 +26,15 @@ No critical or high finding was found in the code that was read.
 
 All seven were addressed on the branch `fix/security-review-findings`, one commit each. Two points stay open on purpose.
 
-| # | Status | What changed |
-| --- | --- | --- |
-| 1 | Fixed | Sign-in does the same work for unknown and existing addresses (stand-in verifier and the recovery lookup always run); the failure write for a real account is no longer awaited. Tests count the calls. Network timing itself was not measured. |
-| 2 | Fixed | The app refuses an installer unless its name is `<app>-<version>-<os>-<arch>.<ext>` for the version the feed offers. No change to the signature format. |
-| 3 | Fixed | The relay refuses to start unless `RATE_LIMIT_SCALE` is a number greater than 0. |
-| 4 | Fixed | `TRUST_PROXY` setting; the default trusts only loopback and private ranges. Check that your reverse proxy connects from such an address (a proxy on a public address needs `TRUST_PROXY` set to it). |
-| 5 | Narrowed, open | A snapshot is refused unless its signer's member sees the whole history and has held the editor role. A snapshot carries no time, so a removed editor is still accepted; closing that needs a signed time in the snapshot format (a protocol change). |
-| 6 | Fixed in part | Old entries are swept and handshakes re-check the lock. Lockouts are still kept in memory only, as the threat model says; the stored count is a record and is not read back. |
-| 7 | Fixed | The store counts and writes under a per-Fold lock (PostgreSQL) in one step. |
+| #   | Status         | What changed                                                                                                                                                                                                                                          |
+| --- | -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Fixed          | Sign-in does the same work for unknown and existing addresses (stand-in verifier and the recovery lookup always run); the failure write for a real account is no longer awaited. Tests count the calls. Network timing itself was not measured.       |
+| 2   | Fixed          | The app refuses an installer unless its name is `<app>-<version>-<os>-<arch>.<ext>` for the version the feed offers. No change to the signature format.                                                                                               |
+| 3   | Fixed          | The relay refuses to start unless `RATE_LIMIT_SCALE` is a number greater than 0.                                                                                                                                                                      |
+| 4   | Fixed          | `TRUST_PROXY` setting; the default trusts only loopback and private ranges. Check that your reverse proxy connects from such an address (a proxy on a public address needs `TRUST_PROXY` set to it).                                                  |
+| 5   | Narrowed, open | A snapshot is refused unless its signer's member sees the whole history and has held the editor role. A snapshot carries no time, so a removed editor is still accepted; closing that needs a signed time in the snapshot format (a protocol change). |
+| 6   | Fixed in part  | Old entries are swept and handshakes re-check the lock. Lockouts are still kept in memory only, as the threat model says; the stored count is a record and is not read back.                                                                          |
+| 7   | Fixed          | The store counts and writes under a per-Fold lock (PostgreSQL) in one step.                                                                                                                                                                           |
 
 ## Findings
 
