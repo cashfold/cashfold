@@ -1,6 +1,10 @@
 import jsQR from 'jsqr';
 import { describe, expect, it, vi } from 'vitest';
-import { addDeviceUrl, buildEmergencyKitHtml, copyWithAutoClear, qrMatrix } from './kit';
+import { createTranslator, ENGLISH } from '../i18n/i18n';
+import { addDeviceUrl, buildEmergencyKitHtml, copyWithAutoClear, qrMatrix, type KitLanguage } from './kit';
+
+const english: KitLanguage = { t: createTranslator('en'), locale: 'en', dir: 'ltr' };
+const polish: KitLanguage = { t: createTranslator('pl', { en: ENGLISH, pl: { 'kit.doc.title': 'Zestaw awaryjny Cashfold', 'kit.doc.password': 'Hasło główne', 'kit.doc.warning.strong': 'Nie przechowuj hasła razem z tą stroną.' } }), locale: 'pl', dir: 'ltr' };
 
 const kit = {
   accountId: 'XRG88A', email: 'alice@example.com', server: 'https://relay.example.com',
@@ -59,7 +63,7 @@ describe('QR code', () => {
 });
 
 describe('Emergency Kit document', () => {
-  const html = buildEmergencyKitHtml(kit, 'https://app.example.org');
+  const html = buildEmergencyKitHtml(kit, 'https://app.example.org', english);
 
   it('contains the account details and the Secret Key, with an empty field for the password', () => {
     for (const text of [kit.accountId, kit.email, kit.server, kit.secretKeyText, kit.generatedOn]) expect(html).toContain(text);
@@ -77,10 +81,25 @@ describe('Emergency Kit document', () => {
   });
 
   it('escapes everything it is given', () => {
-    const evil = buildEmergencyKitHtml({ ...kit, email: '"><script>alert(1)</script>@x.com', server: 'https://r.example.com/"><img src=x onerror=alert(1)>' }, 'https://app.example.org');
+    const evil = buildEmergencyKitHtml({ ...kit, email: '"><script>alert(1)</script>@x.com', server: 'https://r.example.com/"><img src=x onerror=alert(1)>' }, 'https://app.example.org', english);
     expect(evil).not.toContain('<script>alert(1)');
     expect(evil).not.toMatch(/<img[^>]*onerror/i);
     expect(evil).toContain('&lt;script&gt;');
+  });
+
+  it('is written in the chosen language, and says so for screen readers and printers', () => {
+    const pl = buildEmergencyKitHtml(kit, 'https://app.example.org', polish);
+    expect(pl).toMatch(/<html lang="pl" dir="ltr">/);
+    expect(pl).toContain('<title>Zestaw awaryjny Cashfold</title>');
+    expect(pl).toContain('Hasło główne');
+    expect(pl).toContain('Nie przechowuj hasła razem z tą stroną.');
+    expect(pl).not.toContain('Master password');
+    for (const text of [kit.accountId, kit.email, kit.secretKeyText]) expect(pl).toContain(text);
+  });
+
+  it('escapes translated text too', () => {
+    const evil: KitLanguage = { ...english, t: createTranslator('en', { en: { ...ENGLISH, 'kit.doc.password': '<img src=x onerror=alert(1)>' } }) };
+    expect(buildEmergencyKitHtml(kit, 'https://app.example.org', evil)).not.toMatch(/<img[^>]*onerror/i);
   });
 
   it('prints cleanly on paper: a print stylesheet and a language/direction declaration', () => {

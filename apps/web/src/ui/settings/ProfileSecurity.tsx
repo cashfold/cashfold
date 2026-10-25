@@ -18,7 +18,7 @@ const HIDDEN_SECONDS = [0, 15, 30, 60, 120, 300];
 type KitResult = { ok: true; value: KitSource } | { ok: false; error: { code: string; retryAfterMs?: number } };
 
 export function ProfileSecurity() {
-  const { t } = useI18n();
+  const { t, locale, dir } = useI18n();
   const core = useCore();
   const [settings, setSettings] = useState<DeviceSettings | undefined>();
   const [saved, setSaved] = useState(false);
@@ -92,8 +92,8 @@ export function ProfileSecurity() {
         <p className="mt-1 text-muted">{t('settings.kit.lede')}</p>
         {kit ? (
           <div className="mt-3 flex flex-wrap gap-3">
-            <Button outline type="button" onClick={() => downloadKit(kit)}>{t('secretkey.download')}</Button>
-            <Button outline type="button" onClick={() => printKit(kit)}>{t('secretkey.print')}</Button>
+            <Button outline type="button" onClick={() => downloadKit(kit, { t, locale, dir })}>{t('secretkey.download')}</Button>
+            <Button outline type="button" onClick={() => printKit(kit, { t, locale, dir })}>{t('secretkey.print')}</Button>
             <Button outline type="button" onClick={() => setKit(undefined)}>{t('settings.kit.done')}</Button>
           </div>
         ) : (

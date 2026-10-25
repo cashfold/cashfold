@@ -5,13 +5,15 @@ import { useCallback, useEffect, useState } from 'react';
 import { readPersistence, requestPersistence, type PersistenceState } from '../../adapters/storage-persistence';
 import { useCore } from '../core/CoreProvider';
 
+import type { Translate } from '../i18n/i18n';
 import { useI18n } from '../i18n/I18nProvider';
 import { Button } from '../kit';
 
-const size = (bytes: number, locale: string): string => {
+const size = (bytes: number, locale: string, t: Translate): string => {
   const n = BigInt(Math.trunc(bytes));
-  const mb = new Intl.NumberFormat(locale, { maximumFractionDigits: 1 });
-  return n < 1024n * 1024n ? `${new Intl.NumberFormat(locale, { maximumFractionDigits: 0 }).format(Number((n + 1023n) / 1024n))} KB` : n < 1024n ** 3n ? `${mb.format(Number((n * 10n) / (1024n * 1024n)) / 10)} MB` : `${mb.format(Number((n * 10n) / 1024n ** 3n) / 10)} GB`;
+  const whole = new Intl.NumberFormat(locale, { maximumFractionDigits: 0 });
+  const tenths = new Intl.NumberFormat(locale, { maximumFractionDigits: 1 });
+  return n < 1024n * 1024n ? t('unit.kb', { value: whole.format(Number((n + 1023n) / 1024n)) }) : n < 1024n ** 3n ? t('unit.mb', { value: tenths.format(Number((n * 10n) / (1024n * 1024n)) / 10) }) : t('unit.gb', { value: tenths.format(Number((n * 10n) / 1024n ** 3n) / 10) });
 };
 
 /** Whether the browser will keep this app's data, how much room it uses, and when the last backup was made (FR-072). */
@@ -33,7 +35,7 @@ export function StorageSection() {
     <section aria-labelledby="storage-heading" className="mt-8">
       <h2 id="storage-heading" className="text-lg font-semibold">{t('storage.settings.title')}</h2>
       <p className="mt-1" data-testid="storage-state">{state.persisted === true ? t('storage.settings.kept') : state.persisted === false ? t('storage.settings.notKept') : t('storage.settings.unknown')}</p>
-      {state.usageBytes !== undefined && state.quotaBytes !== undefined ? <p className="text-muted">{t('storage.settings.use', { used: size(state.usageBytes, locale), quota: size(state.quotaBytes, locale) })}</p> : null}
+      {state.usageBytes !== undefined && state.quotaBytes !== undefined ? <p className="text-muted">{t('storage.settings.use', { used: size(state.usageBytes, locale, t), quota: size(state.quotaBytes, locale, t) })}</p> : null}
       <p className="text-muted">{lastBackup === 0 ? t('storage.settings.noBackup') : t('storage.settings.lastBackup', { when: new Date(lastBackup).toLocaleDateString(locale) })}</p>
       {state.persisted !== true ? (
         <div className="mt-3">
