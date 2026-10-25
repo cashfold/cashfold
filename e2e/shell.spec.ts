@@ -28,7 +28,8 @@ test('language and direction follow the browser locale, and layout mirrors logic
   const rtl = info.project.name === 'rtl';
   await expect(page.locator('html')).toHaveAttribute('dir', rtl ? 'rtl' : 'ltr');
   await expect(page.locator('html')).toHaveAttribute('lang', rtl ? 'ar' : 'en');
-  // The language picker closes the page, at the inline end: right in LTR, left in RTL.
+  // The language control closes the sign-up page, at the inline end: right of centre in LTR, left of centre in RTL.
+  await page.goto('/sign-up/');
   const picker = await page.getByLabel('Language').boundingBox();
   const viewport = page.viewportSize()!;
   expect(picker).not.toBeNull();

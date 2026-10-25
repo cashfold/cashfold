@@ -41,6 +41,9 @@ test.describe('@language', () => {
 
   const htmlLang = (page: Page) => page.evaluate(() => document.documentElement.lang);
 
+  /** The language control (contract: language-control-placement.md). */
+  const CONTROL = (page: Page) => page.locator('select[name="language"]');
+
   for (const language of ['uk', 'pl'] as const) {
     test.describe(`browser language ${language}`, () => {
       test.use({ locale: language });
@@ -105,8 +108,23 @@ test.describe('@language', () => {
     });
   }
 
+  for (const [browser, expected] of [['pl', 'pl'], ['uk', 'uk'], ['de', 'en']] as const) {
+    test.describe(`pages shown before sign-in, browser language ${browser}`, () => {
+      test.use({ locale: browser });
+
+      test(`show ${expected} and offer no language control`, async ({ page }) => {
+        for (const route of ['/', '/sign-in/', '/recover/', '/add/']) {
+          await page.goto(route);
+          await expect(page.getByRole('heading', { level: 1 }), route).toBeVisible();
+          expect(await htmlLang(page), route).toBe(expected);
+          await expect(CONTROL(page), route).toHaveCount(0);
+        }
+      });
+    });
+  }
+
   test.describe('choosing the language by hand', () => {
-    test('before sign-in: the footer picker changes the page at once, keeps what was typed, and survives a reload', async ({ page }) => {
+    test('on the sign-up page: the control changes the page at once, keeps what was typed, and survives a reload', async ({ page }) => {
       await page.goto('/sign-up/');
       await expect(page.getByRole('heading', { level: 1 })).toHaveText(TEXT.en.signUp);
       await page.locator('input[type=email]').fill('typed@example.com');
@@ -130,14 +148,38 @@ test.describe('@language', () => {
       expect(await htmlLang(page)).toBe('en');
     });
 
-    test('the choice beats the browser language, and the picker is the same on the unlock screen', async ({ page }) => {
+    test('a saved choice applies on a page without a control, and sign-up shows it selected again', async ({ page }) => {
       await page.goto('/sign-up/');
       await page.getByLabel('Language').selectOption('uk');
       await expect(page.getByRole('heading', { level: 1 })).toHaveText(TEXT.uk.signUp);
-      // Another page of the same app, still before sign-in: the language is kept.
+      // Another page before sign-in: the language is kept (FR-009), and it offers no control (FR-002).
       await page.goto('/');
-      await expect(page.getByLabel('Мова')).toHaveValue('uk');
       expect(await htmlLang(page)).toBe('uk');
+      await expect(CONTROL(page)).toHaveCount(0);
+      // Someone who left sign-up without creating an account finds their choice there again.
+      await page.goto('/sign-up/');
+      await expect(page.getByLabel('Мова')).toHaveValue('uk');
+    });
+
+    test('the choice made on sign-up carries through account creation', async ({ page }) => {
+      test.setTimeout(180_000);
+      await page.goto('/sign-up/');
+      await expect(CONTROL(page)).toHaveCount(1);
+      await page.getByLabel('Language').selectOption('uk');
+      await expect(page.getByRole('heading', { level: 1 })).toHaveText(TEXT.uk.signUp);
+      await page.locator('input[type=email]').fill('alice@example.com');
+      const passwords = page.locator('input[type=password]');
+      await passwords.nth(0).fill(PASSWORD);
+      await passwords.nth(1).fill(PASSWORD);
+      await page.locator('input[type=url]').fill('https://relay.example.com');
+      await page.locator('form button[type=submit]').click();
+      await page.getByTestId('secret-key').waitFor({ timeout: 60_000 });
+      // The Secret Key step is in the chosen language and has no control of its own.
+      await expect(page.getByRole('heading', { level: 1 })).toHaveText('Збережіть свій Секретний ключ');
+      await expect(CONTROL(page)).toHaveCount(0);
+      await page.locator('[role=checkbox]').first().check();
+      await page.locator('main button:not([disabled])').last().click();
+      await expect(page.getByTestId('current-fold').first()).toHaveText(TEXT.uk.starterFold, { timeout: 30_000 });
     });
 
     test('in Settings after sign-in: the choice is remembered, and Automatic goes back to the browser', async ({ page }) => {
@@ -148,9 +190,36 @@ test.describe('@language', () => {
       await page.getByLabel('Language').selectOption('uk');
       await expect(page.locator('h1').first()).toHaveText('Вигляд', { timeout: 1_000 });
       await page.reload();
-      // Reloading locks the app; the language is kept on the unlock screen.
+      // Reloading locks the app; the unlock page keeps the language and offers no way to change it (contract rule 4).
       expect(await htmlLang(page)).toBe('uk');
-      await expect(page.getByLabel('Мова')).toHaveValue('uk');
+      await expect(CONTROL(page)).toHaveCount(0);
+    });
+
+    test('after sign-in only Settings → Appearance offers the control', async ({ page }) => {
+      test.setTimeout(180_000);
+      await page.goto('/sign-up/');
+      await signUp(page, TEXT.en.starterFold);
+      for (const screen of ['Overview', 'Transactions', 'Accounts', 'Budgets', 'Goals', 'Schedules', 'Settings', 'Categories', 'Folds', 'Data', 'Devices', 'Advanced'] as const) {
+        await go(page, screen);
+        await expect(page.locator('h1').first()).toBeVisible();
+        await expect(CONTROL(page), screen).toHaveCount(0);
+      }
+      // A dialog and the add sheet offer none either.
+      await go(page, 'Accounts');
+      await page.locator('main h1').locator('xpath=..').getByRole('button').first().click();
+      await page.getByRole('dialog').waitFor({ state: 'attached' });
+      await expect(CONTROL(page)).toHaveCount(0);
+      await page.keyboard.press('Escape');
+      await page.getByRole('dialog').waitFor({ state: 'detached', timeout: 10_000 });
+      await go(page, 'Overview');
+      await page.locator('nav button:not([aria-haspopup]):visible').first().click();
+      await page.getByRole('dialog').waitFor({ state: 'attached' });
+      await expect(CONTROL(page)).toHaveCount(0);
+      await page.keyboard.press('Escape');
+      await page.getByRole('dialog').waitFor({ state: 'detached', timeout: 10_000 });
+      // Appearance has exactly one.
+      await go(page, 'Appearance');
+      await expect(CONTROL(page)).toHaveCount(1);
     });
 
     test.describe('a Polish browser', () => {
