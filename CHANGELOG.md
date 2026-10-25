@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.2](https://github.com/cashfold/cashfold/compare/v0.1.1...v0.1.2) (2026-10-25)
+
+
+### Bug Fixes
+
+* **desktop:** build the Linux packages and name them as the release expects ([#31](https://github.com/cashfold/cashfold/issues/31)) ([fc8cf4a](https://github.com/cashfold/cashfold/commit/fc8cf4af77b81d52e694ff3fe5b645373aac1286))
+
 ## [0.1.1](https://github.com/cashfold/cashfold/compare/v0.1.0...v0.1.1) (2026-10-24)
 
 
