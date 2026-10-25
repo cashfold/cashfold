@@ -142,3 +142,48 @@ describe('formatRate', () => {
     expect(parseRateText(formatRate(123_456_789_012n, 'en'), 'en')).toEqual({ ok: true, value: 123_456_789_012n });
   });
 });
+
+describe('amounts typed in Polish and Ukrainian (FR-007)', () => {
+  const TWO_DECIMALS = 123_456n;
+
+  it.each(['pl', 'uk'])('%s: accepts an ordinary space, a no-break space and a narrow no-break space as the thousands mark', (locale) => {
+    for (const text of ['1 234,56', '1\u00A0234,56', '1\u202F234,56', '1234,56']) {
+      expect(parseMoney(text, 'USD', locale), text).toEqual({ ok: true, value: TWO_DECIMALS });
+    }
+  });
+
+  it.each(['pl', 'uk'])('%s: accepts a dot as the decimal mark when it cannot be a thousands mark', (locale) => {
+    expect(parseMoney('1234.56', 'USD', locale)).toEqual({ ok: true, value: TWO_DECIMALS });
+    expect(parseMoney('1 234.56', 'USD', locale)).toEqual({ ok: true, value: TWO_DECIMALS });
+    expect(parseMoney('-0.05', 'USD', locale)).toEqual({ ok: true, value: -5n });
+  });
+
+  it.each(['pl', 'uk'])('%s: rejects an entry that mixes a dot and a comma', (locale) => {
+    expect(parseMoney('1.234,56', 'USD', locale).ok).toBe(false);
+    expect(parseMoney('1,234.56', 'USD', locale).ok).toBe(false);
+  });
+
+  it.each(['pl', 'uk'])('%s: stays exact beyond 2^53', (locale) => {
+    expect(parseMoney('90 071 992 547 409,93', 'USD', locale)).toEqual({ ok: true, value: 9_007_199_254_740_993n });
+    expect(parseMoney('90071992547409.93', 'USD', locale)).toEqual({ ok: true, value: 9_007_199_254_740_993n });
+  });
+
+  it.each(['pl', 'uk'])('%s: still rejects text that is not an amount and too many decimals', (locale) => {
+    expect(parseMoney('12 3 4,56', 'USD', locale).ok).toBe(false);
+    expect(parseMoney('abc', 'USD', locale).ok).toBe(false);
+    expect(parseMoney('1,234', 'USD', locale).ok).toBe(false);
+  });
+
+  it('prints with a comma and a no-break space and reads its own output back', () => {
+    for (const locale of ['pl', 'uk']) {
+      const printed = formatPlain(9_007_199_254_740_993n, 'USD', locale);
+      expect(printed).toMatch(/^[0-9\u00A0\u202F ]+,93$/u);
+      expect(parseMoney(printed, 'USD', locale)).toEqual({ ok: true, value: 9_007_199_254_740_993n });
+    }
+  });
+
+  it('leaves English unchanged: a comma is a thousands mark and a dot the decimal mark', () => {
+    expect(parseMoney('1,234.56', 'USD', 'en')).toEqual({ ok: true, value: TWO_DECIMALS });
+    expect(parseMoney('1 234.56', 'USD', 'en').ok).toBe(false);
+  });
+});
