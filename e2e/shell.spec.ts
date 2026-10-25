@@ -28,6 +28,13 @@ test('language and direction follow the browser locale, and layout mirrors logic
   const rtl = info.project.name === 'rtl';
   await expect(page.locator('html')).toHaveAttribute('dir', rtl ? 'rtl' : 'ltr');
   await expect(page.locator('html')).toHaveAttribute('lang', rtl ? 'ar' : 'en');
+  // The language picker closes the page, at the inline end: right in LTR, left in RTL.
+  const picker = await page.getByLabel('Language').boundingBox();
+  const viewport = page.viewportSize()!;
+  expect(picker).not.toBeNull();
+  const centre = picker!.x + picker!.width / 2;
+  if (rtl) expect(centre).toBeLessThan(viewport.width / 2);
+  else expect(centre).toBeGreaterThan(viewport.width / 2);
   expect(browserName).toBeTruthy();
 });
 

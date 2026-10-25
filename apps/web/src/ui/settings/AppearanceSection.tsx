@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { LanguagePicker } from '../i18n/LanguagePicker';
 import { useI18n } from '../i18n/I18nProvider';
 import { Button, ConfirmDialog, Description, Field, Fieldset, Label, Legend, Radio, RadioField, RadioGroup, Switch, SwitchField, SwitchGroup } from '../kit';
 import { optionalFieldsOf } from '../prefs/fields';
@@ -21,6 +22,12 @@ export function AppearanceSection() {
   return (
     <div className="space-y-10">
       <h1 className="text-2xl font-semibold">{t('settings.group.appearance')}</h1>
+
+      <Field>
+        <Label>{t('language.label')}</Label>
+        <Description>{t('settings.appearance.language.description')}</Description>
+        <LanguagePicker className="mt-3 max-w-xs" />
+      </Field>
 
       <Fieldset>
         <Legend>{t('settings.appearance.theme')}</Legend>

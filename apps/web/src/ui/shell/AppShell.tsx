@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useRef, type ReactNode } from 'react';
 import { useCore } from '../core/CoreProvider';
+import { LanguagePicker } from '../i18n/LanguagePicker';
 import { useI18n } from '../i18n/I18nProvider';
 import { LedgerProvider, useLedger } from '../ledger/LedgerProvider';
 import { ArrowsRightLeftIcon, AuthLayout, BanknotesIcon, InformationCircleIcon, Button, Cog6ToothIcon, FlagIcon, HomeIcon, LockClosedIcon, PlusIcon,
@@ -146,7 +147,7 @@ function UnlockedShell({ children }: { children: ReactNode }) {
 function PlainShell({ children }: { children: ReactNode }) {
   const core = useCore();
   return (
-    <AuthLayout><div inert={core.covered}><Banners />{children}</div></AuthLayout>
+    <AuthLayout footer={<LanguagePicker id="language-footer" className="max-w-56" />}><div inert={core.covered}><Banners />{children}</div></AuthLayout>
   );
 }
 
