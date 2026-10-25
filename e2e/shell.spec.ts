@@ -5,8 +5,7 @@ import { expect, test } from './fixtures/index.js';
 
 test('shell has landmarks, a working skip link and no axe violations', async ({ page, expectNoA11yViolations }) => {
   await page.goto('/');
-  // Before sign-in there is no navigation: a banner with the brand, then the page.
-  await expect(page.getByRole('banner')).toBeVisible();
+  // Before sign-in there is no navigation or header, just the page.
   await expect(page.getByRole('main')).toBeVisible();
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
   await page.keyboard.press('Tab');
@@ -29,13 +28,6 @@ test('language and direction follow the browser locale, and layout mirrors logic
   const rtl = info.project.name === 'rtl';
   await expect(page.locator('html')).toHaveAttribute('dir', rtl ? 'rtl' : 'ltr');
   await expect(page.locator('html')).toHaveAttribute('lang', rtl ? 'ar' : 'en');
-  // The brand link comes first in the DOM; it must sit at the inline start: left in LTR, right in RTL.
-  const brand = await page.getByRole('link', { name: 'Cashfold' }).boundingBox();
-  const viewport = page.viewportSize()!;
-  expect(brand).not.toBeNull();
-  const centre = brand!.x + brand!.width / 2;
-  if (rtl) expect(centre).toBeGreaterThan(viewport.width / 2);
-  else expect(centre).toBeLessThan(viewport.width / 2);
   expect(browserName).toBeTruthy();
 });
 

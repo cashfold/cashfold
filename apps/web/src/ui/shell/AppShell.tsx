@@ -142,17 +142,11 @@ function UnlockedShell({ children }: { children: ReactNode }) {
   );
 }
 
-/** Before sign-in there is no navigation: a plain header with the brand, then the page (sign-up, unlock, recover, add device). */
+/** Before sign-in there is no navigation or header: just the page (sign-up, unlock, recover, add device) on the auth layout. */
 function PlainShell({ children }: { children: ReactNode }) {
-  const { t } = useI18n();
   const core = useCore();
   return (
-    <>
-      <header className="flex items-center gap-x-6 border-b border-(--border-strong) bg-(--surface) px-4 py-3">
-        <Link href="/" className="text-lg font-semibold">{t('app.name')}</Link>
-      </header>
-      <AuthLayout><div inert={core.covered}><Banners />{children}</div></AuthLayout>
-    </>
+    <AuthLayout><div inert={core.covered}><Banners />{children}</div></AuthLayout>
   );
 }
 
