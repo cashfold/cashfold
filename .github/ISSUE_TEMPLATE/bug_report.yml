@@ -1,0 +1,74 @@
+name: Bug report
+description: Something does not work as it should.
+labels: ['bug']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time. Please search the [open issues](https://github.com/cashfold/cashfold/issues) first.
+
+        **Do not paste your password, Secret Key, Recovery Key or Emergency Kit anywhere in this issue.**
+        If you found a security problem, do not file it here: [report it privately](https://github.com/cashfold/cashfold/security/advisories/new).
+  - type: dropdown
+    id: area
+    attributes:
+      label: Where does it happen?
+      options:
+        - Web app
+        - Desktop app (Windows)
+        - Desktop app (macOS)
+        - Desktop app (Linux)
+        - Relay server
+        - Documentation
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Shown under Settings → Advanced → About. For the relay, the image or commit you run.
+      placeholder: '0.1.0'
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: System and browser
+      description: Operating system and version, and the browser if it happens in the web app.
+      placeholder: 'macOS 15.1, Safari 18'
+    validations:
+      required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: Say what you saw, and what you expected to see instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: The smallest set of steps that makes it happen every time, or how often it happens.
+      placeholder: |
+        1. Open …
+        2. Choose …
+        3. See …
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or screenshots
+      description: Optional. Remove anything personal first; app logs never contain your data, but check before you paste.
+      render: shell
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before you submit
+      options:
+        - label: I searched the existing issues and this is not a duplicate.
+          required: true
+        - label: This is not a security vulnerability, and I have not included any secret.
+          required: true

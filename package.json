@@ -11,6 +11,8 @@
     "build": "turbo run build",
     "typecheck": "turbo run typecheck",
     "lint": "eslint .",
+    "format:docs": "prettier --write \"**/*.md\" \".github/**/*.md\"",
+    "check:docs": "prettier --check \"**/*.md\" \".github/**/*.md\"",
     "test": "vitest run",
     "test:e2e": "playwright test -c e2e/playwright.config.ts",
     "check:bundle": "node scripts/check-bundle-size.mjs",

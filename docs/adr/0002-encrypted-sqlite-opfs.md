@@ -20,23 +20,23 @@ Use **SQLite3 Multiple Ciphers 2.3.5 (SQLite 3.53.2), upstream WASM build**, ove
 
 Measured in headless Chromium on Apple silicon (not a phone; re-measure on target devices in M7):
 
-| Check | Result |
-|---|---|
-| Plaintext in the database file, its rollback journal, or any pool file, including mid-transaction | none; no `SQLite format 3` header |
-| Wrong key | `SQLITE_NOTADB` on first read (`DatabaseKeyError`) |
-| One flipped bit in a data page | `SQLITE_CORRUPT` |
-| A page copied over another page (relocation) | `SQLITE_CORRUPT` |
-| Values above 2^53 (2^62+1, i64 min/max) | exact round trip; `SUM` exact; `SUM` overflow raises instead of wrapping |
-| Rollback of earlier page images | **not detected** (see Risks) |
+| Check                                                                                             | Result                                                                   |
+| ------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| Plaintext in the database file, its rollback journal, or any pool file, including mid-transaction | none; no `SQLite format 3` header                                        |
+| Wrong key                                                                                         | `SQLITE_NOTADB` on first read (`DatabaseKeyError`)                       |
+| One flipped bit in a data page                                                                    | `SQLITE_CORRUPT`                                                         |
+| A page copied over another page (relocation)                                                      | `SQLITE_CORRUPT`                                                         |
+| Values above 2^53 (2^62+1, i64 min/max)                                                           | exact round trip; `SUM` exact; `SUM` overflow raises instead of wrapping |
+| Rollback of earlier page images                                                                   | **not detected** (see Risks)                                             |
 
 Benchmark, 50,000 rows with two indexes, single-transaction load, page size 4096:
 
-| Cipher | Load | Month aggregate | Balance | 50-row page | One-row commit | Reopen |
-|---|---|---|---|---|---|---|
-| none | 270 ms | 3.1 ms | 1.6 ms | 0.3 ms | 2.9 ms | 15 ms |
-| chacha20 | 277 ms | 3.1 ms | 1.7 ms | 0.4 ms | 2.9 ms | 32 ms |
-| aes256cbc (HMAC) | 289 ms | 3.1 ms | 1.7 ms | 0.4 ms | 3.1 ms | 19 ms |
-| aegis | 286 ms | 3.1 ms | 1.7 ms | 0.4 ms | 3.0 ms | 31 ms |
+| Cipher           | Load   | Month aggregate | Balance | 50-row page | One-row commit | Reopen |
+| ---------------- | ------ | --------------- | ------- | ----------- | -------------- | ------ |
+| none             | 270 ms | 3.1 ms          | 1.6 ms  | 0.3 ms      | 2.9 ms         | 15 ms  |
+| chacha20         | 277 ms | 3.1 ms          | 1.7 ms  | 0.4 ms      | 2.9 ms         | 32 ms  |
+| aes256cbc (HMAC) | 289 ms | 3.1 ms          | 1.7 ms  | 0.4 ms      | 3.1 ms         | 19 ms  |
+| aegis            | 286 ms | 3.1 ms          | 1.7 ms  | 0.4 ms      | 3.0 ms         | 31 ms  |
 
 Encryption overhead is negligible next to the budgets (dashboard in 2 s, add-transaction in 200 ms), so the cipher was chosen on properties, not speed. `chacha20` is the upstream default, an AEAD, and avoids a CBC construction. `journal_mode` TRUNCATE gave no measurable gain over DELETE.
 

@@ -9,12 +9,12 @@ Signing in uses SRP-6a over the RFC 3526 4096-bit group (FR-013). The client com
 
 Candidates considered:
 
-| Option | Why not |
-|---|---|
-| Plain `bigint` | Variable-time. |
-| A JavaScript big-integer library that claims constant time | JIT and garbage collection make constant time in JavaScript unreliable to claim, whatever the library. |
-| A WebAssembly build of OpenSSL / libsodium | The 4096-bit modular arithmetic we need is not exposed by libsodium; OpenSSL's `BN` is large (hundreds of KB) and not constant-time by default. |
-| `crypto-bigint` (Rust) compiled to WebAssembly | Audited, constant-time `pow_bounded_exp` / Montgomery arithmetic, no allocation tricks, small once only the needed functions are exported. |
+| Option                                                     | Why not                                                                                                                                         |
+| ---------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| Plain `bigint`                                             | Variable-time.                                                                                                                                  |
+| A JavaScript big-integer library that claims constant time | JIT and garbage collection make constant time in JavaScript unreliable to claim, whatever the library.                                          |
+| A WebAssembly build of OpenSSL / libsodium                 | The 4096-bit modular arithmetic we need is not exposed by libsodium; OpenSSL's `BN` is large (hundreds of KB) and not constant-time by default. |
+| `crypto-bigint` (Rust) compiled to WebAssembly             | Audited, constant-time `pow_bounded_exp` / Montgomery arithmetic, no allocation tricks, small once only the needed functions are exported.      |
 
 ## Decision
 

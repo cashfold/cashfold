@@ -1,0 +1,4 @@
+{
+  "proseWrap": "preserve",
+  "overrides": [{ "files": "*.md", "options": { "printWidth": 100 } }]
+}
