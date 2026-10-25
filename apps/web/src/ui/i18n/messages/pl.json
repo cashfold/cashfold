@@ -1427,5 +1427,15 @@
   "settings.appearance.language.description": "Wybierz język aplikacji. Dotyczy to tylko tego urządzenia.",
   "unit.kb": "{value} KB",
   "unit.mb": "{value} MB",
-  "unit.gb": "{value} GB"
+  "unit.gb": "{value} GB",
+  "settings.group.desktop": "Aplikacja na komputerze",
+  "settings.group.desktop.description": "Jak aplikacja działa na tym komputerze: blokowanie i okna.",
+  "settings.desktop.hideOnBlur": "Ukrywaj zawartość, gdy przełączę się na inne okno",
+  "settings.desktop.hideOnBlur.description": "Domyślnie wyłączone: po przełączeniu okien dane zostają na ekranie. Włącz, jeśli podczas pracy ktoś może widzieć ekran. Opcja tylko ukrywa zawartość; aby ją przywrócić, nie trzeba odblokowywać.",
+  "settings.desktop.locks.title": "Co blokuje aplikację na tym komputerze",
+  "settings.desktop.locks.description": "Aplikacja blokuje się i niczego nie pokazuje, gdy ten komputer zgłosi którekolwiek z poniższych:",
+  "settings.desktop.locks.screen-lock": "Zablokowanie ekranu",
+  "settings.desktop.locks.suspend": "Przejście komputera w stan uśpienia",
+  "settings.desktop.locks.idle-state": "Zgłoszenie przez system, że jest zablokowany",
+  "settings.desktop.locks.idle": "Obowiązuje też Twój czas bezczynności — dla okna zminimalizowanego lub ukrytego tak samo jak dla widocznego."
 }

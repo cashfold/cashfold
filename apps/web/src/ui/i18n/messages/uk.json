@@ -1427,5 +1427,15 @@
   "settings.appearance.language.description": "Оберіть мову застосунку. Це стосується лише цього пристрою.",
   "unit.kb": "{value} КБ",
   "unit.mb": "{value} МБ",
-  "unit.gb": "{value} ГБ"
+  "unit.gb": "{value} ГБ",
+  "settings.group.desktop": "Настільний застосунок",
+  "settings.group.desktop.description": "Як застосунок поводиться на цьому комп’ютері: блокування та вікна.",
+  "settings.desktop.hideOnBlur": "Ховати вміст, коли я перемикаюся на інше вікно",
+  "settings.desktop.hideOnBlur.description": "За замовчуванням вимкнено: під час перемикання вікон дані залишаються на екрані. Увімкніть, якщо під час роботи ваш екран можуть бачити інші. Це лише ховає вміст; щоб повернути його, розблоковувати не потрібно.",
+  "settings.desktop.locks.title": "Що блокує застосунок на цьому комп’ютері",
+  "settings.desktop.locks.description": "Застосунок блокується й нічого не показує, коли цей комп’ютер повідомляє про будь-що з такого:",
+  "settings.desktop.locks.screen-lock": "Блокування екрана",
+  "settings.desktop.locks.suspend": "Перехід комп’ютера в режим сну",
+  "settings.desktop.locks.idle-state": "Повідомлення системи про те, що вона заблокована",
+  "settings.desktop.locks.idle": "Також діє ваш час бездіяльності — і для згорнутого чи схованого вікна, і для видимого."
 }

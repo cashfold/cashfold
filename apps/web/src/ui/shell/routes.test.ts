@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { PRIMARY_SECTIONS, REDIRECTS, ROUTES, SETTINGS_GROUPS, matchSection, redirectTarget } from './routes';
+import { DESKTOP_SETTINGS_GROUP, PRIMARY_SECTIONS, REDIRECTS, ROUTES, SETTINGS_GROUPS, matchSection, redirectTarget } from './routes';
 
 describe('route table (contracts/routes.md)', () => {
   it('has exactly five primary sections, in order', () => {
@@ -16,6 +16,13 @@ describe('route table (contracts/routes.md)', () => {
       expect(g.labelKey).toMatch(/^settings\.group\./);
       expect(g.descriptionKey).toBe(`${g.labelKey}.description`);
     }
+  });
+
+  it('has one more group only the desktop app shows, outside the seven', () => {
+    expect(DESKTOP_SETTINGS_GROUP.href).toBe('/settings/desktop/');
+    expect(DESKTOP_SETTINGS_GROUP.labelKey).toBe('settings.group.desktop');
+    expect(DESKTOP_SETTINGS_GROUP.descriptionKey).toBe('settings.group.desktop.description');
+    expect(SETTINGS_GROUPS.some((g) => g.id === 'desktop')).toBe(false);
   });
 
   it('ends every route with a slash (the static export uses trailing slashes)', () => {
