@@ -2,12 +2,27 @@ import {
   AboutInfoSchema,
   AutoCheckRequestSchema,
   AutoCheckResponseSchema,
+  BadgeRequestSchema,
   CHANNELS,
   LanguageRequestSchema,
+  PopupMenuRequestSchema,
+  PopupMenuResponseSchema,
+  RecentFoldsRequestSchema,
+  SessionReportSchema,
+  SettingsResponseSchema,
+  SettingsSetResponseSchema,
+  SettingsUpdateSchema,
+  ThemeRequestSchema,
   UpdateStateSchema,
   VoidResponseSchema,
   type AboutInfo,
+  type PopupMenuRequest,
+  type RecentFoldsRequest,
+  type SettingsResponse,
+  type SettingsSetResponse,
+  type SettingsUpdate,
   type ShellLanguage,
+  type ThemeRequest,
   type UpdateState,
 } from '@cashfold/platform';
 import type { z } from 'zod';
@@ -40,6 +55,17 @@ export interface IpcHandlers {
   openReleasePage(): Promise<void>;
   /** Reads the automatic update check setting, or stores it when given a value; returns the setting. */
   autoCheck(set?: boolean): boolean;
+  /** The stored desktop preferences and what this computer can do. */
+  settings(): SettingsResponse;
+  /** Stores a change (refusing `background` where there is no status item) and applies what it can; answers with the result. */
+  settingsSet(update: SettingsUpdate): Promise<SettingsSetResponse> | SettingsSetResponse;
+  setTheme(theme: ThemeRequest['theme']): void;
+  /** The page locked or unlocked: surfaces that show app data clear on `locked`, queued items are delivered on `unlocked`. */
+  reportSession(state: 'locked' | 'unlocked'): void;
+  setBadge(count: number): void;
+  setRecentFolds(folds: RecentFoldsRequest['folds']): void;
+  popupMenu(items: PopupMenuRequest['items']): Promise<string | null>;
+  showWindow(): void;
 }
 
 const APP_PAGE = /^app:\/\/cashfold(?:[/?#]|$)/;
@@ -95,6 +121,18 @@ export function registerIpc({ ipcMain, log, handlers, extraOrigins = [] }: Regis
     });
   }
 
+  /** One required argument, checked against a schema. */
+  const one =
+    <T>(schema: z.ZodType<T>) =>
+    (args: readonly unknown[]): T | undefined => {
+      if (args.length !== 1) return undefined;
+      const parsed = schema.safeParse(args[0]);
+      return parsed.success ? parsed.data : undefined;
+    };
+  // The last state the page reported. Nothing is decided on it that matters for secrecy (the shell holds none); it only keeps the shell's own
+  // surfaces, such as the recent Folds list, from showing names while the page is locked or has not said.
+  let session: 'locked' | 'unlocked' = 'locked';
+
   const none = (args: readonly unknown[]): [] | undefined => (args.length === 0 ? [] : undefined);
 
   serve(CHANNELS.about, none, AboutInfoSchema, () => handlers.about());
@@ -124,4 +162,21 @@ export function registerIpc({ ipcMain, log, handlers, extraOrigins = [] }: Regis
     AutoCheckResponseSchema,
     (request) => handlers.autoCheck(request.set),
   );
+  serve(CHANNELS.settings, none, SettingsResponseSchema, () => handlers.settings());
+  serve(CHANNELS.settingsSet, one(SettingsUpdateSchema), SettingsSetResponseSchema, (update) => handlers.settingsSet(update));
+  serve(CHANNELS.theme, one(ThemeRequestSchema), VoidResponseSchema, (request) => handlers.setTheme(request.theme));
+  serve(CHANNELS.session, one(SessionReportSchema), VoidResponseSchema, (report) => {
+    session = report.state;
+    handlers.reportSession(report.state);
+  });
+  serve(CHANNELS.badge, one(BadgeRequestSchema), VoidResponseSchema, (request) => handlers.setBadge(session === 'unlocked' ? request.count : 0));
+  serve(CHANNELS.recentFolds, one(RecentFoldsRequestSchema), VoidResponseSchema, (request) => {
+    if (session !== 'unlocked') {
+      handlers.setRecentFolds([]);
+      throw new Error('locked');
+    }
+    handlers.setRecentFolds(request.folds);
+  });
+  serve(CHANNELS.popupMenu, one(PopupMenuRequestSchema), PopupMenuResponseSchema, async (request) => ({ id: await handlers.popupMenu(request.items) }));
+  serve(CHANNELS.windowShow, none, VoidResponseSchema, () => handlers.showWindow());
 }

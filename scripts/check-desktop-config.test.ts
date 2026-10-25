@@ -90,6 +90,16 @@ describe('the desktop configuration check', () => {
       expect(await checkDesktopConfig({ root, release: true })).toEqual([expect.stringContaining('test feed')]);
     });
 
+    it('refuses a bundle that carries the packaged-test hooks, and a build made with them', async () => {
+      const root = fixture({ identity: { updatePublicKeys: [KEY] } });
+      mkdirSync(join(root, 'apps/desktop/dist/main'), { recursive: true });
+      writeFileSync(join(root, 'apps/desktop/dist/main/index.cjs'), "globalThis.__cashfoldTest = {};\n");
+      expect(await checkDesktopConfig({ root, release: true })).toEqual([expect.stringContaining('test hooks')]);
+      writeFileSync(join(root, 'apps/desktop/dist/main/index.cjs'), '// clean\n');
+      writeFileSync(join(root, 'apps/desktop/dist/build-info.json'), JSON.stringify({ testFeed: false, testHooks: true }));
+      expect(await checkDesktopConfig({ root, release: true })).toEqual([expect.stringContaining('test hooks')]);
+    });
+
     it('refuses a release made with the test-build switch (the inspector fuse stays on)', async () => {
       const problems = await checkDesktopConfig({ root: fixture({ identity: { updatePublicKeys: [KEY] } }), release: true, env: { CASHFOLD_TEST_BUILD: '1' } });
       expect(problems).toEqual([expect.stringContaining('CASHFOLD_TEST_BUILD')]);

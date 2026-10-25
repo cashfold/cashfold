@@ -1,12 +1,14 @@
 import { join } from 'node:path';
 import { BrowserWindow, type BrowserWindowConstructorOptions } from 'electron';
 import { APP_NAME, APP_ORIGIN } from './identity';
+import type { BackgroundMode } from './background';
 import type { DesktopStateStore } from './desktop-state';
 import type { Logger } from './log';
 import { lockDownContents } from './security';
 
 export interface WindowDeps {
   readonly store: DesktopStateStore;
+  readonly background: BackgroundMode;
   readonly log: Logger;
   readonly openExternal: (url: string) => Promise<void>;
   /** Only in an unpackaged run: a dev server to load instead of the packaged export. */
@@ -33,6 +35,8 @@ export function createMainWindow(deps: WindowDeps): BrowserWindow {
       webSecurity: true,
       allowRunningInsecureContent: false,
       spellcheck: true,
+      // A hidden window must keep its timers on time: the session's idle check runs in the page, and a throttled page would lock late.
+      backgroundThrottling: false,
     },
   };
   const win = new BrowserWindow(options);
@@ -48,7 +52,10 @@ export function createMainWindow(deps: WindowDeps): BrowserWindow {
   win.on('move', remember);
   win.on('maximize', () => deps.store.update({ maximized: true }));
   win.on('unmaximize', () => deps.store.update({ maximized: false }));
-  win.on('close', () => deps.store.flush());
+  win.on('close', (event) => {
+    deps.background.handleClose(event, win);
+    deps.store.flush();
+  });
 
   const devOrigin = deps.devUrl === undefined ? [] : [new URL(deps.devUrl).origin];
   lockDownContents(win.webContents, { openExternal: deps.openExternal, log: deps.log }, devOrigin);

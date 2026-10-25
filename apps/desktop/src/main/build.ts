@@ -11,3 +11,9 @@ export const TEST_FEED_ENABLED: boolean = typeof __CASHFOLD_TEST_FEED_ENABLED__ 
 
 /** The release version this build was made for, or undefined when running from source. */
 export const BUILD_VERSION: string | undefined = typeof __CASHFOLD_VERSION__ === 'undefined' ? undefined : __CASHFOLD_VERSION__;
+
+/**
+ * True only for the packaged-test build (CASHFOLD_TEST_BUILD when building): it lets the packaged tests read the shell's models and send it
+ * simulated system events. A compile-time constant, not a runtime variable, so a release has none of that code (checked by check-desktop-config).
+ */
+export const TEST_HOOKS_ENABLED: boolean = typeof __CASHFOLD_TEST_HOOKS__ === 'undefined' ? false : __CASHFOLD_TEST_HOOKS__;

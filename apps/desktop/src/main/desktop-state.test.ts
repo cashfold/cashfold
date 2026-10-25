@@ -13,12 +13,12 @@ describe('sanitising the saved window state', () => {
   });
 
   it('has sensible defaults: a window that fits, not maximised, automatic update checks on', () => {
-    expect(DEFAULT_DESKTOP_STATE).toEqual({ width: 1280, height: 800, maximized: false, autoCheck: true });
+    expect(DEFAULT_DESKTOP_STATE).toMatchObject({ width: 1280, height: 800, maximized: false, autoCheck: true, hideOnBlur: false, startAtLogin: false, theme: 'system' });
   });
 
   it('keeps good values', () => {
     const raw = { x: 100, y: 50, width: 1000, height: 700, maximized: true, lastCheckedAt: '2026-10-22T10:00:00.000Z', autoCheck: false };
-    expect(sanitiseDesktopState(raw, [SCREEN])).toEqual(raw);
+    expect(sanitiseDesktopState(raw, [SCREEN])).toMatchObject(raw);
   });
 
   it('drops non-finite and non-integer numbers', () => {
@@ -81,7 +81,7 @@ describe('sanitising the saved window state', () => {
   it('drops unknown keys, including dangerous ones', () => {
     const raw = JSON.parse('{"width":900,"height":700,"extra":1,"__proto__":{"polluted":true},"constructor":"x"}') as unknown;
     const state = sanitiseDesktopState(raw, [SCREEN]);
-    expect(Object.keys(state).sort()).toEqual(['autoCheck', 'height', 'maximized', 'width']);
+    expect(Object.keys(state).sort()).toEqual(['autoCheck', 'closeBehavior', 'height', 'hideOnBlur', 'maximized', 'startAtLogin', 'theme', 'width']);
     expect(({} as Record<string, unknown>)['polluted']).toBeUndefined();
   });
 });

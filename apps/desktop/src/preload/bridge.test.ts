@@ -40,7 +40,27 @@ describe('what the page can reach', () => {
     expect(name).toBe('cashfoldDesktop');
     expect(Object.isFrozen(api)).toBe(true);
     expect(Object.isFrozen(api['updates'])).toBe(true);
-    expect(Object.keys(api).sort()).toEqual(['about', 'revealDataFolder', 'setLanguage', 'updates']);
+    expect(Object.isFrozen(api['settings'])).toBe(true);
+    expect(Object.keys(api).sort()).toEqual([
+      'about',
+      'onFrameState',
+      'onIncoming',
+      'onMenuAction',
+      'onSettingsChanged',
+      'onSystemLock',
+      'platform',
+      'popupMenu',
+      'reportSession',
+      'revealDataFolder',
+      'setBadge',
+      'setLanguage',
+      'setRecentFolds',
+      'setTheme',
+      'settings',
+      'showWindow',
+      'updates',
+    ]);
+    expect(Object.keys(api['settings'] as object).sort()).toEqual(['get', 'set']);
     expect(Object.keys(api['updates'] as object).sort()).toEqual(['autoCheck', 'check', 'download', 'install', 'onChange', 'openReleasePage', 'setAutoCheck', 'state']);
   });
 
@@ -49,7 +69,7 @@ describe('what the page can reach', () => {
     const exposeInMainWorld = vi.fn();
     installBridge({ exposeInMainWorld }, ipc);
     const api = exposeInMainWorld.mock.calls[0]![1] as Record<string, unknown>;
-    const reachable = JSON.stringify(Object.keys(api)) + JSON.stringify(Object.keys(api['updates'] as object));
+    const reachable = JSON.stringify(Object.keys(api)) + JSON.stringify(Object.keys(api['updates'] as object)) + JSON.stringify(Object.keys(api['settings'] as object));
     for (const forbidden of ['invoke', 'send', 'sendSync', 'ipcRenderer', 'removeListener', 'on']) expect(reachable).not.toContain(`"${forbidden}"`);
     for (const value of [...Object.values(api), ...Object.values(api['updates'] as object)]) expect(value).not.toBe(ipc);
   });
@@ -95,6 +115,99 @@ describe('calls', () => {
   it('rejects a void call that answers with something', async () => {
     const { ipc } = fakeIpc({ [CHANNELS.updateInstall]: 'surprise' });
     await expect(createBridge(ipc).updates.install()).rejects.toThrow();
+  });
+});
+
+describe('desktop experience calls', () => {
+  it('exposes the platform it was started on, and refuses one the app is not built for', () => {
+    expect(createBridge(fakeIpc().ipc, 'darwin').platform).toBe('darwin');
+    expect(() => createBridge(fakeIpc().ipc, 'freebsd')).toThrow();
+  });
+
+  it('reads settings and sends only checked changes', async () => {
+    const settings = { hideOnBlur: false, startAtLogin: false, closeBehavior: 'quit', theme: 'system' };
+    const capabilities = { platform: 'linux', lockEvents: ['suspend'], badge: false, statusItem: false, jumpList: false, dockMenu: false, notifications: 'granted', translucency: 'unavailable', loginItem: true };
+    const { ipc } = fakeIpc({ [CHANNELS.settings]: { settings, capabilities }, [CHANNELS.settingsSet]: { settings, applied: { startAtLogin: true } } });
+    const bridge = createBridge(ipc);
+    await expect(bridge.settings.get()).resolves.toEqual({ settings, capabilities });
+    await bridge.settings.set({ hideOnBlur: true });
+    expect(ipc.invoke).toHaveBeenLastCalledWith(CHANNELS.settingsSet, { hideOnBlur: true });
+    await expect(bridge.settings.set({})).rejects.toThrow();
+    await expect(bridge.settings.set({ theme: 'dark' } as never)).rejects.toThrow();
+    expect(ipc.invoke).toHaveBeenCalledTimes(2);
+  });
+
+  it('refuses a settings answer with an extra key', async () => {
+    const { ipc } = fakeIpc({ [CHANNELS.settings]: { settings: {}, capabilities: {} } });
+    await expect(createBridge(ipc).settings.get()).rejects.toThrow();
+  });
+
+  it('sends theme, session, badge, recent Folds and menu items only when they fit their schema', async () => {
+    const { ipc } = fakeIpc({ [CHANNELS.popupMenu]: { id: 'edit' } });
+    const bridge = createBridge(ipc);
+    await bridge.setTheme('dark');
+    expect(ipc.invoke).toHaveBeenLastCalledWith(CHANNELS.theme, { theme: 'dark' });
+    await bridge.reportSession('locked');
+    expect(ipc.invoke).toHaveBeenLastCalledWith(CHANNELS.session, { state: 'locked' });
+    await bridge.setBadge(7);
+    expect(ipc.invoke).toHaveBeenLastCalledWith(CHANNELS.badge, { count: 7 });
+    await bridge.setRecentFolds([{ id: 'a', name: 'Home' }]);
+    expect(ipc.invoke).toHaveBeenLastCalledWith(CHANNELS.recentFolds, { folds: [{ id: 'a', name: 'Home' }] });
+    await expect(bridge.popupMenu([{ id: 'edit', label: 'Edit' }])).resolves.toBe('edit');
+    const calls = vi.mocked(ipc.invoke).mock.calls.length;
+    await expect(bridge.setTheme('sepia' as never)).rejects.toThrow();
+    await expect(bridge.setBadge(1000)).rejects.toThrow();
+    await expect(bridge.setRecentFolds(Array.from({ length: 6 }, (_, i) => ({ id: `${i}`, name: 'x' })))).rejects.toThrow();
+    await expect(bridge.popupMenu([{ id: 'Edit', label: 'Edit' }])).rejects.toThrow();
+    expect(ipc.invoke).toHaveBeenCalledTimes(calls);
+  });
+
+  it('shows the window with no argument', async () => {
+    const { ipc } = fakeIpc({ [CHANNELS.windowShow]: undefined });
+    await createBridge(ipc).showWindow();
+    expect(ipc.invoke).toHaveBeenCalledWith(CHANNELS.windowShow);
+  });
+});
+
+describe('desktop experience events', () => {
+  it('passes valid events and drops invalid ones, for each event channel', () => {
+    const { ipc, emit } = fakeIpc();
+    const bridge = createBridge(ipc);
+    const lock = vi.fn();
+    const action = vi.fn();
+    const frame = vi.fn();
+    const incoming = vi.fn();
+    const changed = vi.fn();
+    bridge.onSystemLock(lock);
+    bridge.onMenuAction(action);
+    bridge.onFrameState(frame);
+    bridge.onIncoming(incoming);
+    bridge.onSettingsChanged(changed);
+    emit(CHANNELS.systemLock, { reason: 'suspend' });
+    emit(CHANNELS.systemLock, { reason: 'because' });
+    emit(CHANNELS.menuAction, { action: 'new-transaction' });
+    emit(CHANNELS.menuAction, { action: 'format-disk' });
+    emit(CHANNELS.frameState, { fullscreen: true, maximized: false, translucent: false });
+    emit(CHANNELS.frameState, { fullscreen: true });
+    emit(CHANNELS.incoming, { kind: 'link', name: 'l', link: { screen: 'open', target: 'plan' } });
+    emit(CHANNELS.incoming, { kind: 'csv', name: 'a.csv', bytes: 'not bytes' });
+    emit(CHANNELS.settingsChanged, { hideOnBlur: true, startAtLogin: false, closeBehavior: 'quit', theme: 'dark' });
+    emit(CHANNELS.settingsChanged, { hideOnBlur: 'yes' });
+    expect(lock).toHaveBeenCalledOnce();
+    expect(lock).toHaveBeenCalledWith({ reason: 'suspend' });
+    expect(action).toHaveBeenCalledOnce();
+    expect(action).toHaveBeenCalledWith('new-transaction');
+    expect(frame).toHaveBeenCalledOnce();
+    expect(incoming).toHaveBeenCalledOnce();
+    expect(changed).toHaveBeenCalledOnce();
+  });
+
+  it('stops listening when unsubscribed', () => {
+    const { ipc, emit } = fakeIpc();
+    const listener = vi.fn();
+    createBridge(ipc).onSystemLock(listener)();
+    emit(CHANNELS.systemLock, { reason: 'suspend' });
+    expect(listener).not.toHaveBeenCalled();
   });
 });
 

@@ -84,10 +84,34 @@ test('exposes one frozen bridge and nothing else of the shell', async ({ session
       present: typeof bridge === 'object' && bridge !== null,
       frozen: bridge !== undefined && Object.isFrozen(bridge),
       keys: bridge === undefined ? [] : Object.keys(bridge).sort(),
+      settingsKeys: bridge === undefined ? [] : Object.keys((bridge['settings'] ?? {}) as object).sort(),
+      testHooks: typeof (window as unknown as Record<string, unknown>)['__cashfoldTest'],
       electronGlobals: [typeof (window as unknown as Record<string, unknown>)['electron'], typeof (window as unknown as Record<string, unknown>)['ipcRenderer']],
     };
   });
-  expect(shape).toEqual({ present: true, frozen: true, keys: ['about', 'revealDataFolder', 'setLanguage', 'updates'], electronGlobals: ['undefined', 'undefined'] });
+  expect(shape).toEqual({ present: true, frozen: true, keys: [
+      'about',
+      'onFrameState',
+      'onIncoming',
+      'onMenuAction',
+      'onSettingsChanged',
+      'onSystemLock',
+      'platform',
+      'popupMenu',
+      'reportSession',
+      'revealDataFolder',
+      'setBadge',
+      'setLanguage',
+      'setRecentFolds',
+      'setTheme',
+      'settings',
+      'showWindow',
+      'updates',
+    ],
+    settingsKeys: ['get', 'set'],
+    testHooks: 'undefined',
+    electronGlobals: ['undefined', 'undefined'],
+  });
 });
 
 test('grants the page persistent storage and nothing sensitive', async ({ session }) => {

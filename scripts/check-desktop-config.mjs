@@ -45,6 +45,8 @@ export async function checkDesktopConfig({ root, release = false, env = process.
     if (existsSync(info) && readJson(info).testFeed === true) problems.push('apps/desktop/dist was built with --test-feed: a release must not contain the test feed');
     const bundle = join(desktop, 'dist/main/index.cjs');
     if (existsSync(bundle) && readFileSync(bundle, 'utf8').includes('CASHFOLD_TEST_')) problems.push('the main-process bundle contains the test feed switches (CASHFOLD_TEST_…): a release must not');
+    if (existsSync(bundle) && readFileSync(bundle, 'utf8').includes('__cashfoldTest')) problems.push('the main-process bundle contains the packaged-test hooks (__cashfoldTest): a release must not');
+    if (existsSync(info) && readJson(info).testHooks === true) problems.push('apps/desktop/dist was built with the test hooks: a release must not contain them');
   }
   return problems;
 }

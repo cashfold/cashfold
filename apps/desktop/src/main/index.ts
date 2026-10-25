@@ -1,14 +1,18 @@
 import { existsSync } from 'node:fs';
+import { release } from 'node:os';
 import { rm } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
-import { CHANNELS, type ShellLanguage } from '@cashfold/platform';
-import { app, BrowserWindow, dialog, ipcMain, Menu, protocol, screen, session, shell } from 'electron';
+import { CHANNELS, type Capabilities, type DesktopSettings, type ShellLanguage } from '@cashfold/platform';
+import { app, BrowserWindow, dialog, ipcMain, Menu, nativeTheme, Notification, powerMonitor, protocol, screen, session, shell } from 'electron';
 import { autoUpdater } from 'electron-updater';
 import { buildAbout } from './about';
+import { createBackgroundMode } from './background';
 import { BUILD_VERSION, SIGNED, TEST_FEED_ENABLED } from './build';
 import { readBuildInfo } from './build-info';
+import { describeCapabilities, windowsBuildFrom } from './capabilities';
 import { checkDataFolder, problemMessage } from './data-folder';
 import { revealDataFolder } from './data-location';
+import { applySettingsUpdate } from './desktop-settings';
 import { createDesktopStateStore } from './desktop-state';
 import { loadResponseHeaders } from './headers';
 import { registerIpc } from './ipc';
@@ -18,6 +22,8 @@ import { buildMenu } from './menu';
 import { languageFromSystem } from './menu-labels';
 import { registerAppScheme, serveApp } from './protocol';
 import { installSessionPolicy, isAllowedExternalUrl } from './security';
+import { createSystemEvents } from './system-events';
+import { exposeTestHook } from './test-hooks';
 import { createUpdaterService, type UpdaterLike } from './updater';
 import { fetchSmallText, sha512OfFile, verifyDownload } from './update-verify';
 import { createMainWindow } from './window';
@@ -61,22 +67,24 @@ async function main(): Promise<void> {
   };
   const devUrl = app.isPackaged ? undefined : process.env['CASHFOLD_DEV_URL'];
   let mainWindow: BrowserWindow | undefined;
+  // Closing the window hides it instead only when the person has chosen that (not yet offered: the choice arrives with the tray, spec 006 US5).
+  const background = createBackgroundMode({ enabled: () => false });
+  app.on('before-quit', () => background.markQuitting());
 
   app.on('second-instance', () => {
-    if (mainWindow === undefined) return;
-    if (mainWindow.isMinimized()) mainWindow.restore();
-    mainWindow.focus();
+    background.reveal(mainWindow);
   });
   app.on('window-all-closed', () => {
-    if (process.platform !== 'darwin') app.quit();
+    if (background.quitWhenAllClosed(process.platform)) app.quit();
   });
   // The screen module (needed to place the window) only works once the app is ready.
   await app.whenReady();
   const store = createDesktopStateStore(join(userData, 'desktop-state.json'), () => screen.getAllDisplays().map((d) => d.workArea));
   app.on('before-quit', () => store.flush());
-  const openWindow = (): BrowserWindow => createMainWindow({ store, log, openExternal, devUrl });
+  const openWindow = (): BrowserWindow => createMainWindow({ store, background, log, openExternal, devUrl });
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) mainWindow = openWindow();
+    else background.reveal(mainWindow);
   });
   log.info('app.start', { version: app.getVersion(), electron: process.versions.electron, packaged: app.isPackaged });
 
@@ -131,6 +139,36 @@ async function main(): Promise<void> {
   });
   app.on('before-quit', () => updates.stop());
 
+  // What the page last said about its session. A hint: the shell holds nothing sensitive either way.
+  let pageSession: 'locked' | 'unlocked' = 'locked';
+  const systemEvents = createSystemEvents({
+    monitor: powerMonitor,
+    send: (event) => {
+      if (mainWindow === undefined || mainWindow.isDestroyed()) return false;
+      mainWindow.webContents.send(CHANNELS.systemLock, event);
+      return true;
+    },
+    pageLocked: () => pageSession === 'locked',
+  });
+  systemEvents.start();
+  app.on('before-quit', () => systemEvents.stop());
+  exposeTestHook('emitPower', (event: 'lock-screen' | 'suspend' | 'resume') => powerMonitor.emit(event));
+
+  const settingsOf = (): DesktopSettings => {
+    const { hideOnBlur, startAtLogin, closeBehavior, theme } = store.get();
+    return { hideOnBlur, startAtLogin, closeBehavior, theme };
+  };
+  const capabilities = (): Capabilities =>
+    describeCapabilities({
+      platform: process.platform,
+      desktop: process.env['XDG_CURRENT_DESKTOP'],
+      windowsBuild: process.platform === 'win32' ? windowsBuildFrom(release()) : undefined,
+      reducedTransparency: nativeTheme.prefersReducedTransparency,
+      highContrast: nativeTheme.shouldUseHighContrastColors,
+      // Notifications are granted to the app's own page in security.ts once the reminder service arrives (US5).
+      notifications: Notification.isSupported() ? 'denied' : 'unavailable',
+    });
+
   registerIpc({
     ipcMain,
     log,
@@ -149,6 +187,21 @@ async function main(): Promise<void> {
         await openExternal(url);
       },
       autoCheck: (set) => (set === undefined ? updates.autoCheck() : updates.setAutoCheck(set)),
+      settings: () => ({ settings: settingsOf(), capabilities: capabilities() }),
+      settingsSet: (update) => {
+        store.update(applySettingsUpdate(settingsOf(), update, capabilities().statusItem));
+        // Start at login is applied by the launch module (US6); until then nothing is applied.
+        return { settings: settingsOf(), applied: { startAtLogin: false } };
+      },
+      setTheme: (theme) => store.update({ theme }),
+      // The surfaces these feed (badge, tray, recent Folds, context menus) are built in their own stories; until then they are accepted and ignored.
+      reportSession: (state) => {
+        pageSession = state;
+      },
+      setBadge: () => undefined,
+      setRecentFolds: () => undefined,
+      popupMenu: async () => null,
+      showWindow: () => void background.reveal(mainWindow),
     },
   });
 

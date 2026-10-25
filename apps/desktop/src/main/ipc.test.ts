@@ -1,4 +1,4 @@
-import { CHANNELS } from '@cashfold/platform';
+import { CHANNELS, type Capabilities } from '@cashfold/platform';
 import { describe, expect, it, vi } from 'vitest';
 import type { Logger } from './log';
 import { registerIpc, type IpcMainLike, type IpcHandlers } from './ipc';
@@ -16,6 +16,19 @@ const about = {
   dataPath: '/home/someone/.config/Cashfold',
   sourceUrl: 'https://github.com/cashfold/cashfold/tree/v1.2.3',
 } as const;
+
+const settings = { hideOnBlur: false, startAtLogin: false, closeBehavior: 'quit', theme: 'system' } as const;
+const capabilities: Capabilities = {
+  platform: 'linux',
+  lockEvents: ['suspend', 'idle-state'],
+  badge: false,
+  statusItem: true,
+  jumpList: false,
+  dockMenu: false,
+  notifications: 'granted',
+  translucency: 'unavailable',
+  loginItem: true,
+};
 
 type Listener = (event: { senderFrame?: { url: string } | null }, ...args: unknown[]) => unknown;
 
@@ -37,6 +50,14 @@ function setup(overrides: Partial<IpcHandlers> = {}) {
       if (set !== undefined) autoCheck = set;
       return autoCheck;
     }),
+    settings: vi.fn(() => ({ settings, capabilities })),
+    settingsSet: vi.fn((update: object) => ({ settings: { ...settings, ...update }, applied: { startAtLogin: true } })),
+    setTheme: vi.fn(),
+    reportSession: vi.fn(),
+    setBadge: vi.fn(),
+    setRecentFolds: vi.fn(),
+    popupMenu: vi.fn(async () => 'edit'),
+    showWindow: vi.fn(),
     ...overrides,
   };
   registerIpc({ ipcMain, log, handlers: impl });
@@ -52,7 +73,9 @@ function setup(overrides: Partial<IpcHandlers> = {}) {
 describe('registering the channels', () => {
   it('serves the channels of this build and no others', () => {
     const { handlers } = setup();
-    const expected = Object.values(CHANNELS).filter((channel) => channel !== CHANNELS.updateChanged); // the last one is an event to the page, not a call
+    // Events go from the shell to the page; they are not calls.
+    const events: string[] = [CHANNELS.updateChanged, CHANNELS.systemLock, CHANNELS.menuAction, CHANNELS.incoming, CHANNELS.frameState, CHANNELS.settingsChanged];
+    const expected = Object.values(CHANNELS).filter((channel) => !events.includes(channel));
     expect([...handlers.keys()].sort()).toEqual([...expected].sort());
   });
 });
@@ -94,7 +117,7 @@ describe('what may be asked', () => {
   it('refuses every channel to a caller that is not the app, including the update ones', async () => {
     const { call, impl } = setup();
     const stranger = { senderFrame: { url: 'https://example.com/' } };
-    for (const channel of [CHANNELS.updateCheck, CHANNELS.updateDownload, CHANNELS.updateInstall, CHANNELS.updateReleasePage, CHANNELS.updateAutoCheck, CHANNELS.revealDataFolder, CHANNELS.setLanguage]) {
+    for (const channel of [CHANNELS.updateCheck, CHANNELS.updateDownload, CHANNELS.updateInstall, CHANNELS.updateReleasePage, CHANNELS.updateAutoCheck, CHANNELS.revealDataFolder, CHANNELS.setLanguage, CHANNELS.settings, CHANNELS.settingsSet, CHANNELS.theme, CHANNELS.session, CHANNELS.badge, CHANNELS.recentFolds, CHANNELS.popupMenu, CHANNELS.windowShow]) {
       await expect(Promise.resolve().then(() => call(channel, stranger, { language: 'pl' })), channel).rejects.toThrow('refused');
     }
     expect(impl.updateDownload).not.toHaveBeenCalled();
@@ -146,6 +169,84 @@ describe('what may be asked', () => {
       await expect(Promise.resolve().then(() => call(CHANNELS.updateAutoCheck, fromApp, bad)), JSON.stringify(bad)).rejects.toThrow('refused');
     }
     await expect(Promise.resolve().then(() => call(CHANNELS.updateAutoCheck, fromApp, {}, {}))).rejects.toThrow('refused');
+  });
+});
+
+describe('the desktop experience channels', () => {
+  const refused = async (run: () => unknown) => expect(Promise.resolve().then(run)).rejects.toThrow('refused');
+
+  it('answers the settings and the capability report, and takes no argument', async () => {
+    const { call, fromApp } = setup();
+    await expect(Promise.resolve(call(CHANNELS.settings, fromApp))).resolves.toEqual({ settings, capabilities });
+    await refused(() => call(CHANNELS.settings, fromApp, {}));
+  });
+
+  it('takes a non-empty subset of the three person-controlled settings', async () => {
+    const { call, fromApp, impl } = setup();
+    await expect(Promise.resolve(call(CHANNELS.settingsSet, fromApp, { hideOnBlur: true }))).resolves.toMatchObject({ settings: { hideOnBlur: true } });
+    expect(impl.settingsSet).toHaveBeenCalledWith({ hideOnBlur: true });
+    for (const bad of [{}, { theme: 'dark' }, { hideOnBlur: 1 }, { closeBehavior: 'minimise' }, { hideOnBlur: true, extra: 1 }, null, 'x']) {
+      await refused(() => call(CHANNELS.settingsSet, fromApp, bad));
+    }
+    expect(impl.settingsSet).toHaveBeenCalledTimes(1);
+  });
+
+  it('takes a theme choice, a session report and a badge count, and refuses anything else', async () => {
+    const { call, fromApp, impl } = setup();
+    await call(CHANNELS.theme, fromApp, { theme: 'dark' });
+    expect(impl.setTheme).toHaveBeenCalledWith('dark');
+    await call(CHANNELS.session, fromApp, { state: 'unlocked' });
+    expect(impl.reportSession).toHaveBeenCalledWith('unlocked');
+    await call(CHANNELS.badge, fromApp, { count: 4 });
+    expect(impl.setBadge).toHaveBeenCalledWith(4);
+    for (const [channel, bad] of [
+      [CHANNELS.theme, { theme: 'sepia' }],
+      [CHANNELS.session, { state: 'asleep' }],
+      [CHANNELS.badge, { count: 1000 }],
+      [CHANNELS.badge, { count: -1 }],
+      [CHANNELS.badge, { count: 1.5 }],
+    ] as const) {
+      await refused(() => call(channel, fromApp, bad));
+    }
+  });
+
+  it('shows no count while the page is locked or has not said', async () => {
+    const { call, fromApp, impl } = setup();
+    await call(CHANNELS.badge, fromApp, { count: 4 });
+    expect(impl.setBadge).toHaveBeenLastCalledWith(0);
+    await call(CHANNELS.session, fromApp, { state: 'unlocked' });
+    await call(CHANNELS.badge, fromApp, { count: 4 });
+    expect(impl.setBadge).toHaveBeenLastCalledWith(4);
+    await call(CHANNELS.session, fromApp, { state: 'locked' });
+    await call(CHANNELS.badge, fromApp, { count: 4 });
+    expect(impl.setBadge).toHaveBeenLastCalledWith(0);
+  });
+
+  it('keeps recent Folds only while unlocked, and clears them when asked while locked', async () => {
+    const { call, fromApp, impl } = setup();
+    const folds = [{ id: 'a', name: 'Home' }];
+    await expect(Promise.resolve().then(() => call(CHANNELS.recentFolds, fromApp, { folds }))).rejects.toThrow();
+    expect(impl.setRecentFolds).toHaveBeenLastCalledWith([]);
+    await call(CHANNELS.session, fromApp, { state: 'unlocked' });
+    await call(CHANNELS.recentFolds, fromApp, { folds });
+    expect(impl.setRecentFolds).toHaveBeenLastCalledWith(folds);
+    await refused(() => call(CHANNELS.recentFolds, fromApp, { folds: Array.from({ length: 6 }, (_, i) => ({ id: `f${i}`, name: 'x' })) }));
+  });
+
+  it('pops up a menu from valid items and answers the chosen id', async () => {
+    const { call, fromApp, impl } = setup();
+    const items = [{ id: 'edit', label: 'Edit' }, { id: 'delete', label: 'Delete', destructive: true }];
+    await expect(Promise.resolve(call(CHANNELS.popupMenu, fromApp, { items }))).resolves.toEqual({ id: 'edit' });
+    expect(impl.popupMenu).toHaveBeenCalledWith(items);
+    await refused(() => call(CHANNELS.popupMenu, fromApp, { items: [{ id: 'Edit', label: 'Edit' }] }));
+    await refused(() => call(CHANNELS.popupMenu, fromApp, { items: [] }));
+  });
+
+  it('shows the window on request, with no argument', async () => {
+    const { call, fromApp, impl } = setup();
+    await expect(Promise.resolve(call(CHANNELS.windowShow, fromApp))).resolves.toBeUndefined();
+    expect(impl.showWindow).toHaveBeenCalledOnce();
+    await refused(() => call(CHANNELS.windowShow, fromApp, 'x'));
   });
 });
 

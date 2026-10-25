@@ -1,6 +1,8 @@
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 
+import { defaultSettings, sanitiseSettings, type DesktopSettings } from './desktop-settings';
+
 // Device-local, non-sensitive state of the shell: where the window was, when updates were last checked, and whether to check automatically.
 // Anything read back is untrusted (the file can be edited or half-written), so it is sanitised into a state that is always usable.
 
@@ -11,7 +13,7 @@ export interface Display {
   readonly height: number;
 }
 
-export interface DesktopState {
+export interface DesktopState extends DesktopSettings {
   readonly x?: number;
   readonly y?: number;
   readonly width: number;
@@ -21,7 +23,7 @@ export interface DesktopState {
   readonly autoCheck: boolean;
 }
 
-export const DEFAULT_DESKTOP_STATE: DesktopState = { width: 1280, height: 800, maximized: false, autoCheck: true };
+export const DEFAULT_DESKTOP_STATE: DesktopState = { width: 1280, height: 800, maximized: false, autoCheck: true, ...defaultSettings(process.platform) };
 const MIN_WIDTH = 800;
 const MIN_HEIGHT = 600;
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/;
@@ -30,7 +32,7 @@ const integer = (value: unknown): number | undefined => (typeof value === 'numbe
 const overlap = (a: Display, b: Display): number => Math.max(0, Math.min(a.x + a.width, b.x + b.width) - Math.max(a.x, b.x)) * Math.max(0, Math.min(a.y + a.height, b.y + b.height) - Math.max(a.y, b.y));
 const clamp = (value: number, low: number, high: number): number => Math.min(Math.max(value, low), Math.max(low, high));
 
-export function sanitiseDesktopState(raw: unknown, displays: readonly Display[]): DesktopState {
+export function sanitiseDesktopState(raw: unknown, displays: readonly Display[], platform: NodeJS.Platform = process.platform): DesktopState {
   const input = typeof raw === 'object' && raw !== null && !Array.isArray(raw) ? (raw as Record<string, unknown>) : {};
   let width = Math.max(integer(input['width']) ?? DEFAULT_DESKTOP_STATE.width, MIN_WIDTH);
   let height = Math.max(integer(input['height']) ?? DEFAULT_DESKTOP_STATE.height, MIN_HEIGHT);
@@ -75,6 +77,7 @@ export function sanitiseDesktopState(raw: unknown, displays: readonly Display[])
     maximized: input['maximized'] === true,
     ...(typeof lastCheckedAt === 'string' && ISO_DATE.test(lastCheckedAt) && !Number.isNaN(Date.parse(lastCheckedAt)) ? { lastCheckedAt } : {}),
     autoCheck: typeof input['autoCheck'] === 'boolean' ? input['autoCheck'] : true,
+    ...sanitiseSettings(input, platform),
   };
 }
 
