@@ -38,7 +38,7 @@ A person whose browser or device is set to Ukrainian or Polish opens the app and
 
 ### User Story 2 - Choose the language in the app (Priority: P2)
 
-A person can pick English, Ukrainian or Polish (or "Automatic", which follows the browser) from the settings, independent of the browser language, and the choice is remembered on that device. Before sign-in, the language can also be changed, so someone whose browser is in English can still read the sign-up and unlock screens in their own language.
+A person can pick English, Ukrainian or Polish (or "Automatic", which follows the browser) from the settings (and, narrowed by spec 005, on the sign-up page), independent of the browser language, and the choice is remembered on that device. Before sign-in, the language can also be changed, so someone whose browser is in English can still read the sign-up and unlock screens in their own language.
 
 **Why this priority**: Browser language is often not the language a person wants (shared devices, work laptops). Detection alone covers the common case, so this follows the translation itself.
 
@@ -48,7 +48,7 @@ A person can pick English, Ukrainian or Polish (or "Automatic", which follows th
 
 1. **Given** the app is in English, **When** the person selects Ukrainian, **Then** the visible text changes immediately without losing their place or unsaved input.
 2. **Given** a person chose Polish, **When** they reload or return later on the same device, **Then** the app opens in Polish, whatever the browser language.
-3. **Given** the unlock or sign-up screen, **When** the person opens the language choice, **Then** they can change the language without being signed in.
+3. **Given** the sign-up screen, **When** the person opens the language choice, **Then** they can change the language without being signed in. *Narrowed by spec 005: the control is offered on the sign-up page and in Settings only.* The unlock page offers none.
 4. **Given** each language in the list, **When** it is shown, **Then** it is written in its own language ("English", "Українська", "Polski") so it can be found even when the current language is unreadable to the person.
 
 ---
@@ -88,7 +88,7 @@ When a new screen or message is added, the team is told if it lacks a Ukrainian 
 
 - **FR-001**: The app MUST be fully available in Ukrainian and in Polish, in addition to English, covering every user-visible string on every screen, dialog, notice, validation message and error.
 - **FR-002**: The app MUST pick the initial language from the person's preferred languages, honouring their order, resolving regional variants to the base language, and falling back to English.
-- **FR-003**: The person MUST be able to choose the language manually, both before and after sign-in, with each language listed under its own name.
+- **FR-003**: The person MUST be able to choose the language manually, both before and after sign-in, with each language listed under its own name. *Narrowed by spec 005: the control is offered on the sign-up page and in Settings only.*
 - **FR-004**: The chosen language MUST persist on the device and take priority over the browser's language until changed. The person MUST also be able to choose "Automatic" to go back to following the browser's preferred languages.
 - **FR-005**: Changing the language MUST apply at once and MUST NOT lose the person's place or unsaved input, and MUST NOT require signing in again.
 - **FR-006**: Messages with counts MUST use the correct plural forms for each language, including Ukrainian's and Polish's separate forms for one, few, many and other.
@@ -113,7 +113,7 @@ When a new screen or message is added, the team is told if it lacks a Ukrainian 
 ### Measurable Outcomes
 
 - **SC-001**: 100% of user-visible text is available in Ukrainian and in Polish; a walk through every route in each language finds no English text.
-- **SC-002**: A person can switch language from the settings, or from the sign-in screens, in no more than 3 interactions and sees the result in under 1 second.
+- **SC-002**: A person can switch language from the settings or on the sign-up page (spec 005), in no more than 3 interactions and sees the result in under 1 second.
 - **SC-003**: 100% of count-based messages show the right plural form in a check with the values 0, 1, 2, 5, 12, 22 and 100 in each language.
 - **SC-004**: In each language, no text is clipped or overlapping at a 320 px wide screen and at desktop width on every screen.
 - **SC-005**: The saved language survives a reload, and a browser-language change does not override it, in 100% of checks.

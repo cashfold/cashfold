@@ -16,7 +16,7 @@ The CSV export header test (`csv-export.test.ts`) and the desktop menu and dialo
 ## 2. Manual walk-through
 
 1. Start the app, set the browser's preferred language to Ukrainian, open `/`. The sign-up screen is Ukrainian. Repeat with Polish.
-2. With an English browser, open the language picker in the footer of the sign-up screen, choose "Polski": text changes at once, typed input stays.
+2. With an English browser, open the language picker on the sign-up screen, choose "Polski": text changes at once, typed input stays.
 3. Sign up, open Settings → Appearance → Language, choose "Українська". Reload: still Ukrainian. Set the browser to Polish and reload: still Ukrainian (saved choice wins). Choose "Automatic": it follows the browser again.
 4. Add a transaction with the amount `1 234,56` (ordinary space) and with `1234.56`: both are saved as 1 234,56. Enter `90071992547409.93`: stored exactly.
 5. Check counts with 1, 2, 5, 12, 22 entries (for example the schedule inbox banner): each uses the right plural form.

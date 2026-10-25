@@ -19,4 +19,4 @@ For developers: `pnpm --filter @cashfold/desktop dev` runs the app from source. 
 
 ## Languages
 
-Cashfold is available in **English**, **Українська** (Ukrainian) and **Polski** (Polish). It follows your browser's or system's language, and you can choose another in Settings → Appearance (on the sign-up and unlock screens too). The choice stays on your device. How the translations work, and how to add a language, is in [docs/i18n.md](docs/i18n.md).
+Cashfold is available in **English**, **Українська** (Ukrainian) and **Polski** (Polish). It follows your browser's or system's language, and you can choose another while creating your account, and change it later in Settings → Appearance. The choice stays on your device. How the translations work, and how to add a language, is in [docs/i18n.md](docs/i18n.md).
