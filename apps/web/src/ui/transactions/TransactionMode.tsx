@@ -17,6 +17,7 @@ import { isDirty } from './dirty';
 import type { ModeReport } from './modes';
 import { RatePrompt } from './RatePrompt';
 import { orderCategories, recordRecents, pickDefaultAccount } from './recents';
+import { includesLetters } from '../i18n/collation';
 
 export type TxKind = 'expense' | 'income' | 'adjustment';
 interface CategoryOption { id: string; label: string; recent: boolean }
@@ -277,7 +278,7 @@ export function TransactionMode({ formId, kind, existing, accountId, report }: {
           <Combobox<CategoryOption | null>
             options={[NO_CATEGORY, ...categories]} value={category} onChange={(o) => setCategoryId(o?.id ?? '')}
             displayValue={(o) => (o === null || o.id === '' ? '' : o.label)} toggleLabel={t('ledger.add.showOptions')} placeholder={t('ledger.tx.noCategory')}
-            filter={(o, q) => o !== null && o.label.toLowerCase().includes(q.toLowerCase())}
+            filter={(o, q) => o !== null && includesLetters(o.label, q)}
           >
             {(o) => (
               <ComboboxOption value={o}>

@@ -4,6 +4,7 @@ import type { FoldSummary, Id, LedgerBasics } from '@cashfold/core';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useCore } from '../core/CoreProvider';
 import { useI18n } from '../i18n/I18nProvider';
+import { sortedByName } from '../i18n/collation';
 import { formatMoney, formatSigned, parseMoney } from './format';
 
 export type Outcome<T> = { ok: true; value: T } | { ok: false; error: { code: string; message?: string; currency?: string } };
@@ -165,15 +166,18 @@ export function LedgerProvider({ children }: { children: ReactNode }) {
     [t],
   );
 
+  // Payees and tags come from core ordered by character code; what is shown follows the language (Ł after L, Ї after І).
+  const shown = useMemo(() => (basics === undefined ? undefined : { ...basics, payees: sortedByName(basics.payees, locale), tags: sortedByName(basics.tags, locale) }), [basics, locale]);
+
   const value = useMemo<LedgerView>(
     () => ({
-      folds, fold, selectFold: setFoldId, basics, version, loading, failed, run, read, reload, refreshFolds, foldRemoved, dismissFoldRemoved: () => setFoldRemoved(false),
+      folds, fold, selectFold: setFoldId, basics: shown, version, loading, failed, run, read, reload, refreshFolds, foldRemoved, dismissFoldRemoved: () => setFoldRemoved(false),
       money: (minor, currency) => formatMoney(minor, currency, locale),
       signed: (minor, currency) => formatSigned(minor, currency, locale),
       parse: (text, currency) => parseMoney(text, currency, locale),
       explain,
     }),
-    [folds, fold, basics, version, loading, failed, run, read, reload, refreshFolds, foldRemoved, locale, explain],
+    [folds, fold, shown, version, loading, failed, run, read, reload, refreshFolds, foldRemoved, locale, explain],
   );
 
   return <Context.Provider value={value}>{children}</Context.Provider>;
