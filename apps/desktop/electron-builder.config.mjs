@@ -71,6 +71,9 @@ export default {
   linux: {
     // Without this the binary takes the package name ("@cashfolddesktop"); the packaged-app tests and the fuse check look for this one.
     executableName: 'cashfold',
+    // ${arch} would give x86_64 for the AppImage and the rpm and amd64 for the deb; the release (scripts/release-assets.mjs) and the docs name all
+    // three Cashfold-<version>-linux-x64.<ext>.
+    artifactName: 'Cashfold-${version}-linux-x64.${ext}',
     category: 'Office;Finance',
     synopsis: 'Private, local-first personal finance',
     target: [
