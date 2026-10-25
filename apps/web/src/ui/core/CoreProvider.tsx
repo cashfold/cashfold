@@ -1,7 +1,10 @@
 'use client';
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { isDesktopApp } from '../../adapters/platform/detect';
+import { useDesktop } from '../desktop/DesktopSettingsProvider';
 import { createCoreClient, type CoreClient, type CoreEvent } from './core-client';
+import { createSessionHandlers } from './lock-policy';
 
 export type Phase = 'loading' | 'no_account' | 'locked' | 'unlocked' | 'failed';
 
@@ -56,6 +59,12 @@ export function CoreProvider({ children, makeWorker }: { children: ReactNode; ma
   const [epoch, setEpoch] = useState(0);
   const [removed, setRemoved] = useState(false);
   const [storageFull, setStorageFull] = useState(false);
+  const desktop = useDesktop();
+  // The listeners below are registered once; they read the current preference from here.
+  const hideOnBlurRef = useRef(false);
+  hideOnBlurRef.current = desktop.settings.hideOnBlur;
+  const phaseRef = useRef<Phase>('loading');
+  phaseRef.current = phase;
 
   const client = useCallback((): CoreClient => {
     clientRef.current ??= createCoreClient(makeWorker ?? (() => new Worker(new URL('../../worker/core-worker.ts', import.meta.url), { type: 'module', name: 'cashfold-core' })), { timeoutMs: 60_000 });
@@ -105,16 +114,19 @@ export function CoreProvider({ children, makeWorker }: { children: ReactNode; ma
     return () => clearInterval(timer);
   }, [phase, client]);
 
-  // Hide content the moment the window is hidden or loses focus, before the worker has even heard about it.
+  // Hide content the moment the window is hidden or loses focus, before the worker has even heard about it. In the desktop app, losing focus
+  // is just another window being used, so it does that only if the person asked (lock-policy.ts).
   useEffect(() => {
     const c = client();
-    const onVisibility = () => {
-      const isHidden = document.visibilityState === 'hidden';
-      setHidden(isHidden);
-      c.notify('session.visibility', { state: isHidden ? 'hidden' : 'visible' });
-    };
-    const onBlur = () => (setBlurred(true), c.notify('session.focus', { focused: false }));
-    const onFocus = () => (setBlurred(false), c.notify('session.focus', { focused: true }));
+    const handlers = createSessionHandlers({
+      policy: () => ({ isDesktop: isDesktopApp(), hideOnBlur: hideOnBlurRef.current }),
+      setHidden,
+      setBlurred,
+      notify: (method, args) => c.notify(method, args),
+    });
+    const onVisibility = () => handlers.onVisibility(document.visibilityState === 'hidden' ? 'hidden' : 'visible');
+    const onBlur = () => handlers.onBlur();
+    const onFocus = () => handlers.onFocus();
     const onPageHide = () => c.notify('session.pageHide');
     let last = 0;
     const onActivity = () => {
@@ -139,6 +151,19 @@ export function CoreProvider({ children, makeWorker }: { children: ReactNode; ma
       for (const type of ['pointerdown', 'keydown']) window.removeEventListener(type, onActivity);
     };
   }, [client]);
+
+  // The desktop shell reports the computer locking, sleeping or going idle: lock exactly as the Lock button does.
+  const lockNow = useCallback(() => {
+    if (phaseRef.current !== 'unlocked') return;
+    setPhase('locked');
+    client().notify('lock');
+  }, [client]);
+  const desktopBridge = desktop.ready ? desktop.bridge() : undefined;
+  useEffect(() => desktopBridge?.onSystemLock(lockNow), [desktopBridge, lockNow]);
+  // Tell the shell whether the app is locked, so its own surfaces (menus, badge, recent Folds) show nothing while it is.
+  useEffect(() => {
+    void desktopBridge?.reportSession(phase === 'unlocked' ? 'unlocked' : 'locked');
+  }, [desktopBridge, phase]);
 
   const value = useMemo<Core>(
     () => ({

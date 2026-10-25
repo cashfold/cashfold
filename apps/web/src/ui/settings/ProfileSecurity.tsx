@@ -3,6 +3,7 @@
 import type { DeviceSettings } from '@cashfold/core';
 import { useEffect, useState, type FormEvent } from 'react';
 import { useCore, withPasswordBytes } from '../core/CoreProvider';
+import { useDesktop } from '../desktop/DesktopSettingsProvider';
 import { downloadKit, printKit, type KitSource } from '../emergency-kit/actions';
 import { TextField } from '../forms/TextField';
 import { useI18n } from '../i18n/I18nProvider';
@@ -20,6 +21,8 @@ type KitResult = { ok: true; value: KitSource } | { ok: false; error: { code: st
 export function ProfileSecurity() {
   const { t, locale, dir } = useI18n();
   const core = useCore();
+  // The desktop app locks a hidden window at the idle time (ADR-0012), so the hidden-window time does not apply there.
+  const { isDesktop } = useDesktop();
   const [settings, setSettings] = useState<DeviceSettings | undefined>();
   const [saved, setSaved] = useState(false);
   const [password, setPassword] = useState('');
@@ -59,12 +62,14 @@ export function ProfileSecurity() {
                 {IDLE_MINUTES.map((m) => <option key={m} value={m}>{t('settings.lock.minutes', { minutes: m })}</option>)}
               </Select>
             </label>
-            <label className="block">
-              <span className="block font-medium">{t('settings.lock.hidden')}</span>
-              <Select value={settings.hiddenGraceSeconds} onChange={(e) => void change({ hiddenGraceSeconds: Number(e.target.value) })}>
-                {HIDDEN_SECONDS.map((s) => <option key={s} value={s}>{s === 0 ? t('settings.lock.immediately') : t('settings.lock.seconds', { seconds: s })}</option>)}
-              </Select>
-            </label>
+            {isDesktop ? null : (
+              <label className="block">
+                <span className="block font-medium">{t('settings.lock.hidden')}</span>
+                <Select value={settings.hiddenGraceSeconds} onChange={(e) => void change({ hiddenGraceSeconds: Number(e.target.value) })}>
+                  {HIDDEN_SECONDS.map((s) => <option key={s} value={s}>{s === 0 ? t('settings.lock.immediately') : t('settings.lock.seconds', { seconds: s })}</option>)}
+                </Select>
+              </label>
+            )}
             <p role="status" className="text-sm text-muted">{saved ? t('settings.saved') : ''}</p>
           </div>
         ) : null}
