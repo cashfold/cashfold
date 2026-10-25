@@ -20,7 +20,8 @@
     "prepare": "git config core.hooksPath .githooks",
     "verify": "pnpm typecheck && pnpm lint && vitest run",
     "check:sqlite3mc": "node scripts/verify-sqlite3mc.mjs",
-    "gen:migrations": "node scripts/gen-migrations.mjs"
+    "gen:migrations": "node scripts/gen-migrations.mjs",
+    "gen:assets": "node scripts/gen-brand-assets.mjs"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.14.0",

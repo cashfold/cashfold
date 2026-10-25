@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="256" viewBox="0 0 900 256" role="img" aria-label="Cashfold">
+  <!-- PLACEHOLDER logo, generated from assets/logo/mark.svg by scripts/gen-brand-assets.mjs. Replace the mark, not this file. -->
+  <g transform="scale(0.25)">
+  <!-- PLACEHOLDER mark. Replace this one file with the real logo, then run `pnpm gen:assets`.
+       Keep it square, 1024 x 1024, with the artwork inside the middle 80 percent so rounded masks do not cut it. -->
+  <rect width="1024" height="1024" rx="224" fill="#047857"/>
+  <path d="M672.7 320.5 A250 250 0 1 0 672.7 703.5" fill="none" stroke="#ffffff" stroke-width="120" stroke-linecap="round"/>
+</g>
+  <text x="296" y="168" font-family="Ubuntu, Inter, 'Segoe UI', system-ui, sans-serif" font-size="136" font-weight="500" fill="#064e3b">Cashfold</text>
+</svg>
