@@ -6,7 +6,7 @@
 //    no 'unsafe-inline' and no 'unsafe-eval';
 //  - a page fails the build when it carries a `style=` attribute: `style-src 'self'` blocks it, so it would only show up as a broken layout;
 //  - a no-referrer policy;
-//  - the page metadata (title, description, robots, font preloads) in a fixed order: Next streams these in whatever order its render
+//  - the page metadata (title, description, robots, manifest and icon links, font preloads) in a fixed order: Next streams these in whatever order its render
 //    finishes, which differs between otherwise identical builds and would break the reproducible-build check;
 //  - `_headers`: the policy a host should send as real headers (Netlify / Cloudflare Pages format; the same values are given for nginx
 //    and others in docs/self-hosting.md). Headers can say what a <meta> cannot (frame-ancestors, Permissions-Policy, HSTS).
@@ -51,7 +51,8 @@ function policy(inlineHashes) {
 
 // Elements whose order does not matter to a browser. A run of them next to each other is sorted so the page does not depend on which
 // of them Next happened to write first. (charset and viewport stay where they are.)
-const ORDER_FREE = /(?:<title>[^<]*<\/title>|<meta name="(?!viewport)[^"]*"[^>]*>|<link rel="preload"[^>]*\sas="font"[^>]*>)+/g;
+const ORDER_FREE =
+  /(?:<title>[^<]*<\/title>|<meta name="(?!viewport)[^"]*"[^>]*>|<link rel="(?:manifest|icon|apple-touch-icon)"[^>]*>|<link rel="preload"[^>]*\sas="font"[^>]*>)+/g;
 const inFixedOrder = (html) =>
   html.replace(ORDER_FREE, (run) => (run.match(/<title>[^<]*<\/title>|<meta\b[^>]*>|<link\b[^>]*>/g) ?? []).sort().join(''));
 
