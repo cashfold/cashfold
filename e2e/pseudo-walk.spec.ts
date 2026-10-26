@@ -66,6 +66,8 @@ test.describe('@pseudo-walk no text outside the catalogue', () => {
     for (const screen of ['Overview', 'Transactions', 'Accounts', 'Budgets', 'Goals', 'Schedules', 'Settings', 'Appearance', 'Categories', 'Folds', 'Data', 'Devices', 'Advanced'] as const) {
       await go(page, screen);
       await expect(page.locator('h1').first()).toBeVisible();
+      // The Folds screen shows the person's invitation code once the worker has made it; wait, so the walk reads it every time and not only when CI is slow (it is the person's own data, marked data-own-data).
+      if (screen === 'Folds') await expect(page.getByTestId('my-code')).toBeVisible();
       await check(screen);
     }
 

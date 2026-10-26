@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.0](https://github.com/cashfold/cashfold/compare/v0.1.2...v0.2.0) (2026-10-25)
+
+
+### Features
+
+* **web:** add Ukrainian and Polish, with the language chosen at sign-up or in Settings ([#36](https://github.com/cashfold/cashfold/issues/36)) ([c41b36f](https://github.com/cashfold/cashfold/commit/c41b36f3dd564f77623d7c09baec2d70fa2f359b))
+
 ## [0.1.2](https://github.com/cashfold/cashfold/compare/v0.1.1...v0.1.2) (2026-10-25)
 
 
