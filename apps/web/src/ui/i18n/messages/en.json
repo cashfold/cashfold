@@ -1404,5 +1404,15 @@
   "settings.appearance.language.description": "Choose the language of the app. This applies to this device only.",
   "unit.kb": "{value} KB",
   "unit.mb": "{value} MB",
-  "unit.gb": "{value} GB"
+  "unit.gb": "{value} GB",
+  "settings.group.desktop": "Desktop",
+  "settings.group.desktop.description": "How the app behaves on this computer: locking and windows.",
+  "settings.desktop.hideOnBlur": "Hide the content when I switch to another window",
+  "settings.desktop.hideOnBlur.description": "Off by default: switching windows keeps your data on screen. Turn it on if others can see your screen while you work. It hides the content only; unlocking is not needed to bring it back.",
+  "settings.desktop.locks.title": "What locks the app on this computer",
+  "settings.desktop.locks.description": "The app locks, and shows nothing, when this computer reports any of these:",
+  "settings.desktop.locks.screen-lock": "The screen being locked",
+  "settings.desktop.locks.suspend": "The computer going to sleep",
+  "settings.desktop.locks.idle-state": "The system reporting that it is locked",
+  "settings.desktop.locks.idle": "Your idle time also applies, to a minimised or hidden window as well as to a visible one."
 }

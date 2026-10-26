@@ -1,4 +1,18 @@
-import { AboutInfoSchema, AutoCheckResponseSchema, UpdateStateSchema, type DesktopBridge, type UpdateState } from '@cashfold/platform';
+import {
+  AboutInfoSchema,
+  ActionIdSchema,
+  AutoCheckResponseSchema,
+  DesktopSettingsSchema,
+  FrameStateSchema,
+  IncomingItemSchema,
+  SettingsResponseSchema,
+  SettingsSetResponseSchema,
+  SystemLockEventSchema,
+  UpdateStateSchema,
+  type DesktopBridge,
+  type UpdateState,
+} from '@cashfold/platform';
+import type { z } from 'zod';
 import { findRawBridge } from './detect';
 
 // The desktop app's window exposes one global, `cashfoldDesktop` (apps/desktop, specs/003 contract). In the plain web app it does not exist and
@@ -29,9 +43,54 @@ async function asState(call: () => Promise<unknown>): Promise<UpdateState> {
   }
 }
 
+/** An event from the shell, checked again here: a payload that does not fit its schema never reaches the listener. */
+function checked<S extends z.ZodType>(subscribe: (listener: (value: never) => void) => () => void, schema: S) {
+  return (listener: (value: z.infer<S>) => void): (() => void) =>
+    subscribe(((value: unknown) => {
+      const parsed = schema.safeParse(value);
+      if (parsed.success) listener(parsed.data as z.infer<S>);
+    }) as (value: never) => void);
+}
+
+/** A call that returns nothing, whose failure the page can do nothing about: a shell that fails or is missing the call is not an error to show. */
+async function quietly(call: () => Promise<unknown>): Promise<void> {
+  try {
+    await call();
+  } catch {
+    // The shell's own surfaces (badge, menus) are best effort; the page works without them.
+  }
+}
+
 function harden(bridge: DesktopBridge): DesktopBridge {
-  const { updates } = bridge;
+  const { updates, settings } = bridge;
   return {
+    platform: bridge.platform,
+    settings: {
+      get: async () => SettingsResponseSchema.parse(await settings.get()),
+      set: async (change) => SettingsSetResponseSchema.parse(await settings.set(change)),
+    },
+    setTheme: (theme) => quietly(() => bridge.setTheme(theme)),
+    reportSession: (state) => quietly(() => bridge.reportSession(state)),
+    setBadge: (count) => quietly(() => bridge.setBadge(count)),
+    setRecentFolds: (folds) => quietly(() => bridge.setRecentFolds(folds)),
+    popupMenu: async (items) => {
+      try {
+        const id = await bridge.popupMenu(items);
+        // Only an id the page offered can come back.
+        return typeof id === 'string' && items.some((item) => item.id === id) ? id : null;
+      } catch {
+        return null;
+      }
+    },
+    showWindow: () => quietly(() => bridge.showWindow()),
+    onSystemLock: checked(bridge.onSystemLock as (listener: (value: never) => void) => () => void, SystemLockEventSchema),
+    onMenuAction: (listener) => bridge.onMenuAction((action) => {
+      const parsed = ActionIdSchema.safeParse(action);
+      if (parsed.success) listener(parsed.data);
+    }),
+    onIncoming: checked(bridge.onIncoming as (listener: (value: never) => void) => () => void, IncomingItemSchema),
+    onFrameState: checked(bridge.onFrameState as (listener: (value: never) => void) => () => void, FrameStateSchema),
+    onSettingsChanged: checked(bridge.onSettingsChanged as (listener: (value: never) => void) => () => void, DesktopSettingsSchema),
     about: async () => AboutInfoSchema.parse(await bridge.about()),
     revealDataFolder: () => bridge.revealDataFolder(),
     setLanguage: (language) => bridge.setLanguage(language),

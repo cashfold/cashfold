@@ -2,8 +2,22 @@ import {
   AboutInfoSchema,
   AutoCheckResponseSchema,
   BRIDGE_GLOBAL,
+  BadgeRequestSchema,
   CHANNELS,
+  DesktopSettingsSchema,
+  FrameStateSchema,
+  IncomingItemSchema,
   LanguageRequestSchema,
+  MenuActionEventSchema,
+  PopupMenuRequestSchema,
+  PopupMenuResponseSchema,
+  RecentFoldsRequestSchema,
+  SessionReportSchema,
+  SettingsResponseSchema,
+  SettingsSetResponseSchema,
+  SettingsUpdateSchema,
+  SystemLockEventSchema,
+  ThemeRequestSchema,
   UpdateStateSchema,
   VoidResponseSchema,
   type DesktopBridge,
@@ -23,11 +37,50 @@ export interface ContextBridgeLike {
   exposeInMainWorld(name: string, api: unknown): void;
 }
 
-export function createBridge(ipc: IpcRendererLike): DesktopBridge {
+const PLATFORMS = ['win32', 'darwin', 'linux'] as const;
+
+export function createBridge(ipc: IpcRendererLike, platform: string = process.platform): DesktopBridge {
+  const known = PLATFORMS.find((value) => value === platform);
+  if (known === undefined) throw new Error('unsupported platform');
   const call = async <S extends z.ZodType>(channel: string, schema: S, request?: unknown): Promise<z.infer<S>> =>
     schema.parse(await ipc.invoke(channel, ...(request === undefined ? [] : [request]))) as z.infer<S>;
 
+  /** An event from the shell: checked against its schema, and dropped if it does not match. */
+  const listen = <S extends z.ZodType>(channel: string, schema: S, pick: (value: z.infer<S>) => unknown) => (listener: (value: never) => void): (() => void) => {
+    const handler = (_event: unknown, payload: unknown): void => {
+      const parsed = schema.safeParse(payload);
+      if (parsed.success) listener(pick(parsed.data as z.infer<S>) as never);
+    };
+    ipc.on(channel, handler);
+    return () => void ipc.removeListener(channel, handler);
+  };
+  const identity = (value: unknown): unknown => value;
+
   return {
+    platform: known,
+    settings: {
+      get: () => call(CHANNELS.settings, SettingsResponseSchema),
+      set: async (change) => call(CHANNELS.settingsSet, SettingsSetResponseSchema, SettingsUpdateSchema.parse(change)),
+    },
+    setTheme: async (theme) => {
+      await call(CHANNELS.theme, VoidResponseSchema, ThemeRequestSchema.parse({ theme }));
+    },
+    reportSession: async (state) => {
+      await call(CHANNELS.session, VoidResponseSchema, SessionReportSchema.parse({ state }));
+    },
+    setBadge: async (count) => {
+      await call(CHANNELS.badge, VoidResponseSchema, BadgeRequestSchema.parse({ count }));
+    },
+    setRecentFolds: async (folds) => {
+      await call(CHANNELS.recentFolds, VoidResponseSchema, RecentFoldsRequestSchema.parse({ folds }));
+    },
+    popupMenu: async (items) => (await call(CHANNELS.popupMenu, PopupMenuResponseSchema, PopupMenuRequestSchema.parse({ items }))).id,
+    showWindow: () => call(CHANNELS.windowShow, VoidResponseSchema),
+    onSystemLock: listen(CHANNELS.systemLock, SystemLockEventSchema, identity),
+    onMenuAction: listen(CHANNELS.menuAction, MenuActionEventSchema, (value) => value.action),
+    onIncoming: listen(CHANNELS.incoming, IncomingItemSchema, identity),
+    onFrameState: listen(CHANNELS.frameState, FrameStateSchema, identity),
+    onSettingsChanged: listen(CHANNELS.settingsChanged, DesktopSettingsSchema, identity),
     about: () => call(CHANNELS.about, AboutInfoSchema),
     revealDataFolder: () => call(CHANNELS.revealDataFolder, VoidResponseSchema),
     setLanguage: async (language) => {
@@ -56,7 +109,10 @@ export function createBridge(ipc: IpcRendererLike): DesktopBridge {
 }
 
 /** Exposes exactly one frozen global to the page. */
-export function installBridge(contextBridge: ContextBridgeLike, ipc: IpcRendererLike): void {
-  const bridge = createBridge(ipc);
-  contextBridge.exposeInMainWorld(BRIDGE_GLOBAL, Object.freeze({ ...bridge, updates: Object.freeze({ ...bridge.updates }) }));
+export function installBridge(contextBridge: ContextBridgeLike, ipc: IpcRendererLike, platform: string = process.platform): void {
+  const bridge = createBridge(ipc, platform);
+  contextBridge.exposeInMainWorld(
+    BRIDGE_GLOBAL,
+    Object.freeze({ ...bridge, settings: Object.freeze({ ...bridge.settings }), updates: Object.freeze({ ...bridge.updates }) }),
+  );
 }

@@ -10,8 +10,24 @@ export const CHANNELS = {
   updateAutoCheck: 'cashfold:update:auto-check',
   /** The language the app is shown in, so the shell's own menus and dialogs follow it. */
   setLanguage: 'cashfold:language',
-  /** main → renderer event */
+  /** Desktop preferences and what this computer can do (specs/006). */
+  settings: 'cashfold:settings',
+  settingsSet: 'cashfold:settings:set',
+  /** The page's theme choice, so the shell's first frame and native chrome match. */
+  theme: 'cashfold:theme',
+  /** Whether the page is locked or unlocked; a presentation hint only. */
+  session: 'cashfold:session',
+  badge: 'cashfold:badge',
+  recentFolds: 'cashfold:recent-folds',
+  popupMenu: 'cashfold:popup-menu',
+  windowShow: 'cashfold:window:show',
+  /** main → renderer events */
   updateChanged: 'cashfold:update:changed',
+  systemLock: 'cashfold:system-lock',
+  menuAction: 'cashfold:menu-action',
+  incoming: 'cashfold:incoming',
+  frameState: 'cashfold:frame-state',
+  settingsChanged: 'cashfold:settings:changed',
 } as const;
 
 export type ChannelName = (typeof CHANNELS)[keyof typeof CHANNELS];

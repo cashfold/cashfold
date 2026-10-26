@@ -17,6 +17,7 @@ const SETTINGS_GROUPS: Record<string, string> = {
   Profile: '/settings/profile/',
   Appearance: '/settings/appearance/',
   Advanced: '/settings/advanced/',
+  Desktop: '/settings/desktop/',
 };
 
 export async function go(page: Page, name: string): Promise<void> {

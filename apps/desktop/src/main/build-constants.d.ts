@@ -3,3 +3,4 @@
 declare const __CASHFOLD_SIGNED__: boolean | undefined;
 declare const __CASHFOLD_TEST_FEED_ENABLED__: boolean | undefined;
 declare const __CASHFOLD_VERSION__: string | undefined;
+declare const __CASHFOLD_TEST_HOOKS__: boolean | undefined;

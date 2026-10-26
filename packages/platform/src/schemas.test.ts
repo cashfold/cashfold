@@ -1,6 +1,23 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { AboutInfoSchema, AutoCheckRequestSchema, UpdateStateSchema } from './schemas';
+import {
+  ActionIdSchema,
+  AboutInfoSchema,
+  AutoCheckRequestSchema,
+  BadgeRequestSchema,
+  CapabilitiesSchema,
+  DesktopSettingsSchema,
+  FrameStateSchema,
+  IncomingItemSchema,
+  PopupMenuRequestSchema,
+  PopupMenuResponseSchema,
+  RecentFoldsRequestSchema,
+  SessionReportSchema,
+  SettingsUpdateSchema,
+  SystemLockEventSchema,
+  ThemeRequestSchema,
+  UpdateStateSchema,
+} from './schemas';
 
 const about = {
   version: '1.2.3',
@@ -125,4 +142,96 @@ describe('strict objects', () => {
       );
     });
   }
+});
+
+describe('desktop experience schemas (spec 006)', () => {
+  const capabilities = {
+    platform: 'linux',
+    lockEvents: ['screen-lock', 'suspend'],
+    badge: false,
+    statusItem: true,
+    jumpList: false,
+    dockMenu: false,
+    notifications: 'granted',
+    translucency: 'unavailable',
+    loginItem: true,
+  } as const;
+  const settings = { hideOnBlur: false, startAtLogin: false, closeBehavior: 'quit', theme: 'system' } as const;
+  const folds = (count: number) => Array.from({ length: count }, (_, index) => ({ id: `fold-${index}`, name: `Fold ${index}` }));
+  const menu = (count: number) => Array.from({ length: count }, (_, index) => ({ id: `item-${String.fromCharCode(97 + index)}`, label: `Item ${index}` }));
+
+  // [name, schema, a valid value]
+  const valid = [
+    ['settings', DesktopSettingsSchema, settings],
+    ['capabilities', CapabilitiesSchema, capabilities],
+    ['settings update', SettingsUpdateSchema, { hideOnBlur: true }],
+    ['theme', ThemeRequestSchema, { theme: 'dark' }],
+    ['session', SessionReportSchema, { state: 'locked' }],
+    ['badge', BadgeRequestSchema, { count: 999 }],
+    ['recent folds', RecentFoldsRequestSchema, { folds: folds(5) }],
+    ['popup menu request', PopupMenuRequestSchema, { items: [{ id: 'edit', label: 'Edit' }, { id: 'delete', label: 'Delete', destructive: true }] }],
+    ['popup menu response', PopupMenuResponseSchema, { id: null }],
+    ['system lock', SystemLockEventSchema, { reason: 'suspend' }],
+    ['frame state', FrameStateSchema, { fullscreen: false, maximized: true, translucent: false }],
+    ['incoming link', IncomingItemSchema, { kind: 'link', name: 'link', link: { screen: 'open', target: 'plan' } }],
+  ] as const;
+
+  it.each(valid)('accepts a valid %s', (_name, schema, value) => {
+    expect(schema.safeParse(value).success).toBe(true);
+  });
+
+  it.each(valid)('refuses an unknown key in a %s', (_name, schema, value) => {
+    expect(schema.safeParse({ ...value, extra: 1 }).success).toBe(false);
+  });
+
+  it('refuses wrong types', () => {
+    expect(DesktopSettingsSchema.safeParse({ ...settings, hideOnBlur: 'yes' }).success).toBe(false);
+    expect(DesktopSettingsSchema.safeParse({ ...settings, closeBehavior: 'minimise' }).success).toBe(false);
+    expect(ThemeRequestSchema.safeParse({ theme: 'sepia' }).success).toBe(false);
+    expect(BadgeRequestSchema.safeParse({ count: 1.5 }).success).toBe(false);
+    expect(BadgeRequestSchema.safeParse({ count: '3' }).success).toBe(false);
+  });
+
+  it('bounds the badge count', () => {
+    expect(BadgeRequestSchema.safeParse({ count: 0 }).success).toBe(true);
+    expect(BadgeRequestSchema.safeParse({ count: 1000 }).success).toBe(false);
+    expect(BadgeRequestSchema.safeParse({ count: -1 }).success).toBe(false);
+  });
+
+  it('allows five recent Folds and refuses a sixth, or a long name', () => {
+    expect(RecentFoldsRequestSchema.safeParse({ folds: folds(0) }).success).toBe(true);
+    expect(RecentFoldsRequestSchema.safeParse({ folds: folds(6) }).success).toBe(false);
+    expect(RecentFoldsRequestSchema.safeParse({ folds: [{ id: 'a', name: 'x'.repeat(41) }] }).success).toBe(false);
+  });
+
+  it('allows twelve menu items and refuses a thirteenth, an empty list, a capital letter and a long label', () => {
+    expect(PopupMenuRequestSchema.safeParse({ items: menu(12) }).success).toBe(true);
+    expect(PopupMenuRequestSchema.safeParse({ items: menu(13) }).success).toBe(false);
+    expect(PopupMenuRequestSchema.safeParse({ items: [] }).success).toBe(false);
+    expect(PopupMenuRequestSchema.safeParse({ items: [{ id: 'Edit', label: 'Edit' }] }).success).toBe(false);
+    expect(PopupMenuRequestSchema.safeParse({ items: [{ id: 'edit', label: 'x'.repeat(61) }] }).success).toBe(false);
+    expect(PopupMenuRequestSchema.safeParse({ items: [{ id: 'edit', label: 'x'.repeat(60) }] }).success).toBe(true);
+  });
+
+  it('needs at least one setting in an update', () => {
+    expect(SettingsUpdateSchema.safeParse({}).success).toBe(false);
+    expect(SettingsUpdateSchema.safeParse({ theme: 'dark' }).success).toBe(false);
+    expect(SettingsUpdateSchema.safeParse({ startAtLogin: true, closeBehavior: 'background' }).success).toBe(true);
+  });
+
+  it('knows only the closed set of actions', () => {
+    expect(ActionIdSchema.safeParse('new-transaction').success).toBe(true);
+    expect(ActionIdSchema.safeParse('open-fold:4').success).toBe(true);
+    expect(ActionIdSchema.safeParse('open-fold:5').success).toBe(false);
+    expect(ActionIdSchema.safeParse('rm -rf').success).toBe(false);
+  });
+
+  it('checks incoming items', () => {
+    const bytes = new Uint8Array([1, 2, 3]);
+    expect(IncomingItemSchema.safeParse({ kind: 'csv', name: 'a.csv', bytes }).success).toBe(true);
+    expect(IncomingItemSchema.safeParse({ kind: 'csv', name: 'a.csv', bytes: [1, 2] }).success).toBe(false);
+    expect(IncomingItemSchema.safeParse({ kind: 'csv', name: 'x'.repeat(121), bytes }).success).toBe(false);
+    expect(IncomingItemSchema.safeParse({ kind: 'link', name: 'l', link: { screen: 'open', target: 'secrets' } }).success).toBe(false);
+    expect(IncomingItemSchema.safeParse({ kind: 'refused', reason: 'too-long' }).success).toBe(true);
+  });
 });

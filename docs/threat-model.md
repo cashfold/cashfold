@@ -97,3 +97,32 @@ The desktop app is an Electron shell around the unchanged web export (ADR-0009).
 | The shell logs something sensitive                                                            | The shell's log redacts by type (paths, key-shaped values, URL credentials, bytes); IPC payloads are never logged.                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 
 **Residual risks.** The update check reveals the app version and the person's address to GitHub (documented in `docs/privacy.md`; it can be switched off). Electron's Chromium needs regular security updates, and a copy that is not updated stays exposed to the browser engine's known flaws; updates are therefore on by default and a release is made for every Electron security release. The JavaScript memory-erasure limit of the web app applies unchanged. The desktop shell is part of the scope of the external security review.
+
+## Desktop lock policy (spec 006)
+
+The desktop app no longer treats losing focus as a reason to hide or lock. A browser tab is easy to leave on a shared screen, so the web app still hides its content the moment the tab is hidden or loses focus and starts short timers. A desktop window is a program the person works beside others, and covering it every time they click another window made it feel foreign. The lock policy (ADR-0012) changes as follows.
+
+**What changes**
+
+- Losing focus neither covers the content nor tells the session worker, unless the person turns on "Hide the content when I switch to another window" in Settings → Desktop. The setting is device-local and off by default.
+- A hidden or minimised window is still covered from view, but it no longer starts the worker's one-minute hidden-window timer. It locks at the person's idle time, like any other window.
+- The shell reports the computer locking its screen, going to sleep and, where the system reports it, being locked or idle. The page locks exactly as its Lock button does, and the shell clears everything it shows from app data (badge, tray and menu entries, recent Fold names).
+
+**What compensates**
+
+- The system events above cover the case the old rule was a stand-in for: the person walking away. A locked app shows nothing, holds no key, and needs the password.
+- The idle time still applies to every window state, and the shell sets `backgroundThrottling` off so a hidden window checks the idle time on schedule.
+- Settings → Desktop says which of these events this computer reports, so nothing is promised that the system will not deliver. On Linux the screen-lock event depends on the desktop; sleep and the idle poll are what is relied on there.
+
+**What is still true**
+
+- The shell holds no key and no plaintext. Its reports of the page's state (`locked` or `unlocked`) are a hint for its own surfaces; no secrecy decision rests on them.
+- A person who shares a screen can turn on the hide-on-switch setting, and the web app keeps its stricter behaviour unchanged.
+- Screenshots and recordings cannot be prevented, as for the web app.
+
+| Threat                                                                 | Mitigation                                                                                                                                                                                          |
+| ---------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Someone looks at the screen while the person clicks away and leaves    | The idle time locks the window whether it is visible, hidden or minimised; the system lock, sleep and idle events lock at once; the hide-on-switch setting covers the content at once if turned on. |
+| The system lock event is missed (no report on this desktop)            | The idle time still applies; the capability report in Settings → Desktop states plainly which events are expected.                                                                                  |
+| The shell shows app data (names, counts) while the app is locked       | Badge, tray, menu and recent-Fold entries are cleared on a page lock report and on every system lock event, and are refused by the shell unless the last report was `unlocked`.                     |
+| A page claims to be unlocked to make the shell show data it should not | The shell holds only counts and short Fold names pushed by the page itself; the claim reveals nothing the page did not already hold.                                                                |

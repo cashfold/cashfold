@@ -27,6 +27,8 @@ if (!existsSync(join(webOut, 'index.html'))) {
 const version = option('--version') ?? process.env.CASHFOLD_VERSION ?? JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')).version;
 const signed = args.includes('--signed');
 const testFeed = args.includes('--test-feed');
+// The packaged tests (test-packaged.mjs) set this; it adds the hooks they read the shell through. Never in a release (check-desktop-config).
+const testHooks = process.env.CASHFOLD_TEST_BUILD === '1';
 if (signed && testFeed) {
   console.error('desktop build: --signed and --test-feed cannot be combined (a test feed is never part of a release)');
   process.exit(1);
@@ -34,8 +36,8 @@ if (signed && testFeed) {
 
 rmSync(dist, { recursive: true, force: true });
 
-// Without --test-feed, constants are folded and the dead branches go (minifySyntax only: names stay readable), so the test feed's code is not in a release at all.
-const common = { bundle: true, platform: 'node', format: 'cjs', target: 'node22', logLevel: 'warning', sourcemap: 'linked', legalComments: 'none', minifySyntax: !testFeed };
+// Without --test-feed or the test hooks, constants are folded and the dead branches go (minifySyntax only: names stay readable), so the test feed's and the test hooks' code is not in a release at all.
+const common = { bundle: true, platform: 'node', format: 'cjs', target: 'node22', logLevel: 'warning', sourcemap: 'linked', legalComments: 'none', minifySyntax: !testFeed && !testHooks };
 await build({
   ...common,
   entryPoints: [join(desktop, 'src/main/index.ts')],
@@ -44,6 +46,7 @@ await build({
   define: {
     __CASHFOLD_SIGNED__: JSON.stringify(signed),
     __CASHFOLD_TEST_FEED_ENABLED__: JSON.stringify(testFeed),
+    __CASHFOLD_TEST_HOOKS__: JSON.stringify(testHooks),
     __CASHFOLD_VERSION__: JSON.stringify(version),
   },
 });
@@ -66,6 +69,6 @@ if (expected !== actual) {
 writeFileSync(join(dist, 'web.digest'), `${actual}\n`);
 // The commit the web export was built from (BUILD_ID is what the web build uses too; CI sets it to the commit).
 const commit = process.env.BUILD_ID ?? process.env.GITHUB_SHA ?? '';
-writeFileSync(join(dist, 'build-info.json'), `${JSON.stringify({ version, commit, signed, testFeed, webDigest: actual }, null, 2)}\n`);
+writeFileSync(join(dist, 'build-info.json'), `${JSON.stringify({ version, commit, signed, testFeed, testHooks, webDigest: actual }, null, 2)}\n`);
 
 console.log(`desktop build: version ${version}${signed ? ', signed' : ''}${testFeed ? ', test feed' : ''}, web export ${actual.slice(0, 12)}…`);

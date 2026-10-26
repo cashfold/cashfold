@@ -16,6 +16,7 @@ import { useAddSheet } from './add-context';
 import { Topbar } from './Topbar';
 import { OverlayHost } from './OverlayHost';
 import { FoldSwitcher } from './FoldSwitcher';
+import { DesktopOnly } from '../desktop/lazy';
 import { PrivacyCover } from './PrivacyCover';
 import { PRIMARY_SECTIONS, matchSection, type Section } from './routes';
 import { StatusProvider } from './StatusProvider';
@@ -133,6 +134,7 @@ function UnlockedShell({ children }: { children: ReactNode }) {
         <AddSheetHost>
           <SidebarLayout navbar={<Topbar />} sidebar={<NavigationSidebar />} openLabel={t('shell.menu')} closeLabel={t('shell.closeMenu')} contentInert={core.covered}>
             <RouteRefresh />
+            <DesktopOnly load={() => import('../desktop/DesktopIdleLock')} />
             <Banners />
             {children}
           </SidebarLayout>

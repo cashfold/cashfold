@@ -97,3 +97,80 @@ describe('answers are checked before the page sees them', () => {
     await expect(getDesktopBridge({ cashfoldDesktop: raw })!.updates.autoCheck()).resolves.toBe(true);
   });
 });
+
+describe('desktop experience calls and events are checked', () => {
+  const settings = { hideOnBlur: false, startAtLogin: false, closeBehavior: 'quit', theme: 'system' };
+  const capabilities = { platform: 'linux', lockEvents: ['suspend'], badge: false, statusItem: false, jumpList: false, dockMenu: false, notifications: 'granted', translucency: 'unavailable', loginItem: true };
+
+  function full(overrides: Record<string, unknown> = {}) {
+    const subscribers = new Map<string, (value: unknown) => void>();
+    const on = (name: string) => vi.fn((listener: (value: unknown) => void) => {
+      subscribers.set(name, listener);
+      return () => void subscribers.delete(name);
+    });
+    const base = rawBridge();
+    const raw = {
+      ...base.raw,
+      platform: 'linux',
+      settings: { get: vi.fn(async () => ({ settings, capabilities })), set: vi.fn(async () => ({ settings, applied: { startAtLogin: true } })) },
+      setTheme: vi.fn(async () => undefined),
+      reportSession: vi.fn(async () => undefined),
+      setBadge: vi.fn(async () => undefined),
+      setRecentFolds: vi.fn(async () => undefined),
+      popupMenu: vi.fn(async () => 'edit'),
+      showWindow: vi.fn(async () => undefined),
+      onSystemLock: on('lock'),
+      onMenuAction: on('action'),
+      onIncoming: on('incoming'),
+      onFrameState: on('frame'),
+      onSettingsChanged: on('changed'),
+      ...overrides,
+    };
+    return { raw, emit: (name: string, value: unknown) => subscribers.get(name)?.(value) };
+  }
+
+  it('passes a valid settings answer and refuses one that does not fit', async () => {
+    await expect(getDesktopBridge({ cashfoldDesktop: full().raw })!.settings.get()).resolves.toEqual({ settings, capabilities });
+    const bad = full({ settings: { get: vi.fn(async () => ({ settings: {}, capabilities })), set: vi.fn(async () => ({})) } });
+    const bridge = getDesktopBridge({ cashfoldDesktop: bad.raw })!;
+    await expect(bridge.settings.get()).rejects.toThrow();
+    await expect(bridge.settings.set({ hideOnBlur: true })).rejects.toThrow();
+  });
+
+  it('does not let a failing shell break the page when it only sets a badge, a theme or the session', async () => {
+    const failing = full({ setBadge: vi.fn(async () => Promise.reject(new Error('x'))), setTheme: vi.fn(async () => Promise.reject(new Error('x'))), reportSession: vi.fn(() => { throw new Error('x'); }) });
+    const bridge = getDesktopBridge({ cashfoldDesktop: failing.raw })!;
+    await expect(bridge.setBadge(3)).resolves.toBeUndefined();
+    await expect(bridge.setTheme('dark')).resolves.toBeUndefined();
+    await expect(bridge.reportSession('locked')).resolves.toBeUndefined();
+  });
+
+  it('answers a menu choice only with an id the page offered', async () => {
+    const items = [{ id: 'edit', label: 'Edit' }];
+    await expect(getDesktopBridge({ cashfoldDesktop: full().raw })!.popupMenu(items)).resolves.toBe('edit');
+    const other = full({ popupMenu: vi.fn(async () => 'delete-everything') });
+    await expect(getDesktopBridge({ cashfoldDesktop: other.raw })!.popupMenu(items)).resolves.toBeNull();
+    const failing = full({ popupMenu: vi.fn(async () => Promise.reject(new Error('x'))) });
+    await expect(getDesktopBridge({ cashfoldDesktop: failing.raw })!.popupMenu(items)).resolves.toBeNull();
+  });
+
+  it('delivers only events that fit their schema', () => {
+    const { raw, emit } = full();
+    const bridge = getDesktopBridge({ cashfoldDesktop: raw })!;
+    const lock = vi.fn();
+    const action = vi.fn();
+    const frame = vi.fn();
+    bridge.onSystemLock(lock);
+    bridge.onMenuAction(action);
+    bridge.onFrameState(frame);
+    emit('lock', { reason: 'suspend' });
+    emit('lock', { reason: 'nope' });
+    emit('action', 'lock');
+    emit('action', 'rm');
+    emit('frame', { fullscreen: false, maximized: false, translucent: true });
+    emit('frame', { fullscreen: 'no' });
+    expect(lock).toHaveBeenCalledOnce();
+    expect(action).toHaveBeenCalledOnce();
+    expect(frame).toHaveBeenCalledOnce();
+  });
+});

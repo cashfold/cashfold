@@ -5,6 +5,7 @@ import { registerServiceWorker } from '../sw/register';
 import { ErrorBoundary } from '../ui/errors/ErrorBoundary';
 import { I18nProvider, useI18n } from '../ui/i18n/I18nProvider';
 import { CoreProvider } from '../ui/core/CoreProvider';
+import { DesktopSettingsProvider } from '../ui/desktop/DesktopSettingsProvider';
 import { AppShell } from '../ui/shell/AppShell';
 import { ThemeProvider } from '../ui/theme/ThemeProvider';
 import { SupportGate } from '../ui/support/SupportGate';
@@ -27,9 +28,11 @@ export function AppProviders({ children }: { children: ReactNode }) {
   return (
     <ThemeProvider>
       <I18nProvider>
-        <CoreProvider>
-          <Inner>{children}</Inner>
-        </CoreProvider>
+        <DesktopSettingsProvider>
+          <CoreProvider>
+            <Inner>{children}</Inner>
+          </CoreProvider>
+        </DesktopSettingsProvider>
       </I18nProvider>
     </ThemeProvider>
   );
