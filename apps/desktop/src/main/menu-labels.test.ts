@@ -1,7 +1,6 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { SHELL_LANGUAGES } from '@cashfold/platform';
 import { problemMessage } from './data-folder';
-import { buildMenu } from './menu';
 import { labelsFor, languageFromSystem } from './menu-labels';
 
 describe('the language the shell starts in', () => {
@@ -23,11 +22,10 @@ describe('the words the shell shows', () => {
     const english = labelsFor('en');
     for (const language of SHELL_LANGUAGES.filter((l) => l !== 'en')) {
       const labels = labelsFor(language);
-      for (const key of ['file', 'edit', 'view', 'window', 'releaseNotes', 'reportProblem', 'notWritableTitle'] as const) {
+      for (const key of ['cut', 'copy', 'paste', 'selectAll', 'notWritableTitle'] as const) {
         expect(labels[key], `${language}.${key}`).toBeTruthy();
         expect(labels[key], `${language}.${key}`).not.toBe(english[key]);
       }
-      expect(labels.onGitHub('Cashfold')).toContain('Cashfold');
       expect(labels.notWritableDetail('/data')).toContain('/data');
     }
   });
@@ -37,15 +35,5 @@ describe('the words the shell shows', () => {
     expect(message?.title).toBe('Cashfold nie może tutaj zapisać Twoich danych');
     expect(message?.detail).toContain('/home/x/.config/Cashfold');
     expect(problemMessage({ kind: 'not-writable' }, '/d')?.title).toBe('Cashfold cannot save your data here');
-  });
-
-  it('builds the menu with those labels and keeps the standard items as roles', () => {
-    const buildFromTemplate = vi.fn((template: unknown) => template as never);
-    for (const [language, view] of [['uk', 'Вигляд'], ['pl', 'Widok'], ['en', 'View']] as const) {
-      buildMenu({ menu: { buildFromTemplate }, isMac: false, isDev: false, openExternal: async () => undefined, language });
-      const template = buildFromTemplate.mock.calls.at(-1)![0] as Array<{ label?: string; role?: string }>;
-      expect(template.map((item) => item.label ?? item.role)).toContain(view);
-    }
-    expect(JSON.stringify(buildFromTemplate.mock.calls.at(-1)![0])).toContain('"role":"copy"');
   });
 });

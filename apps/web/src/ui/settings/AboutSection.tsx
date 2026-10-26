@@ -41,7 +41,7 @@ export function AboutSection() {
       <Text>{t('settings.about.when')}</Text>
       {view.kind === 'failed' ? <p role="status" className="mt-3 text-sm text-muted">{t('settings.about.unavailable')}</p> : null}
       {view.kind !== 'failed' ? (
-        <DescriptionList className="mt-3">
+        <DescriptionList className="mt-3" data-selectable>
           <DescriptionTerm>{t('settings.about.version')}</DescriptionTerm>
           <DescriptionDetails data-testid="about-version">{view.kind === 'desktop' ? view.info.version : WEB_VERSION}</DescriptionDetails>
           {view.kind === 'desktop' ? (
@@ -78,6 +78,10 @@ export function AboutSection() {
               <DescriptionTerm>{t('settings.about.source')}</DescriptionTerm>
               <DescriptionDetails>
                 <Link href={view.info.sourceUrl} target="_blank" rel="noopener noreferrer" className="underline">{t('settings.about.sourceLink')}</Link>
+              </DescriptionDetails>
+              <DescriptionTerm>{t('settings.about.problems')}</DescriptionTerm>
+              <DescriptionDetails>
+                <Link href={`${view.info.sourceUrl}/issues`} target="_blank" rel="noopener noreferrer" className="underline" data-testid="about-report-problem">{t('settings.about.problemsLink')}</Link>
               </DescriptionDetails>
               <DescriptionTerm>{t('settings.about.licence')}</DescriptionTerm>
               <DescriptionDetails>{t('settings.about.licenceValue')}</DescriptionDetails>

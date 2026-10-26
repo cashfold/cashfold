@@ -96,7 +96,10 @@ description: "Task list for the native desktop experience"
 
 ---
 
-## Phase 5: User Story 3 — Shortcuts and a real menu bar (P3)
+## Phase 5: User Story 3 — Shortcuts (P3)
+
+> **Superseded in part by [spec 007](../007-desktop-native-feel/spec.md):** the application menu bar is removed. Shortcuts stay, but are plain keyboard shortcuts in the shell's shortcut table (`apps/desktop/src/main/shortcuts.ts`, entries flagged `data: true`), with no menu entry and no menu to disable. Read "menu" below accordingly.
+
 
 **Goal**: the listed shortcuts and menu entries work, in the language shown, and are disabled when locked.
 
@@ -104,15 +107,15 @@ description: "Task list for the native desktop experience"
 
 ### Tests first
 
-- [ ] T031 [P] [US3] Write `apps/desktop/src/main/app-menu.test.ts`: the model has the structure in `contracts/menu-and-shortcuts.md` for macOS and for Windows/Linux; every action id has the accelerator in the contract (a table-driven test that fails on a changed or duplicated accelerator); all data entries are disabled when the session is `locked` and `lock` is not; clicking an item sends `menu-action` with exactly its id; labels come out in English, Ukrainian and Polish; Reload and Developer Tools only exist unpackaged; a platform shortcut that clashes with ours (for example `Ctrl+L` or `Ctrl+F` on a platform that reserves it) is dropped from the accelerator and the menu shows none rather than a shortcut that does not work
+- [ ] T031 [P] [US3] Write the table-driven test in `apps/desktop/src/main/shortcuts.test.ts` (extending spec 007's): each action id of `contracts/menu-and-shortcuts.md` has the accelerator in the contract, none is duplicated, every entry is flagged `data: true` and is dropped while the session is `locked` except `lock`, a platform shortcut that clashes with ours is not registered (superseded: no menu model, see spec 007)
 - [ ] T032 [P] [US3] Write `apps/web/src/ui/desktop/DesktopActions.test.tsx`: each action id performs its effect (add sheet, lock, Settings, Transactions with the search focused, each section, Settings → Data with import or export focused); while locked an incoming data action does nothing; an unknown id is ignored
 
 ### Implementation
 
-- [ ] T033 [US3] Extend `apps/desktop/src/main/menu-labels.ts` with every menu, tray and dialog string needed here in `en`, `uk` and `pl` (menu names and entries; the tray, dock-menu and jump-list strings are added with the tray in the US5 text task), and extend `menu-labels.test.ts` so a missing language fails
-- [ ] T034 [US3] Create `apps/desktop/src/main/app-menu.ts` that builds the menu from a typed action model with accelerators (`CmdOrCtrl+N`, `+L`, `+,`, `+F`, `+1` to `+5`, `Shift+CmdOrCtrl+I` and `+E`), keeps the platform's role items, rebuilds on language, session and settings changes, and replaces the use of `menu.ts` in `index.ts` (delete the unused parts of `menu.ts` and keep `buildMenu`'s existing callers working until removed)
+- [ ] T033 [US3] Extend `apps/desktop/src/main/menu-labels.ts` with every menu, tray and dialog string needed here in `en`, `uk` and `pl` (no menu names after spec 007; the tray, dock-menu and jump-list strings are added with the tray in the US5 text task), and extend `menu-labels.test.ts` so a missing language fails
+- [ ] T034 [US3] Add the app-action entries (`CmdOrCtrl+N`, `+L`, `+,`, `+F`, `+1` to `+5`, `Shift+CmdOrCtrl+I` and `+E`) to the table in `apps/desktop/src/main/shortcuts.ts`, each sending `menu-action` with its id (superseded: there is no `app-menu.ts` and no menu)
 - [ ] T035 [US3] Create `apps/web/src/ui/desktop/DesktopActions.tsx` mounted in `UnlockedShell` (`apps/web/src/ui/shell/AppShell.tsx`) through `DesktopOnly` (loaded only in the desktop app): subscribes to the bridge's `onMenuAction` and maps each action to `useAddSheet().openAdd()`, `core.lock()`, `router.push(...)`, or a focus request; add a tiny focus-request store in `apps/web/src/ui/desktop/focus-request.ts`; edit `apps/web/src/ui/transactions/TransactionsScreen.tsx` to focus its search field on a `search` request and `apps/web/src/ui/data/DataScreen.tsx` to focus the import or export panel on a request
-- [ ] T036 [P] [US3] Write the packaged spec `apps/desktop/e2e/menu.spec.ts`: click each menu item through the test hooks and check the page effect; the shortcut text in the model equals the contract; after switching the app to Polish the File menu label is `Plik`; after `lock` the data items are disabled
+- [ ] T036 [P] [US3] Write the packaged spec `apps/desktop/e2e/shortcuts.spec.ts`: press each shortcut and check the page effect (superseded: no menu items to click)
 - [ ] T037 [US3] Run the T031 to T036 tests; run `pnpm check:bundle`; update `docs/desktop.md` with the menu and shortcut table (generated or copied from the contract)
 
 **Checkpoint**: US3 works.

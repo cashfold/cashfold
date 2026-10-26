@@ -90,6 +90,22 @@ test('a quiet note appears in the app when a version is waiting, and can be dism
   });
 });
 
+test('before there is an account the note offers the release page, because Settings are not there yet', async ({ session }) => {
+  await withFeed({}, async (feed) => {
+    const { app, page } = await launchWithFeed(session, feed);
+    await app.evaluate(({ shell }) => {
+      const opened: string[] = [];
+      (globalThis as unknown as { __opened: string[] }).__opened = opened;
+      (shell as unknown as { openExternal: (url: string) => Promise<void> }).openExternal = async (url) => void opened.push(url);
+    });
+    const notice = page.getByTestId('update-notice');
+    await expect(notice).toBeVisible({ timeout: 40_000 });
+    await expect(notice.getByRole('link')).toHaveCount(0); // a link to Settings would lead nowhere without an account
+    await notice.getByTestId('update-notice-release-page').click();
+    await expect.poll(() => app.evaluate(() => (globalThis as unknown as { __opened: string[] }).__opened)).toEqual(['https://github.com/cashfold/cashfold/releases/tag/v1.3.0']);
+  });
+});
+
 test('with automatic checks switched off the app makes no request, and a check by hand still works (B-8)', async ({ session }) => {
   await withFeed({}, async (feed) => {
     const first = await launchWithFeed(session, feed);

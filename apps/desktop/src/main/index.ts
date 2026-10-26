@@ -61,10 +61,10 @@ async function main(): Promise<void> {
   const log = createLogger({ dir: join(userData, 'logs'), dataDir: userData, console: !app.isPackaged });
   if (dataFolder.kind === 'low-space') log.warn('storage.low-space', { freeMiB: Math.floor(dataFolder.freeBytes / (1024 * 1024)) });
   const openExternal = (url: string): Promise<void> => shell.openExternal(url);
-  /** The application menu, in a language; called at start and again whenever the app tells us it changed. */
-  const installMenu = (language: ShellLanguage): void => {
-    Menu.setApplicationMenu(buildMenu({ menu: Menu, isMac: process.platform === 'darwin', isDev: !app.isPackaged, openExternal, language }));
-  };
+  // The language the app is shown in: the system's at first, then whatever the app tells us. It words the shell's own right-click menu and dialogs.
+  let language: ShellLanguage = languageFromSystem(app.getPreferredSystemLanguages());
+  // Windows and Linux have no menu bar at all; macOS keeps the menu named after the app (spec 007).
+  Menu.setApplicationMenu(buildMenu({ menu: Menu, isMac: process.platform === 'darwin' }));
   const devUrl = app.isPackaged ? undefined : process.env['CASHFOLD_DEV_URL'];
   let mainWindow: BrowserWindow | undefined;
   // Closing the window hides it instead only when the person has chosen that (not yet offered: the choice arrives with the tray, spec 006 US5).
@@ -81,7 +81,7 @@ async function main(): Promise<void> {
   await app.whenReady();
   const store = createDesktopStateStore(join(userData, 'desktop-state.json'), () => screen.getAllDisplays().map((d) => d.workArea));
   app.on('before-quit', () => store.flush());
-  const openWindow = (): BrowserWindow => createMainWindow({ store, background, log, openExternal, devUrl });
+  const openWindow = (): BrowserWindow => createMainWindow({ store, background, log, openExternal, devUrl, pageLocked: () => pageSession === 'locked', language: () => language });
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) mainWindow = openWindow();
     else background.reveal(mainWindow);
@@ -176,7 +176,9 @@ async function main(): Promise<void> {
     handlers: {
       about: () => aboutInfo,
       revealDataFolder: () => revealDataFolder({ userData, openPath: (path) => shell.openPath(path) }),
-      setLanguage: (language) => installMenu(language),
+      setLanguage: (next) => {
+        language = next;
+      },
       updateState: () => updates.state(),
       updateCheck: () => updates.check(),
       updateDownload: () => updates.download(),
@@ -219,7 +221,6 @@ async function main(): Promise<void> {
       saveFolder = dirname(savedPath);
     },
   });
-  installMenu(languageFromSystem(app.getPreferredSystemLanguages()));
   mainWindow = openWindow();
   updates.start();
 }

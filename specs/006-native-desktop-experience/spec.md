@@ -54,6 +54,8 @@ The window opens in the person's colours. If the system or the person's chosen t
 
 ### User Story 3 - Shortcuts and a real menu bar (Priority: P3)
 
+> **Superseded in part by [spec 007](../007-desktop-native-feel/spec.md):** the application menu bar is removed. Shortcuts stay, but are plain keyboard shortcuts in the shell's shortcut table (`apps/desktop/src/main/shortcuts.ts`, entries flagged `data: true`), with no menu entry and no menu to disable. Read "menu" below accordingly.
+
 The standard keyboard shortcuts work, and the menu bar offers the app's real actions with those shortcuts shown the way the system writes them. The menus are in the language the app is shown in.
 
 **Why this priority**: It makes the app usable at desktop speed, and is independent of the other areas.

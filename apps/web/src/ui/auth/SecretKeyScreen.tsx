@@ -27,7 +27,7 @@ export function SecretKeyScreen({ created, email, server, onDone }: { created: C
       <p className="mt-3">{t('secretkey.lede')}</p>
       <p className="mt-3 font-medium text-danger" role="note">{t('secretkey.warning')}</p>
       <p className="mt-6 text-sm text-muted">{t('secretkey.label')}</p>
-      <p className="mt-1 break-all rounded-ui border border-border-strong bg-surface p-4 font-mono text-xl tracking-wide" data-testid="secret-key" dir="ltr">{created.secretKeyText}</p>
+      <p className="mt-1 break-all rounded-ui border border-border-strong bg-surface p-4 font-mono text-xl tracking-wide" data-testid="secret-key" data-selectable dir="ltr">{created.secretKeyText}</p>
       <div className="mt-4 flex flex-wrap gap-3">
         <Button outline type="button" onClick={async () => setCopy((await copyWithAutoClear(created.secretKeyText, 60_000)) ? 'copied' : 'failed')}>{t('secretkey.copy')}</Button>
         <Button outline type="button" onClick={() => downloadKit(kit, { t, locale, dir })}>{t('secretkey.download')}</Button>
