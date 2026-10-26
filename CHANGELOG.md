@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.0](https://github.com/cashfold/cashfold/compare/v0.3.0...v0.4.0) (2026-10-26)
+
+
+### Features
+
+* **desktop:** remove the menu bar and make the window act like an application ([#40](https://github.com/cashfold/cashfold/issues/40)) ([ff5f43c](https://github.com/cashfold/cashfold/commit/ff5f43cc221e8d4cdaf2986a0e49ba0166bf5e44))
+
 ## [0.3.0](https://github.com/cashfold/cashfold/compare/v0.2.0...v0.3.0) (2026-10-26)
 
 
