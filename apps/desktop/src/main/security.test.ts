@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
-import { decidePermission, downloadPolicy, isAllowedExternalUrl } from './security';
+import { describe, expect, it, vi } from 'vitest';
+import { decidePermission, downloadPolicy, isAllowedExternalUrl, lockDownContents } from './security';
 
 describe('which links may be opened outside the app', () => {
   it.each([
@@ -100,5 +100,31 @@ describe('which downloads are saved', () => {
     // The wiring always shows the native save dialog; the policy never returns a path.
     const decision = downloadPolicy('a.csv', BLOB);
     expect(decision.allow && decision.filename.includes('/')).toBe(false);
+  });
+});
+
+describe('a page that tries to navigate', () => {
+  function navigate(url: string) {
+    let handler: (event: { preventDefault(): void }, url: string) => void = () => undefined;
+    const log = { warn: vi.fn(), debug: vi.fn() };
+    const openExternal = vi.fn(async () => undefined);
+    lockDownContents({ on: (name: string, h: typeof handler) => { if (name === 'will-navigate') handler = h; }, setWindowOpenHandler: () => undefined } as never, { openExternal, log });
+    const event = { preventDefault: vi.fn() };
+    handler(event, url);
+    return { event, log, openExternal };
+  }
+
+  it('stays put, quietly, when a file is dropped where files are not taken', () => {
+    const { event, log, openExternal } = navigate('file:///Users/x/receipt.pdf');
+    expect(event.preventDefault).toHaveBeenCalled();
+    expect(log.warn).not.toHaveBeenCalled();
+    expect(log.debug).toHaveBeenCalledWith('security.file-drop-ignored');
+    expect(openExternal).not.toHaveBeenCalled();
+  });
+
+  it('still warns about another site', () => {
+    const { event, log } = navigate('https://example.com/');
+    expect(event.preventDefault).toHaveBeenCalled();
+    expect(log.warn).toHaveBeenCalledWith('security.navigation-blocked');
   });
 });

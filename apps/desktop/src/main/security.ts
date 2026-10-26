@@ -59,7 +59,7 @@ export interface SecurityDeps {
   readonly saveDialogOptions: (filename: string) => Electron.SaveDialogOptions;
   /** Told where a download was saved, so the next save dialog can open in the same folder. */
   readonly onSaved?: (savedPath: string) => void;
-  readonly log: { warn(event: string, fields?: Record<string, unknown>): void };
+  readonly log: { warn(event: string, fields?: Record<string, unknown>): void; debug?(event: string, fields?: Record<string, unknown>): void };
 }
 
 /** Locks down a window's web contents: no navigation away, no new windows, no webviews. */
@@ -68,7 +68,9 @@ export function lockDownContents(contents: WebContents, deps: Pick<SecurityDeps,
   contents.on('will-navigate', (event, url) => {
     if (own.has(safeOrigin(url))) return;
     event.preventDefault();
-    if (isAllowedExternalUrl(url)) void deps.openExternal(url);
+    // A file dropped on a part of the page that does not take files would open it in the window: it is ignored, and it is not worth a warning.
+    if (url.startsWith('file:')) deps.log.debug?.('security.file-drop-ignored');
+    else if (isAllowedExternalUrl(url)) void deps.openExternal(url);
     else deps.log.warn('security.navigation-blocked');
   });
   contents.setWindowOpenHandler(({ url }) => {

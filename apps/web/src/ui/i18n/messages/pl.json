@@ -1306,6 +1306,8 @@
   "settings.about.revealFailed": "Nie udało się otworzyć folderu.",
   "settings.about.source": "Kod źródłowy",
   "settings.about.sourceLink": "Kod źródłowy tej wersji",
+  "settings.about.problems": "Problemy",
+  "settings.about.problemsLink": "Zgłoś problem na GitHub",
   "settings.about.licence": "Licencja",
   "settings.about.licenceValue": "GNU Affero General Public License, wersja 3",
   "settings.about.unavailable": "Nie udało się odczytać informacji o tej aplikacji.",

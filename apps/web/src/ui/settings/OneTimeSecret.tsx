@@ -27,7 +27,7 @@ export function OneTimeSecret(props: { title: string; lede: string; warning: str
       <p className="mt-2">{props.lede}</p>
       <p className="mt-2 font-medium text-danger" role="note">{props.warning}</p>
       <p className="mt-4 text-sm text-muted">{props.label}</p>
-      <p className="mt-1 break-all rounded-ui border border-border-strong bg-surface p-4 font-mono text-lg tracking-wide" data-testid={props.testId} dir="ltr">{props.text}</p>
+      <p className="mt-1 break-all rounded-ui border border-border-strong bg-surface p-4 font-mono text-lg tracking-wide" data-testid={props.testId} data-selectable dir="ltr">{props.text}</p>
       <div className="mt-3 flex flex-wrap gap-3">
         <Button outline type="button" onClick={async () => setCopy((await copyWithAutoClear(props.text, 60_000)) ? 'copied' : 'failed')}>{t('secretkey.copy')}</Button>
         <Button outline type="button" onClick={() => downloadText(props.fileName, `${props.text}\n`)}>{t('account.secret.download')}</Button>

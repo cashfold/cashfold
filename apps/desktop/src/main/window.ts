@@ -1,10 +1,14 @@
 import { join } from 'node:path';
-import { BrowserWindow, type BrowserWindowConstructorOptions } from 'electron';
+import { app, BrowserWindow, type BrowserWindowConstructorOptions } from 'electron';
+import type { ShellLanguage } from '@cashfold/platform';
 import { APP_NAME, APP_ORIGIN } from './identity';
 import type { BackgroundMode } from './background';
 import type { DesktopStateStore } from './desktop-state';
 import type { Logger } from './log';
+import { installNativeFeel } from './native-feel';
 import { lockDownContents } from './security';
+import { installShortcuts } from './shortcuts';
+import { installTextMenu } from './text-menu';
 
 export interface WindowDeps {
   readonly store: DesktopStateStore;
@@ -13,6 +17,9 @@ export interface WindowDeps {
   readonly openExternal: (url: string) => Promise<void>;
   /** Only in an unpackaged run: a dev server to load instead of the packaged export. */
   readonly devUrl: string | undefined;
+  /** What the page last said about its session, and the language the app is shown in. */
+  readonly pageLocked: () => boolean;
+  readonly language: () => ShellLanguage;
 }
 
 /** The one application window: isolated, sandboxed, with no Node in the page, restoring where it was. */
@@ -26,6 +33,8 @@ export function createMainWindow(deps: WindowDeps): BrowserWindow {
     minHeight: 600,
     show: false,
     title: APP_NAME,
+    // No menu bar, and Alt does not bring one back (spec 007).
+    autoHideMenuBar: false,
     backgroundColor: '#ffffff',
     webPreferences: {
       preload: join(__dirname, '..', 'preload', 'index.cjs'),
@@ -40,6 +49,10 @@ export function createMainWindow(deps: WindowDeps): BrowserWindow {
     },
   };
   const win = new BrowserWindow(options);
+  if (process.platform !== 'darwin') {
+    win.removeMenu();
+    win.setMenuBarVisibility(false);
+  }
   if (state.maximized) win.maximize();
   win.once('ready-to-show', () => win.show());
 
@@ -60,6 +73,12 @@ export function createMainWindow(deps: WindowDeps): BrowserWindow {
   const devOrigin = deps.devUrl === undefined ? [] : [new URL(deps.devUrl).origin];
   lockDownContents(win.webContents, { openExternal: deps.openExternal, log: deps.log }, devOrigin);
   win.webContents.on('render-process-gone', (_event, details) => deps.log.error('window.render-process-gone', { reason: details.reason }));
+
+  // The window behaves like an application: no selectable interface text, native pointers, shortcuts without a menu, a field menu, no pinch zoom.
+  installNativeFeel(win.webContents);
+  installShortcuts(win.webContents, win, { platform: process.platform, development: !app.isPackaged, pageLocked: deps.pageLocked, quit: () => app.quit() });
+  installTextMenu(win.webContents, deps.language);
+  void win.webContents.setVisualZoomLevelLimits(1, 1);
 
   void win.loadURL(deps.devUrl ?? `${APP_ORIGIN}/`);
   return win;

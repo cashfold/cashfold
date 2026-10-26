@@ -56,6 +56,17 @@ ALLOWED_ORIGINS=https://cashfold.example.com,app://cashfold
 | No offline-cache worker                                    | The files are local, so there is nothing to cache.                                               | Nothing; the app is as available offline as before.                                                                                  |
 | Downloads go through a save dialog                         | The shell never writes a file without the person choosing where.                                 | Emergency Kit, backup, CSV export and attachment downloads open a "save as" dialog.                                                  |
 
+## How the window behaves like an application
+
+The shell, not the web app, makes the window feel native (spec 007), so the web app in a browser is unchanged.
+
+- **No menu bar.** Windows and Linux show no menu (Alt shows nothing); macOS keeps only the menu named after the app (About, Hide, Quit). The keyboard shortcuts for the clipboard, undo, zoom, closing, minimising, full screen and quit are handled in `apps/desktop/src/main/shortcuts.ts`. About, update checks and the data folder are in Settings.
+- **Interface text is not selectable.** Fields always are. A value a person has to copy or read out (a Secret Key, the details in About) must carry `data-selectable` in the web app, or the desktop app will not let it be selected. Add the attribute to any new such value.
+- **Pointers.** The arrow on buttons, tabs, rows and disabled controls; the text pointer on fields and `data-selectable` values; the hand only on links that open a new window (`target="_blank"`).
+- **Right-click** in a text field offers Cut, Copy, Paste and Select all (and spelling suggestions) in the app's language.
+
+The rules are in `apps/desktop/src/main/native-feel.ts`.
+
 ## Installing
 
 Take the installer for your system from the [releases page](https://github.com/cashfold/cashfold/releases/latest).

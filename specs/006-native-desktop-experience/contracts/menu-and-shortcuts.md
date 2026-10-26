@@ -1,5 +1,7 @@
 # Contract: menus, shortcuts and quick actions
 
+> **Superseded in part by [spec 007](../007-desktop-native-feel/spec.md):** the application menu bar is removed. Shortcuts stay, but are plain keyboard shortcuts in the shell's shortcut table (`apps/desktop/src/main/shortcuts.ts`, entries flagged `data: true`), with no menu entry and no menu to disable. Read "menu" below accordingly.
+
 `CmdOrCtrl` is Command on macOS and Control on Windows and Linux. Each shortcut is shown in the menu in the platform's own notation. Labels come from `menu-labels.ts` in the language the app is shown in. A platform's own shortcut wins over ours if they clash, and the menu shows what really works.
 
 ## Action ids (closed set; `cashfold:menu-action`)
@@ -22,12 +24,7 @@ While locked, every id except `lock` is disabled in the menu; if one still arriv
 
 ## Menu structure
 
-- **macOS**: the app menu (About, Settings…, Services, Hide, Hide Others, Show All, Quit), then File, Edit, View, Window, Help.
-- **Windows and Linux**: File (New transaction, Import…, Export…, Lock, Settings, Quit), Edit, View, Window, Help.
-- **Edit**: Undo, Redo, Cut, Copy, Paste, Select All (roles), Find (`search`).
-- **View**: the five sections, Zoom In/Out/Reset, Full Screen (roles); Reload and Developer Tools only in an unpackaged run.
-- **Window**: Minimize, Zoom/Maximize, Close (and Bring All to Front on macOS) as roles.
-- **Help**: the existing links.
+None. Spec 007 removed the menu bar: Windows and Linux show no menu, and macOS keeps only the menu named after the app (About, Hide, Hide Others, Show All, Quit). The shortcuts in the table above are handled by `shortcuts.ts`; the "Menu" column is no longer used. Settings is reached from the app's own navigation.
 
 ## Tray / menu-bar item
 
