@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.0](https://github.com/cashfold/cashfold/compare/v0.2.0...v0.3.0) (2026-10-26)
+
+
+### Features
+
+* **desktop:** lock on system events instead of focus loss, plus the desktop foundation ([#37](https://github.com/cashfold/cashfold/issues/37)) ([902c132](https://github.com/cashfold/cashfold/commit/902c1327498337ee9eece1cf11e778d859f9d63e))
+
 ## [0.2.0](https://github.com/cashfold/cashfold/compare/v0.1.2...v0.2.0) (2026-10-25)
 
 
