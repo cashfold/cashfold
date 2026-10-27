@@ -2,8 +2,7 @@
 
 import { addDays, DEFAULT_HORIZON_DAYS, type PendingOccurrence, type ScheduleRow, type Upcoming } from '@cashfold/core';
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
-import { allowAmounts, amountsAllowed, permission, rememberShown, requestPermission, show, shownKeys } from '../../adapters/notifications/browser';
-import { showDueReminders } from '../../adapters/notifications/notify';
+import { allowAmounts, amountsAllowed, permission, requestPermission } from '../../adapters/notifications/browser';
 import { Modal } from '../forms/Modal';
 import { TextField } from '../forms/TextField';
 import { ArrowPathIcon, Button, Checkbox, CheckboxField, Disclosure, EmptyState, Label, Select } from '../kit';
@@ -81,7 +80,6 @@ function SchedulesBody() {
       <p className="mt-3 text-muted">{t('schedules.lede')}</p>
       {message ? <p role="alert" className="mt-3 text-danger">{message}</p> : null}
       <ReminderSettings />
-      <Reminders />
 
       <section className="mt-8" aria-labelledby="sch-inbox">
         <h2 id="sch-inbox" className="text-lg font-semibold">{t('schedules.inbox')}</h2>
@@ -234,37 +232,7 @@ function ReminderSettings() {
   );
 }
 
-/** Shows reminders that have come due while the app is open, once each. */
-function Reminders() {
-  const { t, locale } = useI18n();
-  const ledger = useLedger();
-  const accounts = ledger.basics!.accounts;
-  useEffect(() => {
-    let live = true;
-    const check = async () => {
-      if (permission() !== 'granted') return;
-      const due = await ledger.read<import('@cashfold/core').Reminder[]>('schedules.reminders').catch(() => []);
-      if (!live) return;
-      await showDueReminders(due, {
-        permission, show, alreadyShown: shownKeys, remember: rememberShown, showAmounts: amountsAllowed(),
-        copy: {
-          title: (name) => t('schedules.notify.message.title', { name }),
-          body: (date) => t('schedules.notify.message.body', { date }),
-          bodyWithAmount: (date, amount) => t('schedules.notify.message.bodyAmount', { date, amount }),
-        },
-        formatDate: (d) => formatDate(d, locale), formatAmount: (minor, currency) => ledger.money(minor, currency),
-        currencyOf: (account) => accounts.find((a) => a.id === account)?.currency,
-      });
-    };
-    void check();
-    const timer = setInterval(() => void check(), 60_000);
-    return () => {
-      live = false;
-      clearInterval(timer);
-    };
-  }, [ledger.version, ledger.fold?.id]);
-  return null;
-}
+// Reminders are shown by the ReminderService in the unlocked shell (ui/desktop), on every screen, not only here.
 
 type Kind = 'expense' | 'income' | 'transfer';
 

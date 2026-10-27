@@ -32,4 +32,31 @@ describe('Settings → Desktop', () => {
     const html = inI18n(<DesktopSectionBody settings={{ ...settings, hideOnBlur: true }} capabilities={capabilities} update={async () => undefined} />);
     expect(html).toMatch(/aria-checked="true"/);
   });
+
+  it('offers to keep running in the background only where a tray or menu-bar item can bring the app back', () => {
+    const withIcon = inI18n(<DesktopSectionBody settings={settings} capabilities={{ ...capabilities, statusItem: true }} update={async () => undefined} />);
+    expect(withIcon).toContain('When I close the window');
+    expect(withIcon).toContain('Keep Cashfold running in the background');
+    expect(withIcon).toContain('data-testid="desktop-close-background"');
+    const without = inI18n(<DesktopSectionBody settings={settings} capabilities={{ ...capabilities, statusItem: false }} update={async () => undefined} />);
+    expect(without).not.toContain('Keep Cashfold running in the background');
+    expect(without).toContain('data-testid="desktop-close-unavailable"');
+  });
+
+  it('says that reminders and the count need the app unlocked', () => {
+    expect(inI18n(<DesktopSectionBody settings={settings} capabilities={capabilities} update={async () => undefined} />)).toContain('work only while Cashfold is unlocked');
+  });
+
+  it('offers start at login, off by default, where the system can do it', () => {
+    const html = inI18n(<DesktopSectionBody settings={settings} capabilities={capabilities} update={async () => undefined} />);
+    expect(html).toContain('Start Cashfold when I sign in');
+    expect(html).toMatch(/data-testid="desktop-start-at-login"[^>]*aria-checked="false"|aria-checked="false"[^>]*data-testid="desktop-start-at-login"/);
+    const without = inI18n(<DesktopSectionBody settings={settings} capabilities={{ ...capabilities, loginItem: false }} update={async () => undefined} />);
+    expect(without).not.toContain('Start Cashfold when I sign in');
+  });
+
+  it('shows start at login on when it is chosen', () => {
+    const html = inI18n(<DesktopSectionBody settings={{ ...settings, startAtLogin: true }} capabilities={capabilities} update={async () => undefined} />);
+    expect(html).toMatch(/data-testid="desktop-start-at-login"[^>]*aria-checked="true"|aria-checked="true"[^>]*data-testid="desktop-start-at-login"/);
+  });
 });
