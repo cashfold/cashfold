@@ -19,6 +19,7 @@ import { FoldSwitcher } from './FoldSwitcher';
 import { HelpDialog } from './HelpDialog';
 import { dismissOverlays, subscribeOverlays } from './overlay-signal';
 import { DesktopOnly } from '../desktop/lazy';
+import { useDesktop } from '../desktop/useDesktop';
 import { ReminderService } from '../desktop/ReminderService';
 import { PrivacyCover } from './PrivacyCover';
 import { PRIMARY_SECTIONS, matchSection, type Section } from './routes';
@@ -103,6 +104,7 @@ function HelpItem() {
 
 function NavigationSidebar() {
   const { t } = useI18n();
+  const { isDesktop } = useDesktop();
   const core = useCore();
   const path = usePathname();
   const { openAdd } = useAddSheet();
@@ -111,7 +113,8 @@ function NavigationSidebar() {
   return (
     <Sidebar aria-label={t('nav.label')}>
       <SidebarHeader>
-        <Link href="/" className="rounded-lg px-2 py-1 text-lg font-semibold text-zinc-950 dark:text-white">{t('app.name')}</Link>
+        {/* The desktop window already carries the app's name (the title bar, the Dock, the taskbar), so the name here would only repeat it. */}
+        {isDesktop ? null : <Link href="/" className="rounded-lg px-2 py-1 text-lg font-semibold text-zinc-950 dark:text-white">{t('app.name')}</Link>}
         <FoldSwitcher />
         <Button className="mt-3" onClick={() => openAdd()}>
           <PlusIcon data-slot="icon" aria-hidden="true" />
