@@ -164,8 +164,10 @@ try {
     `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="240 240 544 544"><path d="M672.7 320.5 A250 250 0 1 0 672.7 703.5" fill="none" stroke="#000000" stroke-width="120" stroke-linecap="round"/></svg>`;
   await shot(trayArc(16), 16, 16, at('apps/desktop/build/tray/trayTemplate.png'), { transparent: true });
   await shot(trayArc(32), 32, 32, at('apps/desktop/build/tray/trayTemplate@2x.png'), { transparent: true });
-  await shot(square(32), 32, 32, at('apps/desktop/build/tray/tray.png'), { transparent: true });
-  await shot(square(64), 64, 64, at('apps/desktop/build/tray/tray@2x.png'), { transparent: true });
+  // Windows and Linux show a 16 pixel icon at 100 percent; Electron picks the file for the display's scale from its name (tray@1.5x.png and so on).
+  for (const [name, size] of [['tray.png', 16], ['tray@1.25x.png', 20], ['tray@1.5x.png', 24], ['tray@2x.png', 32], ['tray@3x.png', 48]]) {
+    await shot(square(size), size, size, at('apps/desktop/build/tray', name), { transparent: true });
+  }
 
   // The count on the Windows taskbar button: Windows has no count API, so the overlay is a picture. Only made when missing.
   const badgeSvg = (label) =>
