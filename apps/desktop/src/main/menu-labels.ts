@@ -8,6 +8,14 @@ export interface ShellLabels {
   readonly copy: string;
   readonly paste: string;
   readonly selectAll: string;
+  // The tray or menu-bar item, the macOS dock menu and the Windows jump list (nothing here names a Fold or an amount).
+  readonly trayShow: string;
+  readonly trayAddTransaction: string;
+  readonly trayLock: string;
+  readonly trayQuit: string;
+  readonly recentFolds: string;
+  /** The accessible description of the taskbar count on Windows. */
+  readonly badgeDescription: (count: number) => string;
   readonly notWritableTitle: string;
   readonly notWritableDetail: (folder: string) => string;
 }
@@ -18,6 +26,12 @@ const LABELS: Readonly<Record<ShellLanguage, ShellLabels>> = {
     copy: 'Copy',
     paste: 'Paste',
     selectAll: 'Select all',
+    trayShow: 'Show Cashfold',
+    trayAddTransaction: 'Add transaction',
+    trayLock: 'Lock',
+    trayQuit: 'Quit',
+    recentFolds: 'Recent Folds',
+    badgeDescription: (count) => `${count} waiting for confirmation`,
     notWritableTitle: 'Cashfold cannot save your data here',
     notWritableDetail: (folder) =>
       `The folder that holds your data is not writable:\n\n${folder}\n\nYour data has not been changed. Check that the folder and its disk are not read-only and that you may write to them, then start Cashfold again.`,
@@ -27,6 +41,12 @@ const LABELS: Readonly<Record<ShellLanguage, ShellLabels>> = {
     copy: 'Копіювати',
     paste: 'Вставити',
     selectAll: 'Вибрати все',
+    trayShow: 'Показати Cashfold',
+    trayAddTransaction: 'Додати транзакцію',
+    trayLock: 'Заблокувати',
+    trayQuit: 'Вийти',
+    recentFolds: 'Останні простори',
+    badgeDescription: (count) => `Очікують підтвердження: ${count}`,
     notWritableTitle: 'Cashfold не може зберегти ваші дані тут',
     notWritableDetail: (folder) =>
       `Папка з вашими даними недоступна для запису:\n\n${folder}\n\nВаші дані не змінено. Переконайтеся, що папка й диск не лише для читання і що у вас є право запису, а потім запустіть Cashfold знову.`,
@@ -36,6 +56,12 @@ const LABELS: Readonly<Record<ShellLanguage, ShellLabels>> = {
     copy: 'Kopiuj',
     paste: 'Wklej',
     selectAll: 'Zaznacz wszystko',
+    trayShow: 'Pokaż Cashfold',
+    trayAddTransaction: 'Dodaj transakcję',
+    trayLock: 'Zablokuj',
+    trayQuit: 'Zakończ',
+    recentFolds: 'Ostatnie przestrzenie',
+    badgeDescription: (count) => `Oczekujące na potwierdzenie: ${count}`,
     notWritableTitle: 'Cashfold nie może tutaj zapisać Twoich danych',
     notWritableDetail: (folder) =>
       `Folder z Twoimi danymi nie jest zapisywalny:\n\n${folder}\n\nTwoje dane nie zostały zmienione. Sprawdź, czy folder i dysk nie są tylko do odczytu oraz czy masz prawo zapisu, a następnie uruchom Cashfold ponownie.`,

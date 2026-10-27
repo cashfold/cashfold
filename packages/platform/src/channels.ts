@@ -21,6 +21,8 @@ export const CHANNELS = {
   recentFolds: 'cashfold:recent-folds',
   popupMenu: 'cashfold:popup-menu',
   windowShow: 'cashfold:window:show',
+  /** The page has a listener for `incoming`; sent by the preload when one is registered, so nothing is delivered to a page that cannot take it yet. */
+  incomingReady: 'cashfold:incoming-ready',
   /** main → renderer events */
   updateChanged: 'cashfold:update:changed',
   systemLock: 'cashfold:system-lock',

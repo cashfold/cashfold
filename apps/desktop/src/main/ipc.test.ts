@@ -58,6 +58,7 @@ function setup(overrides: Partial<IpcHandlers> = {}) {
     setRecentFolds: vi.fn(),
     popupMenu: vi.fn(async () => 'edit'),
     showWindow: vi.fn(),
+    incomingReady: vi.fn(),
     ...overrides,
   };
   registerIpc({ ipcMain, log, handlers: impl });
@@ -117,7 +118,7 @@ describe('what may be asked', () => {
   it('refuses every channel to a caller that is not the app, including the update ones', async () => {
     const { call, impl } = setup();
     const stranger = { senderFrame: { url: 'https://example.com/' } };
-    for (const channel of [CHANNELS.updateCheck, CHANNELS.updateDownload, CHANNELS.updateInstall, CHANNELS.updateReleasePage, CHANNELS.updateAutoCheck, CHANNELS.revealDataFolder, CHANNELS.setLanguage, CHANNELS.settings, CHANNELS.settingsSet, CHANNELS.theme, CHANNELS.session, CHANNELS.badge, CHANNELS.recentFolds, CHANNELS.popupMenu, CHANNELS.windowShow]) {
+    for (const channel of [CHANNELS.updateCheck, CHANNELS.updateDownload, CHANNELS.updateInstall, CHANNELS.updateReleasePage, CHANNELS.updateAutoCheck, CHANNELS.revealDataFolder, CHANNELS.setLanguage, CHANNELS.settings, CHANNELS.settingsSet, CHANNELS.theme, CHANNELS.session, CHANNELS.badge, CHANNELS.recentFolds, CHANNELS.popupMenu, CHANNELS.windowShow, CHANNELS.incomingReady]) {
       await expect(Promise.resolve().then(() => call(channel, stranger, { language: 'pl' })), channel).rejects.toThrow('refused');
     }
     expect(impl.updateDownload).not.toHaveBeenCalled();
@@ -247,6 +248,13 @@ describe('the desktop experience channels', () => {
     await expect(Promise.resolve(call(CHANNELS.windowShow, fromApp))).resolves.toBeUndefined();
     expect(impl.showWindow).toHaveBeenCalledOnce();
     await refused(() => call(CHANNELS.windowShow, fromApp, 'x'));
+  });
+
+  it('is told that the page can take items from outside, with no argument', async () => {
+    const { call, fromApp, impl } = setup();
+    await expect(Promise.resolve(call(CHANNELS.incomingReady, fromApp))).resolves.toBeUndefined();
+    expect(impl.incomingReady).toHaveBeenCalledOnce();
+    await refused(() => call(CHANNELS.incomingReady, fromApp, 'x'));
   });
 });
 

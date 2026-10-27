@@ -35,12 +35,19 @@ describe('which links may be opened outside the app', () => {
 describe('which permissions the page gets', () => {
   const APP = 'app://cashfold';
 
-  it('grants persistent storage and platform authenticators to the app', () => {
+  it('grants persistent storage, platform authenticators and notifications to the app', () => {
     expect(decidePermission('persistent-storage', APP)).toBe(true);
     expect(decidePermission('publickey-credentials-get', APP)).toBe(true);
+    expect(decidePermission('notifications', APP)).toBe(true);
   });
 
-  it.each(['media', 'geolocation', 'notifications', 'midi', 'pointerLock', 'fullscreen', 'openExternal', 'clipboard-read', 'clipboard-sanitized-write', 'hid', 'serial', 'usb', 'fileSystem', 'unknown', ''])('denies %s', (permission) => {
+  it('grants notifications to no other origin', () => {
+    for (const origin of ['https://github.com', 'http://cashfold', 'app://cashfold.evil', 'app://other', 'file://', 'null', '']) {
+      expect(decidePermission('notifications', origin), origin).toBe(false);
+    }
+  });
+
+  it.each(['media', 'geolocation', 'midi', 'pointerLock', 'fullscreen', 'openExternal', 'clipboard-read', 'clipboard-sanitized-write', 'hid', 'serial', 'usb', 'fileSystem', 'unknown', ''])('denies %s', (permission) => {
     expect(decidePermission(permission, APP)).toBe(false);
   });
 

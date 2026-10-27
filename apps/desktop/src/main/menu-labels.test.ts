@@ -22,11 +22,13 @@ describe('the words the shell shows', () => {
     const english = labelsFor('en');
     for (const language of SHELL_LANGUAGES.filter((l) => l !== 'en')) {
       const labels = labelsFor(language);
-      for (const key of ['cut', 'copy', 'paste', 'selectAll', 'notWritableTitle'] as const) {
+      for (const key of ['cut', 'copy', 'paste', 'selectAll', 'trayShow', 'trayAddTransaction', 'trayLock', 'trayQuit', 'recentFolds', 'notWritableTitle'] as const) {
         expect(labels[key], `${language}.${key}`).toBeTruthy();
         expect(labels[key], `${language}.${key}`).not.toBe(english[key]);
       }
       expect(labels.notWritableDetail('/data')).toContain('/data');
+      expect(labels.badgeDescription(3)).toContain('3');
+      expect(labels.badgeDescription(3)).not.toBe(english.badgeDescription(3));
     }
   });
 

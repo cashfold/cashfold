@@ -24,6 +24,20 @@ export async function checkDesktopConfig({ root, release = false, env = process.
     const builder = (await import(`${pathToFileURL(builderPath).href}?t=${Date.now()}`)).default;
     if (builder.appId !== identity.appId) problems.push(`electron-builder.config.mjs appId "${builder.appId}" differs from identity.json "${identity.appId}"; changing it moves every user's data`);
     if (builder.productName !== identity.name) problems.push(`electron-builder.config.mjs productName "${builder.productName}" differs from identity.json name "${identity.name}"; changing it moves every user's data`);
+    // Links and files from outside (spec 006, research D10): Cashfold may own its own backup type and the `cashfold` scheme, and must never become the
+    // person's default CSV program, or claim any other scheme.
+    for (const association of builder.fileAssociations ?? []) {
+      if (association.ext === 'csv' && association.rank !== 'Alternate') problems.push(`electron-builder.config.mjs registers CSV with rank "${association.rank}": it must be "Alternate" so Cashfold is only offered, never made the default CSV program`);
+    }
+    for (const protocol of builder.protocols ?? []) {
+      const others = (protocol.schemes ?? []).filter((scheme) => scheme !== 'cashfold');
+      if (others.length > 0) problems.push(`electron-builder.config.mjs registers the scheme(s) ${others.join(', ')}: only "cashfold" may be registered`);
+    }
+    if (builder.files !== undefined) {
+      for (const needed of ['build/badges/**', 'build/tray/**']) {
+        if (!builder.files.includes(needed)) problems.push(`electron-builder.config.mjs does not package ${needed}: the shell reads the tray and taskbar images from inside the package`);
+      }
+    }
     if (release) {
       const targets = (builder.mac?.target ?? []).map((t) => (typeof t === 'string' ? t : t.target));
       if (!targets.includes('zip')) problems.push('electron-builder.config.mjs builds no Mac zip: in-app updates on macOS install the zip that latest-mac.yml describes');

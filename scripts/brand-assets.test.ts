@@ -34,6 +34,24 @@ describe('the desktop app icon', () => {
   });
 });
 
+describe('the desktop tray and taskbar images', () => {
+  it('has the macOS template images at 1x and 2x, and the coloured tray image for the other systems', () => {
+    expect(pngSize(at('apps/desktop/build/tray/trayTemplate.png'))).toEqual({ width: 16, height: 16 });
+    expect(pngSize(at('apps/desktop/build/tray/trayTemplate@2x.png'))).toEqual({ width: 32, height: 32 });
+    expect(pngSize(at('apps/desktop/build/tray/tray.png'))).toEqual({ width: 32, height: 32 });
+    expect(pngSize(at('apps/desktop/build/tray/tray@2x.png'))).toEqual({ width: 64, height: 64 });
+  });
+
+  it.each(['1', '2', '3', '4', '5', '6', '7', '8', '9', '9plus'])('has the 32 pixel taskbar overlay %s', (name) => {
+    expect(pngSize(at('apps/desktop/build/badges', `${name}.png`))).toEqual({ width: 32, height: 32 });
+  });
+
+  it('is packaged with the app, because the shell reads them from inside it', async () => {
+    const builder = (await import(at('apps/desktop/electron-builder.config.mjs'))).default as { files: string[] };
+    expect(builder.files).toEqual(expect.arrayContaining(['build/badges/**', 'build/tray/**']));
+  });
+});
+
 describe('the web app icons', () => {
   const sizes: Array<[string, number]> = [
     ['apple-touch-icon.png', 180],

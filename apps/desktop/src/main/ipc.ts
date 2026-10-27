@@ -66,6 +66,8 @@ export interface IpcHandlers {
   setRecentFolds(folds: RecentFoldsRequest['folds']): void;
   popupMenu(items: PopupMenuRequest['items']): Promise<string | null>;
   showWindow(): void;
+  /** The page can now take items from outside; they are delivered from here on (until the page loads again). */
+  incomingReady(): void;
 }
 
 const APP_PAGE = /^app:\/\/cashfold(?:[/?#]|$)/;
@@ -179,4 +181,5 @@ export function registerIpc({ ipcMain, log, handlers, extraOrigins = [] }: Regis
   });
   serve(CHANNELS.popupMenu, one(PopupMenuRequestSchema), PopupMenuResponseSchema, async (request) => ({ id: await handlers.popupMenu(request.items) }));
   serve(CHANNELS.windowShow, none, VoidResponseSchema, () => handlers.showWindow());
+  serve(CHANNELS.incomingReady, none, VoidResponseSchema, () => handlers.incomingReady());
 }
