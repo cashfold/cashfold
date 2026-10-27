@@ -12,6 +12,10 @@ import {
 import { dateToInput, formatDate, inputToDate } from '../ledger/dates';
 import { LedgerFrame } from '../ledger/LedgerFrame';
 import { useLedger } from '../ledger/LedgerProvider';
+import { useRowContextMenu } from '../desktop/ContextMenu';
+import { useFocusRequest } from '../desktop/focus-request';
+import { RowActionsMenu } from '../ledger/RowActionsMenu';
+import { transactionActions, transferActions } from './row-actions';
 import { useAddSheet } from '../shell/add-context';
 import { useStatus } from '../shell/StatusProvider';
 import { AddSheet } from './AddSheet';
@@ -47,6 +51,9 @@ function TransactionsBody() {
   const [text, setText] = useState(filters.text);
   // How many rows a full read asks for: one page, or as many as are loaded when the list is read again after a change.
   const wanted = useRef(PAGE);
+  // "Search transactions" from the desktop shortcut lands here and puts the cursor in the search field.
+  const searchField = useRef<HTMLInputElement>(null);
+  useFocusRequest('transactions-search', () => searchField.current?.focus());
   const [rows, setRows] = useState<{ items: TransactionRow[]; count: number }>({ items: [], count: 0 });
   const [attention, setAttention] = useState<NeedsAttentionItem[]>([]);
   const [attentionShown, setAttentionShown] = useState(true);
@@ -288,7 +295,7 @@ function TransactionsBody() {
             <div className="min-w-0 basis-full flex-1 sm:basis-0">
               <InputGroup>
                 <MagnifyingGlassIcon data-slot="icon" aria-hidden="true" />
-                <Input type="search" name="search" aria-label={t('ledger.filter.text')} placeholder={t('filter.search')} value={text} onChange={(e) => setText(e.target.value)} />
+                <Input ref={searchField} type="search" name="search" aria-label={t('ledger.filter.text')} placeholder={t('filter.search')} value={text} onChange={(e) => setText(e.target.value)} />
               </InputGroup>
             </div>
             <Button outline onClick={() => setPanel(true)}>
@@ -345,8 +352,10 @@ function TransactionsBody() {
   function TransferItem({ x, title }: { x: TransferRow; title: string }) {
     const from = accountsById.get(x.fromAccountId);
     const to = accountsById.get(x.toAccountId);
+    const actions = transferActions({ labels: { edit: t('ledger.edit'), remove: t('ledger.delete') }, edit: () => setEditingTransfer(x), remove: () => setRemovingTransfer(x) });
+    const onContextMenu = useRowContextMenu(actions);
     return (
-      <li className="flex items-center gap-3 p-3" data-testid="xfer-row">
+      <li className="flex items-center gap-3 p-3" data-testid="xfer-row" onContextMenu={onContextMenu}>
         <span aria-hidden="true" className="grid size-9 shrink-0 place-items-center rounded-full bg-zinc-200 text-zinc-700 dark:bg-zinc-700 dark:text-zinc-200"><ArrowsRightLeftIcon className="size-5" /></span>
         <RowButton onClick={() => setEditingTransfer(x)} className="flex-1">
           <span className="flex flex-wrap items-center gap-x-2">
@@ -361,13 +370,7 @@ function TransactionsBody() {
             {x.note !== '' ? ` · ${x.note}` : ''}
           </span>
         </RowButton>
-        <Dropdown>
-          <DropdownButton plain aria-label={`${t('ledger.list.actions')} ${title}`}><EllipsisHorizontalIcon data-slot="icon" aria-hidden="true" /></DropdownButton>
-          <DropdownMenu anchor="bottom end">
-            <DropdownItem onClick={() => setEditingTransfer(x)}><DropdownLabel>{t('ledger.edit')}</DropdownLabel></DropdownItem>
-            <DropdownItem onClick={() => setRemovingTransfer(x)}><DropdownLabel>{t('ledger.delete')}</DropdownLabel></DropdownItem>
-          </DropdownMenu>
-        </Dropdown>
+        <RowActionsMenu label={`${t('ledger.list.actions')} ${title}`} actions={actions} />
       </li>
     );
   }
@@ -376,9 +379,11 @@ function TransactionsBody() {
     const account = accountsById.get(row.accountId);
     const category = row.categoryId === null ? undefined : categoriesById.get(row.categoryId);
     const payee = row.payeeId === null ? undefined : payeesById.get(row.payeeId);
+    const actions = transactionActions({ pinned: row.isPinned, labels: { edit: t('ledger.edit'), pin: t('ledger.list.pin'), unpin: t('ledger.list.unpin'), remove: t('ledger.delete') }, edit: onEdit, togglePin: onPin, remove: onDelete });
+    const onContextMenu = useRowContextMenu(actions);
     const colour = category?.color === undefined ? undefined : ['#0b57d0', '#146c2e', '#b3261e', '#8a5100', '#6f42c1', '#006a6a', '#a8326d', '#5a6b00', '#7a4a2a', '#2b6cb0', '#4a4f57', '#b45309'][category.color % 12];
     return (
-      <li className="flex items-center gap-3 p-3" data-testid="tx-row">
+      <li className="flex items-center gap-3 p-3" data-testid="tx-row" onContextMenu={onContextMenu}>
         <span aria-hidden="true" className="grid size-9 shrink-0 place-items-center rounded-full bg-zinc-600 text-sm font-semibold text-white" {...(colour ? { style: { backgroundColor: colour } } : {})}>
           {(category?.name ?? title).slice(0, 1).toUpperCase()}
         </span>
@@ -395,14 +400,7 @@ function TransactionsBody() {
         <span data-testid="tx-amount" data-sign={row.amountMinor > 0n ? 'gain' : row.amountMinor < 0n ? 'loss' : 'zero'}>
           <Amount minor={row.amountMinor} currency={row.currency} locale={locale} tone="auto" showSign />
         </span>
-        <Dropdown>
-          <DropdownButton plain aria-label={`${t('ledger.list.actions')} ${title}`}><EllipsisHorizontalIcon data-slot="icon" aria-hidden="true" /></DropdownButton>
-          <DropdownMenu anchor="bottom end">
-            <DropdownItem onClick={onEdit}><DropdownLabel>{t('ledger.edit')}</DropdownLabel></DropdownItem>
-            <DropdownItem onClick={onPin}><DropdownLabel>{row.isPinned ? t('ledger.list.unpin') : t('ledger.list.pin')}</DropdownLabel></DropdownItem>
-            <DropdownItem onClick={onDelete}><DropdownLabel>{t('ledger.delete')}</DropdownLabel></DropdownItem>
-          </DropdownMenu>
-        </Dropdown>
+        <RowActionsMenu label={`${t('ledger.list.actions')} ${title}`} actions={actions} />
       </li>
     );
   }
@@ -455,7 +453,7 @@ function DayGroup<E extends DayRow>({ group, eager, currency, renderEntry }: { g
     <section ref={ref} className="mt-5" aria-labelledby={`day-${group.date}`}>
       {rendered ? (
         <>
-          <h2 id={`day-${group.date}`} className="sticky top-0 z-10 flex items-baseline justify-between bg-white/90 py-1 text-sm font-semibold text-zinc-600 backdrop-blur dark:bg-zinc-900/90 dark:text-zinc-400">
+          <h2 id={`day-${group.date}`} className="sticky top-(--frame-bar-h) z-10 flex items-baseline justify-between bg-white/90 py-1 text-sm font-semibold text-zinc-600 backdrop-blur dark:bg-zinc-900/90 dark:text-zinc-400">
             <span>{formatDate(group.date as LocalDate, locale)}</span>
             <span className="font-normal">
               {group.partial ? `${t('ledger.list.soFar')} ` : ''}
