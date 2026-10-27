@@ -84,7 +84,9 @@ export function DialogDescription({
 }
 
 export function DialogBody({ className, ...props }: React.ComponentPropsWithoutRef<'div'>) {
-  return <div {...props} className={clsx(className, 'mt-6 min-h-0 flex-1 overflow-y-auto')} />
+  // The body scrolls, and a scroll container clips what is drawn outside it: the focus ring of a field (3px, 2px off) at its edge. The padding gives the ring
+  // room inside the container, and the negative margins take it back, so nothing moves.
+  return <div {...props} className={clsx(className, '-mx-2 mt-4 -mb-2 min-h-0 flex-1 overflow-y-auto px-2 pt-2 pb-2')} />
 }
 
 export function DialogActions({ className, ...props }: React.ComponentPropsWithoutRef<'div'>) {
