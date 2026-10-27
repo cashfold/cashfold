@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.0](https://github.com/cashfold/cashfold/compare/v0.5.0...v0.6.0) (2026-10-27)
+
+
+### Features
+
+* **web:** tidy the Categories page, align selects, and drop the app name from the desktop sidebar ([#44](https://github.com/cashfold/cashfold/issues/44)) ([069a698](https://github.com/cashfold/cashfold/commit/069a698e146a9d227a4bc271dab3c5447da16d1d))
+
 ## [0.5.0](https://github.com/cashfold/cashfold/compare/v0.4.0...v0.5.0) (2026-10-27)
 
 
