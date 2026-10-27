@@ -4,6 +4,7 @@ import { parseAddDeviceLink } from '@cashfold/core';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, type FormEvent } from 'react';
+import { addDevicePrefill } from '../desktop/add-device-prefill';
 import { useCore, withPasswordBytes } from '../core/CoreProvider';
 import { TextField } from '../forms/TextField';
 import { useI18n } from '../i18n/I18nProvider';
@@ -42,6 +43,10 @@ export function AddDeviceScreen() {
   const [fromLink, setFromLink] = useState(false);
 
   useEffect(() => {
+    // A `cashfold://add-device` link opened in the desktop app: only the email and the service address come with it, never a secret.
+    const prefill = addDevicePrefill.take();
+    if (prefill?.email) setEmail(prefill.email);
+    if (prefill?.server) setServer(prefill.server);
     if (location.hash.length > 1) {
       const link = parseAddDeviceLink(location.hash);
       if (link.email) setEmail(link.email);
