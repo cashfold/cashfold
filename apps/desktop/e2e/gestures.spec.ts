@@ -14,14 +14,16 @@ async function recordMenus(app: ElectronApplication): Promise<void> {
     const clicks: Array<(index: number) => void> = [];
     (globalThis as unknown as { __menus: typeof seen; __clicks: typeof clicks }).__menus = seen;
     (globalThis as unknown as { __clicks: typeof clicks }).__clicks = clicks;
+    const build = Menu.buildFromTemplate.bind(Menu);
+    // A real menu, so the tray can still be given its own (a stand-in object is refused: "Must pass Menu or null"); only its pop-up is replaced.
     (Menu as unknown as { buildFromTemplate: unknown }).buildFromTemplate = (template: Array<{ label: string; enabled: boolean; click: () => void }>) => {
+      const menu = build(template as never);
       // Recorded when it is popped up, not when it is built: the tray rebuilds its own menu whenever the app locks or unlocks.
-      return {
-        popup: () => {
-          seen.push(template.map(({ label, enabled }) => ({ label, enabled })));
-          clicks.push((index) => template[index]!.click());
-        },
+      menu.popup = () => {
+        seen.push(template.map(({ label, enabled }) => ({ label, enabled })));
+        clicks.push((index) => template[index]!.click());
       };
+      return menu;
     };
   });
 }
