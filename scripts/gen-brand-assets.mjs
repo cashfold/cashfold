@@ -160,8 +160,9 @@ try {
 
   // The tray and menu-bar icons, from the mark. macOS wants a black template image with transparency, which it tints for light and dark menu bars
   // (the file name ends in "Template"); Windows and Linux get the coloured mark.
+  // The stroke reaches x 202 to 735 and y 202 to 822 of the 1024 square; this square view box holds all of it, centred, with a little room.
   const trayArc = (size) =>
-    `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="240 240 544 544"><path d="M672.7 320.5 A250 250 0 1 0 672.7 703.5" fill="none" stroke="#000000" stroke-width="120" stroke-linecap="round"/></svg>`;
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="148 192 640 640"><path d="M672.7 320.5 A250 250 0 1 0 672.7 703.5" fill="none" stroke="#000000" stroke-width="120" stroke-linecap="round"/></svg>`;
   await shot(trayArc(16), 16, 16, at('apps/desktop/build/tray/trayTemplate.png'), { transparent: true });
   await shot(trayArc(32), 32, 32, at('apps/desktop/build/tray/trayTemplate@2x.png'), { transparent: true });
   // Windows and Linux show a 16 pixel icon at 100 percent; Electron picks the file for the display's scale from its name (tray@1.5x.png and so on).
