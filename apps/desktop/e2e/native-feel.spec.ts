@@ -119,6 +119,15 @@ test('the sidebar does not repeat the app name, which the window already shows',
   await expect(nav.getByRole('link', { name: 'Cashfold', exact: true })).toHaveCount(0);
 });
 
+test('the Settings list has no Install group in the desktop app, which is already installed', async ({ session }) => {
+  const { page } = await session.launch();
+  await signUp(page);
+  await page.locator('nav a[href="/settings/"]:visible').first().click();
+  await expect(page.getByRole('heading', { name: 'Settings', level: 1 })).toBeVisible();
+  await page.waitForTimeout(2_500); // longer than the web app's wait for a browser install event
+  await expect(page.locator('a[href="/settings/install/"]')).toHaveCount(0);
+});
+
 test('the interface never says "browser" in the desktop app', async ({ session }) => {
   const { page } = await session.launch();
   await signUp(page);

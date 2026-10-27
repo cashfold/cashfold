@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DESKTOP_SETTINGS_GROUP, PRIMARY_SECTIONS, REDIRECTS, ROUTES, SETTINGS_GROUPS, matchSection, redirectTarget } from './routes';
+import { DESKTOP_SETTINGS_GROUP, INSTALL_SETTINGS_GROUP, PRIMARY_SECTIONS, REDIRECTS, ROUTES, SETTINGS_GROUPS, matchSection, redirectTarget } from './routes';
 
 describe('route table (contracts/routes.md)', () => {
   it('has exactly five primary sections, in order', () => {
@@ -23,6 +23,14 @@ describe('route table (contracts/routes.md)', () => {
     expect(DESKTOP_SETTINGS_GROUP.labelKey).toBe('settings.group.desktop');
     expect(DESKTOP_SETTINGS_GROUP.descriptionKey).toBe('settings.group.desktop.description');
     expect(SETTINGS_GROUPS.some((g) => g.id === 'desktop')).toBe(false);
+  });
+
+  it('has a group that offers to install the web app, outside the seven, with its own route', () => {
+    expect(INSTALL_SETTINGS_GROUP.href).toBe('/settings/install/');
+    expect(INSTALL_SETTINGS_GROUP.labelKey).toBe('settings.group.install');
+    expect(INSTALL_SETTINGS_GROUP.descriptionKey).toBe('settings.group.install.description');
+    expect(SETTINGS_GROUPS.some((g) => g.id === 'install')).toBe(false);
+    expect(ROUTES.has(INSTALL_SETTINGS_GROUP.href)).toBe(true);
   });
 
   it('ends every route with a slash (the static export uses trailing slashes)', () => {

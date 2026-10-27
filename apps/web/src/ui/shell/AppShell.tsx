@@ -26,6 +26,7 @@ import { PRIMARY_SECTIONS, matchSection, type Section } from './routes';
 import { StatusProvider } from './StatusProvider';
 import { StorageNotice } from './StorageNotice';
 import { UpdateNotice } from './UpdateNotice';
+import { WebUpdateNotice } from '../pwa/WebUpdateNotice';
 
 const ICONS: Record<Section['icon'], typeof HomeIcon> = {
   home: HomeIcon,
@@ -75,6 +76,7 @@ function Banners() {
       ) : null}
       <StorageNotice />
       <UpdateNotice />
+      <WebUpdateNotice />
     </>
   );
 }

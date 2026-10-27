@@ -1,7 +1,7 @@
 // The route table (contracts/routes.md): the five primary sections, the settings groups, and the redirects from the previous addresses.
 // Pure data and helpers, so the shell, the redirect stubs and the tests share one source.
 export type SectionId = 'overview' | 'transactions' | 'accounts' | 'plan' | 'settings';
-export type SettingsGroupId = 'profile' | 'appearance' | 'categories' | 'sync' | 'data' | 'folds' | 'advanced' | 'desktop';
+export type SettingsGroupId = 'profile' | 'appearance' | 'categories' | 'sync' | 'data' | 'folds' | 'advanced' | 'desktop' | 'install';
 
 export interface Section {
   readonly id: SectionId;
@@ -32,8 +32,11 @@ export const SETTINGS_GROUPS: readonly SettingsGroup[] = (['profile', 'appearanc
 /** The group only the desktop app has (spec 006). It is not one of the seven everyone sees; the page sends a browser to the Settings index. */
 export const DESKTOP_SETTINGS_GROUP: SettingsGroup = group('desktop');
 
+/** The group that offers to install the web app (spec 009). Listed only where installing can help; the page sends everyone else to the Settings index. */
+export const INSTALL_SETTINGS_GROUP: SettingsGroup = group('install');
+
 /** Every page that renders its own screen. Old addresses are not in this set: they only redirect. */
-export const ROUTES: ReadonlySet<string> = new Set([...PRIMARY_SECTIONS.map((s) => s.href), ...SETTINGS_GROUPS.map((g) => g.href)]);
+export const ROUTES: ReadonlySet<string> = new Set([...PRIMARY_SECTIONS.map((s) => s.href), ...SETTINGS_GROUPS.map((g) => g.href), INSTALL_SETTINGS_GROUP.href]);
 
 export const REDIRECTS: readonly { readonly from: string; readonly to: string }[] = [
   { from: '/dashboard/', to: '/overview/' },
