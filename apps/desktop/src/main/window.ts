@@ -1,5 +1,5 @@
 import { join } from 'node:path';
-import { app, BrowserWindow, type BrowserWindowConstructorOptions } from 'electron';
+import { app, BrowserWindow, nativeImage, type BrowserWindowConstructorOptions } from 'electron';
 import { CHANNELS, type ShellLanguage } from '@cashfold/platform';
 import { APP_NAME, APP_ORIGIN } from './identity';
 import type { Appearance } from './appearance';
@@ -45,6 +45,8 @@ export function createMainWindow(deps: WindowDeps): BrowserWindow {
     minHeight: 600,
     show: false,
     title: APP_NAME,
+    // Linux takes the window icon from the app; without it a desktop that finds no matching launcher (an AppImage, Wayland) shows a blank one.
+    ...(process.platform === 'linux' ? { icon: nativeImage.createFromPath(join(app.getAppPath(), 'build', 'icon.png')) } : {}),
     // No menu bar, and Alt does not bring one back (spec 007).
     autoHideMenuBar: false,
     backgroundColor: deps.appearance.backgroundColor(),
