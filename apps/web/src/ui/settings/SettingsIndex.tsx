@@ -3,13 +3,17 @@
 import Link from 'next/link';
 import { useI18n } from '../i18n/I18nProvider';
 import { useDesktop } from '../desktop/DesktopSettingsProvider';
-import { DESKTOP_SETTINGS_GROUP, SETTINGS_GROUPS } from '../shell/routes';
+import { useInstall } from '../pwa/useInstall';
+import { DESKTOP_SETTINGS_GROUP, INSTALL_SETTINGS_GROUP, SETTINGS_GROUPS } from '../shell/routes';
 
 /** The list of settings groups, each with one line saying what is in it. No form controls (FR-032). */
 export function SettingsIndex() {
   const { t } = useI18n();
   const { isDesktop } = useDesktop();
-  const groups = isDesktop ? [...SETTINGS_GROUPS, DESKTOP_SETTINGS_GROUP] : SETTINGS_GROUPS;
+  const { state } = useInstall();
+  // Installing is offered only where it can help (spec 009): never in the desktop app, in an installed window, or where the browser cannot.
+  const installable = state.kind === 'promptable' || state.kind === 'steps' || state.kind === 'installed-in-tab';
+  const groups = isDesktop ? [...SETTINGS_GROUPS, DESKTOP_SETTINGS_GROUP] : installable ? [...SETTINGS_GROUPS, INSTALL_SETTINGS_GROUP] : SETTINGS_GROUPS;
   return (
     <div>
       <h1 className="text-2xl font-semibold">{t('settings.index.title')}</h1>
