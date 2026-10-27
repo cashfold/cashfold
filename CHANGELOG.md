@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.0](https://github.com/cashfold/cashfold/compare/v0.4.0...v0.5.0) (2026-10-27)
+
+
+### Features
+
+* **desktop:** finish the native desktop experience, and make Help show the shortcuts ([#42](https://github.com/cashfold/cashfold/issues/42)) ([3645600](https://github.com/cashfold/cashfold/commit/364560085d3781938db668d1d9d175682c3b40e0))
+
 ## [0.4.0](https://github.com/cashfold/cashfold/compare/v0.3.0...v0.4.0) (2026-10-26)
 
 
