@@ -8,7 +8,10 @@ import { useI18n } from '../i18n/I18nProvider';
 import { LedgerFrame } from './LedgerFrame';
 import { useLedger } from './LedgerProvider';
 import { COLOR_COUNT, ICON_KEYS, colorFor, iconFor } from './palette';
-import { Button, Tabs, Select } from '../kit';
+import { Badge, Button, Select, Tabs } from '../kit';
+import { useRowContextMenu } from '../desktop/ContextMenu';
+import { categoryActions, labelActions } from './category-actions';
+import { RowActionsMenu } from './RowActionsMenu';
 
 type Direction = 'expense' | 'income';
 type Dialog =
@@ -91,19 +94,17 @@ function CategoriesBody() {
                 return (
                   <li key={root.id} className="rounded-ui border border-border-strong" data-testid="category-root">
                     <CategoryRow
-                      c={root} used={count(usage?.categories, root.id)} onEdit={() => setDialog({ kind: 'edit', category: root })} onMerge={() => setDialog({ kind: 'merge', category: root })}
-                      onDelete={() => setDialog({ kind: 'delete', category: root })} onArchive={() => void toggleArchive(root)} onUp={rootIndex === 0 ? undefined : () => void move(roots, rootIndex, -1)}
-                      onDown={rootIndex === roots.length - 1 ? undefined : () => void move(roots, rootIndex, 1)}
+                      c={root} used={count(usage?.categories, root.id)} index={rootIndex} count={roots.length} onEdit={() => setDialog({ kind: 'edit', category: root })} onMerge={() => setDialog({ kind: 'merge', category: root })}
+                      onDelete={() => setDialog({ kind: 'delete', category: root })} onArchive={() => void toggleArchive(root)} onMove={(direction) => void move(roots, rootIndex, direction)}
                       onAddChild={() => setDialog({ kind: 'new', direction, parentId: root.id })}
                     />
                     {children.length > 0 ? (
-                      <ul className="ms-6 border-t border-border-strong" aria-label={root.name}>
+                      <ul className="ms-6 divide-y divide-border-strong border-t border-border-strong" aria-label={root.name}>
                         {children.map((child, i) => (
                           <li key={child.id} data-testid="category-child">
                             <CategoryRow
-                              c={child} used={count(usage?.categories, child.id)} onEdit={() => setDialog({ kind: 'edit', category: child })} onMerge={() => setDialog({ kind: 'merge', category: child })}
-                              onDelete={() => setDialog({ kind: 'delete', category: child })} onArchive={() => void toggleArchive(child)} onUp={i === 0 ? undefined : () => void move(children, i, -1)}
-                              onDown={i === children.length - 1 ? undefined : () => void move(children, i, 1)}
+                              c={child} used={count(usage?.categories, child.id)} index={i} count={children.length} onEdit={() => setDialog({ kind: 'edit', category: child })} onMerge={() => setDialog({ kind: 'merge', category: child })}
+                              onDelete={() => setDialog({ kind: 'delete', category: child })} onArchive={() => void toggleArchive(child)} onMove={(direction) => void move(children, i, direction)}
                             />
                           </li>
                         ))}
@@ -180,29 +181,32 @@ function CategoriesBody() {
   );
 }
 
-function CategoryRow({ c, used, onEdit, onMerge, onDelete, onArchive, onUp, onDown, onAddChild }: {
-  c: Category; used: number; onEdit: () => void; onMerge: () => void; onDelete: () => void; onArchive: () => void;
-  onUp: (() => void) | undefined; onDown: (() => void) | undefined; onAddChild?: () => void;
+function CategoryRow({ c, used, index, count, onEdit, onMerge, onDelete, onArchive, onMove, onAddChild }: {
+  c: Category; used: number; index: number; count: number; onEdit: () => void; onMerge: () => void; onDelete: () => void; onArchive: () => void;
+  onMove: (direction: -1 | 1) => void; onAddChild?: () => void;
 }) {
   const { t } = useI18n();
+  const actions = categoryActions({
+    archived: c.archived, index, count,
+    labels: {
+      edit: t('ledger.edit'), addChild: t('ledger.categories.addChild', { name: c.name }), moveUp: t('ledger.accounts.moveUp', { name: c.name }), moveDown: t('ledger.accounts.moveDown', { name: c.name }),
+      merge: t('ledger.categories.merge'), archive: t('ledger.accounts.archive'), unarchive: t('ledger.accounts.unarchive'), remove: t('ledger.delete'),
+    },
+    edit: onEdit, ...(onAddChild === undefined ? {} : { addChild: onAddChild }), move: onMove, merge: onMerge, toggleArchived: onArchive, remove: onDelete,
+  });
+  const onContextMenu = useRowContextMenu(actions);
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 p-3">
-      <div className="flex items-center gap-2">
-        <span aria-hidden="true" className="inline-block h-4 w-4 rounded-ui" style={{ background: colorFor(c.color) }} />
-        <span aria-hidden="true">{iconFor(c.icon)}</span>
-        <strong>{c.name}</strong>
-        <span className="text-sm text-muted">{t('ledger.categories.used', { count: used })}</span>
-        {c.archived ? <span className="rounded-ui border border-border-strong px-2 text-sm">{t('ledger.accounts.archived')}</span> : null}
+    <div className="flex items-center gap-3 p-3" onContextMenu={onContextMenu}>
+      <span aria-hidden="true" className="inline-block size-4 shrink-0 rounded-ui" style={{ background: colorFor(c.color) }} />
+      <span aria-hidden="true">{iconFor(c.icon)}</span>
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-x-2">
+          <strong className="truncate">{c.name}</strong>
+          {c.archived ? <Badge>{t('ledger.accounts.archived')}</Badge> : null}
+        </div>
+        <div className="text-sm text-muted">{t('ledger.categories.used', { count: used })}</div>
       </div>
-      <div className="flex flex-wrap gap-2">
-        <Button outline type="button" onClick={onUp} disabled={onUp === undefined} aria-label={t('ledger.accounts.moveUp', { name: c.name })}>↑</Button>
-        <Button outline type="button" onClick={onDown} disabled={onDown === undefined} aria-label={t('ledger.accounts.moveDown', { name: c.name })}>↓</Button>
-        {onAddChild ? <Button outline type="button" onClick={onAddChild} aria-label={t('ledger.categories.addChild', { name: c.name })}>{t('ledger.categories.sub')}</Button> : null}
-        <Button outline type="button" onClick={onEdit} aria-label={`${t('ledger.edit')} ${c.name}`}>{t('ledger.edit')}</Button>
-        <Button outline type="button" onClick={onMerge} aria-label={`${t('ledger.categories.merge')} ${c.name}`}>{t('ledger.categories.merge')}</Button>
-        <Button outline type="button" onClick={onArchive} aria-label={`${c.archived ? t('ledger.accounts.unarchive') : t('ledger.accounts.archive')} ${c.name}`}>{c.archived ? t('ledger.accounts.unarchive') : t('ledger.accounts.archive')}</Button>
-        <Button outline type="button" onClick={onDelete} aria-label={`${t('ledger.delete')} ${c.name}`}>{t('ledger.delete')}</Button>
-      </div>
+      <RowActionsMenu label={`${t('ledger.list.actions')} ${c.name}`} actions={actions} />
     </div>
   );
 }
@@ -321,22 +325,25 @@ function LabelSection({ table, labels, usage, onNew, onEdit, onMerge, onDelete }
       </div>
       {labels.length === 0 ? <p className="mt-2 text-muted">{t(`ledger.${table}.empty`)}</p> : null}
       <ul className="mt-2 divide-y divide-border-strong rounded-ui border border-border-strong empty:hidden" aria-label={t(`ledger.${table}.title`)}>
-        {labels.map((l) => (
-          <li key={l.id} className="flex flex-wrap items-center justify-between gap-3 p-3" data-testid={`${table}-row`}>
-            <div className="flex items-center gap-2">
-              <span aria-hidden="true" className="inline-block h-4 w-4 rounded-ui" style={{ background: colorFor(l.color) }} />
-              <strong>{l.name}</strong>
-              <span className="text-sm text-muted">{t('ledger.categories.used', { count: usage?.get(l.id as never) ?? 0 })}</span>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <Button outline type="button" onClick={() => onEdit(l)} aria-label={`${t('ledger.edit')} ${l.name}`}>{t('ledger.edit')}</Button>
-              <Button outline type="button" onClick={() => onMerge(l)} aria-label={`${t('ledger.categories.merge')} ${l.name}`}>{t('ledger.categories.merge')}</Button>
-              <Button outline type="button" onClick={() => onDelete(l)} aria-label={`${t('ledger.delete')} ${l.name}`}>{t('ledger.delete')}</Button>
-            </div>
-          </li>
-        ))}
+        {labels.map((l) => <LabelRow key={l.id} table={table} l={l} used={usage?.get(l.id as never) ?? 0} onEdit={() => onEdit(l)} onMerge={() => onMerge(l)} onDelete={() => onDelete(l)} />)}
       </ul>
     </section>
+  );
+}
+
+function LabelRow({ table, l, used, onEdit, onMerge, onDelete }: { table: 'payee' | 'tag'; l: Label; used: number; onEdit: () => void; onMerge: () => void; onDelete: () => void }) {
+  const { t } = useI18n();
+  const actions = labelActions({ labels: { edit: t('ledger.edit'), merge: t('ledger.categories.merge'), remove: t('ledger.delete') }, edit: onEdit, merge: onMerge, remove: onDelete });
+  const onContextMenu = useRowContextMenu(actions);
+  return (
+    <li className="flex items-center gap-3 p-3" data-testid={`${table}-row`} onContextMenu={onContextMenu}>
+      <span aria-hidden="true" className="inline-block size-4 shrink-0 rounded-ui" style={{ background: colorFor(l.color) }} />
+      <div className="min-w-0 flex-1">
+        <strong className="block truncate">{l.name}</strong>
+        <div className="text-sm text-muted">{t('ledger.categories.used', { count: used })}</div>
+      </div>
+      <RowActionsMenu label={`${t('ledger.list.actions')} ${l.name}`} actions={actions} />
+    </li>
   );
 }
 

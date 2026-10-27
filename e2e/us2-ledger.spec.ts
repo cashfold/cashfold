@@ -230,7 +230,8 @@ test.describe('@us2 ledger', () => {
     await expect(page.getByTestId('tag-row').filter({ hasText: 'weekly' })).toContainText('used once');
     await page.getByRole('tab', { name: 'Expense' }).click();
     await expectNoA11yViolations();
-    await page.getByRole('button', { name: 'Merge Home', exact: true }).click();
+    await page.getByRole('button', { name: 'Actions for Home', exact: true }).click();
+    await page.getByRole('menuitem', { name: 'Merge', exact: true }).click();
     dialog = page.getByRole('dialog');
     await dialog.getByLabel('Merge into').selectOption({ label: 'Food & Drink › Groceries' });
     await dialog.getByRole('button', { name: 'Merge', exact: true }).click();
