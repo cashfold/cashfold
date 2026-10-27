@@ -1,6 +1,6 @@
 // Bundle budgets for the static export (research R-12), gzipped:
 //   initial: the JavaScript the home page loads up front (scripts referenced by out/index.html)  <= 366 KiB
-//   worker:  every other JavaScript chunk (Core Worker and lazily loaded code)                   <= 257 KiB
+//   worker:  every other JavaScript chunk (Core Worker and lazily loaded code)                   <= 278 KiB
 // The first targets (250 and 150 KiB) were set before the app existed. Measured at the end of the first release: 254.5 and 266.0 KiB, the
 // worker holding the protocol schemas (zod), the SQLite and Argon2 glue and every command and query. These limits are the measurement plus
 // about 6%: they stop growth, they do not claim the original targets were met (research.md R-12).
@@ -8,6 +8,10 @@
 // page, so they sit in the initial chunks and the lazy ones shrank. Together that is 584.0 KiB, 63.5 KiB over the first release (520.5 KiB),
 // inside the 70 KiB the redesign allowed (SC-010). The fonts (about 380 KiB of woff2) are static assets loaded on demand, and are not in either budget.
 // The WASM modules are static assets, loaded on demand, and are not part of either budget.
+// The desktop experience (spec 006) added the shell's page side: shortcuts, drops, reminders, the intake of files and links, the frame bar and the
+// desktop settings. Every one of those modules is loaded by a dynamic import that runs only inside the desktop app (ui/desktop/lazy.tsx), so a browser
+// never downloads them and the initial budget did not move (358,045 against 374,784 bytes); but this budget counts every lazy chunk, and it rose from
+// 262,057 to 276,393 bytes (about 14 KB). It is now 278 KiB, the measurement plus about 4%.
 // Language catalogues (spec 004) are data, not code, and a person downloads only the one they use (the service worker precaches them all for
 // offline use). They are counted apart from the worker budget and each is held to its own limit, so a new language cannot hide code growth and
 // code growth cannot hide in a language.
@@ -17,7 +21,7 @@ import { gzipSync } from 'node:zlib';
 
 const OUT = 'apps/web/out';
 const INITIAL_BUDGET = Number(process.env.BUNDLE_INITIAL_BUDGET_BYTES ?? 366 * 1024);
-const WORKER_BUDGET = Number(process.env.BUNDLE_WORKER_BUDGET_BYTES ?? 257 * 1024);
+const WORKER_BUDGET = Number(process.env.BUNDLE_WORKER_BUDGET_BYTES ?? 278 * 1024);
 const CATALOGUE_BUDGET = Number(process.env.BUNDLE_CATALOGUE_BUDGET_BYTES ?? 40 * 1024);
 // A catalogue chunk is a JSON module whose first key is the first error message.
 const CATALOGUE_MARKER = /JSON\.parse\('\{"error\.InvalidAmount"/;

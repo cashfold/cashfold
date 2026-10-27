@@ -114,7 +114,8 @@ test('exposes one frozen bridge and nothing else of the shell', async ({ session
   });
 });
 
-test('grants the page persistent storage and nothing sensitive', async ({ session }) => {
+// Notifications are granted to the app's own page for reminders (spec 006); nothing else sensitive is.
+test('grants the page persistent storage and notifications, and nothing else sensitive', async ({ session }) => {
   const { page } = await session.launch();
   const states = await page.evaluate(async () => {
     const query = async (name: string) => (await navigator.permissions.query({ name: name as PermissionName }).catch(() => ({ state: 'unsupported' }))).state;
@@ -122,7 +123,7 @@ test('grants the page persistent storage and nothing sensitive', async ({ sessio
   });
   expect(states.storage).toBe('granted');
   expect(states.geolocation).not.toBe('granted');
-  expect(states.notifications).not.toBe('granted');
+  expect(states.notifications).toBe('granted');
   expect(states.camera).not.toBe('granted');
 });
 

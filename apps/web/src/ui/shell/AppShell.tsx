@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { useCore } from '../core/CoreProvider';
 import { useI18n } from '../i18n/I18nProvider';
 import { LedgerProvider, useLedger } from '../ledger/LedgerProvider';
@@ -16,7 +16,10 @@ import { useAddSheet } from './add-context';
 import { Topbar } from './Topbar';
 import { OverlayHost } from './OverlayHost';
 import { FoldSwitcher } from './FoldSwitcher';
+import { HelpDialog } from './HelpDialog';
+import { dismissOverlays, subscribeOverlays } from './overlay-signal';
 import { DesktopOnly } from '../desktop/lazy';
+import { ReminderService } from '../desktop/ReminderService';
 import { PrivacyCover } from './PrivacyCover';
 import { PRIMARY_SECTIONS, matchSection, type Section } from './routes';
 import { StatusProvider } from './StatusProvider';
@@ -75,12 +78,34 @@ function Banners() {
   );
 }
 
+/** The Help item: opens the help dialog. The item renders its own dialog, so closing it returns focus here, in the sidebar and in the drawer alike. */
+function HelpItem() {
+  const { t } = useI18n();
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const close = useCallback(() => setOpen(false), []);
+  // Brings the Getting started card back, as Help used to, and leaves the dialog and, on a narrow window, the drawer.
+  const showCard = () => {
+    prefsStore.update((p) => ({ ...p, firstRun: { dismissed: false } }));
+    dismissOverlays();
+    router.push('/overview/');
+  };
+  return (
+    <>
+      <SidebarItem onClick={() => setOpen(true)}>
+        <InformationCircleIcon data-slot="icon" aria-hidden="true" />
+        <SidebarLabel>{t('shell.help')}</SidebarLabel>
+      </SidebarItem>
+      <HelpDialog open={open} onClose={close} onShowCard={showCard} />
+    </>
+  );
+}
+
 function NavigationSidebar() {
   const { t } = useI18n();
   const core = useCore();
   const path = usePathname();
   const { openAdd } = useAddSheet();
-  const router = useRouter();
   const current = matchSection(path);
   const waiting = useScheduleInbox().length;
   return (
@@ -110,10 +135,7 @@ function NavigationSidebar() {
       <SidebarFooter>
         <SyncIndicator />
         <SidebarSection className="mt-2">
-          <SidebarItem onClick={() => { prefsStore.update((p) => ({ ...p, firstRun: { dismissed: false } })); router.push('/overview/'); }}>
-            <InformationCircleIcon data-slot="icon" aria-hidden="true" />
-            <SidebarLabel>{t('shell.help')}</SidebarLabel>
-          </SidebarItem>
+          <HelpItem />
           <SidebarItem onClick={() => core.lock()}>
             <LockClosedIcon data-slot="icon" aria-hidden="true" />
             <SidebarLabel>{t('lock.button')}</SidebarLabel>
@@ -132,9 +154,13 @@ function UnlockedShell({ children }: { children: ReactNode }) {
     <LedgerProvider>
       <StatusProvider>
         <AddSheetHost>
-          <SidebarLayout navbar={<Topbar />} sidebar={<NavigationSidebar />} openLabel={t('shell.menu')} closeLabel={t('shell.closeMenu')} contentInert={core.covered}>
+          <SidebarLayout navbar={<Topbar />} sidebar={<NavigationSidebar />} openLabel={t('shell.menu')} closeLabel={t('shell.closeMenu')} contentInert={core.covered} subscribeDismiss={subscribeOverlays}>
             <RouteRefresh />
             <DesktopOnly load={() => import('../desktop/DesktopIdleLock')} />
+            <DesktopOnly load={() => import('../desktop/DesktopActions')} />
+            <DesktopOnly load={() => import('../desktop/DropTarget')} />
+            <DesktopOnly load={() => import('../desktop/DesktopPresence')} />
+            <ReminderService />
             <Banners />
             {children}
           </SidebarLayout>
@@ -157,6 +183,10 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <>
       <SkipLink />
+      <DesktopOnly load={() => import('../desktop/DropGuard')} />
+      <DesktopOnly load={() => import('../desktop/DesktopIncoming')} />
+      <DesktopOnly load={() => import('../desktop/FrameBar')} />
+      <DesktopOnly load={() => import('../desktop/FrameInsets')} />
       <OverlayHost>{core.phase === 'unlocked' ? <UnlockedShell>{children}</UnlockedShell> : <PlainShell>{children}</PlainShell>}</OverlayHost>
       {core.covered ? <PrivacyCover /> : null}
     </>

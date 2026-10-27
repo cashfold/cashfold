@@ -3,8 +3,10 @@
 // Always rewritten from the mark (replace the mark, run this, commit the result):
 //   assets/logo/logo-light.svg, logo-dark.svg      the mark with the name, for the README (light and dark themes)
 //   apps/desktop/build/icon.png                    the desktop app icon; electron-builder makes the .ico and .icns from it
+//   apps/desktop/build/tray/                       the tray and menu-bar icons (a macOS template image at 1x and 2x, a coloured one for Windows and Linux)
 //   apps/web/public/icon.svg, favicon.ico, apple-touch-icon.png, icon-192.png, icon-512.png, icon-maskable-512.png, manifest.webmanifest
 // Created only when missing, so a real image is never overwritten (delete one and run this to get a fresh placeholder):
+//   apps/desktop/build/badges/1.png to 9.png, 9plus.png   the Windows taskbar overlay for a count of waiting entries (they hold digits, not the mark)
 //   assets/social/social-preview.png               1280 x 640, uploaded by hand in the repository settings
 //   assets/screenshots/*.png                       1600 x 1000 stand-ins for real screenshots
 //
@@ -155,6 +157,25 @@ try {
       2,
     )}\n`,
   );
+
+  // The tray and menu-bar icons, from the mark. macOS wants a black template image with transparency, which it tints for light and dark menu bars
+  // (the file name ends in "Template"); Windows and Linux get the coloured mark.
+  // The stroke reaches x 202 to 735 and y 202 to 822 of the 1024 square; this square view box holds all of it, centred, with a little room.
+  const trayArc = (size) =>
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="148 192 640 640"><path d="M672.7 320.5 A250 250 0 1 0 672.7 703.5" fill="none" stroke="#000000" stroke-width="120" stroke-linecap="round"/></svg>`;
+  await shot(trayArc(16), 16, 16, at('apps/desktop/build/tray/trayTemplate.png'), { transparent: true });
+  await shot(trayArc(32), 32, 32, at('apps/desktop/build/tray/trayTemplate@2x.png'), { transparent: true });
+  // Windows and Linux show a 16 pixel icon at 100 percent; Electron picks the file for the display's scale from its name (tray@1.5x.png and so on).
+  for (const [name, size] of [['tray.png', 16], ['tray@1.25x.png', 20], ['tray@1.5x.png', 24], ['tray@2x.png', 32], ['tray@3x.png', 48]]) {
+    await shot(square(size), size, size, at('apps/desktop/build/tray', name), { transparent: true });
+  }
+
+  // The count on the Windows taskbar button: Windows has no count API, so the overlay is a picture. Only made when missing.
+  const badgeSvg = (label) =>
+    `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><circle cx="16" cy="16" r="16" fill="#b3261e"/><text x="16" y="${label.length > 1 ? 22 : 23}" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-weight="700" font-size="${label.length > 1 ? 17 : 22}" fill="#ffffff">${label}</text></svg>`;
+  for (const [file, label] of [...Array.from({ length: 9 }, (_, i) => [`${i + 1}.png`, String(i + 1)]), ['9plus.png', '9+']]) {
+    if (!existsSync(at('apps/desktop/build/badges', file))) await shot(badgeSvg(label), 32, 32, at('apps/desktop/build/badges', file), { transparent: true });
+  }
 
   // Placeholders that are only made when missing.
   if (!existsSync(at('assets/social/social-preview.png'))) await shot(socialPage, 1280, 640, at('assets/social/social-preview.png'));

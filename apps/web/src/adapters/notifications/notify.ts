@@ -13,6 +13,8 @@ export interface ReminderCopy {
   readonly title: (name: string) => string;
   readonly body: (date: string) => string;
   readonly bodyWithAmount: (date: string, amount: string) => string;
+  /** One notification for several reminders that came due together (after an unlock, say), so a screen is not flooded. */
+  readonly many: (count: number) => NotificationText;
 }
 
 export interface NotifyDeps {
@@ -39,12 +41,18 @@ export function textFor(r: Reminder, deps: Pick<NotifyDeps, 'copy' | 'showAmount
   return currency === undefined ? { title, body: deps.copy.body(when) } : { title, body: deps.copy.bodyWithAmount(when, deps.formatAmount(minor, currency)) };
 }
 
-/** Shows each due reminder once. Returns how many were shown; nothing is shown, or remembered, without permission. */
+export const SUMMARY_TAG = 'reminders-summary';
+
+/**
+ * Shows each due reminder once. When several are fresh at once they become one summary notification, and a single one is shown as itself.
+ * Returns how many reminders were covered; nothing is shown, or remembered, without permission.
+ */
 export async function showDueReminders(reminders: readonly Reminder[], deps: NotifyDeps): Promise<number> {
   if (deps.permission() !== 'granted') return 0;
   const seen = deps.alreadyShown();
   const fresh = reminders.filter((r) => !seen.has(r.key));
-  for (const r of fresh) await deps.show({ ...textFor(r, deps), tag: r.key });
+  if (fresh.length > 1) await deps.show({ ...deps.copy.many(fresh.length), tag: SUMMARY_TAG });
+  else for (const r of fresh) await deps.show({ ...textFor(r, deps), tag: r.key });
   if (fresh.length > 0) deps.remember(fresh.map((r) => r.key));
   return fresh.length;
 }

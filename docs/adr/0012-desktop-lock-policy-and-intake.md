@@ -2,7 +2,7 @@
 
 - **Status**: accepted
 - **Date**: 2026-10-25
-- **Decides**: `specs/006-native-desktop-experience` research D1 and D2 (lock policy); the intake rules (D5) are added with that work
+- **Decides**: `specs/006-native-desktop-experience` research D1 and D1b (lock policy) and D10 (what comes in from outside)
 
 ## Context
 
@@ -19,14 +19,23 @@ In the desktop app:
 
 The web app is unchanged. Spec 001 FR-007 carries a note that the desktop app amends it.
 
+5. **What comes in from outside is only ever a request for review.** A `cashfold://` link, a CSV or a backup opened from the file manager, and the arguments of a second launch are parsed in the shell with a strict grammar and size limits (`apps/desktop/src/main/intake.ts`, `specs/006-native-desktop-experience/contracts/link-and-file-intake.md`) and handed to the page, which opens the matching screen. Nothing is imported, restored or signed in on arrival.
+6. **A link never carries a secret.** It may carry an email address and a service address and nothing else; any secret-like parameter, key pattern, fragment, user information, port or double encoding refuses it. The Secret Key is typed on the add-device screen.
+7. **A locked page never holds file contents.** The shell keeps them, in memory, until the page reports `unlocked`; links and refusals, which carry no content, are delivered as soon as the page can show them. The page drops queued contents when it locks.
+8. **Cashfold is offered for CSV, never made the default.** It owns the `cashfold` scheme and its own backup extension, and is an alternative handler for `.csv`.
+
 ## Alternatives rejected
 
 - **Keep the browser rule in the desktop app.** It is the reason the app feels foreign, and it protects against a case (looking away for a moment) that the idle time already covers.
 - **Lock on focus loss with a longer delay.** Still surprising, and still wrong for a person working across windows.
 - **Do the locking in the shell.** The shell would have to know about the session; keeping the decision in the page keeps the keys and the policy in one place.
+- **Let a link carry the Secret Key to save typing.** A link is copied, logged, synced and shown in places no secret should be; the Secret Key stays out of it.
+- **Act on an opened file at once.** A person opening a file did not necessarily mean to import it; review first, confirm after.
 
 ## Consequences
 
 - A person who relied on the cover when switching windows must turn the setting on; the setting is in Settings → Desktop and described plainly.
 - On Linux desktops that do not report the screen locking, the idle time is the safeguard; Settings → Desktop says so.
 - Packaged tests simulate the events; the real system events are checked by hand (spec 006, verification V1 to V3).
+- A file opened while the app is locked waits for the unlock; the person is not told until then, which keeps the locked screen free of anything about the file.
+- The intake rules are security-sensitive: changes to `intake.ts` and to the registered protocol and file types need two reviewers and a threat-model note.

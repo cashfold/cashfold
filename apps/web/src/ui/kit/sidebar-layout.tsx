@@ -2,7 +2,7 @@
 'use client'
 
 import * as Headless from '@headlessui/react'
-import React, { useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { NavbarItem } from './navbar'
 
 function OpenMenuIcon() {
@@ -30,7 +30,7 @@ function MobileSidebar({ open, close, closeLabel, children }: React.PropsWithChi
       />
       <Headless.DialogPanel
         transition
-        className="fixed inset-y-0 w-full max-w-80 p-2 transition duration-300 ease-in-out data-closed:-translate-x-full rtl:data-closed:translate-x-full"
+        className="fixed inset-y-0 top-(--frame-bar-h) w-full max-w-80 p-2 transition duration-300 ease-in-out data-closed:-translate-x-full rtl:data-closed:translate-x-full"
       >
         <div className="flex h-full flex-col rounded-lg bg-white shadow-xs ring-1 ring-zinc-950/5 dark:bg-zinc-900 dark:ring-white/10">
           <div className="-mb-3 px-4 pt-3">
@@ -51,14 +51,33 @@ export function SidebarLayout({
   openLabel,
   closeLabel,
   contentInert = false,
+  subscribeDismiss,
   children,
-}: React.PropsWithChildren<{ navbar: React.ReactNode; sidebar: React.ReactNode; openLabel: string; closeLabel: string; contentInert?: boolean }>) {
+}: React.PropsWithChildren<{
+  navbar: React.ReactNode
+  sidebar: React.ReactNode
+  openLabel: string
+  closeLabel: string
+  contentInert?: boolean
+  /** Hears when the app asks open panels to close (a desktop shortcut arrived): the drawer closes. */
+  subscribeDismiss?: (listener: () => boolean) => () => void
+}>) {
   const [showSidebar, setShowSidebar] = useState(false)
+  const shown = useRef(false)
+  shown.current = showSidebar
+  useEffect(
+    () =>
+      subscribeDismiss?.(() => {
+        setShowSidebar(false)
+        return shown.current
+      }),
+    [subscribeDismiss]
+  )
 
   return (
-    <div className="relative isolate flex min-h-svh w-full bg-white max-lg:flex-col lg:bg-zinc-100 dark:bg-zinc-900 dark:lg:bg-zinc-950">
+    <div className="sidebar-layout relative isolate flex min-h-[calc(100svh-var(--frame-bar-h))] w-full bg-white max-lg:flex-col lg:bg-zinc-100 dark:bg-zinc-900 dark:lg:bg-zinc-950">
       {/* Sidebar on desktop */}
-      <div className="fixed inset-y-0 start-0 w-64 max-lg:hidden">{sidebar}</div>
+      <div className="fixed inset-y-0 top-(--frame-bar-h) start-0 w-64 max-lg:hidden">{sidebar}</div>
 
       {/* Sidebar on mobile */}
       <MobileSidebar open={showSidebar} close={() => setShowSidebar(false)} closeLabel={closeLabel}>

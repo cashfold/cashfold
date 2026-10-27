@@ -48,7 +48,7 @@ test.describe('@us6 schedules', () => {
     await expect(page.getByRole('dialog')).toHaveCount(0);
   }
 
-  async function addSchedule(page: Page, s: { name: string; amount: string; first: string; last?: string; confirm?: boolean; unit?: string; every?: string }): Promise<void> {
+  async function addSchedule(page: Page, s: { name: string; amount: string; first: string; last?: string; confirm?: boolean; unit?: string; every?: string; reminder?: string }): Promise<void> {
     await page.getByRole('button', { name: 'Add schedule', exact: true }).click();
     const dialog = page.getByRole('dialog');
     await dialog.getByLabel('Name', { exact: true }).fill(s.name);
@@ -56,7 +56,8 @@ test.describe('@us6 schedules', () => {
     if (s.unit) await dialog.getByLabel('Repeats').selectOption({ label: s.unit });
     if (s.every) await dialog.getByLabel('Every', { exact: true }).fill(s.every);
     await dialog.getByLabel('First on').fill(s.first);
-    if (s.last || s.confirm) await moreDetails(dialog);
+    if (s.last || s.confirm || s.reminder) await moreDetails(dialog);
+    if (s.reminder) await dialog.getByLabel('Reminder', { exact: true }).selectOption({ label: s.reminder });
     if (s.last) await dialog.getByLabel('Last on (optional)').fill(s.last);
     if (s.confirm) {
       await dialog.getByLabel('Ask me to confirm each one before it counts').check();
@@ -64,6 +65,42 @@ test.describe('@us6 schedules', () => {
     await dialog.getByRole('button', { name: 'Create schedule' }).click();
     await expect(page.getByRole('dialog')).toHaveCount(0);
   }
+
+  // Reminders used to run only while the Schedules screen was open; the reminder service in the signed-in shell shows them on every screen (spec 006).
+  test('a due reminder is shown while another screen than Schedules is open', async ({ page }) => {
+    await page.addInitScript(() => {
+      const shown: Array<{ title: string }> = [];
+      Object.assign(window, { __shown: shown, __permission: 'default' });
+      // Both ways the page can show a notification (through the service worker, or its own) are recorded.
+      class FakeNotification {
+        static get permission() {
+          return (window as unknown as { __permission: string }).__permission;
+        }
+        static requestPermission = async () => FakeNotification.permission;
+        constructor(title: string) {
+          shown.push({ title });
+        }
+        close() {}
+      }
+      Object.assign(window, { Notification: FakeNotification });
+      ServiceWorkerRegistration.prototype.showNotification = async (title: string) => void shown.push({ title });
+    });
+    const shown = () => page.evaluate(() => (window as unknown as { __shown: Array<{ title: string }> }).__shown.map((n) => n.title));
+    await intoApp(page);
+    await go(page, 'Accounts');
+    await addAccount(page, 'Everyday', '1000.00');
+    // Permission is not given yet, so the due reminder waits: nothing is shown or remembered.
+    await go(page, 'Schedules');
+    await addSchedule(page, { name: 'Rent', amount: '400.00', first: daysFromToday(1), last: daysFromToday(1), reminder: '1 day before' });
+    await go(page, 'Overview');
+    expect(await shown()).toEqual([]);
+    // Permission is given while Overview is open; the next change of the ledger makes the service look again, on this screen.
+    await page.evaluate(() => Object.assign(window, { __permission: 'granted' }));
+    await go(page, 'Accounts');
+    await addAccount(page, 'Savings', '10.00');
+    await go(page, 'Overview');
+    await expect.poll(shown).toEqual(['Due: Rent']);
+  });
 
   test('creates occurrences on their due date, asks for confirmation when told to, projects balances, and edits only the future', async ({ page, context, expectNoA11yViolations }) => {
     await intoApp(page);

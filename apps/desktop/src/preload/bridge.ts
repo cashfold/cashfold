@@ -78,7 +78,12 @@ export function createBridge(ipc: IpcRendererLike, platform: string = process.pl
     showWindow: () => call(CHANNELS.windowShow, VoidResponseSchema),
     onSystemLock: listen(CHANNELS.systemLock, SystemLockEventSchema, identity),
     onMenuAction: listen(CHANNELS.menuAction, MenuActionEventSchema, (value) => value.action),
-    onIncoming: listen(CHANNELS.incoming, IncomingItemSchema, identity),
+    onIncoming: (listener) => {
+      const stop = listen(CHANNELS.incoming, IncomingItemSchema, identity)(listener);
+      // Tell the shell there is now a listener: items from outside are only delivered to a page that can take them.
+      void call(CHANNELS.incomingReady, VoidResponseSchema).catch(() => undefined);
+      return stop;
+    },
     onFrameState: listen(CHANNELS.frameState, FrameStateSchema, identity),
     onSettingsChanged: listen(CHANNELS.settingsChanged, DesktopSettingsSchema, identity),
     about: () => call(CHANNELS.about, AboutInfoSchema),

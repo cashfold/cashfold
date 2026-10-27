@@ -20,7 +20,8 @@ export async function requestPermission(): Promise<'granted' | 'denied' | 'defau
   }
 }
 
-export async function show(text: NotificationText & { tag: string }): Promise<void> {
+/** Shows a notification. `onActivate` runs when the person chooses it (the desktop app brings its window forward; a browser tab is focused by the browser). */
+export async function show(text: NotificationText & { tag: string }, onActivate?: () => void): Promise<void> {
   const options = { body: text.body, tag: text.tag, silent: false };
   try {
     const registration = await navigator.serviceWorker?.getRegistration();
@@ -28,7 +29,13 @@ export async function show(text: NotificationText & { tag: string }): Promise<vo
   } catch {
     // Fall through to the page's own notification.
   }
-  new Notification(text.title, options);
+  const notification = new Notification(text.title, options);
+  if (onActivate !== undefined) {
+    notification.onclick = () => {
+      onActivate();
+      notification.close();
+    };
+  }
 }
 
 export function shownKeys(): Set<string> {

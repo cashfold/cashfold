@@ -21,9 +21,9 @@ export function isAllowedExternalUrl(raw: string): boolean {
   return path === REPO.pathname || path.startsWith(`${REPO.pathname}/`);
 }
 
-const GRANTED = new Set(['persistent-storage', 'publickey-credentials-get']);
+const GRANTED = new Set(['persistent-storage', 'publickey-credentials-get', 'notifications']);
 
-/** Persistent storage (so the browser engine keeps the data) and platform authenticators, for the app origin only. */
+/** Persistent storage (so the browser engine keeps the data), platform authenticators and notifications (the reminders), for the app origin only. */
 export function decidePermission(permission: string, origin: string): boolean {
   // The engine reports the requesting origin with a trailing slash in some checks ("app://cashfold/") and without in others.
   return origin.replace(/\/$/, '') === APP_ORIGIN && GRANTED.has(permission);

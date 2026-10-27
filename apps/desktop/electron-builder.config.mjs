@@ -24,8 +24,16 @@ export default {
   productName: identity.name,
   copyright: 'Copyright © Cashfold contributors',
   directories: { output: 'release', buildResources: 'build' },
-  files: ['dist/**', 'package.json'],
+  // The tray and taskbar-badge images are read at run time from inside the package.
+  files: ['dist/**', 'package.json', 'build/badges/**', 'build/tray/**'],
   extraMetadata: { version },
+  // Links and files from outside (spec 006, US6; research D10). The `cashfold` scheme opens a screen for review and never carries a secret. A backup
+  // opens in Cashfold by default; a CSV is offered as an alternative only ("Open with"), so Cashfold never becomes the person's CSV program unasked.
+  protocols: [{ name: 'Cashfold', schemes: ['cashfold'], role: 'Viewer' }],
+  fileAssociations: [
+    { ext: 'cashfold-backup', name: 'Cashfold backup', description: 'Cashfold encrypted backup', mimeType: 'application/x-cashfold-backup', role: 'Editor', rank: 'Owner' },
+    { ext: 'csv', name: 'CSV file', description: 'Comma-separated values', mimeType: 'text/csv', role: 'Viewer', rank: 'Alternate' },
+  ],
   asar: true,
   // No spaces: GitHub rewrites spaces in asset names, which would break the update feed.
   artifactName: 'Cashfold-${version}-${os}-${arch}.${ext}',

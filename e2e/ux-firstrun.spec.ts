@@ -8,7 +8,7 @@ test.describe('@ux first run', () => {
     test.skip(browserName === 'webkit', 'OPFS access handles in workers are verified on Chromium and Firefox');
   });
 
-  test('shows the checklist, derives its steps from the data, and stays dismissed until Help reopens it', async ({ page }) => {
+  test('shows the checklist, derives its steps from the data, and stays dismissed until Help offers it back', async ({ page }) => {
     test.setTimeout(240_000);
     await signUpAndEnter(page);
     const card = page.getByTestId('first-run');
@@ -25,6 +25,7 @@ test.describe('@ux first run', () => {
     await expect(page.getByTestId('current-fold')).toBeVisible({ timeout: 60_000 });
     await expect(page.getByTestId('first-run')).toHaveCount(0);
     await page.getByRole('button', { name: 'Help', exact: true }).click();
+    await page.getByRole('button', { name: 'Show the getting-started card' }).click();
     await expect(page.getByTestId('first-run')).toBeVisible();
   });
 

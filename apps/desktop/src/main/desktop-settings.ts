@@ -36,3 +36,6 @@ export function applySettingsUpdate(current: DesktopSettings, update: SettingsUp
   };
   return !statusItem && next.closeBehavior === 'background' ? { ...next, closeBehavior: 'quit' } : next;
 }
+
+/** Whether closing the window keeps the app running: chosen, and only where something can bring it back (a tray or menu-bar item). */
+export const keepsRunningWhenClosed = (settings: Pick<DesktopSettings, 'closeBehavior'>, statusItem: boolean): boolean => settings.closeBehavior === 'background' && statusItem;

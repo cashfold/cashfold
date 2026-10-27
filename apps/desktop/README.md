@@ -18,6 +18,10 @@ signature in [ADR-0010](../../docs/adr/0010-update-signatures.md).
 | `scripts/`                    | Build, packaging and test runners                                                                                                                    |
 | `electron-builder.config.mjs` | Installer settings for each system                                                                                                                   |
 
+## The desktop experience
+
+What makes the window behave like an application is a handful of small modules in `src/main/`, each with its tests: `appearance.ts` (theme and first-frame colour), `shortcuts.ts` (shortcuts without a menu bar), `native-feel.ts` (no selectable interface text, native pointers), `text-menu.ts` and `context-menu.ts` (right-click menus), `badge.ts` and `tray.ts` (count, tray, dock menu, jump list), `intake.ts` (files and `cashfold://` links from outside), `launch.ts` (start at login) and `frame.ts` (title bar and translucent material). They are described in [docs/desktop.md](../../docs/desktop.md).
+
 ## Commands
 
 Run from the repository root:

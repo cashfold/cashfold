@@ -41,7 +41,8 @@ describe('the shortcut table', () => {
   it('knows reload and developer tools only in an unpackaged run', () => {
     expect(matchShortcut(press('r', { control: true }), 'linux')).toBeUndefined();
     expect(matchShortcut(press('r', { control: true }), 'linux', true)?.action).toBe('reload');
-    expect(matchShortcut(press('i', { control: true, shift: true }), 'win32', true)?.action).toBe('toggle-devtools');
+    expect(matchShortcut(press('F12'), 'win32', true)?.action).toBe('toggle-devtools');
+    expect(matchShortcut(press('F12'), 'win32')).toBeUndefined();
   });
 
   it('ignores anything it does not own, and presses with an extra modifier', () => {
@@ -70,13 +71,14 @@ describe('installShortcuts', () => {
     const contents = { on: (_e: string, h: typeof handler) => { handler = h; }, copy: vi.fn(), setZoomLevel: vi.fn(), getZoomLevel: () => 0, undo: vi.fn(), reload: vi.fn() };
     const win = { close: vi.fn(), minimize: vi.fn(), isFullScreen: () => false, setFullScreen: vi.fn() };
     const quit = vi.fn();
-    installShortcuts(contents as never, win as never, { platform: 'darwin', development: false, pageLocked: () => locked, quit, ...(table === undefined ? {} : { table }) });
+    const sendAction = vi.fn();
+    installShortcuts(contents as never, win as never, { platform: 'darwin', development: false, pageLocked: () => locked, quit, sendAction, ...(table === undefined ? {} : { table }) });
     const send = (input: ShortcutInput & { type?: string }) => {
       const event = { preventDefault: vi.fn() };
       handler(event, { type: 'keyDown', ...input });
       return event.preventDefault.mock.calls.length > 0;
     };
-    return { contents, win, quit, send };
+    return { contents, win, quit, sendAction, send };
   }
 
   it('does a handled press and keeps it from the page', () => {
@@ -103,10 +105,70 @@ describe('installShortcuts', () => {
     expect(open.contents.reload).toHaveBeenCalledOnce();
   });
 
+  it('sends the page the action id when unlocked', () => {
+    const { sendAction, send } = setup(false);
+    expect(send(press('n', { meta: true }))).toBe(true);
+    expect(sendAction).toHaveBeenCalledWith('new-transaction');
+  });
+
+  it('holds back data actions while locked, but still sends lock', () => {
+    const { sendAction, send } = setup(true);
+    expect(send(press('n', { meta: true }))).toBe(true);
+    expect(send(press('f', { meta: true }))).toBe(true);
+    expect(sendAction).not.toHaveBeenCalled();
+    send(press('l', { meta: true }));
+    expect(sendAction).toHaveBeenCalledWith('lock');
+  });
+
   it('passes through key releases and unknown presses untouched', () => {
     const { contents, send } = setup(false);
     expect(send({ ...press('c', { meta: true }), type: 'keyUp' })).toBe(false);
     expect(send(press('k', { meta: true }))).toBe(false);
     expect(contents.copy).not.toHaveBeenCalled();
+  });
+});
+
+// The accelerators of contracts/menu-and-shortcuts.md, as (action id, key, shift). The primary modifier is Command on macOS and Control elsewhere.
+const CONTRACT: ReadonlyArray<readonly [string, string, boolean]> = [
+  ['new-transaction', 'n', false],
+  ['lock', 'l', false],
+  ['settings', ',', false],
+  ['search', 'f', false],
+  ['go:overview', '1', false],
+  ['go:transactions', '2', false],
+  ['go:accounts', '3', false],
+  ['go:plan', '4', false],
+  ['go:settings', '5', false],
+  ['import', 'i', true],
+  ['export', 'e', true],
+];
+
+describe('the app-action shortcuts of the contract', () => {
+  it.each(CONTRACT)('%s is %s (shift %s) with the primary modifier on every system', (action, key, shift) => {
+    expect(matchShortcut(press(key, { meta: true, shift }), 'darwin')?.action).toBe(action);
+    expect(matchShortcut(press(key, { control: true, shift }), 'win32')?.action).toBe(action);
+    expect(matchShortcut(press(key, { control: true, shift }), 'linux')?.action).toBe(action);
+    expect(matchShortcut(press(key, { control: true, shift }), 'darwin')).toBeUndefined();
+  });
+
+  it('flags every action that reaches data, and only lock works while locked', () => {
+    for (const [action] of CONTRACT) {
+      const entry = SHORTCUTS.find((e) => e.action === action);
+      expect(entry?.data === true, action).toBe(action !== 'lock');
+    }
+  });
+
+  it('has exactly the contract entries and no other app action', () => {
+    const appActions = SHORTCUTS.filter((e) => e.action === 'lock' || e.action.includes(':') || ['new-transaction', 'settings', 'search', 'import', 'export'].includes(e.action));
+    expect(appActions.map((e) => e.action).sort()).toEqual(CONTRACT.map(([action]) => action).sort());
+  });
+
+  it('uses no Alt combination and no key on two entries (a clash is found by the duplicate check above)', () => {
+    expect(SHORTCUTS.every((entry) => !entry.keys.some((key) => key.toLowerCase().includes('alt')))).toBe(true);
+  });
+
+  it('keeps full screen on Control+Command+F distinct from search on Command+F', () => {
+    expect(matchShortcut(press('f', { meta: true, control: true }), 'darwin')?.action).toBe('toggle-fullscreen');
+    expect(matchShortcut(press('f', { meta: true }), 'darwin')?.action).toBe('search');
   });
 });

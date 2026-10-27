@@ -6,18 +6,21 @@ import {
 import Link from 'next/link';
 import { useMemo, useState, type FormEvent } from 'react';
 import { InputField, SelectField } from '../forms/Field';
+import { useRowContextMenu } from '../desktop/ContextMenu';
 import { useI18n } from '../i18n/I18nProvider';
 import {
-  Amount, Avatar, Badge, Button, ConfirmDialog, Disclosure, Dropdown, DropdownButton, DropdownItem, DropdownLabel, DropdownMenu, EllipsisHorizontalIcon, EmptyState, BanknotesIcon, Label, Sheet, Switch, SwitchField,
+  Amount, Avatar, Badge, Button, ConfirmDialog, Disclosure, EmptyState, BanknotesIcon, Label, Sheet, Switch, SwitchField,
 } from '../kit';
 import { dateToInput, inputToDate, todayLocal } from '../ledger/dates';
 import { decimalsOf, formatPlain } from '../ledger/format';
 import { LedgerFrame } from '../ledger/LedgerFrame';
 import { useLedger, type Outcome } from '../ledger/LedgerProvider';
+import { RowActionsMenu } from '../ledger/RowActionsMenu';
 import { prefsStore, usePrefs } from '../prefs/usePrefs';
 import { useAddSheet } from '../shell/add-context';
 import { useStatus } from '../shell/StatusProvider';
 import { AmountInput } from '../transactions/AmountInput';
+import { accountActions } from './account-actions';
 import { GroupManager } from './GroupManager';
 
 const CURRENCIES = Object.keys(CURRENCY_EXPONENTS).sort();
@@ -111,32 +114,7 @@ export function AccountsScreen() {
           <h2 id={`kind-${section.kind}`} className="text-lg font-semibold">{t(`ledger.kind.${section.kind}`)}</h2>
           <ul className="mt-2 divide-y divide-zinc-950/10 rounded-xl border border-zinc-950/10 dark:divide-white/10 dark:border-white/10" aria-label={t(`ledger.kind.${section.kind}`)}>
             {section.accounts.map((a, index) => (
-              <li key={a.id} className="flex flex-wrap items-center gap-3 p-3" data-testid="account-row">
-                <Avatar initials={a.name.slice(0, 1).toUpperCase()} className="size-9 shrink-0 bg-zinc-200 text-zinc-900 dark:bg-zinc-700 dark:text-white" square />
-                <div className="min-w-0 flex-1 basis-40">
-                  <div className="flex flex-wrap items-center gap-x-2">
-                    <Link className="truncate font-semibold underline-offset-4 hover:underline" href={`/transactions/?account=${a.id}`}>{a.name}</Link>
-                    <span className="text-sm text-zinc-600 dark:text-zinc-400">{a.currency}</span>
-                    {a.archived ? <Badge>{t('ledger.accounts.archived')}</Badge> : null}
-                    {a.includeInNetWorth ? null : <Badge>{t('ledger.accounts.excluded')}</Badge>}
-                  </div>
-                </div>
-                <div className="text-lg" data-sign={a.balanceMinor === null ? 'zero' : a.balanceMinor > 0n ? 'gain' : a.balanceMinor < 0n ? 'loss' : 'zero'} data-testid="account-balance">
-                  {a.balanceMinor === null ? t('ledger.accounts.balanceUnavailable') : <Amount minor={a.balanceMinor} currency={a.currency} locale={locale} />}
-                </div>
-                <Dropdown>
-                  <DropdownButton plain aria-label={`${t('ledger.list.actions')} ${a.name}`}><EllipsisHorizontalIcon data-slot="icon" aria-hidden="true" /></DropdownButton>
-                  <DropdownMenu anchor="bottom end">
-                    <DropdownItem onClick={() => openAdd({ accountId: a.id })}><DropdownLabel>{t('ledger.tx.add')}</DropdownLabel></DropdownItem>
-                    <DropdownItem onClick={() => setAdjusting(a)}><DropdownLabel>{t('ledger.accounts.adjust')}</DropdownLabel></DropdownItem>
-                    <DropdownItem onClick={() => setEditing(a)}><DropdownLabel>{t('ledger.edit')}</DropdownLabel></DropdownItem>
-                    <DropdownItem onClick={() => void move(section.accounts, index, -1)} disabled={index === 0}><DropdownLabel>{t('ledger.accounts.moveUp', { name: a.name })}</DropdownLabel></DropdownItem>
-                    <DropdownItem onClick={() => void move(section.accounts, index, 1)} disabled={index === section.accounts.length - 1}><DropdownLabel>{t('ledger.accounts.moveDown', { name: a.name })}</DropdownLabel></DropdownItem>
-                    <DropdownItem onClick={() => void archive(a, !a.archived)}><DropdownLabel>{a.archived ? t('ledger.accounts.unarchive') : t('ledger.accounts.archive')}</DropdownLabel></DropdownItem>
-                    <DropdownItem onClick={() => void askDelete(a)}><DropdownLabel>{t('ledger.delete')}</DropdownLabel></DropdownItem>
-                  </DropdownMenu>
-                </Dropdown>
-              </li>
+              <AccountItem key={a.id} a={a} index={index} accounts={section.accounts} />
             ))}
           </ul>
         </section>
@@ -194,6 +172,33 @@ export function AccountsScreen() {
       />
     </LedgerFrame>
   );
+
+  function AccountItem({ a, index, accounts }: { a: AccountRow; index: number; accounts: AccountRow[] }) {
+    const actions = accountActions({
+      archived: a.archived, index, count: accounts.length,
+      labels: { add: t('ledger.tx.add'), adjust: t('ledger.accounts.adjust'), edit: t('ledger.edit'), moveUp: t('ledger.accounts.moveUp', { name: a.name }), moveDown: t('ledger.accounts.moveDown', { name: a.name }), archive: t('ledger.accounts.archive'), unarchive: t('ledger.accounts.unarchive'), remove: t('ledger.delete') },
+      add: () => openAdd({ accountId: a.id }), adjust: () => setAdjusting(a), edit: () => setEditing(a),
+      move: (direction) => void move(accounts, index, direction), toggleArchived: () => void archive(a, !a.archived), remove: () => void askDelete(a),
+    });
+    const onContextMenu = useRowContextMenu(actions);
+    return (
+              <li className="flex flex-wrap items-center gap-3 p-3" data-testid="account-row" onContextMenu={onContextMenu}>
+                <Avatar initials={a.name.slice(0, 1).toUpperCase()} className="size-9 shrink-0 bg-zinc-200 text-zinc-900 dark:bg-zinc-700 dark:text-white" square />
+                <div className="min-w-0 flex-1 basis-40">
+                  <div className="flex flex-wrap items-center gap-x-2">
+                    <Link className="truncate font-semibold underline-offset-4 hover:underline" href={`/transactions/?account=${a.id}`}>{a.name}</Link>
+                    <span className="text-sm text-zinc-600 dark:text-zinc-400">{a.currency}</span>
+                    {a.archived ? <Badge>{t('ledger.accounts.archived')}</Badge> : null}
+                    {a.includeInNetWorth ? null : <Badge>{t('ledger.accounts.excluded')}</Badge>}
+                  </div>
+                </div>
+                <div className="text-lg" data-sign={a.balanceMinor === null ? 'zero' : a.balanceMinor > 0n ? 'gain' : a.balanceMinor < 0n ? 'loss' : 'zero'} data-testid="account-balance">
+                  {a.balanceMinor === null ? t('ledger.accounts.balanceUnavailable') : <Amount minor={a.balanceMinor} currency={a.currency} locale={locale} />}
+                </div>
+                <RowActionsMenu label={`${t('ledger.list.actions')} ${a.name}`} actions={actions} />
+              </li>
+    );
+  }
 }
 
 type Parse = ReturnType<typeof useLedger>['parse'];

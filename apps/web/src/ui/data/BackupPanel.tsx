@@ -1,9 +1,10 @@
 'use client';
 
 import Link from 'next/link';
-import { useRef, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import type { FoldSummary } from '@cashfold/core';
 import { useCore, withPasswordBytes } from '../core/CoreProvider';
+import { restoreHandoff } from '../desktop/restore-handoff';
 import { TextField } from '../forms/TextField';
 import { useI18n } from '../i18n/I18nProvider';
 import { accountErrorText, type Reply } from '../settings/errors';
@@ -24,6 +25,21 @@ export function BackupPanel({ folds }: { folds: readonly FoldSummary[] }) {
   const [restored, setRestored] = useState<{ name: string; records: number } | undefined>();
   const [busy, setBusy] = useState(false);
   const file = useRef<HTMLInputElement>(null);
+
+  // A backup opened from the file manager (desktop app) waits in the hand-off; taking it shows it as chosen. The passphrase is still asked for.
+  useEffect(() => {
+    const take = (): void => {
+      const opened = restoreHandoff.take();
+      if (opened === undefined || file.current === null) return;
+      const transfer = new DataTransfer();
+      transfer.items.add(opened);
+      file.current.files = transfer.files;
+      setRestoreError(undefined);
+      setRestored(undefined);
+    };
+    take();
+    return restoreHandoff.subscribe(take);
+  }, []);
 
   async function create(event: FormEvent) {
     event.preventDefault();

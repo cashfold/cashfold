@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { prefsStore, usePrefs } from '../prefs/usePrefs';
+import { mirrorThemeToShell } from './mirror-theme';
 import { resolveTheme, type ResolvedTheme, type ThemeChoice } from './resolve-theme';
 
 interface ThemeApi {
@@ -26,6 +27,11 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     const onChange = (e: MediaQueryListEvent) => setSystemDark(e.matches);
     query.addEventListener('change', onChange);
     return () => query.removeEventListener('change', onChange);
+  }, [choice]);
+
+  // In the desktop app the shell is told the choice, so its first frame and its native chrome match.
+  useEffect(() => {
+    void mirrorThemeToShell(choice);
   }, [choice]);
 
   const resolved = resolveTheme(choice, systemDark);

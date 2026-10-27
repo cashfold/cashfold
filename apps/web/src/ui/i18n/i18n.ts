@@ -64,13 +64,20 @@ export function resolveLanguage(choice: LanguageChoice, browserLanguages: readon
   return choice === 'auto' ? resolveLocale(browserLanguages) : choice;
 }
 
-/** ICU formatting for one locale, with English as the fallback. Never throws. */
-export function createTranslator(locale: string, catalogs: Catalogs = CATALOGS): Translate {
+/** The suffix of a message written for the desktop app: `quick.lede` has `quick.lede.desktop`, where the web's words ("the browser") would be wrong. */
+export const DESKTOP_VARIANT = 'desktop';
+
+/**
+ * ICU formatting for one locale, with English as the fallback. Never throws. With `variant`, a message that has a `<key>.<variant>` text uses it, in the
+ * same language, before falling back to the plain one.
+ */
+export function createTranslator(locale: string, catalogs: Catalogs = CATALOGS, variant?: string): Translate {
   const cache = new Map<string, IntlMessageFormat | null>();
   return (key, params) => {
-    const template = catalogs[locale]?.[key] ?? catalogs['en']?.[key];
+    const special = variant === undefined ? undefined : `${key}.${variant}`;
+    const template = (special === undefined ? undefined : (catalogs[locale]?.[special] ?? catalogs['en']?.[special])) ?? catalogs[locale]?.[key] ?? catalogs['en']?.[key];
     if (template === undefined) return key;
-    const cacheKey = `${locale}\u0000${key}`;
+    const cacheKey = `${locale}\u0000${key}\u0000${variant ?? ''}`;
     let format = cache.get(cacheKey);
     if (format === undefined) {
       try {

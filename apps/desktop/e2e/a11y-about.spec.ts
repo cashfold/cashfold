@@ -7,6 +7,9 @@ import { expect, signUp, test } from './fixtures';
 // in the light and the dark theme, inside the desktop app.
 
 async function expectNoViolations(page: Page): Promise<void> {
+  // Over a translucent material (vibrancy, Mica) the real background is the system's, which axe cannot see: it would compare against plain white. The
+  // opaque look is what is measured here (as in a11y-desktop.spec.ts).
+  await page.evaluate(() => (document.documentElement.dataset['translucent'] = 'false'));
   await page.waitForFunction(() => document.querySelector('[data-enter],[data-leave],[data-closed]') === null, undefined, { timeout: 5_000 }).catch(() => undefined);
   // Legacy mode: axe runs in this page only. Its default opens a second page for cross-frame analysis, which Electron cannot do.
   const results = await new AxeBuilder({ page }).setLegacyMode().withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']).analyze();

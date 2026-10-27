@@ -6,7 +6,30 @@
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
 html { background: var(--bg); color: var(--text); font-size: 100%; }
-body { min-block-size: 100vh; margin: 0; font-family: var(--font-sans); line-height: 1.5; background: var(--bg); color: var(--text); }
+/* A desktop window is read closer and from a smaller base than a web page: native apps sit at 13 to 14px, the web's 16px looks oversized there. The desktop
+   app's page sets data-platform on <html> (a browser never does), and every size is in rem, so this scales text, spacing and icons together. The person's
+   own zoom (Ctrl or Command with plus and minus) still applies on top. */
+html[data-platform] { font-size: 87.5%; }
+/* The slim bar of the desktop app's own window frame (spec 006, US7). The shell's page sets data-platform and data-frame on <html> before first paint
+   (ui/theme/bootstrap.ts), so there is no layout shift. In a browser, and on Linux, --frame-bar-h is 0 and none of this exists: the layout is unchanged. */
+:root { --frame-bar-h: 0px; --frame-inset-start: 0px; --frame-inset-end: 0px; }
+html[data-frame="bar"] { --frame-bar-h: 40px; }
+/* macOS: the traffic lights sit at the start of the bar, and are gone in full screen. */
+html[data-frame="bar"][data-platform="darwin"] { --frame-inset-start: 80px; }
+html[data-frame="bar"][data-platform="darwin"][data-fullscreen="true"] { --frame-inset-start: 0px; }
+/* Windows: the system's buttons are drawn over the end of the bar; the overlay area tells where they begin. */
+html[data-frame="bar"][data-platform="win32"] { --frame-inset-end: calc(100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100vw)); }
+.frame-bar { position: fixed; inset-block-start: 0; inset-inline: 0; z-index: 60; display: flex; align-items: center; block-size: var(--frame-bar-h);
+  padding-inline-start: calc(var(--frame-inset-start) + 0.75rem); padding-inline-end: var(--frame-inset-end); background: var(--bg); color: var(--text-muted);
+  font-size: 0.8125rem; -webkit-app-region: drag; user-select: none; }
+.frame-bar :is(a, button, input, select, textarea, [role="button"]) { -webkit-app-region: no-drag; }
+/* The translucent sidebar (macOS vibrancy, Windows 11 Mica): only when the shell says the material is on, only with the sidebar showing. */
+@media (min-width: 64rem) {
+  html[data-translucent="true"]:has(.sidebar-layout), html[data-translucent="true"]:has(.sidebar-layout) body { background: transparent; }
+  html[data-translucent="true"] .sidebar-layout { background-color: transparent; }
+  html[data-translucent="true"] .frame-bar { background: transparent; }
+}
+body { padding-block-start: var(--frame-bar-h); min-block-size: 100vh; margin: 0; font-family: var(--font-sans); line-height: 1.5; background: var(--bg); color: var(--text); }
 :focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
 .tabular-nums { font-variant-numeric: tabular-nums; }
 select, input, textarea { max-inline-size: 100%; }

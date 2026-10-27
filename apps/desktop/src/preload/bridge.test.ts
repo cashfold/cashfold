@@ -232,3 +232,27 @@ describe('update events', () => {
     expect(listener).not.toHaveBeenCalled();
   });
 });
+
+describe('items from outside', () => {
+  it('tells the shell the page has a listener only when one is registered, and hands the page only items that match the schema', () => {
+    const { ipc, emit } = fakeIpc({ [CHANNELS.incomingReady]: undefined });
+    const bridge = createBridge(ipc);
+    expect(ipc.invoke).not.toHaveBeenCalledWith(CHANNELS.incomingReady);
+    const listener = vi.fn();
+    const stop = bridge.onIncoming(listener);
+    expect(ipc.invoke).toHaveBeenCalledWith(CHANNELS.incomingReady);
+    emit(CHANNELS.incoming, { kind: 'refused', reason: 'secret' });
+    emit(CHANNELS.incoming, { kind: 'delete-everything' });
+    expect(listener.mock.calls).toEqual([[{ kind: 'refused', reason: 'secret' }]]);
+    stop();
+    emit(CHANNELS.incoming, { kind: 'refused', reason: 'secret' });
+    expect(listener).toHaveBeenCalledTimes(1);
+  });
+
+  it('is not troubled when the shell does not answer the ready signal', () => {
+    const { ipc } = fakeIpc();
+    ipc.invoke.mockRejectedValue(new Error('refused'));
+    expect(() => createBridge(ipc).onIncoming(() => undefined)).not.toThrow();
+  });
+});
+

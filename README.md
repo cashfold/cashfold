@@ -47,6 +47,10 @@ It is the same app as in the browser, in its own window. The same account works 
 data stays in your computer's application-data folder. The app tells you when a new version exists
 and installs it only when you say so.
 
+It behaves like a desktop app: it locks when the computer locks or sleeps (not when you click another
+window), has a tray or menu-bar icon, a count of waiting entries, native reminders, right-click menus,
+and opens CSV files, backups and `cashfold://` links for review. See [docs/desktop.md](docs/desktop.md).
+
 **Unsigned builds.** Until the installers are code-signed, the release is marked **UNSIGNED BUILD**
 and your system warns you the first time you open the app. Check the download first (below), then:
 

@@ -3,6 +3,7 @@
 import type { ColumnMapping, ImportOptions, PreviewRow } from '@cashfold/core';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
+import { importHandoff } from '../desktop/import-handoff';
 import { useI18n } from '../i18n/I18nProvider';
 import { formatDate } from '../ledger/dates';
 import { useLedger } from '../ledger/LedgerProvider';
@@ -60,12 +61,18 @@ export function CsvImportPanel() {
   const optionsFor = (): ImportOptions | undefined => (chosen === undefined ? undefined : { account: chosen.id as ImportOptions['account'], mapping: mapping(), dateOrder, decimal, hasHeader });
   const ready = chosen !== undefined && (columns['date'] ?? NONE) !== NONE && (amountStyle === 'signed' ? (columns['signed'] ?? NONE) !== NONE : (columns['income'] ?? NONE) !== NONE || (columns['expense'] ?? NONE) !== NONE);
 
-  async function choose() {
+  async function choose(dropped?: File) {
     setError(undefined);
     setPreview(undefined);
     setResult(undefined);
-    const picked = file.current?.files?.[0];
+    const picked = dropped ?? file.current?.files?.[0];
     if (picked === undefined) return;
+    if (dropped !== undefined && file.current) {
+      // The file input shows the dropped file as chosen, as if it had been picked with the button.
+      const transfer = new DataTransfer();
+      transfer.items.add(dropped);
+      file.current.files = transfer.files;
+    }
     setBusy(true);
     try {
       const content = await picked.text();
@@ -87,6 +94,18 @@ export function CsvImportPanel() {
       setBusy(false);
     }
   }
+
+  // A CSV dropped on the window (desktop app) waits in the hand-off; taking it shows it as chosen, with its columns, and imports nothing.
+  useEffect(() => {
+    if (chosen === undefined) return;
+    const take = (): void => {
+      const dropped = importHandoff.take();
+      if (dropped !== undefined) void choose(dropped);
+    };
+    take();
+    return importHandoff.subscribe(take);
+    // `choose` only reads state through the setters and the ledger.
+  }, [chosen === undefined]);
 
   async function showPreview() {
     const options = optionsFor();

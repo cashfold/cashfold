@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applySettingsUpdate, defaultSettings, sanitiseSettings } from './desktop-settings';
+import { applySettingsUpdate, defaultSettings, keepsRunningWhenClosed, sanitiseSettings } from './desktop-settings';
 import { sanitiseDesktopState } from './desktop-state';
 
 const SCREEN = { x: 0, y: 0, width: 1920, height: 1080 };
@@ -47,5 +47,19 @@ describe('applying a change', () => {
   it('stores quit instead of background where there is no status item', () => {
     expect(applySettingsUpdate(current, { closeBehavior: 'background' }, false).closeBehavior).toBe('quit');
     expect(applySettingsUpdate({ ...current, closeBehavior: 'background' }, { startAtLogin: true }, false)).toMatchObject({ closeBehavior: 'quit', startAtLogin: true });
+  });
+});
+
+describe('whether closing the window keeps the app running', () => {
+  it('does only when chosen and a tray or menu-bar item can bring it back', () => {
+    expect(keepsRunningWhenClosed({ closeBehavior: 'background' }, true)).toBe(true);
+    expect(keepsRunningWhenClosed({ closeBehavior: 'background' }, false)).toBe(false);
+    expect(keepsRunningWhenClosed({ closeBehavior: 'quit' }, true)).toBe(false);
+  });
+
+  it('is the default on macOS only', () => {
+    expect(keepsRunningWhenClosed(defaultSettings('darwin'), true)).toBe(true);
+    expect(keepsRunningWhenClosed(defaultSettings('win32'), true)).toBe(false);
+    expect(keepsRunningWhenClosed(defaultSettings('linux'), true)).toBe(false);
   });
 });

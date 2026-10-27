@@ -53,6 +53,35 @@ describe('the desktop configuration check', () => {
     expect(problems).toEqual([expect.stringMatching(/productName|name/)]);
   });
 
+  describe('links and files from outside', () => {
+    const base = (extra: string) => `export default { appId: 'org.cashfold.app', productName: 'Cashfold', ${extra} };\n`;
+
+    it('accepts the cashfold scheme, a backup type Cashfold owns, and CSV as an alternative only', async () => {
+      const builder = base("protocols: [{ name: 'Cashfold', schemes: ['cashfold'] }], fileAssociations: [{ ext: 'cashfold-backup', rank: 'Owner' }, { ext: 'csv', rank: 'Alternate' }], files: ['dist/**', 'build/badges/**', 'build/tray/**']");
+      expect(await checkDesktopConfig({ root: fixture({ builder }) })).toEqual([]);
+    });
+
+    it.each(['Owner', 'Default', 'None', undefined])('refuses CSV with rank %s', async (rank) => {
+      const builder = base(`fileAssociations: [{ ext: 'csv', ${rank === undefined ? '' : `rank: '${rank}'`} }]`);
+      expect(await checkDesktopConfig({ root: fixture({ builder }) })).toEqual([expect.stringMatching(/CSV.*Alternate/)]);
+    });
+
+    it('refuses any scheme but cashfold', async () => {
+      const builder = base("protocols: [{ name: 'Cashfold', schemes: ['cashfold', 'mailto'] }]");
+      expect(await checkDesktopConfig({ root: fixture({ builder }) })).toEqual([expect.stringMatching(/mailto/)]);
+    });
+
+    it('refuses a package that leaves out the tray and badge images', async () => {
+      const builder = base("files: ['dist/**', 'package.json']");
+      const problems = await checkDesktopConfig({ root: fixture({ builder }) });
+      expect(problems).toHaveLength(2);
+    });
+
+    it('passes for the real configuration of this repository', async () => {
+      expect(await checkDesktopConfig({ root: process.cwd() })).toEqual([]);
+    });
+  });
+
   it('accepts a missing packaging configuration until it exists', async () => {
     expect(await checkDesktopConfig({ root: fixture({ builder: null }) })).toEqual([]);
   });

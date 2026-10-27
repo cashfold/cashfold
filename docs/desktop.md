@@ -61,11 +61,37 @@ ALLOWED_ORIGINS=https://cashfold.example.com,app://cashfold
 The shell, not the web app, makes the window feel native (spec 007), so the web app in a browser is unchanged.
 
 - **No menu bar.** Windows and Linux show no menu (Alt shows nothing); macOS keeps only the menu named after the app (About, Hide, Quit). The keyboard shortcuts for the clipboard, undo, zoom, closing, minimising, full screen and quit are handled in `apps/desktop/src/main/shortcuts.ts`. About, update checks and the data folder are in Settings.
+- **Shortcuts.** In the table, `Mod` is Command on macOS and Control elsewhere.
+
+  | Shortcut                                                   | Action                                           |
+  | ---------------------------------------------------------- | ------------------------------------------------ |
+  | Mod+N                                                      | New transaction                                  |
+  | Mod+L                                                      | Lock (works while locked)                        |
+  | Mod+,                                                      | Settings                                         |
+  | Mod+F                                                      | Search transactions                              |
+  | Mod+1 to Mod+5                                             | Overview, Transactions, Accounts, Plan, Settings |
+  | Mod+Shift+I / Mod+Shift+E                                  | Import / export (Settings → Data)                |
+  | Mod+W, Mod+M, Mod+Q (not macOS), F11 (Ctrl+Cmd+F on macOS) | Close, minimise, quit, full screen               |
+  | Mod+plus, Mod+minus, Mod+0                                 | Zoom in, out, reset                              |
+
+  While the app is locked every action except Lock is ignored. The table is `apps/desktop/src/main/shortcuts.ts`.
+
+  **Help lists these.** Help in the sidebar opens a dialog that shows them, written the way the person's system writes them (spec 008). The list is `packages/platform/src/help-shortcuts.ts`; a test in `apps/desktop/src/main/help-shortcuts.test.ts` fails when it and the table disagree, so change both together. Redo is Shift+Mod+Z; reload and developer tools exist only in an unpackaged run and are not listed.
+
 - **Interface text is not selectable.** Fields always are. A value a person has to copy or read out (a Secret Key, the details in About) must carry `data-selectable` in the web app, or the desktop app will not let it be selected. Add the attribute to any new such value.
 - **Pointers.** The arrow on buttons, tabs, rows and disabled controls; the text pointer on fields and `data-selectable` values; the hand only on links that open a new window (`target="_blank"`).
 - **Right-click** in a text field offers Cut, Copy, Paste and Select all (and spelling suggestions) in the app's language.
 
 The rules are in `apps/desktop/src/main/native-feel.ts`.
+
+## Presence, background, links and the frame
+
+- **Count, tray and reminders.** While the app is unlocked, the dock icon (macOS) or taskbar button (Windows) shows how many scheduled entries wait for confirmation in the selected Fold, and reminders are shown by the system on any screen. A tray or menu-bar item offers Show, Add transaction, Lock and Quit; the macOS dock menu and the Windows jump list offer Add transaction and Lock, and up to five recent Folds while unlocked. Locking, in any way, clears the count and the Fold names at once. Nothing is shown while the app is locked.
+- **Keep running in the background.** Settings → Desktop has "When I close the window": quit, or keep running. Closing then hides the window; the session, the idle time and the reminders go on, and Quit in the tray or menu bar quits. It is the default on macOS only, and is offered only where a tray or menu-bar icon can bring the app back. On Linux that means KDE, XFCE, Cinnamon, MATE, LXQt, Budgie, Pantheon and Deepin; plain GNOME has no tray without an extension, so closing quits there.
+- **Start at login.** Off by default (Settings → Desktop). When on, the app starts locked and without a window, and waits in the tray or menu bar. Windows and macOS use the system's login item; Linux gets a standard autostart entry in `~/.config/autostart`. If the system refuses, the choice is kept and Settings says so.
+- **Files and links.** Double-clicking a `.cashfold-backup` file opens Cashfold at the restore form with the file chosen. A `.csv` file can be opened with Cashfold ("Open with"); Cashfold never becomes the default CSV program. Dropping a CSV on the window starts the import; dropping a receipt on the open add sheet attaches it. `cashfold://add-device?email=…&server=…` opens the add-device screen with those two filled in and the Secret Key empty; `cashfold://open/<overview|transactions|accounts|plan|settings>` opens that screen. A link never carries a secret, and anything with one is refused. Nothing is imported, restored or signed in until you confirm. Details and limits: [the intake contract](../specs/006-native-desktop-experience/contracts/link-and-file-intake.md) and the [threat model](threat-model.md).
+- **The window frame.** On macOS and Windows the title bar is a slim bar of the app's own window with the system's window buttons inside it; on Linux the system's title bar is kept. The sidebar uses the system's translucent material (macOS vibrancy, Windows 11 Mica) and goes plain when reduced transparency or high contrast is on. The bar's height is `--frame-bar-h` (40 px) in `apps/web/src/app/globals.css`; it is zero in a browser and on Linux, so the web layout is unchanged.
+- **What is best effort on Linux.** The screen-lock event depends on the desktop (sleep and the idle poll are what is relied on); the tray depends on the desktop (above); the badge is not shown; start at login is an autostart entry.
 
 ## Installing
 

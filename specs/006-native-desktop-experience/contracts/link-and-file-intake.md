@@ -47,8 +47,8 @@ Dropped files are only handled in the desktop app, only while unlocked, and are 
 
 ## Delivery and queueing
 
-1. The shell queues items (at most 8; the oldest is refused with a message beyond that) and delivers them only while the page reports `unlocked`. A locked page never receives file contents.
-2. One item is shown at a time; the next appears after the person confirms or dismisses the current one.
+1. The shell queues items (at most 8, and at most 256 MiB of file bytes; the oldest is refused with a message beyond that). It delivers a file's contents only while the page reports `unlocked`, so a locked page never receives them. A link, or a refusal, carries no content and is delivered as soon as the page has told the shell it can take items (the preload sends `cashfold:incoming-ready` when a listener is registered; it is reset when a new document loads).
+2. The page opens the first item at once and shows the others one at a time, behind a "show the next one" button. It keeps no file contents while locked.
 3. A second launch, a link or a file hands over to the running copy and brings its window to the front.
 4. Items are kept in memory only and dropped on quit.
 

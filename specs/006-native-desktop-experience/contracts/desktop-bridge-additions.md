@@ -18,8 +18,9 @@ Extends [the desktop bridge contract of spec 003](../../003-desktop-apps-release
 | `cashfold:session` | `{ state: 'locked' \| 'unlocked' }` | `void` | Lets the shell enable or disable data actions, clear recent Folds and the badge on `locked`, and release queued intake on `unlocked`. A hint for presentation only: the shell holds nothing sensitive whatever it says. |
 | `cashfold:badge` | `{ count: integer 0..999 }` | `void` | |
 | `cashfold:recent-folds` | `{ folds: array of 0..5 { id: string ≤ 64, name: string ≤ 40 } }` | `void` | Refused (and the list cleared) unless the last `session` was `unlocked`. |
-| `cashfold:popup-menu` | `{ items: 1..12 of { id: /^[a-z][a-z-]{0,23}$/, label: string ≤ 60, destructive?: boolean } }` | `{ id: string \| null }` | Shows a native menu at the pointer; resolves with the chosen id or `null`. Items are only labels and ids: no row data. |
+| `cashfold:popup-menu` | `{ items: 1..12 of { id: /^[a-z][a-z-]{0,23}$/, label: string ≤ 60, destructive?: boolean, disabled?: boolean } }` | `{ id: string \| null }` | Shows a native menu at the pointer; resolves with the chosen id or `null`. Items are only labels and ids: no row data. |
 | `cashfold:window:show` | none | `void` | Shows, restores and focuses the window (from a notification click). |
+| `cashfold:incoming-ready` | none | `void` | Sent by the preload (not a method of the bridge) when the page registers a listener for `incoming`; items from outside are not delivered before it. Reset when a new document loads. |
 
 ## Events (shell to page, `webContents.send`)
 
@@ -27,7 +28,7 @@ Extends [the desktop bridge contract of spec 003](../../003-desktop-apps-release
 |---------|---------|-------|
 | `cashfold:system-lock` | `{ reason: 'screen-lock' \| 'suspend' \| 'idle-state' }` | The page locks exactly as its Lock button does. Sent again on `resume` if the page has not reported `locked`. |
 | `cashfold:menu-action` | `{ action: ActionId }` | `ActionId` is the closed set in [menu-and-shortcuts](menu-and-shortcuts.md). |
-| `cashfold:incoming` | `IncomingItem` | Only while the last `session` report was `unlocked`. |
+| `cashfold:incoming` | `IncomingItem` | A file's contents only while the last `session` report was `unlocked`; a link or a refusal (no content) as soon as `incoming-ready` was sent. |
 | `cashfold:frame-state` | `{ fullscreen: boolean, maximized: boolean, translucent: boolean }` | For layout insets and the translucent sidebar. |
 | `cashfold:settings:changed` | `DesktopSettings` | After a change made elsewhere (tray, argument). |
 

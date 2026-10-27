@@ -4,7 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import type { ShellLanguage } from '@cashfold/platform';
 import { isDesktopApp } from '../../adapters/platform/detect';
 import { prefsStore, usePrefs } from '../prefs/usePrefs';
-import { CATALOGS, createTranslator, DEFAULT_LOCALE, directionOf, loadCatalogue, resolveLanguage, type Catalog, type LanguageChoice, type Locale, type Translate } from './i18n';
+import { CATALOGS, createTranslator, DEFAULT_LOCALE, DESKTOP_VARIANT, directionOf, loadCatalogue, resolveLanguage, type Catalog, type LanguageChoice, type Locale, type Translate } from './i18n';
 
 interface I18n {
   readonly locale: Locale;
@@ -26,6 +26,9 @@ const selectLanguage = (p: { language: LanguageChoice }): LanguageChoice => p.la
 export function I18nProvider({ children }: { children: ReactNode }) {
   const language = usePrefs(selectLanguage);
   const [locale, setLocale] = useState<Locale>(DEFAULT_LOCALE);
+  // Known after mount, like the locale, so the first client render matches the prerendered page.
+  const [desktop, setDesktop] = useState(false);
+  useEffect(() => setDesktop(isDesktopApp()), []);
   const [loaded, setLoaded] = useState<{ locale: string; catalogue: Catalog } | null>(null);
 
   useEffect(() => {
@@ -47,9 +50,9 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   const value = useMemo<I18n>(() => {
     // English words until the chosen language has loaded, but the direction and `lang` follow at once.
     const ready = loaded?.locale === locale ? loaded.catalogue : undefined;
-    const t = createTranslator(locale, { ...CATALOGS, ...(ready === undefined ? {} : { [locale]: ready }) });
+    const t = createTranslator(locale, { ...CATALOGS, ...(ready === undefined ? {} : { [locale]: ready }) }, desktop ? DESKTOP_VARIANT : undefined);
     return { locale, dir: directionOf(locale), t, language, setLanguage };
-  }, [locale, loaded, language, setLanguage]);
+  }, [locale, loaded, language, setLanguage, desktop]);
 
   useEffect(() => {
     document.documentElement.lang = value.locale;

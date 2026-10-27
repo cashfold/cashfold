@@ -1,4 +1,5 @@
 export type { DesktopBridge } from './bridge';
+export { HELP_SHORTCUTS, type HelpHandler, type HelpKeys, type HelpModifier, type HelpShortcut, type HelpSystem, type StandardAction } from './help-shortcuts';
 export { BRIDGE_GLOBAL, CHANNELS, type ChannelName } from './channels';
 export {
   ACTION_IDS,

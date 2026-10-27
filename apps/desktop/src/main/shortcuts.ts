@@ -1,9 +1,10 @@
 import type { BrowserWindow, WebContents } from 'electron';
+import type { ActionId } from '@cashfold/platform';
 
 // The keyboard shortcuts the application menu used to carry. With no menu bar they live here, in one table, run on the window's key presses.
 // Chromium already does clipboard and undo on Windows and Linux; macOS gets them only from an Edit menu, so on macOS they are done explicitly.
-// App-action shortcuts (new transaction, lock...) are added to this table by the native-desktop work (spec 006) with `data: true`: such an entry is
-// ignored while the page is locked.
+// The app-action shortcuts (new transaction, lock, ...) of spec 006 are in this table too: choosing one sends the page its action id (the closed set in
+// packages/platform), and every one that reaches data is flagged `data: true`, so it is ignored while the page is locked.
 
 export type ShortcutAction =
   | 'undo'
@@ -22,6 +23,9 @@ export type ShortcutAction =
   | 'reload'
   | 'toggle-devtools';
 
+/** The app actions that have a shortcut. */
+export type AppShortcutAction = Extract<ActionId, 'new-transaction' | 'lock' | 'settings' | 'search' | 'import' | 'export' | `go:${string}`>;
+
 export interface ShortcutInput {
   readonly key: string;
   readonly control: boolean;
@@ -36,7 +40,7 @@ export interface ShortcutEntry {
   readonly modifier: 'primary' | 'both' | 'none';
   readonly shift: boolean | 'any';
   readonly platforms: 'all' | 'mac' | 'other';
-  readonly action: ShortcutAction;
+  readonly action: ShortcutAction | AppShortcutAction;
   /** An action that reaches the person's data: ignored while the page is locked. */
   readonly data?: true;
   /** Only in an unpackaged run. */
@@ -60,7 +64,19 @@ export const SHORTCUTS: readonly ShortcutEntry[] = [
   // On macOS Command+Q belongs to the application menu.
   { keys: ['q'], modifier: 'primary', shift: false, platforms: 'other', action: 'quit' },
   { keys: ['r'], modifier: 'primary', shift: false, platforms: 'all', action: 'reload', development: true },
-  { keys: ['i'], modifier: 'primary', shift: true, platforms: 'all', action: 'toggle-devtools', development: true },
+  { keys: ['f12'], modifier: 'none', shift: false, platforms: 'all', action: 'toggle-devtools', development: true },
+  // App actions (contracts/menu-and-shortcuts.md). `lock` works while locked; the others reach data.
+  { keys: ['n'], modifier: 'primary', shift: false, platforms: 'all', action: 'new-transaction', data: true },
+  { keys: ['l'], modifier: 'primary', shift: false, platforms: 'all', action: 'lock' },
+  { keys: [','], modifier: 'primary', shift: false, platforms: 'all', action: 'settings', data: true },
+  { keys: ['f'], modifier: 'primary', shift: false, platforms: 'all', action: 'search', data: true },
+  { keys: ['1'], modifier: 'primary', shift: false, platforms: 'all', action: 'go:overview', data: true },
+  { keys: ['2'], modifier: 'primary', shift: false, platforms: 'all', action: 'go:transactions', data: true },
+  { keys: ['3'], modifier: 'primary', shift: false, platforms: 'all', action: 'go:accounts', data: true },
+  { keys: ['4'], modifier: 'primary', shift: false, platforms: 'all', action: 'go:plan', data: true },
+  { keys: ['5'], modifier: 'primary', shift: false, platforms: 'all', action: 'go:settings', data: true },
+  { keys: ['i'], modifier: 'primary', shift: true, platforms: 'all', action: 'import', data: true },
+  { keys: ['e'], modifier: 'primary', shift: true, platforms: 'all', action: 'export', data: true },
 ];
 
 /** The entry for a key press, or undefined for anything this table does not own. */
@@ -84,6 +100,8 @@ export interface ShortcutDeps {
   readonly development: boolean;
   readonly pageLocked: () => boolean;
   readonly quit: () => void;
+  /** Sends the page an app action (the `menu-action` event). */
+  readonly sendAction: (action: AppShortcutAction) => void;
   /** The entries to use; the shell's own table unless a test passes another. */
   readonly table?: readonly ShortcutEntry[];
 }
@@ -91,7 +109,7 @@ export interface ShortcutDeps {
 const ZOOM_STEP = 0.5;
 const ZOOM_LIMIT = 3;
 
-function perform(action: ShortcutAction, contents: WebContents, win: BrowserWindow, deps: ShortcutDeps): void {
+function perform(action: ShortcutAction | AppShortcutAction, contents: WebContents, win: BrowserWindow, deps: ShortcutDeps): void {
   switch (action) {
     case 'undo': return contents.undo();
     case 'redo': return contents.redo();
@@ -108,6 +126,7 @@ function perform(action: ShortcutAction, contents: WebContents, win: BrowserWind
     case 'quit': return deps.quit();
     case 'reload': return contents.reload();
     case 'toggle-devtools': return contents.toggleDevTools();
+    default: return deps.sendAction(action);
   }
 }
 

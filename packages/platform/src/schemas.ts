@@ -121,6 +121,7 @@ export const PopupMenuRequestSchema = z.strictObject({
         id: z.string().regex(/^[a-z][a-z-]{0,23}$/),
         label: z.string().min(1).max(60),
         destructive: z.boolean().optional(),
+        disabled: z.boolean().optional(),
       }),
     )
     .min(1)
