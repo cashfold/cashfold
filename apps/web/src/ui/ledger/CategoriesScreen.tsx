@@ -243,21 +243,21 @@ function CategoryForm({ dialog, onDone }: { dialog: Extract<Dialog, { kind: 'new
     <form onSubmit={submit}>
       <TextField label={t('ledger.categories.form.name')} value={name} onChange={(e) => setName(e.target.value)} required maxLength={80} autoFocus />
       <div className="mt-4">
-        <label htmlFor="cat-parent" className="block font-medium">{t('ledger.categories.form.parent')}</label>
+        <label htmlFor="cat-parent" className="mb-3 block font-medium">{t('ledger.categories.form.parent')}</label>
         <Select id="cat-parent" value={parentId} onChange={(e) => setParentId(e.target.value)} disabled={hasChildren}>
           <option value="">{t('ledger.categories.form.topLevel')}</option>
           {roots.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
         </Select>
       </div>
       <div className="mt-4">
-        <label htmlFor="cat-icon" className="block font-medium">{t('ledger.categories.form.icon')}</label>
+        <label htmlFor="cat-icon" className="mb-3 block font-medium">{t('ledger.categories.form.icon')}</label>
         <Select id="cat-icon" value={icon} onChange={(e) => setIcon(e.target.value)}>
           <option value="">{t('ledger.categories.form.noIcon')}</option>
           {ICON_KEYS.map((k) => <option key={k} value={k}>{iconFor(k)} {t(`ledger.icon.${k}`)}</option>)}
         </Select>
       </div>
       <div className="mt-4">
-        <label htmlFor="cat-color" className="block font-medium">{t('ledger.categories.form.color')}</label>
+        <label htmlFor="cat-color" className="mb-3 block font-medium">{t('ledger.categories.form.color')}</label>
         <Select id="cat-color" value={color} onChange={(e) => setColor(Number(e.target.value))}>
           {Array.from({ length: COLOR_COUNT }, (_, i) => <option key={i} value={i}>{t(`ledger.color.${i}`)}</option>)}
         </Select>
@@ -291,7 +291,7 @@ function MergeCategory({ from, used, onDone }: { from: Category; used: number; o
     <form onSubmit={submit}>
       <p className="mt-3">{t('ledger.categories.merge.explain')}</p>
       <div className="mt-4">
-        <label htmlFor="merge-into" className="block font-medium">{t('ledger.categories.merge.into')}</label>
+        <label htmlFor="merge-into" className="mb-3 block font-medium">{t('ledger.categories.merge.into')}</label>
         <Select id="merge-into" value={into} onChange={(e) => setInto(e.target.value)} required>
           <option value="" disabled>{t('ledger.categories.merge.choose')}</option>
           {targets.map((c) => <option key={c.id} value={c.id}>{c.parentId === null ? c.name : `${targets.find((p) => p.id === c.parentId)?.name ?? ''} › ${c.name}`}</option>)}
@@ -361,7 +361,7 @@ function LabelForm({ table, label, onDone }: { table: 'payee' | 'tag'; label?: L
     <form onSubmit={submit}>
       <TextField label={t('ledger.categories.form.name')} value={name} onChange={(e) => setName(e.target.value)} required maxLength={80} autoFocus />
       <div className="mt-4">
-        <label htmlFor="label-color" className="block font-medium">{t('ledger.categories.form.color')}</label>
+        <label htmlFor="label-color" className="mb-3 block font-medium">{t('ledger.categories.form.color')}</label>
         <Select id="label-color" value={color} onChange={(e) => setColor(Number(e.target.value))}>
           {Array.from({ length: COLOR_COUNT }, (_, i) => <option key={i} value={i}>{t(`ledger.color.${i}`)}</option>)}
         </Select>
@@ -395,7 +395,7 @@ function MergeLabel({ table, from, used, onDone }: { table: 'payee' | 'tag'; fro
     <form onSubmit={submit}>
       <p className="mt-3">{t('ledger.label.merge.explain')}</p>
       <div className="mt-4">
-        <label htmlFor="merge-label-into" className="block font-medium">{t('ledger.categories.merge.into')}</label>
+        <label htmlFor="merge-label-into" className="mb-3 block font-medium">{t('ledger.categories.merge.into')}</label>
         <Select id="merge-label-into" value={into} onChange={(e) => setInto(e.target.value)} required>
           <option value="" disabled>{t('ledger.categories.merge.choose')}</option>
           {targets.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}

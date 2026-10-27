@@ -87,7 +87,7 @@ export function BackupPanel({ folds }: { folds: readonly FoldSummary[] }) {
       <form onSubmit={create} aria-busy={busy} className="max-w-md">
         {folds.length > 1 ? (
           <label className="mt-4 block">
-            <span className="block font-medium">{t('ledger.fold.label')}</span>
+            <span className="mb-3 block font-medium">{t('ledger.fold.label')}</span>
             <Select value={fold} onChange={(e) => setFold(e.target.value)}>{folds.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}</Select>
           </label>
         ) : null}

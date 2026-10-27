@@ -57,14 +57,14 @@ export function ProfileSecurity() {
         {settings ? (
           <div className="mt-3 grid max-w-md gap-4">
             <label className="block">
-              <span className="block font-medium">{t('settings.lock.idle')}</span>
+              <span className="mb-3 block font-medium">{t('settings.lock.idle')}</span>
               <Select value={settings.autoLockMinutes} onChange={(e) => void change({ autoLockMinutes: Number(e.target.value) })}>
                 {IDLE_MINUTES.map((m) => <option key={m} value={m}>{t('settings.lock.minutes', { minutes: m })}</option>)}
               </Select>
             </label>
             {isDesktop ? null : (
               <label className="block">
-                <span className="block font-medium">{t('settings.lock.hidden')}</span>
+                <span className="mb-3 block font-medium">{t('settings.lock.hidden')}</span>
                 <Select value={settings.hiddenGraceSeconds} onChange={(e) => void change({ hiddenGraceSeconds: Number(e.target.value) })}>
                   {HIDDEN_SECONDS.map((s) => <option key={s} value={s}>{s === 0 ? t('settings.lock.immediately') : t('settings.lock.seconds', { seconds: s })}</option>)}
                 </Select>
