@@ -39,6 +39,8 @@ for (const [theme, expected] of [
 test('under "system" the window follows the system theme within a second', async ({ session }) => {
   const { app, page } = await session.launch();
   await chooseTheme(page, 'system');
+  // The page tells the shell its choice a moment after it loads (and that sets the native theme to "system" again), so the system theme is moved after that.
+  await page.waitForTimeout(1_000);
   // `themeSource` is what "system" is read from; moving it is how a test stands in for the person changing the system theme.
   await app.evaluate(({ nativeTheme }) => void (nativeTheme.themeSource = 'dark'));
   await expect.poll(() => backgroundOf(app), { timeout: 1_000 }).toBe(await expectedColour(app, DARK));

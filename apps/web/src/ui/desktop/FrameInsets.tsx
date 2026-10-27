@@ -10,12 +10,17 @@ export default function FrameInsets() {
     const bridge = getDesktopBridge();
     if (bridge === undefined) return;
     let live = true;
+    // A state the shell has already reported is newer than the first reading below, which must not overwrite it.
+    let reported = false;
     // The first state: the material is on when the capability report says so; a window never starts in full screen.
     void bridge.settings.get().then(
-      ({ capabilities }) => live && applyFrameState(document.documentElement, { fullscreen: false, maximized: false, translucent: capabilities.translucency === 'active' }),
+      ({ capabilities }) => live && !reported && applyFrameState(document.documentElement, { fullscreen: false, maximized: false, translucent: capabilities.translucency === 'active' }),
       () => undefined,
     );
-    const stop = bridge.onFrameState((state) => applyFrameState(document.documentElement, state));
+    const stop = bridge.onFrameState((state) => {
+      reported = true;
+      applyFrameState(document.documentElement, state);
+    });
     return () => {
       live = false;
       stop();

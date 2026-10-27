@@ -15,9 +15,13 @@ async function recordMenus(app: ElectronApplication): Promise<void> {
     (globalThis as unknown as { __menus: typeof seen; __clicks: typeof clicks }).__menus = seen;
     (globalThis as unknown as { __clicks: typeof clicks }).__clicks = clicks;
     (Menu as unknown as { buildFromTemplate: unknown }).buildFromTemplate = (template: Array<{ label: string; enabled: boolean; click: () => void }>) => {
-      seen.push(template.map(({ label, enabled }) => ({ label, enabled })));
-      clicks.push((index) => template[index]!.click());
-      return { popup: () => undefined };
+      // Recorded when it is popped up, not when it is built: the tray rebuilds its own menu whenever the app locks or unlocks.
+      return {
+        popup: () => {
+          seen.push(template.map(({ label, enabled }) => ({ label, enabled })));
+          clicks.push((index) => template[index]!.click());
+        },
+      };
     };
   });
 }
@@ -74,12 +78,15 @@ test('a dropped CSV is previewed in under two seconds for 5,000 rows (SC-004)', 
 test('an unsupported file is refused with a message and nothing changes', async ({ session }) => {
   const { page } = await session.launch();
   await signUp(page);
-  await page.evaluate(() => {
-    const transfer = new DataTransfer();
-    transfer.items.add(new File(['x'], 'photo.png', { type: 'image/png' }));
-    document.body.dispatchEvent(new DragEvent('drop', { dataTransfer: transfer, bubbles: true, cancelable: true }));
-  });
-  await expect(page.getByText('Only a CSV file can be dropped here.')).toBeVisible();
+  // The part of the page that takes drops loads a moment after the unlocked screen, so the drop is repeated until it is answered.
+  await expect(async () => {
+    await page.evaluate(() => {
+      const transfer = new DataTransfer();
+      transfer.items.add(new File(['x'], 'photo.png', { type: 'image/png' }));
+      document.body.dispatchEvent(new DragEvent('drop', { dataTransfer: transfer, bubbles: true, cancelable: true }));
+    });
+    await expect(page.getByText('Only a CSV file can be dropped here.')).toBeVisible({ timeout: 1_000 });
+  }).toPass();
   expect(await page.evaluate(() => location.pathname)).not.toBe('/settings/data/');
 });
 

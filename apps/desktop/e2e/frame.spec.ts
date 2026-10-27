@@ -88,9 +88,12 @@ test.describe('the bar', () => {
   test('turns the translucent sidebar off when the shell says the material is off (reduced transparency or high contrast)', async ({ session }) => {
     const { app, page } = await session.launch();
     await page.goto('app://cashfold/sign-in/');
-    await sendFrameState(app, { fullscreen: false, maximized: false, translucent: true });
-    await expect.poll(() => root(page, 'translucent')).toBe('true');
-    await sendFrameState(app, { fullscreen: false, maximized: false, translucent: false });
-    await expect.poll(() => root(page, 'translucent')).toBe('false');
+    // The part of the page that listens loads a moment after the page; a state sent before it listens is lost, so it is sent until the page shows it.
+    const shows = async (translucent: boolean) => {
+      await sendFrameState(app, { fullscreen: false, maximized: false, translucent });
+      return root(page, 'translucent');
+    };
+    await expect.poll(() => shows(true)).toBe('true');
+    await expect.poll(() => shows(false)).toBe('false');
   });
 });
