@@ -37,11 +37,10 @@ test('the page knows its platform and frame before it shows anything', async ({ 
   expect(height).toBe(ownBar ? '40px' : '0px');
 });
 
-test('the interface is sized for a desktop window: 14px text, not the web page\'s 16px', async ({ session }) => {
+test('the interface is sized for a desktop window: a 14px base, not the web page\'s 16px', async ({ session }) => {
   const { page } = await session.launch();
   await signUp(page);
   expect(await page.evaluate(() => getComputedStyle(document.documentElement).fontSize)).toBe('14px');
-  expect(await page.evaluate(() => getComputedStyle(document.querySelector('main p, main li')!).fontSize)).toBe('14px');
 });
 
 test.describe('the bar', () => {

@@ -44,7 +44,7 @@ const open = async (page: Page) => {
 };
 const winState = (app: ElectronApplication) => app.evaluate(({ BrowserWindow }) => {
   const w = BrowserWindow.getAllWindows()[0]!;
-  return { zoom: w.webContents.getZoomLevel(), fullscreen: w.isFullScreen(), minimized: w.isMinimized() };
+  return { zoom: w.webContents.getZoomLevel(), fullscreen: w.isFullScreen() };
 });
 
 /** What each app shortcut does, observed in the page. */
@@ -114,7 +114,7 @@ test('while locked every listed shortcut except Lock does nothing', async ({ ses
   await expect(page.getByRole('dialog')).toHaveCount(0);
 });
 
-test('the standard shortcuts in the list work: zoom, full screen, minimise', async ({ session }) => {
+test('the standard shortcuts in the list work: zoom, full screen', async ({ session }) => {
   const { app, page } = await session.launch();
   await signUp(page);
   await settled(page);
@@ -130,9 +130,25 @@ test('the standard shortcuts in the list work: zoom, full screen, minimise', asy
   await expect.poll(async () => (await winState(app)).fullscreen).toBe(true);
   await pressItem(app, 'fullscreen');
   await expect.poll(async () => (await winState(app)).fullscreen).toBe(false);
+});
+
+/** Replaces a window action with a recorder, so the press is seen without really closing or minimising the window (a CI display has no window manager). */
+async function recordWindowAction(app: ElectronApplication, name: 'close' | 'minimize'): Promise<void> {
+  await app.evaluate(({ BrowserWindow }, action) => {
+    const win = BrowserWindow.getAllWindows()[0]! as unknown as Record<string, unknown>;
+    (globalThis as unknown as Record<string, number>)[`__${action}`] = 0;
+    win[action] = () => { (globalThis as unknown as Record<string, number>)[`__${action}`]!++; };
+  }, name);
+}
+const windowActions = (app: ElectronApplication, name: 'close' | 'minimize') => app.evaluate((_electron, action) => (globalThis as unknown as Record<string, number>)[`__${action}`], name);
+
+test('the minimise shortcut minimises the window', async ({ session }) => {
+  const { app, page } = await session.launch();
+  await signUp(page);
+  await settled(page);
+  await recordWindowAction(app, 'minimize');
   await pressItem(app, 'minimize');
-  await expect.poll(async () => (await winState(app)).minimized).toBe(true);
-  await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]!.restore());
+  await expect.poll(() => windowActions(app, 'minimize')).toBe(1);
 });
 
 test('undo, redo, cut, copy, paste and select all work in a field', async ({ session }) => {
@@ -160,9 +176,9 @@ test('undo, redo, cut, copy, paste and select all work in a field', async ({ ses
   await expect(field).toHaveValue('abc');
   await edit('select-all');
   await edit('copy');
-  await page.keyboard.press('End');
+  await page.keyboard.press('ArrowRight'); // ends the selection, on every system
   await edit('paste');
-  await expect(field).toHaveValue('abc');
+  await expect(field).toHaveValue('abcabc');
 });
 
 test('Control+Q quits (macOS handles Command+Q in its application menu, checked by hand)', async ({ session }) => {
@@ -175,31 +191,39 @@ test('Control+Q quits (macOS handles Command+Q in its application menu, checked 
   await closed;
 });
 
-test('the window shortcut closes the window (or hides it, as the close setting says)', async ({ session }) => {
+test('the close shortcut closes the window (what that does, quit or hide, is the close setting)', async ({ session }) => {
   const { app, page } = await session.launch();
   await signUp(page);
   await settled(page);
+  await recordWindowAction(app, 'close');
   await pressItem(app, 'close');
-  await expect.poll(() => app.evaluate(({ BrowserWindow }) => {
-    const w = BrowserWindow.getAllWindows()[0];
-    return w === undefined || w.isDestroyed() || !w.isVisible();
-  }).catch(() => true)).toBe(true);
+  await expect.poll(() => windowActions(app, 'close')).toBe(1);
 });
 
-test('a shortcut pressed with Help open closes it and then runs; Lock locks and leaves no dialog', async ({ session }) => {
-  const { app, page } = await session.launch();
-  await signUp(page);
-  await settled(page);
-  await open(page);
+async function helpOpenIn(session: Parameters<Parameters<typeof test>[2]>[0]['session']) {
+  const running = await session.launch();
+  await signUp(running.page);
+  await settled(running.page);
+  await open(running.page);
+  return running;
+}
+
+test('a shortcut pressed with Help open closes it and then runs: new transaction', async ({ session }) => {
+  const { app, page } = await helpOpenIn(session);
   await pressItem(app, 'new-transaction');
   await expect(dialog(page)).toHaveCount(0);
   await expect(page.getByRole('dialog', { name: 'Add transaction' }).getByRole('heading', { name: 'Add transaction' })).toBeVisible();
-  await page.keyboard.press('Escape');
-  await open(page);
+});
+
+test('a shortcut pressed with Help open closes it and then runs: go to Accounts', async ({ session }) => {
+  const { app, page } = await helpOpenIn(session);
   await pressItem(app, 'go-accounts');
   await expect(dialog(page)).toHaveCount(0);
   await expect.poll(() => path(page)).toBe('/accounts/');
-  await open(page);
+});
+
+test('Lock pressed with Help open locks and leaves no dialog', async ({ session }) => {
+  const { app, page } = await helpOpenIn(session);
   await pressItem(app, 'lock');
   await expect(page.getByRole('heading', { name: 'Unlock Cashfold' })).toBeVisible();
   await expect(page.getByRole('dialog')).toHaveCount(0);

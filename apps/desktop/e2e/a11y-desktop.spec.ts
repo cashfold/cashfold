@@ -29,12 +29,15 @@ for (const theme of ['light', 'dark']) {
     const { page } = await session.launch();
     await signUp(page);
     await page.evaluate((value) => document.documentElement.setAttribute('data-theme', value), theme);
-    await page.evaluate(() => {
-      const transfer = new DataTransfer();
-      transfer.items.add(new File(['x'], 'photo.png', { type: 'image/png' }));
-      document.body.dispatchEvent(new DragEvent('drop', { dataTransfer: transfer, bubbles: true, cancelable: true }));
-    });
-    await expect(page.getByText('Only a CSV file can be dropped here.')).toBeVisible();
+    // The part of the page that takes drops loads a moment after the unlocked screen, so the drop is repeated until it is answered.
+    await expect(async () => {
+      await page.evaluate(() => {
+        const transfer = new DataTransfer();
+        transfer.items.add(new File(['x'], 'photo.png', { type: 'image/png' }));
+        document.body.dispatchEvent(new DragEvent('drop', { dataTransfer: transfer, bubbles: true, cancelable: true }));
+      });
+      await expect(page.getByText('Only a CSV file can be dropped here.')).toBeVisible({ timeout: 1_000 });
+    }).toPass();
     await expectNoViolations(page);
   });
 }
