@@ -151,7 +151,7 @@ export function CsvImportPanel() {
 
   const columnSelect = (field: string, label: string) => (
     <label className="block" key={field}>
-      <span className="block font-medium">{label}</span>
+      <span className="mb-3 block font-medium">{label}</span>
       <Select value={columns[field] ?? NONE} onChange={(e) => setColumns({ ...columns, [field]: Number(e.target.value) })}>
         <option value={NONE}>{t('data.import.none')}</option>
         {(sample?.header ?? []).map((h, i) => <option key={i} value={i}>{hasHeader && h.trim() !== '' ? h : t('data.import.column', { n: i + 1 })}</option>)}
@@ -173,7 +173,7 @@ export function CsvImportPanel() {
           {sample !== undefined ? (
             <div className="mt-4 grid gap-4 sm:grid-cols-2">
               <label className="block sm:col-span-2">
-                <span className="block font-medium">{t('data.import.account')}</span>
+                <span className="mb-3 block font-medium">{t('data.import.account')}</span>
                 <Select value={chosen?.id} onChange={(e) => { setAccount(e.target.value); setPreview(undefined); }}>
                   {accounts.map((a) => <option key={a.id} value={a.id}>{a.name} ({a.currency})</option>)}
                 </Select>
@@ -181,7 +181,7 @@ export function CsvImportPanel() {
               <CheckboxField className="sm:col-span-2"><Checkbox checked={hasHeader} onChange={(checked) => setHasHeader(checked)} /><Label>{t('data.import.header')}</Label></CheckboxField>
               {columnSelect('date', t('data.import.date'))}
               <label className="block">
-                <span className="block font-medium">{t('data.import.dateOrder')}</span>
+                <span className="mb-3 block font-medium">{t('data.import.dateOrder')}</span>
                 <Select value={dateOrder} onChange={(e) => setDateOrder(e.target.value as typeof dateOrder)}>
                   <option value="ymd">{t('data.import.order.ymd')}</option>
                   <option value="dmy">{t('data.import.order.dmy')}</option>
@@ -197,7 +197,7 @@ export function CsvImportPanel() {
               </fieldset>
               {amountStyle === 'signed' ? columnSelect('signed', t('data.import.amount')) : (<>{columnSelect('income', t('data.import.income'))}{columnSelect('expense', t('data.import.expense'))}</>)}
               <label className="block">
-                <span className="block font-medium">{t('data.import.decimal')}</span>
+                <span className="mb-3 block font-medium">{t('data.import.decimal')}</span>
                 <Select value={decimal} onChange={(e) => setDecimal(e.target.value as typeof decimal)}>
                   <option value=".">{t('data.import.decimal.dot')}</option>
                   <option value=",">{t('data.import.decimal.comma')}</option>

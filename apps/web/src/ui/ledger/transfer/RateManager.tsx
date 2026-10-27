@@ -63,7 +63,7 @@ export function RateManager() {
 
       <form onSubmit={save} className="mt-4 grid max-w-xl gap-x-4 *:min-w-0 sm:grid-cols-3">
         <div className="mt-4">
-          <label htmlFor="rate-quote" className="block font-medium">{t('ledger.rates.currency')}</label>
+          <label htmlFor="rate-quote" className="mb-3 block font-medium">{t('ledger.rates.currency')}</label>
           <Select id="rate-quote" value={quote} onChange={(e) => setQuote(e.target.value)}>
             {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
           </Select>

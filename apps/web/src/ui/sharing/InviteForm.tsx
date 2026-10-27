@@ -105,7 +105,7 @@ export function InviteForm({ fold, onDone }: { fold: string; onDone: () => void 
       <CheckboxField className="mt-3"><Checkbox checked={confirmed || typedMatches} onChange={(checked) => setConfirmed(checked)} disabled={typedMatches} /><Label>{t('sharing.invite.confirm')}</Label></CheckboxField>
 
       <div className="mt-4">
-        <label htmlFor="inv-role" className="block font-medium">{t('sharing.invite.role')}</label>
+        <label htmlFor="inv-role" className="mb-3 block font-medium">{t('sharing.invite.role')}</label>
         <Select id="inv-role" value={role} onChange={(e) => setRole(e.target.value as 'editor' | 'viewer')}>
           <option value="editor">{t('sharing.role.editor.long')}</option>
           <option value="viewer">{t('sharing.role.viewer.long')}</option>

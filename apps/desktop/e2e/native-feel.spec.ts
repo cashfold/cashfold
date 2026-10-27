@@ -111,6 +111,14 @@ test.describe('other web-page habits', () => {
   });
 });
 
+test('the sidebar does not repeat the app name, which the window already shows', async ({ session }) => {
+  const { page } = await session.launch();
+  await signUp(page);
+  const nav = page.getByRole('navigation', { name: 'Main' });
+  await expect(nav.getByRole('link', { name: 'Overview' })).toBeVisible();
+  await expect(nav.getByRole('link', { name: 'Cashfold', exact: true })).toHaveCount(0);
+});
+
 test('the interface never says "browser" in the desktop app', async ({ session }) => {
   const { page } = await session.launch();
   await signUp(page);

@@ -307,7 +307,7 @@ function ScheduleForm({ row, onDone }: { row?: ScheduleRow | undefined; onDone: 
     <form onSubmit={submit}>
       <TextField label={t('schedules.form.name')} value={name} onChange={(e) => setName(e.target.value)} required maxLength={80} autoFocus />
       <div className="mt-4">
-        <label htmlFor="sc-kind" className="block font-medium">{t('schedules.form.kind')}</label>
+        <label htmlFor="sc-kind" className="mb-3 block font-medium">{t('schedules.form.kind')}</label>
         <Select id="sc-kind" value={kind} onChange={(e) => setKind(e.target.value as Kind)}>
           <option value="expense">{t('ledger.kind.expense')}</option>
           <option value="income">{t('ledger.kind.income')}</option>
@@ -315,7 +315,7 @@ function ScheduleForm({ row, onDone }: { row?: ScheduleRow | undefined; onDone: 
         </Select>
       </div>
       <div className="mt-4">
-        <label htmlFor="sc-account" className="block font-medium">{kind === 'transfer' ? t('ledger.xfer.from') : t('schedules.form.account')}</label>
+        <label htmlFor="sc-account" className="mb-3 block font-medium">{kind === 'transfer' ? t('ledger.xfer.from') : t('schedules.form.account')}</label>
         <Select id="sc-account" value={accountId} onChange={(e) => setAccountId(e.target.value)} required>
           {basics.accounts.filter((a) => !a.archived).map((a) => <option key={a.id} value={a.id}>{a.name} ({a.currency})</option>)}
         </Select>
@@ -324,7 +324,7 @@ function ScheduleForm({ row, onDone }: { row?: ScheduleRow | undefined; onDone: 
       {kind === 'transfer' ? (
         <>
           <div className="mt-4">
-            <label htmlFor="sc-to" className="block font-medium">{t('ledger.xfer.to')}</label>
+            <label htmlFor="sc-to" className="mb-3 block font-medium">{t('ledger.xfer.to')}</label>
             <Select id="sc-to" value={toAccountId} onChange={(e) => setToAccountId(e.target.value)} required>
               {basics.accounts.filter((a) => !a.archived && a.id !== accountId).map((a) => <option key={a.id} value={a.id}>{a.name} ({a.currency})</option>)}
             </Select>
@@ -333,7 +333,7 @@ function ScheduleForm({ row, onDone }: { row?: ScheduleRow | undefined; onDone: 
         </>
       ) : (
         <div className="mt-4">
-          <label htmlFor="sc-category" className="block font-medium">{t('schedules.form.category')}</label>
+          <label htmlFor="sc-category" className="mb-3 block font-medium">{t('schedules.form.category')}</label>
           <Select id="sc-category" value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
             <option value="">{t('schedules.form.noCategory')}</option>
             {categories.map((c) => <option key={c.id} value={c.id}>{c.parentId === null ? c.name : `${basics.categories.find((p) => p.id === c.parentId)?.name ?? ''} › ${c.name}`}</option>)}
@@ -343,7 +343,7 @@ function ScheduleForm({ row, onDone }: { row?: ScheduleRow | undefined; onDone: 
 
       <div className="mt-4 grid grid-cols-2 gap-3">
         <div>
-          <label htmlFor="sc-unit" className="block font-medium">{t('schedules.form.repeats')}</label>
+          <label htmlFor="sc-unit" className="mb-3 block font-medium">{t('schedules.form.repeats')}</label>
           <Select id="sc-unit" value={unit} onChange={(e) => setUnit(e.target.value as (typeof UNITS)[number])}>
             {UNITS.map((u) => <option key={u} value={u}>{t(`schedules.unit.${u}`)}</option>)}
           </Select>
@@ -357,7 +357,7 @@ function ScheduleForm({ row, onDone }: { row?: ScheduleRow | undefined; onDone: 
       <TextField label={t('schedules.form.end')} type="date" value={end} onChange={(e) => setEnd(e.target.value)} hint={t('schedules.form.end.hint')} />
       <CheckboxField className="mt-4"><Checkbox checked={confirm} onChange={(checked) => setConfirm(checked)} /><Label>{t('schedules.form.confirm')}</Label></CheckboxField>
       <div className="mt-4">
-        <label htmlFor="sc-reminder" className="block font-medium">{t('schedules.form.reminder')}</label>
+        <label htmlFor="sc-reminder" className="mb-3 block font-medium">{t('schedules.form.reminder')}</label>
         <Select id="sc-reminder" value={reminder} onChange={(e) => setReminder(e.target.value as (typeof REMINDERS)[number])}>
           {REMINDERS.map((r) => <option key={r} value={r}>{t(`schedules.reminder.${r}`)}</option>)}
         </Select>

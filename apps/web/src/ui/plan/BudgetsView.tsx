@@ -222,7 +222,7 @@ function BudgetForm({ row, onDone }: { row?: BudgetRow | undefined; onDone: () =
       <TextField label={t('budgets.form.name')} value={name} onChange={(e) => setName(e.target.value)} required maxLength={80} autoFocus />
       <div className="mt-4">
         <div>
-          <label htmlFor="bg-unit" className="block font-medium">{t('budgets.form.period')}</label>
+          <label htmlFor="bg-unit" className="mb-3 block font-medium">{t('budgets.form.period')}</label>
           <Select id="bg-unit" value={unit} onChange={(e) => setUnit(e.target.value as (typeof UNITS)[number])}>
             {UNITS.map((u) => <option key={u} value={u}>{t(`budgets.unit.${u}`)}</option>)}
           </Select>
@@ -241,7 +241,7 @@ function BudgetForm({ row, onDone }: { row?: BudgetRow | undefined; onDone: () =
       </fieldset>
       <Disclosure className="mt-6" title={t('budgets.form.more')} defaultOpen={existing !== undefined}>
       <div className="mt-4">
-        <label htmlFor="bg-direction" className="block font-medium">{t('budgets.form.direction')}</label>
+        <label htmlFor="bg-direction" className="mb-3 block font-medium">{t('budgets.form.direction')}</label>
         <Select id="bg-direction" value={direction} onChange={(e) => setDirection(e.target.value as 'expense' | 'income')}>
           <option value="expense">{t('ledger.kind.expense')}</option>
           <option value="income">{t('ledger.kind.income')}</option>
@@ -250,7 +250,7 @@ function BudgetForm({ row, onDone }: { row?: BudgetRow | undefined; onDone: () =
       {unit !== 'custom' ? <TextField label={t('budgets.form.every')} type="number" min={1} step={1} value={interval} onChange={(e) => setInterval(e.target.value)} required /> : null}
       <AmountField label={t('budgets.form.allocation')} currency={currency} value={allocation} onChange={setAllocation} hint={t('budgets.form.allocation.hint')} />
       <div className="mt-4">
-        <label htmlFor="bg-rollover" className="block font-medium">{t('budgets.form.rollover')}</label>
+        <label htmlFor="bg-rollover" className="mb-3 block font-medium">{t('budgets.form.rollover')}</label>
         <Select id="bg-rollover" value={rollover} onChange={(e) => setRollover(e.target.value as (typeof ROLLOVERS)[number])}>
           {ROLLOVERS.map((r) => <option key={r} value={r}>{t(`budgets.rollover.${r}`)}</option>)}
         </Select>
@@ -277,7 +277,7 @@ function Picker({ id, label, options, value, onChange }: { id: string; label: st
   if (options.length === 0) return null;
   return (
     <div className="mt-4">
-      <label htmlFor={id} className="block font-medium">{label}</label>
+      <label htmlFor={id} className="mb-3 block font-medium">{label}</label>
       <Select id={id} multiple className="h-28" value={value} onChange={(e) => onChange([...e.target.selectedOptions].map((o) => o.value))}>
         {options.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
       </Select>

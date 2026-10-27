@@ -149,7 +149,7 @@ export function FoldsAndSharing() {
         <form id="fold-form" onSubmit={create} className="space-y-4">
           <TextField label={t('folds.name.label')} value={name} onChange={(e) => setName(e.target.value)} required autoFocus />
           <div>
-            <label htmlFor="fold-currency" className="block font-medium">{t('folds.currency.label')}</label>
+            <label htmlFor="fold-currency" className="mb-3 block font-medium">{t('folds.currency.label')}</label>
             <Select id="fold-currency" value={currency} onChange={(e) => setCurrency(e.target.value)}>
               {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
             </Select>
