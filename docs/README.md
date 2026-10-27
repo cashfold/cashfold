@@ -9,6 +9,7 @@ Everything about running, understanding and changing Cashfold. If you are new, r
 | ----------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
 | [Running your own relay](self-hosting.md) | Install the sync service with Docker, put a reverse proxy in front, and publish the web app                   |
 | [What the service can see](privacy.md)    | Exactly what the relay can and cannot learn, what is public, and what happens after deletion                  |
+| [The web app as an installed app](pwa.md) | How the web app installs, works offline and updates itself without losing what you typed                      |
 | [The desktop app](desktop.md)             | Installing, updating and troubleshooting the Windows, macOS and Linux apps, and how they are built and signed |
 
 ## How it works

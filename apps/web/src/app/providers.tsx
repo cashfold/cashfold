@@ -1,5 +1,7 @@
 'use client';
 
+// First, so the browser's early install event is not missed.
+import '../ui/pwa/page-capture';
 import { useEffect, type ReactNode } from 'react';
 import { registerServiceWorker } from '../sw/register';
 import { ErrorBoundary } from '../ui/errors/ErrorBoundary';
