@@ -17,6 +17,7 @@ import { Topbar } from './Topbar';
 import { OverlayHost } from './OverlayHost';
 import { FoldSwitcher } from './FoldSwitcher';
 import { DesktopOnly } from '../desktop/lazy';
+import { ReminderService } from '../desktop/ReminderService';
 import { PrivacyCover } from './PrivacyCover';
 import { PRIMARY_SECTIONS, matchSection, type Section } from './routes';
 import { StatusProvider } from './StatusProvider';
@@ -135,6 +136,10 @@ function UnlockedShell({ children }: { children: ReactNode }) {
           <SidebarLayout navbar={<Topbar />} sidebar={<NavigationSidebar />} openLabel={t('shell.menu')} closeLabel={t('shell.closeMenu')} contentInert={core.covered}>
             <RouteRefresh />
             <DesktopOnly load={() => import('../desktop/DesktopIdleLock')} />
+            <DesktopOnly load={() => import('../desktop/DesktopActions')} />
+            <DesktopOnly load={() => import('../desktop/DropTarget')} />
+            <DesktopOnly load={() => import('../desktop/DesktopPresence')} />
+            <ReminderService />
             <Banners />
             {children}
           </SidebarLayout>
@@ -157,6 +162,10 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <>
       <SkipLink />
+      <DesktopOnly load={() => import('../desktop/DropGuard')} />
+      <DesktopOnly load={() => import('../desktop/DesktopIncoming')} />
+      <DesktopOnly load={() => import('../desktop/FrameBar')} />
+      <DesktopOnly load={() => import('../desktop/FrameInsets')} />
       <OverlayHost>{core.phase === 'unlocked' ? <UnlockedShell>{children}</UnlockedShell> : <PlainShell>{children}</PlainShell>}</OverlayHost>
       {core.covered ? <PrivacyCover /> : null}
     </>

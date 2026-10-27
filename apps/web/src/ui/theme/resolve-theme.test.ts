@@ -49,3 +49,30 @@ describe('the pre-paint bootstrap script', () => {
     expect(await run(stored, systemDark, throwing)).toEqual({ theme: expected, scheme: expected });
   });
 });
+
+describe('the pre-paint bootstrap script in the desktop app', () => {
+  async function marks(bridge: unknown): Promise<Record<string, string>> {
+    const { THEME_BOOTSTRAP } = await import('./bootstrap');
+    const documentElement = { dataset: {} as Record<string, string>, style: { colorScheme: '' } };
+    new Function('document', 'localStorage', 'window', THEME_BOOTSTRAP)({ documentElement }, { getItem: () => null }, { matchMedia: () => ({ matches: false }), cashfoldDesktop: bridge });
+    const { theme, ...rest } = documentElement.dataset;
+    void theme;
+    return rest;
+  }
+
+  it('marks the platform and the app\'s own bar on macOS and Windows, so the layout is right on the first paint', async () => {
+    expect(await marks({ platform: 'darwin' })).toEqual({ platform: 'darwin', frame: 'bar' });
+    expect(await marks({ platform: 'win32' })).toEqual({ platform: 'win32', frame: 'bar' });
+  });
+
+  it('marks the system frame on Linux', async () => {
+    expect(await marks({ platform: 'linux' })).toEqual({ platform: 'linux', frame: 'system' });
+  });
+
+  it('marks nothing in a browser, or for a bridge that is not what it should be', async () => {
+    expect(await marks(undefined)).toEqual({});
+    expect(await marks({ platform: 7 })).toEqual({});
+    expect(await marks(null)).toEqual({});
+  });
+});
+
