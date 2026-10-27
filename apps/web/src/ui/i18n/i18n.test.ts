@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createTranslator, directionOf, LANGUAGE_NAMES, loadCatalogue, resolveLanguage, resolveLocale, SELECTABLE_LOCALES, separatorsFor, SUPPORTED_LOCALES } from './i18n';
+import { createTranslator, directionOf, ENGLISH, LANGUAGE_NAMES, loadCatalogue, resolveLanguage, resolveLocale, SELECTABLE_LOCALES, separatorsFor, SUPPORTED_LOCALES } from './i18n';
 
 describe('resolveLocale', () => {
   it('picks the first preferred language we support, matching on language', () => {
@@ -115,5 +115,33 @@ describe('resolveLanguage (the person\'s choice against the browser)', () => {
     expect(resolveLanguage('auto', ['pl-PL', 'en'])).toBe('pl');
     expect(resolveLanguage('auto', ['de'])).toBe('en');
     expect(resolveLanguage('auto', undefined)).toBe('en');
+  });
+});
+
+describe('messages written for the desktop app', () => {
+  const catalogs = { en: { hi: 'Open the browser', 'hi.desktop': 'Open the app', plain: 'Same' }, uk: { hi: 'Відкрийте браузер', 'hi.desktop': 'Відкрийте застосунок' } };
+
+  it('use the desktop text when asked for it, in the same language, and the plain text otherwise', () => {
+    expect(createTranslator('en', catalogs)('hi')).toBe('Open the browser');
+    expect(createTranslator('en', catalogs, 'desktop')('hi')).toBe('Open the app');
+    expect(createTranslator('uk', catalogs, 'desktop')('hi')).toBe('Відкрийте застосунок');
+    expect(createTranslator('uk', catalogs)('hi')).toBe('Відкрийте браузер');
+  });
+
+  it('fall back to the plain text for a message that has no desktop text', () => {
+    expect(createTranslator('en', catalogs, 'desktop')('plain')).toBe('Same');
+  });
+});
+
+describe('the desktop app never says "browser"', () => {
+  const WORDS: Record<string, RegExp> = { en: /browser/i, uk: /браузер/i, pl: /przeglądark/i };
+
+  it.each(['en', 'uk', 'pl'])('every %s message that mentions it has a desktop text that does not', async (language) => {
+    const catalogue: Record<string, string> = language === 'en' ? { ...ENGLISH } : { ...(await loadCatalogue(language)) };
+    const word = WORDS[language]!;
+    const missing = Object.entries(catalogue).filter(([key, text]) => !key.endsWith('.desktop') && word.test(text) && catalogue[`${key}.desktop`] === undefined).map(([key]) => key);
+    expect(missing, 'add a `<key>.desktop` text for these').toEqual([]);
+    const still = Object.entries(catalogue).filter(([key, text]) => key.endsWith('.desktop') && word.test(text)).map(([key]) => key);
+    expect(still).toEqual([]);
   });
 });

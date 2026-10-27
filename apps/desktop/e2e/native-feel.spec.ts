@@ -1,5 +1,6 @@
 import type { Page } from '@playwright/test';
-import { APP_ORIGIN, expect, readShellLog, test } from './fixtures';
+import { go } from '../../../e2e/fixtures/nav.js';
+import { APP_ORIGIN, expect, readShellLog, signUp, test } from './fixtures';
 
 // Spec 007: the desktop app feels like an application and not a web page. No menu bar, no selectable interface text, native pointers.
 // Right-click menus, real drag and drop from the desktop, and pinch zoom cannot be driven from here; they are in the manual steps of
@@ -108,4 +109,16 @@ test.describe('other web-page habits', () => {
     expect(await page.evaluate(() => location.origin)).toBe(APP_ORIGIN);
     expect(readShellLog(session.userDataDir).some((line) => line.event === 'security.navigation-blocked')).toBe(false);
   });
+});
+
+test('the interface never says "browser" in the desktop app', async ({ session }) => {
+  const { page } = await session.launch();
+  await signUp(page);
+  for (const screen of ['Overview', 'Transactions', 'Accounts', 'Plan', 'Settings', 'Appearance', 'Data', 'Profile', 'Devices', 'Categories', 'Advanced', 'Desktop']) {
+    await go(page, screen);
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+    expect(await page.locator('body').innerText(), screen).not.toMatch(/browser/i);
+  }
+  await go(page, 'Appearance');
+  await expect(page.locator('select[name="language"] option[value="auto"]')).toHaveText('Automatic (follow the system)');
 });
