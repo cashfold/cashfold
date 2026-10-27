@@ -6,6 +6,7 @@ import { getDesktopBridge } from '../../adapters/platform';
 import { useCore } from '../core/CoreProvider';
 import { useLedger } from '../ledger/LedgerProvider';
 import { useAddSheet } from '../shell/add-context';
+import { afterOverlaysLeave, dismissOverlays } from '../shell/overlay-signal';
 import { recentFoldsOf } from './desktop-presence';
 import { focusRequests } from './focus-request';
 import { performMenuAction } from './menu-action';
@@ -22,8 +23,9 @@ export default function DesktopActions() {
   useEffect(() => {
     const bridge = getDesktopBridge();
     if (bridge === undefined) return;
-    return bridge.onMenuAction((action) =>
-      performMenuAction(action, {
+    return bridge.onMenuAction((action) => {
+      // A help dialog or drawer that is open closes first, and the action runs once it has left, so it does not run behind it.
+      const run = () => performMenuAction(action, {
         unlocked: latest.current.core.phase === 'unlocked',
         openAdd: () => latest.current.openAdd(),
         lock: () => void latest.current.core.lock(),
@@ -37,8 +39,10 @@ export default function DesktopActions() {
           l.selectFold(fold.id);
           r.push('/overview/');
         },
-      }),
-    );
+      });
+      if (dismissOverlays() > 0) afterOverlaysLeave(run);
+      else run();
+    });
   }, []);
   return null;
 }

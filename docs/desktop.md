@@ -76,6 +76,8 @@ The shell, not the web app, makes the window feel native (spec 007), so the web 
 
   While the app is locked every action except Lock is ignored. The table is `apps/desktop/src/main/shortcuts.ts`.
 
+  **Help lists these.** Help in the sidebar opens a dialog that shows them, written the way the person's system writes them (spec 008). The list is `packages/platform/src/help-shortcuts.ts`; a test in `apps/desktop/src/main/help-shortcuts.test.ts` fails when it and the table disagree, so change both together. Redo is Shift+Mod+Z; reload and developer tools exist only in an unpackaged run and are not listed.
+
 - **Interface text is not selectable.** Fields always are. A value a person has to copy or read out (a Secret Key, the details in About) must carry `data-selectable` in the web app, or the desktop app will not let it be selected. Add the attribute to any new such value.
 - **Pointers.** The arrow on buttons, tabs, rows and disabled controls; the text pointer on fields and `data-selectable` values; the hand only on links that open a new window (`target="_blank"`).
 - **Right-click** in a text field offers Cut, Copy, Paste and Select all (and spelling suggestions) in the app's language.

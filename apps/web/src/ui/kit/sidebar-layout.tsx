@@ -2,7 +2,7 @@
 'use client'
 
 import * as Headless from '@headlessui/react'
-import React, { useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { NavbarItem } from './navbar'
 
 function OpenMenuIcon() {
@@ -51,9 +51,28 @@ export function SidebarLayout({
   openLabel,
   closeLabel,
   contentInert = false,
+  subscribeDismiss,
   children,
-}: React.PropsWithChildren<{ navbar: React.ReactNode; sidebar: React.ReactNode; openLabel: string; closeLabel: string; contentInert?: boolean }>) {
+}: React.PropsWithChildren<{
+  navbar: React.ReactNode
+  sidebar: React.ReactNode
+  openLabel: string
+  closeLabel: string
+  contentInert?: boolean
+  /** Hears when the app asks open panels to close (a desktop shortcut arrived): the drawer closes. */
+  subscribeDismiss?: (listener: () => boolean) => () => void
+}>) {
   const [showSidebar, setShowSidebar] = useState(false)
+  const shown = useRef(false)
+  shown.current = showSidebar
+  useEffect(
+    () =>
+      subscribeDismiss?.(() => {
+        setShowSidebar(false)
+        return shown.current
+      }),
+    [subscribeDismiss]
+  )
 
   return (
     <div className="sidebar-layout relative isolate flex min-h-[calc(100svh-var(--frame-bar-h))] w-full bg-white max-lg:flex-col lg:bg-zinc-100 dark:bg-zinc-900 dark:lg:bg-zinc-950">
