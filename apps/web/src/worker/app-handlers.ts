@@ -191,7 +191,7 @@ export function createAppHandlers(deps: AppHandlerDeps): AppRuntime {
       },
     });
   }
-  const startSync = (next: SyncIdentity, registration: 'done' | 'pending'): void => {
+  const startSync = (next: SyncIdentity, registration: 'done' | 'pending' | 'local'): void => {
     identity = next;
     sharingIdentity = { accountId: next.accountId, email: next.email, encPk: next.publicKeys.enc, sigPk: next.publicKeys.sig, encSk: next.account.encSk, sigSk: next.account.sigSk };
     webSession?.current()?.views.invalidate(); // the view of each Fold depends on whose checkpoints apply
@@ -271,14 +271,14 @@ export function createAppHandlers(deps: AppHandlerDeps): AppRuntime {
         : { phase, email: stored.email, accountId: stored.accountId, server: stored.server, registration: stored.registration };
     },
 
-    async createAccount(args: { email: string; password: Uint8Array; server: string; discoverable: boolean; foldName?: string; baseCurrency?: string; categoryNames?: Record<string, string> }) {
+    async createAccount(args: { email: string; password: Uint8Array; server?: string; discoverable?: boolean; foldName?: string; baseCurrency?: string; categoryNames?: Record<string, string> }) {
       const sessionPort = await newWebSession();
-      const input = { email: args.email, password: secretFrom(args.password), server: args.server, discoverable: args.discoverable, ...(args.foldName === undefined ? {} : { foldName: args.foldName }), ...(args.baseCurrency === undefined ? {} : { baseCurrency: args.baseCurrency }) };
+      const input = { email: args.email, password: secretFrom(args.password), ...(args.server === undefined ? {} : { server: args.server }), ...(args.discoverable === undefined ? {} : { discoverable: args.discoverable }), ...(args.foldName === undefined ? {} : { foldName: args.foldName }), ...(args.baseCurrency === undefined ? {} : { baseCurrency: args.baseCurrency }) };
       const result = await createAccount({ crypto: deps.accountCrypto, registration: deps.registration ?? { register: async () => ({ ok: false, reason: 'offline' }) }, credentials: deps.credentials, sessionPort, session, random: deps.rng })(input);
       if (result.ok) {
         await applySettings();
         await seedCategories(result.value.fold.id, args.categoryNames); // the first Fold starts with the default category set, in the person's language
-        if (result.value.sync !== undefined) startSync({ email: args.email.trim().toLowerCase(), accountId: result.value.accountId, server: args.server, ...result.value.sync }, result.value.registration);
+        if (result.value.sync !== undefined) startSync({ email: args.email.trim().toLowerCase(), accountId: result.value.accountId, server: args.server ?? '', ...result.value.sync }, result.value.registration);
       }
       return result.ok ? { ok: true, value: { secretKeyText: result.value.secretKeyText, accountId: result.value.accountId, fold: result.value.fold, registration: result.value.registration } } : result;
     },
@@ -386,11 +386,11 @@ export function createAppHandlers(deps: AppHandlerDeps): AppRuntime {
     },
 
     /** Registers an account made offline (or before sync existed) with a service, then starts syncing it (T200). */
-    async 'sync.enable'(args: { password: Uint8Array; server?: string; inviteCode?: string }) {
+    async 'sync.enable'(args: { password: Uint8Array; server?: string; inviteCode?: string; discoverable?: boolean }) {
       if (deps.registerCrypto === undefined || deps.registration === undefined) throw new RpcError('RpcError', 'sync_unavailable');
       open();
       const result = await registerExisting({ crypto: deps.registerCrypto, registration: deps.registration, credentials: deps.credentials })({
-        password: secretFrom(args.password), ...(args.server !== undefined && { server: args.server }), ...(args.inviteCode !== undefined && { inviteCode: args.inviteCode }),
+        password: secretFrom(args.password), ...(args.server !== undefined && { server: args.server }), ...(args.inviteCode !== undefined && { inviteCode: args.inviteCode }), ...(args.discoverable !== undefined && { discoverable: args.discoverable }),
       });
       if (!result.ok) return result;
       const stored = await deps.credentials.load();

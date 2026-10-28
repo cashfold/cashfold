@@ -13,7 +13,7 @@ export interface SyncView {
   readonly folds: readonly FoldSyncStatus[];
   readonly attention: readonly NeedsAttentionItem[];
   readonly clock: readonly ClockNotice[];
-  readonly registration: 'pending' | 'done';
+  readonly registration: 'pending' | 'done' | 'local';
   readonly server: string | undefined;
 }
 

@@ -12,7 +12,7 @@ export interface AccountInfo {
   readonly email: string;
   readonly accountId: string;
   readonly server: string;
-  readonly registration: 'pending' | 'done';
+  readonly registration: 'pending' | 'done' | 'local';
 }
 
 export interface Core {
@@ -73,7 +73,7 @@ export function CoreProvider({ children, makeWorker }: { children: ReactNode; ma
 
   const refresh = useCallback(async () => {
     try {
-      const status = await client().call<{ phase: Exclude<Phase, 'loading' | 'failed'>; email?: string; accountId?: string; server?: string; registration?: 'pending' | 'done' }>('status');
+      const status = await client().call<{ phase: Exclude<Phase, 'loading' | 'failed'>; email?: string; accountId?: string; server?: string; registration?: 'pending' | 'done' | 'local' }>('status');
       setPhase(status.phase);
       setAccount(status.email === undefined ? undefined : { email: status.email, accountId: status.accountId!, server: status.server!, registration: status.registration! });
     } catch {

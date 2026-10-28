@@ -92,8 +92,8 @@ export interface SyncServiceDeps {
 }
 
 export interface SyncService {
-  /** Begins syncing for this identity. Does nothing for an account that is not registered with a service. */
-  start(identity: SyncIdentity, registration: 'done' | 'pending'): void;
+  /** Begins syncing for this identity. Does nothing for an account that is not registered with a service, or that was made local-only. */
+  start(identity: SyncIdentity, registration: 'done' | 'pending' | 'local'): void;
   /** Ends everything: streams, timers, the session with the service. Called when the app locks. */
   stop(): void;
   /** One round now, whatever the timers say. Resolves when it has finished. */
@@ -114,7 +114,7 @@ export function createSyncService(deps: SyncServiceDeps): SyncService {
   const status = createSyncStatus();
 
   let identity: SyncIdentity | undefined;
-  let registration: 'done' | 'pending' = 'pending';
+  let registration: 'done' | 'pending' | 'local' = 'pending';
   let generation = 0; // bumped by stop(); work started under an older generation discards its results
   let connection: Connection = 'idle';
   let link: WebRelayLink | undefined;

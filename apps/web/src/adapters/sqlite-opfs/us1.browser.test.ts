@@ -78,3 +78,29 @@ describe('the Core Worker handlers the interface calls', () => {
     expect(r['afterPageHide']).toEqual({ announced: 1, calls: 'locked', statusAfter: expect.objectContaining({ phase: 'locked' }) });
   });
 });
+
+describe('a local-only account on the real encrypted database (spec 010)', () => {
+  it('sends nothing to any service, stays local across lock, unlock and restart, and connects later without losing data', async () => {
+    const r = await run('localOnly');
+    expect(r['created']).toEqual({ ok: true, registration: 'local' });
+    expect(r['accountCreated']).toBe(true);
+    expect(r['afterSignUp']).toMatchObject({ status: { phase: 'unlocked', registration: 'local', server: '' }, sync: { available: true, registration: 'local' }, stored: { registration: 'local', server: '' } });
+    expect(r['lockedStatus']).toMatchObject({ phase: 'locked', registration: 'local' });
+    expect(r['unlocked']).toBe(true);
+    expect(r['afterUnlock']).toMatchObject({ status: { phase: 'unlocked', registration: 'local' }, sync: { registration: 'local' } });
+    expect(r['unlockedAfterRestart']).toBe(true);
+    expect(r['afterRestart']).toMatchObject({ sync: { registration: 'local' } });
+    expect(r['callsWhileLocal']).toEqual({ signIn: 0, register: 0, rates: 0 }); // FR-004, FR-011, SC-002
+
+    expect(r['noAddress']).toEqual({ ok: false, error: expect.objectContaining({ code: 'invalid_server' }) });
+    expect(r['wrongPassword']).toEqual({ ok: false, error: expect.objectContaining({ code: 'wrong_password' }) });
+    expect(r['unreachable']).toEqual({ ok: false, error: expect.objectContaining({ code: 'offline' }) });
+    expect(r['stillLocal']).toEqual({ registration: 'local', server: '', accounts: true }); // FR-010
+    expect(r['connected']).toMatchObject({ ok: true, value: { server: 'https://relay.example.com' } });
+    expect(r['afterConnect']).toMatchObject({
+      status: { registration: 'done', server: 'https://relay.example.com' }, sync: { registration: 'done' },
+      stored: { registration: 'done', server: 'https://relay.example.com' }, registered: { discoverable: false, server: 'https://relay.example.com' },
+    });
+    expect(r['dataAfterConnect']).toEqual([['Checking', 100_000n]]); // FR-009
+  });
+});

@@ -14,6 +14,7 @@ import { decodeValue, encodeValue } from './value-codec';
 import { createSqliteOpLog, createSqliteProjections } from './sqlite-stores';
 import { createAccount, createSession, parseSettings, unlock, type CredentialStorePort, type DeviceCredentials, type RegistrationResult } from '@cashfold/core';
 import { createAccountCrypto } from '../account-crypto';
+import { createPakeLoader } from '../transport/pake';
 import { createWebSession } from './web-session';
 import { createAppHandlers } from '../../worker/app-handlers';
 import { createRpcServer } from '../../worker/rpc';
@@ -130,6 +131,77 @@ export const scenarios = {
     await call('session.pageHide');
     await new Promise((r) => setTimeout(r, 50));
     out['afterPageHide'] = { announced: lockedAnnounced, calls: await call('folds.list').catch((e: Error) => (e as { code?: string }).code), statusAfter: await call('status') };
+    return out;
+  },
+
+  /**
+   * A local-only account (spec 010) through the worker handlers: nothing reaches a service while it is local, it stays local across
+   * lock, unlock and a restart, and connecting later registers it without losing the data.
+   */
+  async localOnly(ctx: ScenarioContext) {
+    const rt = await runtimeFor(ctx);
+    const PASSWORD = 'correct horse battery staple';
+    let stored: DeviceCredentials | undefined;
+    const credentials: CredentialStorePort = { save: async (c) => void (stored = c), load: async () => stored, clear: async () => void (stored = undefined) };
+    let savedSettings: unknown;
+    const calls = { signIn: 0, register: 0, rates: 0 };
+    const payloads: Array<{ discoverable: boolean; server: string }> = [];
+    let nextRegistration: RegistrationResult = { ok: true };
+    const accountCrypto = createAccountCrypto({ rng, pake: createPakeLoader({ rng }), kdf: { kdf: 'argon2id', mKib: 32768, t: 2, p: 1 } });
+    const build = () => createAppHandlers({
+      runtime: async () => rt, rng, credentials, nowMs: Date.now, onLocked: () => undefined,
+      accountCrypto, registerCrypto: accountCrypto,
+      settings: { load: async () => parseSettings(savedSettings), save: async (x) => void (savedSettings = x) },
+      quickStore: { load: async () => undefined, save: async () => undefined, clear: async () => undefined },
+      quickCrypto: { enroll: async () => 'wrong_password', unlock: async () => 'failed' },
+      relayAuth: { signIn: async () => (calls.signIn++, { ok: false, kind: 'offline' }) },
+      registration: { register: async (payload) => (calls.register++, payloads.push({ discoverable: payload.discoverable, server: payload.server }), nextRegistration) },
+      ratesSource: () => ({ fetch: async () => (calls.rates++, Promise.reject(new Error('no service'))) }),
+    });
+    const bytes = (text: string) => new TextEncoder().encode(text);
+    type Ok<T> = { ok: true; value: T } | { ok: false; error: { code: string } };
+    const out: Record<string, unknown> = {};
+
+    let app = build();
+    let server = createRpcServer(app.handlers);
+    let call = <T = unknown>(method: string, args?: unknown) => server.invoke(method, args) as Promise<T>;
+    const restart = async () => {
+      await call('session.pageHide');
+      await new Promise((r) => setTimeout(r, 50));
+      app = build();
+      server = createRpcServer(app.handlers);
+      call = <T = unknown>(method: string, args?: unknown) => server.invoke(method, args) as Promise<T>;
+    };
+
+    const created = await call<Ok<{ registration: string; fold: { id: string } }>>('createAccount', { email: 'a@example.com', password: bytes(PASSWORD) });
+    out['created'] = created.ok ? { ok: true, registration: created.value.registration } : created;
+    if (!created.ok) return out;
+    const fold = created.value.fold.id;
+    const acct = await call<Ok<{ id: string }>>('ledger.createAccount', { fold, kind: 'checking', name: 'Checking', currency: 'USD', openingBalanceMinor: 100_000n, openingDate: 20_260_101 });
+    out['accountCreated'] = acct.ok;
+    out['afterSignUp'] = { status: await call('status'), sync: await call('sync.status'), stored: { registration: stored?.registration, server: stored?.server } };
+
+    await restart();
+    out['lockedStatus'] = await call('status');
+    out['unlocked'] = (await call<Ok<unknown>>('unlock', { password: bytes(PASSWORD) })).ok;
+    out['afterUnlock'] = { status: await call('status'), sync: await call('sync.status') };
+    await restart();
+    out['unlockedAfterRestart'] = (await call<Ok<unknown>>('unlock', { password: bytes(PASSWORD) })).ok;
+    out['afterRestart'] = { sync: await call('sync.status') };
+    out['callsWhileLocal'] = { ...calls };
+
+    // connecting
+    out['noAddress'] = await call('sync.enable', { password: bytes(PASSWORD) });
+    out['wrongPassword'] = await call('sync.enable', { password: bytes('not the password at all'), server: 'https://relay.example.com' });
+    nextRegistration = { ok: false, reason: 'offline' };
+    out['unreachable'] = await call('sync.enable', { password: bytes(PASSWORD), server: 'https://relay.example.com' });
+    out['stillLocal'] = { registration: stored?.registration, server: stored?.server, accounts: (await call<Ok<{ accounts: unknown[] }>>('ledger.basics', { fold })).ok };
+    nextRegistration = { ok: true };
+    out['connected'] = await call('sync.enable', { password: bytes(PASSWORD), server: 'https://relay.example.com', discoverable: false });
+    out['afterConnect'] = { status: await call('status'), sync: await call('sync.status'), stored: { registration: stored?.registration, server: stored?.server }, registered: payloads.at(-1) };
+    const basics = await call<Ok<{ accounts: Array<{ name: string; balanceMinor: bigint | null }> }>>('ledger.basics', { fold });
+    out['dataAfterConnect'] = basics.ok ? basics.value.accounts.map((a) => [a.name, a.balanceMinor]) : basics.error;
+    await call('session.pageHide');
     return out;
   },
 
