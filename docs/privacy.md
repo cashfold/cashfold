@@ -4,6 +4,12 @@ Cashfold keeps your financial data encrypted on your devices. The service (the r
 
 If you run your own service, everything below is visible to whoever runs it.
 
+## If you keep everything on this device
+
+At sign-up you can choose **Keep everything on this device for now**. An account made that way sends **nothing to any service**: not your email address, not a key, not a request. Sync does not run, exchange rates are the ones you enter, and sharing a Fold is not available. Nothing on this page applies to you until you connect a service later in Settings → Sync. From that moment, everything below applies, and the account is registered as not findable by email unless you tick that box while connecting.
+
+The cost of keeping everything on one device is that there is no second copy. Make encrypted backups (Settings → Data and storage), because a lost device or a forgotten password cannot be recovered by anyone.
+
 ## What the service cannot read
 
 - Amounts, dates, names, notes, categories, payees, tags, places, budgets, goals, schedules, exchange rates you entered, and the names and base currencies of your Folds.
@@ -66,7 +72,7 @@ Confirmation links and invitation notices. A notice names only the person inviti
 
 ### The desktop app and updates
 
-The desktop app (Windows, macOS, Linux) is the same app in its own window, so everything above holds for it too. It adds one thing: it looks for new versions of itself, when it starts and every few hours, by asking GitHub (where releases are published) for a small file that lists the newest version. That request reveals your **network address** and the **version of the app** you run, to GitHub, as any download does, and nothing else: no account, no data, no identifier. Downloading an update, and installing it, happen only when you choose to. You can switch the automatic check off in Settings → Advanced → Updates; you can still check by hand. The desktop app has no analytics, no crash reporting and no other connection of its own; its only other connection is to the service address you chose, exactly as in the web app.
+The desktop app (Windows, macOS, Linux) is the same app in its own window, so everything above holds for it too. It adds one thing: it looks for new versions of itself, when it starts and every few hours, by asking GitHub (where releases are published) for a small file that lists the newest version. That request reveals your **network address** and the **version of the app** you run, to GitHub, as any download does, and nothing else: no account, no data, no identifier. Downloading an update, and installing it, happen only when you choose to. You can switch the automatic check off in Settings → Advanced → Updates; you can still check by hand. The desktop app has no analytics, no crash reporting and no other connection of its own; its only other connection is to the service address you chose, exactly as in the web app. With an account kept only on the device, it has no such connection at all.
 
 ## What is public
 

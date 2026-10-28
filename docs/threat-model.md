@@ -149,3 +149,19 @@ The desktop app accepts three things from outside: a `cashfold://` link, a file 
 | File contents sit in a locked page                                               | The shell holds them until `unlocked`; the page drops queued contents on a lock.                                                                                             |
 | Someone fills the queue to exhaust memory                                        | At most eight items and 256 MiB of file bytes; beyond that the oldest is refused with a message.                                                                             |
 | Another program sends a second launch with hostile arguments                     | Arguments are matched against the closed set of quick actions and the intake grammar; anything else is ignored. The shell takes no path, URL or command from them but those. |
+
+## Local-only accounts (spec 010)
+
+An account made with **Keep everything on this device for now** is stored under `registration: local`: the device holds the encrypted data and the keys, and no service is ever contacted until the person connects one.
+
+**What this removes.** There is no service adversary for such an account: nothing is sent, so a malicious or compromised service has nothing to read, reorder or withhold, and an observer on the network sees no Cashfold traffic from the account.
+
+**What it accepts.** Losing the device without an encrypted backup is total and permanent loss of the data, and a forgotten password cannot be recovered, because a Recovery Key is held by the service and changing the password needs one. Both are accepted. They are mitigated by a backup suggestion when the account is made, a Getting started step, the existing data-loss reminder (which already treats data held only on the device as the firm case), and plain wording on the Sync settings page.
+
+**What stays the same.** The password, the Secret Key and the encrypted database are protected exactly as for any account, including on a lock. Connecting later changes only the stored registration, the address and the sealed credentials; the registration payload is built from the password and the Secret Key as for an account made offline, and the account is registered as not findable by email unless the person chooses otherwise.
+
+| Threat                                                       | Mitigation                                                                                                                                           |
+| ------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| A local-only account quietly starts talking to a service     | The sync service is told `local` and stays idle; rates refresh only after a connection; a browser test counts calls to the service and expects zero. |
+| An empty address leaks into a link, a request or the kit     | The Emergency Kit builds no add-device link without an address; an end-to-end test watches every request that leaves the app's origin.               |
+| Connecting makes the person findable by email without asking | Connecting asks, unticked by default, and registers as not findable otherwise.                                                                       |
