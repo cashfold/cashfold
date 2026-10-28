@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.7.0](https://github.com/cashfold/cashfold/compare/v0.6.0...v0.7.0) (2026-10-27)
+
+
+### Features
+
+* **web:** finish the installable web app ([#46](https://github.com/cashfold/cashfold/issues/46)) ([f624ba6](https://github.com/cashfold/cashfold/commit/f624ba62aa263517aa474d1d8756e46ae2d58700))
+
+
+### Bug Fixes
+
+* **desktop:** set the window icon on Linux ([#47](https://github.com/cashfold/cashfold/issues/47)) ([9772a8e](https://github.com/cashfold/cashfold/commit/9772a8e8626646ba2a8cb85a78486b56677f4c12))
+
 ## [0.6.0](https://github.com/cashfold/cashfold/compare/v0.5.0...v0.6.0) (2026-10-27)
 
 
