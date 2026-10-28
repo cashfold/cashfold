@@ -1,7 +1,7 @@
 'use client';
 
-import Link from 'next/link';
 import type { ReactNode } from 'react';
+import { SignedOutChoicesLazy } from '../auth/SignedOutChoicesLazy';
 import { UnlockForm } from '../auth/UnlockForm';
 import { useI18n } from '../i18n/I18nProvider';
 import { useCore } from './CoreProvider';
@@ -17,7 +17,7 @@ export function RequireUnlocked({ children, titleKey }: { children: ReactNode; t
       <div>
         <h1 className="text-2xl font-semibold">{t(titleKey)}</h1>
         <p className="mt-3">{t('gate.noAccount')}</p>
-        <p className="mt-3"><Link className="underline" href="/sign-up/">{t('gate.createAccount')}</Link></p>
+        <SignedOutChoicesLazy />
       </div>
     );
   }

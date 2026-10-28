@@ -2,8 +2,11 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { isDesktopApp } from '../../adapters/platform/detect';
+import { forgetShownReminders } from '../../adapters/notifications/browser';
 import { useDesktop } from '../desktop/DesktopSettingsProvider';
 import { createCoreClient, type CoreClient, type CoreEvent } from './core-client';
+import { prefsStore } from '../prefs/usePrefs';
+import { resetAccountPrefs } from '../prefs/reset-account';
 import { createSessionHandlers } from './lock-policy';
 
 export type Phase = 'loading' | 'no_account' | 'locked' | 'unlocked' | 'failed';
@@ -33,6 +36,10 @@ export interface Core {
   readonly removed: boolean;
   /** Hears the worker's events (sync status, changes from other devices). Returns the way to stop listening. */
   subscribe(listener: (event: CoreEvent) => void): () => void;
+  /** Set by a sign-out (spec 011) for the signed-out screen: this device may still be listed under the account on the service. Cleared when the person starts any way back in. */
+  readonly signedOutNotice: { readonly deviceStillListed: boolean } | undefined;
+  showSignedOutNotice(notice: { readonly deviceStillListed: boolean }): void;
+  dismissSignedOutNotice(): void;
 }
 
 const Context = createContext<Core | null>(null);
@@ -47,6 +54,12 @@ export async function withPasswordBytes<T>(password: string, use: (bytes: Uint8A
   }
 }
 
+/** What the page keeps that belongs to the account that is gone: the Fold-keyed recents, the hidden Getting started card, the list of shown reminders. */
+function forgetAccountScopedState(): void {
+  prefsStore.update(resetAccountPrefs);
+  forgetShownReminders();
+}
+
 const ACTIVITY_THROTTLE_MS = 5_000;
 const SESSION_CHECK_MS = 5_000;
 
@@ -58,6 +71,7 @@ export function CoreProvider({ children, makeWorker }: { children: ReactNode; ma
   const [blurred, setBlurred] = useState(false);
   const [epoch, setEpoch] = useState(0);
   const [removed, setRemoved] = useState(false);
+  const [signedOutNotice, setSignedOutNotice] = useState<{ readonly deviceStillListed: boolean } | undefined>();
   const [storageFull, setStorageFull] = useState(false);
   const desktop = useDesktop();
   // The listeners below are registered once; they read the current preference from here.
@@ -73,7 +87,9 @@ export function CoreProvider({ children, makeWorker }: { children: ReactNode; ma
 
   const refresh = useCallback(async () => {
     try {
-      const status = await client().call<{ phase: Exclude<Phase, 'loading' | 'failed'>; email?: string; accountId?: string; server?: string; registration?: 'pending' | 'done' | 'local' }>('status');
+      const status = await client().call<{ phase: Exclude<Phase, 'loading' | 'failed'>; email?: string; accountId?: string; server?: string; registration?: 'pending' | 'done' | 'local'; finishedSignOut?: boolean }>('status');
+      // A sign-out that was cut short has just been finished at start: what the page keeps for the old account goes now (the worker cannot reach it).
+      if (status.finishedSignOut === true) forgetAccountScopedState();
       setPhase(status.phase);
       setAccount(status.email === undefined ? undefined : { email: status.email, accountId: status.accountId!, server: status.server!, registration: status.registration! });
     } catch {
@@ -94,6 +110,14 @@ export function CoreProvider({ children, makeWorker }: { children: ReactNode; ma
         setPhase('no_account');
         setAccount(undefined);
         setEpoch((n) => n + 1);
+        forgetAccountScopedState();
+      }
+      // Signed out here or in another tab (spec 011): the same as a removed device, without the notice that it was removed.
+      if (event.type === 'SignedOut') {
+        setPhase('no_account');
+        setAccount(undefined);
+        setEpoch((n) => n + 1);
+        forgetAccountScopedState();
       }
     });
     return () => {
@@ -187,12 +211,16 @@ export function CoreProvider({ children, makeWorker }: { children: ReactNode; ma
       },
       async markUnlocked() {
         setRemoved(false);
+        setSignedOutNotice(undefined);
         await refresh();
       },
       removed,
       subscribe: (listener) => client().onEvent(listener),
+      signedOutNotice,
+      showSignedOutNotice: setSignedOutNotice,
+      dismissSignedOutNotice: () => setSignedOutNotice(undefined),
     }),
-    [phase, account, hidden, blurred, epoch, removed, storageFull, client, refresh],
+    [phase, account, hidden, blurred, epoch, removed, storageFull, signedOutNotice, client, refresh],
   );
 
   return <Context.Provider value={value}>{children}</Context.Provider>;
