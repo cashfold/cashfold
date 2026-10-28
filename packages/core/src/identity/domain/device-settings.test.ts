@@ -1,6 +1,6 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_SETTINGS, parseSettings, toLockPolicy, type DeviceSettings } from './device-settings';
+import { DEFAULT_SETTINGS, parseSettings, resetAccountTied, toLockPolicy, type DeviceSettings } from './device-settings';
 
 describe('device settings (FR-006, FR-007)', () => {
   it('start with the documented defaults: 5 minutes idle, 1 minute hidden, quick unlock off', () => {
@@ -55,3 +55,33 @@ describe('device settings (FR-006, FR-007)', () => {
     });
   });
 });
+
+describe('what stays when an account is signed out (spec 011)', () => {
+  const mine: DeviceSettings = {
+    autoLockMinutes: 15, hiddenGraceSeconds: 120, quickUnlock: { enabled: true, maxIdleMinutes: 90 },
+    kitReminderDismissed: true, lastBackupAtMs: 1_700_000_000_000, backupNagDismissedAtMs: 1_700_000_100_000,
+  };
+
+  it('forgets what belongs to the account: quick unlock being on, the kit reminder, and the backup history', () => {
+    const r = resetAccountTied(mine);
+    expect(r.quickUnlock.enabled).toBe(false);
+    expect(r.kitReminderDismissed).toBe(false);
+    expect(r.lastBackupAtMs).toBe(0);
+    expect(r.backupNagDismissedAtMs).toBe(0);
+  });
+
+  it('keeps what belongs to the device: the lock policy', () => {
+    const r = resetAccountTied(mine);
+    expect(r.autoLockMinutes).toBe(15);
+    expect(r.hiddenGraceSeconds).toBe(120);
+    expect(r.quickUnlock.maxIdleMinutes).toBe(90);
+  });
+
+  it('is the defaults for everything it resets, and does not change its input', () => {
+    const before = JSON.stringify(mine);
+    const r = resetAccountTied(mine);
+    expect(r).toEqual({ ...DEFAULT_SETTINGS, autoLockMinutes: 15, hiddenGraceSeconds: 120, quickUnlock: { enabled: false, maxIdleMinutes: 90 } });
+    expect(JSON.stringify(mine)).toBe(before);
+  });
+});
+

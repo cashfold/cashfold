@@ -55,3 +55,18 @@ export function parseSettings(input: unknown): DeviceSettings {
 export function toLockPolicy(settings: DeviceSettings): LockPolicy {
   return { idleMs: settings.autoLockMinutes * 60_000, hiddenGraceMs: settings.hiddenGraceSeconds * 1000 };
 }
+
+/**
+ * What a device keeps when its account is signed out (spec 011): the lock policy is the device's, so it stays; whether quick unlock is on, the
+ * kit reminder, and when a backup was last made belong to the account that is gone, and the next account must not inherit them.
+ */
+export function resetAccountTied(settings: DeviceSettings): DeviceSettings {
+  return {
+    ...settings,
+    quickUnlock: { enabled: DEFAULT_SETTINGS.quickUnlock.enabled, maxIdleMinutes: settings.quickUnlock.maxIdleMinutes },
+    kitReminderDismissed: DEFAULT_SETTINGS.kitReminderDismissed,
+    lastBackupAtMs: DEFAULT_SETTINGS.lastBackupAtMs,
+    backupNagDismissedAtMs: DEFAULT_SETTINGS.backupNagDismissedAtMs,
+  };
+}
+
