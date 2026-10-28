@@ -10,7 +10,7 @@ export interface UserAccount {
   readonly email: string;
   /** Whether other users may find this account by email to invite it (FR-106). */
   readonly discoverable: boolean;
-  /** The service address this account is bound to (FR-099). */
+  /** The service address this account is bound to (FR-099). Empty for an account kept only on this device (spec 010). */
   readonly server: string;
   readonly emailVerified: boolean;
 }

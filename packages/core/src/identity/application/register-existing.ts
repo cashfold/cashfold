@@ -4,7 +4,8 @@ import { normaliseServerAddress } from '../domain/server-address';
 import type { AccountSecrets, CredentialStorePort, RegisterExistingCryptoPort, RegistrationPort, Secret } from '../ports/index';
 
 // Register a local-only account with a service on first sync (US4, T200, FR-004, FR-013, FR-099). A device that was set up
-// offline, or before sync existed, holds everything but has told no service about it. The password is asked for again
+// offline, before sync existed, or with no service chosen at all (`registration: 'local'`, spec 010) holds everything but has told
+// no service about it. The password is asked for again
 // because the service needs a verifier and a key set, and both come from the password and the Secret Key together.
 // Local data is untouched; what changes is the sealed credentials (which now also hold the account's keys) and the address.
 // Putting the existing Folds and their ops on the service is the sync engine's job once this has succeeded.
@@ -15,6 +16,8 @@ export interface RegisterExistingInput {
   /** The service to register with; defaults to the one chosen at sign-up. */
   readonly server?: string;
   readonly inviteCode?: string;
+  /** Whether others may find the account by its email address. Defaults to true, as it always was for an account that was only pending. */
+  readonly discoverable?: boolean;
 }
 
 export type RegisterExistingError = DomainError<
@@ -53,7 +56,7 @@ export function registerExisting(deps: {
     const wipeAccount = (): void => {
       for (const s of [prepared.account.encSk, prepared.account.sigSk, prepared.account.srpX]) s.wipe();
     };
-    const result = await registration.register({ ...prepared.registration, email: stored.email, discoverable: true, server: server.value }, input.inviteCode === undefined ? {} : { inviteCode: input.inviteCode });
+    const result = await registration.register({ ...prepared.registration, email: stored.email, discoverable: input.discoverable ?? true, server: server.value }, input.inviteCode === undefined ? {} : { inviteCode: input.inviteCode });
     if (!result.ok) {
       wipeAccount();
       switch (result.reason) {

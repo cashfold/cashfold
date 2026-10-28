@@ -14,8 +14,10 @@ export interface CreateAccountInput {
   readonly email: string;
   /** Consumed: wiped on every path. */
   readonly password: Secret;
-  readonly server: string;
-  readonly discoverable: boolean;
+  /** The service to register with. Absent or empty means the person chose to keep everything on this device (spec 010). */
+  readonly server?: string;
+  /** Ignored for a local-only account. */
+  readonly discoverable?: boolean;
   readonly foldName?: string;
   readonly baseCurrency?: string;
 }
@@ -26,8 +28,8 @@ export interface NewAccount {
   readonly accountId: string;
   readonly account: UserAccount;
   readonly fold: FoldSummary;
-  /** `pending` when the service could not be reached: sign-up still works offline and registers later. */
-  readonly registration: 'done' | 'pending';
+  /** `pending` when the service could not be reached: sign-up still works offline and registers later. `local` when no service was asked for. */
+  readonly registration: 'done' | 'pending' | 'local';
   /** The keys sync needs, tracked by the session so locking wipes them. Absent in builds that cannot sync. */
   readonly sync?: { readonly account: AccountSecrets; readonly publicKeys: { readonly enc: Uint8Array; readonly sig: Uint8Array } };
 }
@@ -65,7 +67,8 @@ export function createAccount(deps: CreateAccountDeps) {
 
     const email = normaliseEmail(input.email);
     if (!email.ok) return rejectEarly(email.error);
-    const server = normaliseServerAddress(input.server);
+    const localOnly = input.server === undefined || input.server.trim() === '';
+    const server = localOnly ? ok('') : normaliseServerAddress(input.server!);
     if (!server.ok) return rejectEarly(server.error);
     const policy = checkPassword(input.password.use((b) => new TextDecoder().decode(b)));
     if (!policy.ok) return rejectEarly({ code: 'weak_password', message: 'Choose a longer, less common password', violations: policy.violations });
@@ -94,7 +97,7 @@ export function createAccount(deps: CreateAccountDeps) {
 
     try {
       services = await sessionPort.start({ deviceId: material.deviceId, sessionKey: material.sessionKey, deviceSigningKey: material.deviceSigningKey });
-      await credentials.save({ ...material.credentials, email: email.value, server: server.value, registration: 'pending' });
+      await credentials.save({ ...material.credentials, email: email.value, server: server.value, registration: localOnly ? 'local' : 'pending' });
 
       foldId = newIdV4((n) => random.bytes(n));
       const folds = createFoldCommands({ directory: services.directory, foldKeys: services.foldKeys });
@@ -109,23 +112,29 @@ export function createAccount(deps: CreateAccountDeps) {
           : err('registration_rejected', created.error.message);
       }
 
-      const registered = await registration.register({
-        ...material.registration, email: email.value, discoverable: input.discoverable, server: server.value,
-      });
-      let account = newDraftAccount({ accountId: material.accountId, email: email.value, discoverable: input.discoverable, server: server.value });
-      let outcome: 'done' | 'pending' = 'pending';
-      if (registered.ok) {
-        const reg = markRegistered(account);
-        const act = reg.ok ? activate(reg.value) : reg;
-        if (act.ok) account = act.value;
-        outcome = 'done';
-        await credentials.save({ ...material.credentials, email: email.value, server: server.value, registration: 'done' });
-      } else if (registered.reason === 'email_taken') {
-        await rollback();
-        return err('email_taken', 'That email address is already registered');
-      } else if (registered.reason === 'rejected') {
-        await rollback();
-        return err('registration_rejected', 'The service did not accept the registration');
+      // Local-only: nothing is asked of any service. The account stays a draft until the person connects one (spec 010).
+      const discoverable = localOnly ? false : (input.discoverable ?? true);
+      let account = newDraftAccount({ accountId: material.accountId, email: email.value, discoverable, server: server.value });
+      let outcome: 'done' | 'pending' | 'local' = 'pending';
+      if (localOnly) {
+        outcome = 'local';
+      } else {
+        const registered = await registration.register({
+          ...material.registration, email: email.value, discoverable, server: server.value,
+        });
+        if (registered.ok) {
+          const reg = markRegistered(account);
+          const act = reg.ok ? activate(reg.value) : reg;
+          if (act.ok) account = act.value;
+          outcome = 'done';
+          await credentials.save({ ...material.credentials, email: email.value, server: server.value, registration: 'done' });
+        } else if (registered.reason === 'email_taken') {
+          await rollback();
+          return err('email_taken', 'That email address is already registered');
+        } else if (registered.reason === 'rejected') {
+          await rollback();
+          return err('registration_rejected', 'The service did not accept the registration');
+        }
       }
 
       logger?.info('account.created', { registration: lit(outcome) });

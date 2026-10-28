@@ -44,8 +44,10 @@ export interface DeviceCredentials {
   readonly deviceId: Id;
   readonly accountId: string;
   readonly email: string;
+  /** The service address. Empty for `local`, and never read then. */
   readonly server: string;
-  readonly registration: 'pending' | 'done';
+  /** `local`: the person chose to keep everything on this device, so nothing was or will be registered until they connect (spec 010). */
+  readonly registration: 'pending' | 'done' | 'local';
   /** Opaque sealed blob: device salt, Secret Key and cached SRP-x. */
   readonly sealed: Uint8Array;
 }
