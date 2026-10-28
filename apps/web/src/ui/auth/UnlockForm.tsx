@@ -7,6 +7,7 @@ import { sessionMarker } from '../core/session-marker';
 import { TextField } from '../forms/TextField';
 import { useI18n } from '../i18n/I18nProvider';
 import { Button } from '../kit';
+import { SignOutDialogLazy } from './SignOutDialogLazy';
 
 type UnlockResult = { ok: true } | { ok: false; error: { code: string; retryAfterMs?: number } };
 
@@ -17,6 +18,7 @@ export function UnlockForm() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | undefined>();
   const [quick, setQuick] = useState<{ credentialId: Uint8Array; prfSalt: Uint8Array } | undefined>();
+  const [different, setDifferent] = useState(false);
 
   useEffect(() => {
     void core
@@ -71,6 +73,13 @@ export function UnlockForm() {
         <Button className="mt-6" type="submit" disabled={busy}>{busy ? t('unlock.working') : t('unlock.submit')}</Button>
       </form>
       {quick ? <Button outline className="mt-4" type="button" disabled={busy} onClick={() => void unlockQuick()}>{t('quick.button')}</Button> : null}
+      {/* The way out for a person who does not have the password (spec 011, FR-014): it needs the account's own email address, not the password. */}
+      {core.account ? (
+        <>
+          <p className="mt-6"><Button plain type="button" onClick={() => setDifferent(true)}>{t('signout.different')}</Button></p>
+          <SignOutDialogLazy open={different} onClose={() => setDifferent(false)} email={core.account.email} kind={core.account.registration === 'done' ? 'service' : 'local'} locked />
+        </>
+      ) : null}
     </div>
   );
 }

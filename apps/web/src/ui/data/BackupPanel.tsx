@@ -9,6 +9,7 @@ import { TextField } from '../forms/TextField';
 import { useI18n } from '../i18n/I18nProvider';
 import { accountErrorText, type Reply } from '../settings/errors';
 import { Button, Select } from '../kit';
+import { returnsToSignOut } from '../settings/sign-out-return';
 
 
 /** Encrypted backup of one Fold, and restoring one into a new Fold (FR-091). The file is useless without its passphrase. */
@@ -20,6 +21,9 @@ export function BackupPanel({ folds }: { folds: readonly FoldSummary[] }) {
   const [again, setAgain] = useState('');
   const [error, setError] = useState<string | undefined>();
   const [made, setMade] = useState(false);
+  // Opened from the sign-out confirmation (`?then=sign-out`): once a backup is made, the way back to it is offered (spec 011, FR-008).
+  const [fromSignOut, setFromSignOut] = useState(false);
+  useEffect(() => setFromSignOut(returnsToSignOut(window.location.search)), []);
   const [restoreSecret, setRestoreSecret] = useState('');
   const [restoreError, setRestoreError] = useState<string | undefined>();
   const [restored, setRestored] = useState<{ name: string; records: number } | undefined>();
@@ -96,6 +100,7 @@ export function BackupPanel({ folds }: { folds: readonly FoldSummary[] }) {
         {error ? <p role="alert" className="mt-3 text-danger">{error}</p> : null}
         <Button className="mt-4" type="submit" disabled={busy}>{t('data.backup.create')}</Button>
         {made ? <p role="status" className="mt-3">{t('data.backup.made')}</p> : null}
+        {made && fromSignOut ? <p className="mt-2"><Link className="underline" href="/settings/profile/#sign-out">{t('signout.back')}</Link></p> : null}
       </form>
 
       <h3 className="mt-8 font-semibold">{t('data.restore.title')}</h3>

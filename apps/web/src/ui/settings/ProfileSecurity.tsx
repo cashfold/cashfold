@@ -5,6 +5,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { useCore, withPasswordBytes } from '../core/CoreProvider';
 import { useDesktop } from '../desktop/DesktopSettingsProvider';
 import { accountDetailsView } from './account-details';
+import { SignOutSection } from './SignOutSection';
 import { downloadKit, printKit, type KitSource } from '../emergency-kit/actions';
 import { TextField } from '../forms/TextField';
 import { useI18n } from '../i18n/I18nProvider';
@@ -82,6 +83,8 @@ export function ProfileSecurity() {
       <CredentialsSection />
 
       <RecoverySection />
+
+      <SignOutSection />
 
       <section aria-labelledby="account-heading" className="mt-8">
         <h2 id="account-heading" className="text-lg font-semibold">{t('settings.account.title')}</h2>
