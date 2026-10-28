@@ -140,6 +140,8 @@ describe('signing out through the worker on the real database (spec 011)', () =>
   it('erases an account on a service even when the service cannot be reached, and says the device may stay listed', async () => {
     const r = await run('signOut');
     expect(r['registeredCreated']).toBe(true);
+    expect(r['pendingWhileOffline']).toHaveLength(1); // the sign-out warning counts unsent changes live, not as of the last finished round
+    expect((r['pendingWhileOffline'] as number[])[0]).toBeGreaterThanOrEqual(1);
     expect(r['signedOutRegistered']).toEqual({ ok: true, value: { deviceStillListed: true } });
     expect(r['afterRegistered']).toMatchObject({ files: [], credentials: undefined, quick: undefined, marked: false });
   });

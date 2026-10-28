@@ -322,8 +322,11 @@ export const scenarios = {
     // 2. an account that was registered with a service, which cannot be reached to remove the device
     events.length = 0;
     await restart();
-    const registered = await call<Ok<unknown>>('createAccount', { email: 'b@example.com', password: bytes(PASSWORD), server: 'https://relay.example.com', discoverable: true });
+    const registered = await call<Ok<{ fold: { id: string } }>>('createAccount', { email: 'b@example.com', password: bytes(PASSWORD), server: 'https://relay.example.com', discoverable: true });
     out['registeredCreated'] = registered.ok;
+    // A change made while the service cannot be reached is counted at once, with no sync round having finished to count it (a sign-out relies on this).
+    if (registered.ok) await call('ledger.createAccount', { fold: registered.value.fold.id, kind: 'checking', name: 'Offline', currency: 'USD', openingBalanceMinor: 0n, openingDate: 20_260_101 });
+    out['pendingWhileOffline'] = ((await call<{ folds: Array<{ pendingOps: number }> }>('sync.status')).folds).map((f) => f.pendingOps);
     out['signedOutRegistered'] = await call('account.signOut');
     out['afterRegistered'] = left();
 

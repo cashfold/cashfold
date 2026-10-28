@@ -467,10 +467,19 @@ export function createSyncService(deps: SyncServiceDeps): SyncService {
     async snapshot() {
       const s = deps.session();
       const quarantined = [];
-      const folds = status.folds();
+      let folds = status.folds();
       // Quarantined ops are listed with the ledger's own Needs attention; what sync adds is refused changes and a relay that skips ops.
       let attention: NeedsAttentionItem[] = [];
       if (s !== undefined) {
+        // The count of changes that have not reached the service is read from the log now. The tracker keeps the count as of the last round that finished,
+        // and no round finishes while the service is out of reach, so it would say 0 while changes wait (a sign-out relies on this being right).
+        const known = new Map(folds.map((x) => [x.fold, x]));
+        folds = await Promise.all(
+          (await s.directory.list()).map(async (f) => ({
+            ...(known.get(f.id) ?? { fold: f.id, state: 'synced' as const, lastSyncedAtMs: undefined, failure: undefined }),
+            pendingOps: (await s.oplog.listPending(f.id)).length,
+          })),
+        );
         for (const f of await s.directory.list()) {
           quarantined.push(...(await s.oplog.listQuarantined(f.id)));
           const report = reports.get(f.id);
