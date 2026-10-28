@@ -10,6 +10,14 @@ At sign-up you can choose **Keep everything on this device for now**. An account
 
 The cost of keeping everything on one device is that there is no second copy. Make encrypted backups (Settings → Data and storage), because a lost device or a forgotten password cannot be recovered by anyone.
 
+## When you sign out
+
+Signing out (Settings → Profile and security, or "Use a different account" on the lock screen) erases **this device's copy** of the account: the database, the keys, the stored credentials, quick unlock and any changes that had not been sent. Your language, theme and lock settings stay, because they belong to the device. Before it erases, an account that is also on a service sends what has not reached it, so nothing is lost; if the service cannot be reached you are told how many changes would be lost and must agree.
+
+If the service can be reached, the device is also removed from the account's list of devices; that one request carries only the device's id. If it cannot be reached, the device may stay listed there until you remove it from another device. The account, its data and your other devices are not changed. You come back with your Secret Key and password, as on any new device.
+
+An account kept only on this device has no other copy, so signing out erases it for good; the app says so first and asks you to type the account's email address. The lock-screen option sends nothing to any service and asks for that address instead of the password.
+
 ## What the service cannot read
 
 - Amounts, dates, names, notes, categories, payees, tags, places, budgets, goals, schedules, exchange rates you entered, and the names and base currencies of your Folds.

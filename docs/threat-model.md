@@ -165,3 +165,23 @@ An account made with **Keep everything on this device for now** is stored under 
 | A local-only account quietly starts talking to a service     | The sync service is told `local` and stays idle; rates refresh only after a connection; a browser test counts calls to the service and expects zero. |
 | An empty address leaks into a link, a request or the kit     | The Emergency Kit builds no add-device link without an address; an end-to-end test watches every request that leaves the app's origin.               |
 | Connecting makes the person findable by email without asking | Connecting asks, unticked by default, and registers as not findable otherwise.                                                                       |
+
+## Signing out (spec 011)
+
+Signing out erases this device's copy of the account so another can be used. It removes the database files (also truncated, so no stale ciphertext is left), the sealed credentials, the quick-unlock record and the account-tied lock settings, and resets the Fold-keyed interface preferences and the shown-reminders list. The lock policy, language and theme are the device's and stay.
+
+**A half-finished erase.** A note is written first and removed last, and every step can be repeated, so a crash, a closed tab or a power cut is finished at the next start, before any call is answered. A half-erased account cannot be opened.
+
+**The lock-screen path.** "Use a different account" needs the account's own email address, typed, and not the password, because the person may not have it. The worker checks the address, not the page. Anyone holding the device with the app locked can therefore wipe it, as they could by clearing the site's data in the browser or deleting the app's folder. This only destroys; it reveals nothing. It is accepted.
+
+**Leaving the service.** Removing the device from the service's list is best effort with a short time limit. If it fails the device may stay listed, which is clutter and not a risk, because its credentials are gone. The worker does not report the resulting "device removed" event while signing out, so it cannot erase twice or tell the person something they did not do.
+
+**Unsent changes.** With the service reachable, signing out sends them first; if that does not finish the person must accept losing them. A local-only account has no other copy and needs a typed confirmation and, where possible, a backup first.
+
+| Threat                                                   | Mitigation                                                                                                                 |
+| -------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| A sign-out is cut short and leaves an account that opens | The note is written first, every step repeats, and every worker call finishes a pending erase before it is answered        |
+| Someone without the password wipes a locked device       | Accepted (above); it needs the typed email, it only destroys, and an account with no service is warned it is the only copy |
+| A stale device stays on the service                      | Best-effort removal; the person is told; its credentials are gone                                                          |
+| The next account inherits the last one's backup history  | The account-tied settings, recents and reminders are reset; an end-to-end test checks storage after sign-out               |
+| Last changes are lost                                    | A final sync before erasing, and an explicit acceptance when it cannot finish                                              |
