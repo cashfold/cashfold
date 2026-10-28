@@ -1,5 +1,6 @@
 import type { Reminder } from '@cashfold/core';
 import { describe, expect, it, vi } from 'vitest';
+import { forgetShownReminders } from './browser';
 import { showDueReminders, SUMMARY_TAG, textFor, type NotifyDeps } from './notify';
 
 const reminder = (key: string, over: Partial<Reminder> = {}): Reminder => ({
@@ -72,3 +73,30 @@ describe('reminder notifications', () => {
     expect(d.remembered).toEqual([]);
   });
 });
+
+describe('forgetting which reminders were shown (spec 011)', () => {
+  const store = (initial: Record<string, string>) => {
+    const data = new Map(Object.entries(initial));
+    return { data, getItem: (k: string) => data.get(k) ?? null, setItem: (k: string, v: string) => void data.set(k, v), removeItem: (k: string) => void data.delete(k) };
+  };
+
+  it('removes the list of shown reminders, which names reminders of the account that is gone', () => {
+    const s = store({ 'cashfold.reminders.shown': '["a","b"]', 'cashfold.reminders.amounts': '1' });
+    forgetShownReminders(s);
+    expect(s.data.has('cashfold.reminders.shown')).toBe(false);
+  });
+
+  it('keeps the device choice to show amounts in reminders', () => {
+    const s = store({ 'cashfold.reminders.shown': '[]', 'cashfold.reminders.amounts': '1' });
+    forgetShownReminders(s);
+    expect(s.getItem('cashfold.reminders.amounts')).toBe('1');
+  });
+
+  it('does nothing when there is nothing, and never throws when storage does', () => {
+    expect(() => forgetShownReminders(store({}))).not.toThrow();
+    const broken = { getItem: () => { throw new Error('blocked'); }, setItem: () => { throw new Error('blocked'); }, removeItem: () => { throw new Error('blocked'); } };
+    expect(() => forgetShownReminders(broken)).not.toThrow();
+    expect(() => forgetShownReminders(undefined)).not.toThrow();
+  });
+});
+

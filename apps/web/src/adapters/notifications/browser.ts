@@ -55,6 +55,15 @@ export function rememberShown(keys: readonly string[]): void {
   }
 }
 
+/** Forgets which reminders were shown, because the list names reminders of an account that has been signed out. The choice to show amounts is the device's and stays. */
+export function forgetShownReminders(storage: Pick<Storage, 'removeItem'> | undefined = typeof localStorage === 'undefined' ? undefined : localStorage): void {
+  try {
+    storage?.removeItem(SHOWN_KEY);
+  } catch {
+    // Without storage there is nothing to forget.
+  }
+}
+
 export function amountsAllowed(): boolean {
   try {
     return localStorage.getItem(AMOUNTS_KEY) === '1';
