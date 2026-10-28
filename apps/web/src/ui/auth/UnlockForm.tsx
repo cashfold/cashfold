@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState, type FormEvent } from 'react';
-import { readPrf } from './webauthn';
 import { useCore, withPasswordBytes } from '../core/CoreProvider';
 import { sessionMarker } from '../core/session-marker';
 import { TextField } from '../forms/TextField';
@@ -32,6 +31,8 @@ export function UnlockForm() {
     setError(undefined);
     setBusy(true);
     try {
+      // Loaded when quick unlock is used: the unlock form is carried by every page, and the passkey code is only needed here.
+      const { readPrf } = await import('./webauthn');
       const prf = await readPrf(navigator.credentials, { ...quick, rpId: location.hostname, rng: { bytes: (n) => crypto.getRandomValues(new Uint8Array(n)) } });
       if (typeof prf === 'string') return setError(prf === 'cancelled' ? undefined : t('quick.failed'));
       const result = await core.call<UnlockResult>('quickUnlock.unlock', { prfOutput: prf, sessionMarker: sessionMarker() });

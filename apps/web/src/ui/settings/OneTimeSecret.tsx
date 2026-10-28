@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, type ReactNode } from 'react';
-import { copyWithAutoClear } from '../emergency-kit/kit';
+import { copyWithAutoClear } from '../emergency-kit/clipboard';
 
 import { useI18n } from '../i18n/I18nProvider';
 import { Button, Checkbox, CheckboxField, Label } from '../kit';

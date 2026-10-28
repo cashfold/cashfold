@@ -1,5 +1,10 @@
-import qrcode from 'qrcode-generator';
 import type { Translate } from '../i18n/i18n';
+import { qrMatrix } from './qr';
+
+// Both are re-exported so this module stays the one place the kit's pieces are named; callers that only need one of them import it directly, because
+// this module carries the QR generator and must be loaded only when a kit is actually made (see actions.ts and QrCode.tsx).
+export { copyWithAutoClear } from './clipboard';
+export { qrMatrix } from './qr';
 
 // The Emergency Kit (FR-003): a printable, self-contained page with the account details and the Secret Key, an empty line
 // for the password, and a QR code that adds another device. It contains no script, no external resource and no link
@@ -21,14 +26,6 @@ export interface KitDetails {
 export function addDeviceUrl(appOrigin: string, kit: Pick<KitDetails, 'email' | 'server' | 'secretKeyText'>): string {
   const fragment = new URLSearchParams({ email: kit.email, server: kit.server, key: kit.secretKeyText });
   return `${appOrigin.replace(/\/$/, '')}/add#${fragment.toString()}`;
-}
-
-export function qrMatrix(text: string): boolean[][] {
-  const qr = qrcode(0, 'M');
-  qr.addData(text, 'Byte');
-  qr.make();
-  const n = qr.getModuleCount();
-  return Array.from({ length: n }, (_, r) => Array.from({ length: n }, (_, c) => qr.isDark(r, c)));
 }
 
 function qrSvg(matrix: boolean[][], label: string): string {
@@ -92,25 +89,4 @@ ${hasService ? `<div class="qr">${qr}<p>${e(t('kit.doc.qr.text'))}</p></div>` : 
 </body>
 </html>
 `;
-}
-
-type ClipboardLike = { writeText(text: string): Promise<void> };
-let latestCopy = 0;
-
-/**
- * Copies on an explicit user action, then overwrites the clipboard after `delayMs` unless something newer was copied here.
- * Returns false (never throws) when the clipboard is unavailable or denied.
- */
-export async function copyWithAutoClear(text: string, delayMs: number, clipboard: ClipboardLike | undefined = typeof navigator === 'undefined' ? undefined : navigator.clipboard): Promise<boolean> {
-  if (clipboard === undefined) return false;
-  try {
-    await clipboard.writeText(text);
-  } catch {
-    return false;
-  }
-  const mine = ++latestCopy;
-  setTimeout(() => {
-    if (mine === latestCopy) void clipboard.writeText('').catch(() => undefined);
-  }, delayMs);
-  return true;
 }
