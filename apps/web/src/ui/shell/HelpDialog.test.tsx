@@ -71,3 +71,15 @@ describe('getting started in the help dialog', () => {
     expect(html).not.toContain(ENGLISH['help.start.done']);
   });
 });
+
+describe('getting started in the help dialog for an account kept only on this device (spec 010)', () => {
+  const three = { folds: 1, accounts: 1, transactions: 1 };
+
+  it('still offers the card while the backup is not made, and says it is finished after', () => {
+    const html = (backedUp: boolean) => render('darwin', checklistStatus({ ...three, local: true, backedUp }));
+    expect(html(false)).toContain(ENGLISH['help.start.show']);
+    expect(html(false)).not.toContain(ENGLISH['help.start.done']);
+    expect(html(true)).toContain(ENGLISH['help.start.done']);
+  });
+});
+
