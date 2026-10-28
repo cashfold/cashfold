@@ -18,6 +18,7 @@ test.describe('@i18n direction and formatting', () => {
     await page.getByLabel('Email address', { exact: true }).fill('alice@example.com');
     await page.getByLabel('Password', { exact: true }).fill(PASSWORD);
     await page.getByLabel('Repeat password').fill(PASSWORD);
+    await page.getByLabel('Keep everything on this device for now').uncheck();
     await page.getByLabel('Service address').fill('https://relay.example.com');
     await page.getByRole('button', { name: 'Create account' }).click();
     await expect(page.getByTestId('secret-key')).toBeVisible({ timeout: 60_000 });

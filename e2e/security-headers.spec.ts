@@ -142,6 +142,7 @@ test.describe('@security the app under that policy', () => {
     await page.getByLabel('Email address', { exact: true }).fill(`csp+${Date.now().toString(36)}@example.com`);
     await page.getByLabel('Password', { exact: true }).fill(PASSWORD);
     await page.getByLabel('Repeat password').fill(PASSWORD);
+    await page.getByLabel('Keep everything on this device for now').uncheck();
     await page.getByLabel('Service address').fill(RELAY);
     await page.getByRole('button', { name: 'Create account' }).click();
     await expect(page.getByTestId('secret-key')).toBeVisible({ timeout: 90_000 });

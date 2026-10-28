@@ -15,6 +15,7 @@ async function signUp(page: Page, server = RELAY): Promise<void> {
   await page.getByLabel('Email address', { exact: true }).fill(`tab+${unique()}@example.com`);
   await page.getByLabel('Password', { exact: true }).fill(PASSWORD);
   await page.getByLabel('Repeat password').fill(PASSWORD);
+  await page.getByLabel('Keep everything on this device for now').uncheck();
   await page.getByLabel('Service address').fill(server);
   await page.getByRole('button', { name: 'Create account' }).click();
   await expect(page.getByTestId('secret-key')).toBeVisible({ timeout: 90_000 });

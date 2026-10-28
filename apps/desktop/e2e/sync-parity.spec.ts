@@ -14,6 +14,7 @@ async function signUpOnWeb(page: Page, email: string, relay: string, web: string
   await page.getByLabel('Email address', { exact: true }).fill(email);
   await page.getByLabel('Password', { exact: true }).fill(PASSWORD);
   await page.getByLabel('Repeat password').fill(PASSWORD);
+  await page.getByLabel('Keep everything on this device for now').uncheck();
   await page.getByLabel('Service address').fill(relay);
   await page.getByRole('button', { name: 'Create account' }).click();
   const secret = page.getByTestId('secret-key');
