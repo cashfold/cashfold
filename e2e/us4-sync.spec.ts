@@ -74,8 +74,13 @@ async function signUp(page: Page, email: string, server = RELAY): Promise<string
 
 async function addAccount(page: Page, name: string, opening = '100.00'): Promise<void> {
   await go(page, 'Accounts');
-  await page.getByRole('button', { name: 'Add account', exact: true }).click();
   const dialog = page.getByRole('dialog');
+  // A click that lands before the screen is ready is swallowed, so it is repeated until the dialog is open (as openAddTransaction does) instead of
+  // waiting out the test timeout for a dialog that will never come.
+  await expect(async () => {
+    if ((await dialog.count()) === 0) await page.getByRole('button', { name: 'Add account', exact: true }).click({ timeout: 5_000 });
+    await expect(dialog).toHaveCount(1, { timeout: 3_000 });
+  }).toPass({ timeout: 30_000 });
   await dialog.getByLabel('Name', { exact: true }).fill(name);
   await dialog.getByLabel('Opening balance (USD)').fill(opening);
   await dialog.getByRole('button', { name: 'Create account' }).click();
