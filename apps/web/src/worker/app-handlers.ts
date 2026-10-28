@@ -1,7 +1,7 @@
 import {
-  createAccount, createCategoryCommands, recoverAccount, createMaterialiser, createDeviceManager, createEmailVerification, createFoldCommands, createQuickUnlock, createRefreshRates, createSession, describeFoldDeletion, DEFAULT_LOCK_POLICY, newIdV4, registerExisting, signInOnNewDevice, unlock,
+  createAccount, createCategoryCommands, createSignOut, recoverAccount, createMaterialiser, createDeviceManager, createEmailVerification, createFoldCommands, createQuickUnlock, createRefreshRates, createSession, describeFoldDeletion, DEFAULT_LOCK_POLICY, newIdV4, registerExisting, signInOnNewDevice, unlock,
   parseSettings, toLockPolicy, type AccountCryptoPort, type CredentialChangeCryptoPort, type CredentialStorePort, type MigrationCryptoPort, type RecoveryCryptoPort, type DeviceLabelPort, type DeviceSettings, type DeviceSettingsPort, type EnrolCryptoPort, type Id, type LockPolicy, type QuickUnlockCryptoPort, type QuickUnlockStorePort,
-  type AccountIdentity, type RatesSourcePort, type RegisterExistingCryptoPort, type RegistrationPort, type RelayAuthPort, type Session, type SessionPort, type UnlockCryptoPort,
+  type AccountIdentity, type LocalEraserPort, type PendingEraseMarkerPort, type RatesSourcePort, type RegisterExistingCryptoPort, type RegistrationPort, type RelayAuthPort, type Session, type SessionPort, type UnlockCryptoPort,
 } from '@cashfold/core';
 import { SecretBuf } from '@cashfold/crypto';
 import { createWebSession } from '../adapters/sqlite-opfs/web-session';
@@ -12,6 +12,7 @@ import { createWebAttachmentTransport } from '../adapters/transport/attachment-t
 import { createAccountHandlers } from './account-handlers';
 import { createLedgerHandlers } from './ledger-handlers';
 import { createSharingHandlers } from './sharing-handlers';
+import { createSignOutGuard } from './sign-out-guard';
 import { createFoldGrantPort } from '../adapters/transport/fold-grants';
 import { createSyncService, type SyncIdentity, type SyncService, type SyncSession } from './sync-service';
 import { RpcError, type Handlers } from './rpc';
@@ -47,6 +48,9 @@ export interface AppHandlerDeps {
   /** Erases this device's database. Used when the device is removed from the account. */
   readonly eraseLocalData?: () => Promise<void>;
   readonly syncTimers?: { set(fn: () => void, ms: number): unknown; clear(handle: unknown): void };
+  /** Sign-out (spec 011): the note that one has started, and the eraser that clears the pool, the credentials and what in the settings belongs to the account. Without them there is no sign-out. */
+  readonly pendingErase?: PendingEraseMarkerPort;
+  readonly localEraser?: LocalEraserPort;
 }
 
 export type Phase = 'no_account' | 'locked' | 'unlocked';
@@ -71,11 +75,16 @@ export function createAppHandlers(deps: AppHandlerDeps): AppRuntime {
   /** This account's keys for sharing: valid only while unlocked (the secrets are wiped with the session). */
   let sharingIdentity: AccountIdentity | undefined;
   const publishEvent = (event: { readonly type: string; readonly [key: string]: unknown }): void => (deps.publish ?? (() => undefined))(event);
+  /** Stops syncing and closes the open database. Safe to run twice. A sign-out calls it before it erases, because an open database blocks the erase. */
+  async function closeOpen(): Promise<void> {
+    sync?.stop();
+    sharingIdentity = undefined;
+    await webSession?.stop();
+  }
+  const signOutGuard = createSignOutGuard();
   const session = createSession({
     closeDatabase: async () => {
-      sync?.stop();
-      sharingIdentity = undefined;
-      await webSession?.stop();
+      await closeOpen();
       await quickHolder.quick?.markLocked().catch(() => undefined); // the inactivity period for quick unlock runs from here
     },
     terminateWorker: deps.onLocked,
@@ -127,6 +136,13 @@ export function createAppHandlers(deps: AppHandlerDeps): AppRuntime {
 
   /** Erases what this device holds: credentials, quick unlock, the database file. Then locks. */
   async function eraseEverything(): Promise<void> {
+    if (deps.localEraser !== undefined) {
+      // Removal of this device and "Delete my account" erase as completely as a sign-out does: the pool, the credentials, and what in the settings is the account's.
+      await closeOpen();
+      await deps.localEraser.eraseAll().catch(() => undefined);
+      await session.lock();
+      return;
+    }
     await deps.credentials.clear().catch(() => undefined);
     await deps.quickStore.clear().catch(() => undefined);
     try {
@@ -184,6 +200,8 @@ export function createAppHandlers(deps: AppHandlerDeps): AppRuntime {
         },
       },
       publish: (event) => {
+        // Removing this device from the service while signing out raises DeviceRemoved: that must neither erase again nor say "this device was removed".
+        if (signOutGuard.ignores(event.type)) return;
         publish(event);
         if (event.type === 'RemoteChanged' && typeof event['fold'] === 'string') void materialise(event['fold'] as Id);
         // A device that has been removed from the account erases what it holds (FR-010): nothing more syncs, and nothing stays.
@@ -241,6 +259,39 @@ export function createAppHandlers(deps: AppHandlerDeps): AppRuntime {
     return createEmailVerification({ link: () => sync?.link(), confirm: (token) => (deps.confirmEmail ? deps.confirmEmail(id.server, token) : Promise.resolve({ ok: false as const, kind: 'offline' })) });
   };
 
+  // Signing out (spec 011). The core use case owns the order of the steps; this wires it to the worker.
+  const signOutService =
+    deps.pendingErase === undefined || deps.localEraser === undefined
+      ? undefined
+      : createSignOut({
+          marker: deps.pendingErase, eraser: deps.localEraser, credentials: deps.credentials,
+          // Locking ends the worker, which would drop the reply that tells the page whether the device may stay listed. Everything is already erased by now,
+          // so the lock waits a moment and the reply goes first.
+          session: { lock: async () => void setTimeout(() => void session.lock().catch(() => undefined), 100) },
+          isUnlocked: () => webSession?.current() !== undefined && session.state() === 'unlocked',
+          closeDatabase: closeOpen,
+          afterErase: () => publishEvent({ type: 'SignedOut' }),
+          timers: deps.syncTimers ?? { set: (fn, ms) => setTimeout(fn, ms), clear: (handle) => clearTimeout(handle as ReturnType<typeof setTimeout>) },
+          // Removing this device from the service's list needs the signed-in link; without one (offline, never registered) it simply is not done.
+          revokeThisDevice: async () => {
+            if (identity === undefined || deps.deviceLabels === undefined || sync?.link() === undefined) return false;
+            const done = await createDeviceManager({ link: () => sync?.link(), labels: deps.deviceLabels, account: identity.account, thisDevice: sessionDeviceId() }).revoke(sessionDeviceId());
+            return done.ok;
+          },
+        });
+  const needSignOut = () => {
+    if (signOutService === undefined) throw new RpcError('RpcError', 'sync_unavailable');
+    return signOutService;
+  };
+  // A sign-out that was cut short is finished before any call is answered, so no call can act on a half-erased account.
+  let finishing: Promise<boolean> | undefined;
+  let finishedUnreported = false;
+  const ensureFinished = (): Promise<boolean> =>
+    (finishing ??= (signOutService?.finishPendingErase() ?? Promise.resolve(false)).then((did) => {
+      if (did) finishedUnreported = true;
+      return did;
+    }));
+
   const handlers: Handlers = {
     ...ledger,
     ...sharingHandlers,
@@ -264,11 +315,31 @@ export function createAppHandlers(deps: AppHandlerDeps): AppRuntime {
       return s.commandBus.execute(attachmentsFor().removeAttachment, args);
     },
     async status() {
+      await ensureFinished();
+      const finishedSignOut = finishedUnreported ? { finishedSignOut: true as const } : {}; // told once, so the page resets what is its own
+      finishedUnreported = false;
       const stored = await deps.credentials.load();
       const phase: Phase = stored === undefined ? 'no_account' : webSession?.current() !== undefined && session.state() === 'unlocked' ? 'unlocked' : 'locked';
       return stored === undefined
-        ? { phase }
-        : { phase, email: stored.email, accountId: stored.accountId, server: stored.server, registration: stored.registration };
+        ? { phase, ...finishedSignOut }
+        : { phase, email: stored.email, accountId: stored.accountId, server: stored.server, registration: stored.registration, ...finishedSignOut };
+    },
+
+    /** Leaves the account on this device (spec 011). The app must be unlocked. */
+    async 'account.signOut'(args?: { leaveService?: boolean }) {
+      const service = needSignOut();
+      signOutGuard.begin();
+      try {
+        return await service.signOut(args?.leaveService === undefined ? {} : { leaveService: args.leaveService });
+      } finally {
+        signOutGuard.end();
+      }
+    },
+
+    /** From the lock screen: the account's own email address stands in for the password, which the person may not have. */
+    async 'account.signOutLocked'(args: { email: string }) {
+      if (typeof args?.email !== 'string') throw new RpcError('TypeError', 'bad_argument');
+      return needSignOut().signOutLocked({ email: args.email });
     },
 
     async createAccount(args: { email: string; password: Uint8Array; server?: string; discoverable?: boolean; foldName?: string; baseCurrency?: string; categoryNames?: Record<string, string> }) {
@@ -520,5 +591,8 @@ export function createAppHandlers(deps: AppHandlerDeps): AppRuntime {
     },
   };
 
-  return { handlers, session };
+  const guarded = Object.fromEntries(
+    Object.entries(handlers).map(([name, handler]) => [name, ((...args: unknown[]) => ensureFinished().then(() => (handler as (...a: unknown[]) => unknown)(...args))) as typeof handler]),
+  ) as Handlers;
+  return { handlers: guarded, session };
 }
