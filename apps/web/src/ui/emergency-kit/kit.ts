@@ -8,6 +8,7 @@ import type { Translate } from '../i18n/i18n';
 export interface KitDetails {
   readonly accountId: string;
   readonly email: string;
+  /** The service address. Empty for an account kept only on this device: the kit then has no service line and no add-device link. */
   readonly server: string;
   readonly secretKeyText: string;
   /** ISO date shown on the page. */
@@ -51,7 +52,9 @@ export interface KitLanguage {
 export function buildEmergencyKitHtml(kit: KitDetails, appOrigin: string, language: KitLanguage): string {
   const e = escapeHtml;
   const { t } = language;
-  const qr = qrSvg(qrMatrix(addDeviceUrl(appOrigin, kit)), t('kit.doc.qr.label'));
+  const hasService = kit.server !== '';
+  // Without a service there is nothing to add another device to, so no link is made at all.
+  const qr = hasService ? qrSvg(qrMatrix(addDeviceUrl(appOrigin, kit)), t('kit.doc.qr.label')) : '';
   return `<!doctype html>
 <html lang="${e(language.locale)}" dir="${language.dir}">
 <head>
@@ -77,7 +80,7 @@ export function buildEmergencyKitHtml(kit: KitDetails, appOrigin: string, langua
 <dl>
   <dt>${e(t('kit.doc.accountId'))}</dt><dd>${e(kit.accountId)}</dd>
   <dt>${e(t('kit.doc.email'))}</dt><dd>${e(kit.email)}</dd>
-  <dt>${e(t('kit.doc.service'))}</dt><dd>${e(kit.server)}</dd>
+  <dt>${e(t('kit.doc.service'))}</dt><dd>${e(hasService ? kit.server : t('kit.doc.local'))}</dd>
   <dt>${e(t('kit.doc.secretKey'))}</dt><dd class="secret">${e(kit.secretKeyText)}</dd>
   <dt>${e(t('kit.doc.password'))}</dt><dd><span class="blank">________________</span> ${e(t('kit.doc.passwordNote'))}</dd>
 </dl>
@@ -85,7 +88,7 @@ export function buildEmergencyKitHtml(kit: KitDetails, appOrigin: string, langua
   <p><strong>${e(t('kit.doc.warning.strong'))}</strong> ${e(t('kit.doc.warning.rest'))}</p>
   <p>${e(t('kit.doc.warning.lost'))}</p>
 </div>
-<div class="qr">${qr}<p>${e(t('kit.doc.qr.text'))}</p></div>
+${hasService ? `<div class="qr">${qr}<p>${e(t('kit.doc.qr.text'))}</p></div>` : ''}
 </body>
 </html>
 `;

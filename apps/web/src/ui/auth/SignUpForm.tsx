@@ -10,6 +10,7 @@ import { useI18n } from '../i18n/I18nProvider';
 import { ServerAddress } from '../settings/ServerAddress';
 import { starterCategoryNames, starterFoldName } from '../i18n/starter-names';
 import { SecretKeyScreen, type CreatedAccount } from './SecretKeyScreen';
+import { missingAddress, serverToSend, startsLocalOnly } from './sign-up-choice';
 import { Button, Checkbox, CheckboxField, Label } from '../kit';
 
 const DEFAULT_SERVER = process.env['NEXT_PUBLIC_DEFAULT_SERVER'] ?? '';
@@ -24,6 +25,8 @@ export function SignUpForm() {
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [server, setServer] = useState(DEFAULT_SERVER);
+  // Spec 010: a build with no default service starts on keeping everything on this device; one with a default service starts as before.
+  const [localOnly, setLocalOnly] = useState(startsLocalOnly(DEFAULT_SERVER));
   const [discoverable, setDiscoverable] = useState(true);
   const [busy, setBusy] = useState(false);
   const [errors, setErrors] = useState<Partial<Record<'email' | 'password' | 'confirm' | 'server' | 'form', string>>>({});
@@ -34,14 +37,16 @@ export function SignUpForm() {
   async function submit(event: FormEvent) {
     event.preventDefault();
     if (password !== confirm) return setErrors({ confirm: t('signup.error.mismatch') });
+    if (missingAddress(localOnly, server)) return setErrors({ server: t('signup.error.invalid_server') });
     setBusy(true);
     setErrors({});
+    const sent = serverToSend(localOnly, server);
     try {
-      const result = await withPasswordBytes(password, (bytes) => core.call<CreateResult>('createAccount', { email, password: bytes, server, discoverable, foldName: starterFoldName(t), categoryNames: starterCategoryNames(t) }));
+      const result = await withPasswordBytes(password, (bytes) => core.call<CreateResult>('createAccount', { email, password: bytes, server: sent, ...(localOnly ? {} : { discoverable }), foldName: starterFoldName(t), categoryNames: starterCategoryNames(t) }));
       if (result.ok) {
         setPassword('');
         setConfirm('');
-        setCreated({ account: result.value, email, server });
+        setCreated({ account: result.value, email, server: sent });
         return;
       }
       const code = result.error.code;
@@ -79,7 +84,7 @@ export function SignUpForm() {
       <h1 className="text-2xl font-semibold">{t('page.signUp.title')}</h1>
       <p className="mt-3 text-muted">{t('signup.lede')}</p>
       <form onSubmit={submit} noValidate aria-busy={busy}>
-        <TextField label={t('signup.email.label')} type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} error={errors.email} />
+        <TextField label={t('signup.email.label')} type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} error={errors.email} {...(localOnly ? { hint: t('signup.email.localHint') } : {})} />
         <TextField
           label={t('signup.password.label')} type="password" autoComplete="new-password" required value={password} onChange={(e) => setPassword(e.target.value)}
           hint={t('signup.password.hint')} error={errors.password}
@@ -96,10 +101,17 @@ export function SignUpForm() {
           </div>
         ) : null}
         <TextField label={t('signup.confirm.label')} type="password" autoComplete="new-password" required value={confirm} onChange={(e) => setConfirm(e.target.value)} error={errors.confirm} />
-        <ServerAddress value={server} onChange={setServer} error={errors.server} />
         <div className="mt-4">
-          <CheckboxField><Checkbox checked={discoverable} onChange={(checked) => setDiscoverable(checked)} /><Label>{t('signup.discoverable.label')}<span className="block text-sm text-muted">{t('signup.discoverable.hint')}</span></Label></CheckboxField>
+          <CheckboxField><Checkbox checked={localOnly} onChange={(checked) => setLocalOnly(checked)} /><Label>{t('signup.local.label')}<span className="block text-sm text-muted">{t('signup.local.hint')}</span></Label></CheckboxField>
         </div>
+        {localOnly ? null : (
+          <>
+            <ServerAddress value={server} onChange={setServer} error={errors.server} />
+            <div className="mt-4">
+              <CheckboxField><Checkbox checked={discoverable} onChange={(checked) => setDiscoverable(checked)} /><Label>{t('signup.discoverable.label')}<span className="block text-sm text-muted">{t('signup.discoverable.hint')}</span></Label></CheckboxField>
+            </div>
+          </>
+        )}
         {errors.form ? <p role="alert" className="mt-4 text-danger">{errors.form}</p> : null}
         <Button className="mt-6" type="submit" disabled={busy}>{busy ? t('signup.working') : t('signup.submit')}</Button>
       </form>
