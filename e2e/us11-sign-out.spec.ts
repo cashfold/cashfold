@@ -364,6 +364,8 @@ test.describe('@us11 sign out and switch account', () => {
     await dialog.getByLabel(/^Type /).fill(address);
     await expect(confirmButton(dialog)).toBeEnabled();
     await dialog.getByRole('button', { name: 'Cancel' }).click();
+    // The rest of the page is inert until the dialog has finished leaving; a click on Unlock before then is swallowed.
+    await expect(page.getByRole('dialog')).toHaveCount(0);
     // nothing was erased: the password still opens it
     await page.getByLabel('Password', { exact: true }).fill(PASSWORD);
     await page.getByRole('button', { name: 'Unlock' }).click();
