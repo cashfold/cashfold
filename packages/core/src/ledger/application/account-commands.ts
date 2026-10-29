@@ -7,16 +7,18 @@ import {
   type Account, type AccountChanges, type AccountError, type AccountFields, type NewAccountInput,
 } from '../domain/account';
 import { GOAL_FIELD, GROUP_FIELD, ACCOUNT_FIELD, TABLE, TRANSFER_FIELD, TXN_FIELD } from '../domain/tables';
-import { addMembers, removeMembers } from '../domain/sets';
+import { addMembers, removeMembers, setTo } from '../domain/sets';
 import { compareText, maxOf } from '../domain/util';
+import { sameLabel } from './category-commands';
 import { loadAccount, loadLedger, noSets, type NotFound } from './context';
 
 export type AccountExists = DomainError<'account_exists'>;
 export type OpeningDateError = DomainError<'opening_date_after_entries'>;
-export type GroupError = DomainError<'invalid_group_name' | 'group_exists' | 'unknown_group'>;
+export type GroupError = DomainError<'invalid_group_name' | 'group_exists' | 'group_name_taken' | 'unknown_group'>;
 export type ConfirmationRequired = DomainError<'confirmation_required'>;
 
 const MAX_GROUP_NAME = 80;
+const GROUP_NAME_TAKEN = 'A group with this name already exists';
 
 /** The fields of `next` that differ from `current`: only changes are written, so concurrent edits to other fields survive. */
 function changedOnly(current: AccountFields, next: AccountFields): Partial<AccountFields> {
@@ -97,6 +99,7 @@ export function createAccountCommands() {
       if (name === undefined) return err('invalid_group_name', 'A group name has 1 to 80 characters');
       if ((await ctx.reader.getRecord(c.fold, c.id)) !== undefined) return err('group_exists', 'A group with this id already exists');
       const ledger = await loadLedger(ctx, c.fold);
+      if ([...ledger.groups.values()].some((g) => sameLabel(g.name, name))) return err('group_name_taken', GROUP_NAME_TAKEN);
       const fields = new Map<number, FieldValue>([
         [GROUP_FIELD.name, name], [GROUP_FIELD.icon, c.icon ?? null], [GROUP_FIELD.color, BigInt(c.color ?? 0)],
         [GROUP_FIELD.sortOrder, BigInt(maxOf([...ledger.groups.values()].map((g) => g.sortOrder), -1) + 1)],
@@ -118,6 +121,8 @@ export function createAccountCommands() {
       if (c.name !== undefined) {
         const name = cleanName(c.name, MAX_GROUP_NAME);
         if (name === undefined) return err('invalid_group_name', 'A group name has 1 to 80 characters');
+        const ledger = await loadLedger(ctx, c.fold);
+        if ([...ledger.groups.values()].some((g) => g.id !== c.id && sameLabel(g.name, name))) return err('group_name_taken', GROUP_NAME_TAKEN);
         fields.set(GROUP_FIELD.name, name);
       }
       if (c.icon !== undefined) fields.set(GROUP_FIELD.icon, c.icon);
@@ -168,6 +173,26 @@ export function createAccountCommands() {
     },
   };
 
+  /** Moves an account into one group, or out of its groups, in a single write (it also tidies an account that was in several). */
+  const moveAccountToGroup: CommandDef<{ fold: Id; account: Id; group: Id | null }, true, GroupError | NotFound> = {
+    name: 'moveAccountToGroup',
+    requires: 'editor',
+    foldOf: (c) => c.fold,
+    async handle(c, ctx) {
+      const account = await loadAccount(ctx, c.fold, c.account);
+      if (!account.ok) return account;
+      if (c.group !== null) {
+        const group = await ctx.reader.getRecord(c.fold, c.group);
+        if (group === undefined || group.table !== TABLE.accountGroup || !isVisible(group)) return err('unknown_group', 'That group does not exist');
+      }
+      const state = await ctx.reader.getRecord(c.fold, c.account);
+      const sets = new Map([[ACCOUNT_FIELD.groupIds, setTo(state, ACCOUNT_FIELD.groupIds, c.group === null ? [] : [c.group])]]);
+      const written = await ctx.submit([{ fold: c.fold, rec: c.account, table: TABLE.account, fields: new Map<number, FieldValue>(), sets }]);
+      if (!written.ok) return written as never;
+      return ok(true as const);
+    },
+  };
+
   // ---- deletion
 
   const deleteLedgerAccount: CommandDef<{ fold: Id; id: Id; confirm: boolean }, DeletionSummary, NotFound | ConfirmationRequired> = {
@@ -201,7 +226,7 @@ export function createAccountCommands() {
     },
   };
 
-  return { createAccountRecord, updateAccount, archiveAccount, createAccountGroup, updateAccountGroup, deleteAccountGroup, groupAccounts, deleteLedgerAccount, describeAccountDeletion };
+  return { createAccountRecord, updateAccount, archiveAccount, createAccountGroup, updateAccountGroup, deleteAccountGroup, groupAccounts, moveAccountToGroup, deleteLedgerAccount, describeAccountDeletion };
 }
 
 /** What deleting an account removes, for the warning that precedes it (FR-027). */

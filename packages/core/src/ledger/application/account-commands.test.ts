@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { id, ledgerHarness, date, type LedgerHarness } from '../../testing/index';
+import type { FieldValue } from '../../sync/domain/merge';
+import { GROUP_FIELD, TABLE } from '../domain/tables';
 import { createAccountCommands } from './account-commands';
 import { createTransactionCommands } from './transaction-commands';
 
@@ -146,6 +148,123 @@ describe('groups', () => {
   it('renames and orders a group', async () => {
     await h.run(accounts.updateAccountGroup, { fold: h.fold, id: id(70), name: 'Banks', sortOrder: 5 });
     expect((await h.ledger()).groups.get(id(70))).toMatchObject({ name: 'Banks', sortOrder: 5 });
+  });
+});
+
+describe('moveAccountToGroup', () => {
+  beforeEach(async () => {
+    await h.run(accounts.createAccountRecord, newAccount(1));
+    await h.run(accounts.createAccountRecord, newAccount(2));
+    await h.run(accounts.createAccountGroup, { fold: h.fold, id: id(70), name: 'Cash' });
+    await h.run(accounts.createAccountGroup, { fold: h.fold, id: id(71), name: 'Savings' });
+  });
+  const groupsOf = async (n: number) => (await h.ledger()).accounts.get(id(n))!.groupIds;
+
+  it('puts an account with no group into the group, exactly', async () => {
+    expect((await h.run(accounts.moveAccountToGroup, { fold: h.fold, account: id(1), group: id(70) })).ok).toBe(true);
+    expect(await groupsOf(1)).toEqual([id(70)]);
+  });
+
+  it('takes it out of the first group when it moves to another', async () => {
+    await h.run(accounts.moveAccountToGroup, { fold: h.fold, account: id(1), group: id(70) });
+    await h.run(accounts.moveAccountToGroup, { fold: h.fold, account: id(1), group: id(71) });
+    expect(await groupsOf(1)).toEqual([id(71)]);
+    expect(await groupsOf(2)).toEqual([]);
+  });
+
+  it('empties the groups for null', async () => {
+    await h.run(accounts.moveAccountToGroup, { fold: h.fold, account: id(1), group: id(70) });
+    await h.run(accounts.moveAccountToGroup, { fold: h.fold, account: id(1), group: null });
+    expect(await groupsOf(1)).toEqual([]);
+  });
+
+  it('leaves an account that was in two groups in exactly one', async () => {
+    await h.run(accounts.groupAccounts, { fold: h.fold, group: id(70), accounts: [id(1)], member: true });
+    await h.run(accounts.groupAccounts, { fold: h.fold, group: id(71), accounts: [id(1)], member: true });
+    expect(await groupsOf(1)).toHaveLength(2);
+    await h.run(accounts.moveAccountToGroup, { fold: h.fold, account: id(1), group: id(71) });
+    expect(await groupsOf(1)).toEqual([id(71)]);
+  });
+
+  it('is one submitted write, not two', async () => {
+    await h.run(accounts.moveAccountToGroup, { fold: h.fold, account: id(1), group: id(70) });
+    const before = (await h.replica.oplog.list(h.fold)).length;
+    await h.run(accounts.moveAccountToGroup, { fold: h.fold, account: id(1), group: id(71) });
+    expect((await h.replica.oplog.list(h.fold)).length - before).toBe(1);
+  });
+
+  it('refuses an unknown or deleted group, and an unknown account, writing nothing', async () => {
+    await h.run(accounts.deleteAccountGroup, { fold: h.fold, id: id(71) });
+    const before = (await h.replica.oplog.list(h.fold)).length;
+    expect(await h.run(accounts.moveAccountToGroup, { fold: h.fold, account: id(1), group: id(99) })).toMatchObject({ ok: false, error: { code: 'unknown_group' } });
+    expect(await h.run(accounts.moveAccountToGroup, { fold: h.fold, account: id(1), group: id(71) })).toMatchObject({ ok: false, error: { code: 'unknown_group' } });
+    expect(await h.run(accounts.moveAccountToGroup, { fold: h.fold, account: id(98), group: id(70) })).toMatchObject({ ok: false, error: { code: 'not_found' } });
+    expect((await h.replica.oplog.list(h.fold)).length).toBe(before);
+  });
+
+  it('is an editor action: a viewer is refused', async () => {
+    h.setRole('viewer');
+    expect(await h.run(accounts.moveAccountToGroup, { fold: h.fold, account: id(1), group: id(70) })).toMatchObject({ ok: false, error: { code: 'permission_denied' } });
+  });
+});
+
+describe('group names', () => {
+  const create = (n: number, name: string) => h.run(accounts.createAccountGroup, { fold: h.fold, id: id(n), name });
+  const rename = (n: number, name: string) => h.run(accounts.updateAccountGroup, { fold: h.fold, id: id(n), name });
+  const count = async () => (await h.replica.oplog.list(h.fold)).length;
+
+  it('refuses a name another live group has, ignoring case, accents and surrounding spaces, and writes nothing', async () => {
+    await create(70, 'Household');
+    await create(71, 'Café');
+    const before = await count();
+    for (const name of ['  household ', 'Household', 'HOUSEHOLD', 'Cafe']) {
+      expect(await create(72, name), name).toMatchObject({ ok: false, error: { code: 'group_name_taken' } });
+    }
+    expect(await count()).toBe(before);
+  });
+
+  it('refuses names in Cyrillic and Polish that differ only by case, and accepts ones that differ in letters', async () => {
+    await create(70, 'Заощадження');
+    await create(71, 'Oszczędności');
+    expect(await create(72, 'заощадження')).toMatchObject({ ok: false, error: { code: 'group_name_taken' } });
+    expect(await create(73, 'oszczędności')).toMatchObject({ ok: false, error: { code: 'group_name_taken' } });
+    expect((await create(74, 'Заощадженн')).ok).toBe(true);
+    expect((await create(75, 'Oszczednosc')).ok).toBe(true);
+  });
+
+  it('accepts a free name of 1 to 80 characters and still refuses an empty or 81-character name', async () => {
+    expect((await create(70, 'x')).ok).toBe(true);
+    expect((await create(71, 'y'.repeat(80))).ok).toBe(true);
+    expect(await create(72, '')).toMatchObject({ ok: false, error: { code: 'invalid_group_name' } });
+    expect(await create(73, 'z'.repeat(81))).toMatchObject({ ok: false, error: { code: 'invalid_group_name' } });
+  });
+
+  it('refuses renaming to another group\'s name', async () => {
+    await create(70, 'One');
+    await create(71, 'Two');
+    expect(await rename(71, ' one')).toMatchObject({ ok: false, error: { code: 'group_name_taken' } });
+  });
+
+  it('allows renaming a group to its own name, in another case or with extra spaces', async () => {
+    await create(70, 'Household');
+    for (const name of ['Household', 'household', '  Household  ', 'HOUSEHOLD']) expect((await rename(70, name)).ok, name).toBe(true);
+    expect((await h.ledger()).groups.get(id(70))!.name).toBe('HOUSEHOLD');
+  });
+
+  it('frees the name of a deleted group', async () => {
+    await create(70, 'Old');
+    await h.run(accounts.deleteAccountGroup, { fold: h.fold, id: id(70) });
+    expect((await create(71, 'old')).ok).toBe(true);
+  });
+
+  it('leaves groups that already share a name alone: both can be renamed away, and one may keep the shared name only as itself', async () => {
+    // Old data: write two groups with one name straight to the records, as earlier versions allowed.
+    const dup = (n: number) => h.replica.writePath.submit({ fold: h.fold, rec: id(n), table: TABLE.accountGroup, fields: new Map<number, FieldValue>([[GROUP_FIELD.name, 'Twin'], [GROUP_FIELD.icon, null], [GROUP_FIELD.color, 0n], [GROUP_FIELD.sortOrder, BigInt(n)]]), sets: new Map() });
+    await dup(70);
+    await dup(71);
+    expect(await rename(70, 'Twin')).toMatchObject({ ok: false, error: { code: 'group_name_taken' } });
+    expect((await rename(70, 'First')).ok).toBe(true);
+    expect((await rename(71, 'Second')).ok).toBe(true);
   });
 });
 

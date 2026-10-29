@@ -105,6 +105,18 @@ describe('a local-only account on the real encrypted database (spec 010)', () =>
   });
 });
 
+describe('moving an account between groups on the real database (spec 012)', () => {
+  it('sets the account\'s groups to exactly the chosen one in a single call, refuses a deleted group, and refuses a taken name', async () => {
+    const r = await run('groupMove');
+    const ids = r['ids'] as { first: string; second: string };
+    expect(r['name']).toEqual({ ok: false, error: expect.objectContaining({ code: 'group_name_taken' }) });
+    expect(r['intoFirst']).toEqual([true, [ids.first]]);
+    expect(r['intoSecond']).toEqual([true, [ids.second]]);
+    expect(r['out']).toEqual([true, []]);
+    expect(r['toDeleted']).toEqual([{ ok: false, error: expect.objectContaining({ code: 'unknown_group' }) }, []]);
+  });
+});
+
 describe('the local eraser on the real pool (spec 011)', () => {
   it('removes every file, leaves nothing readable in the slots, clears what belongs to the account, and keeps the lock policy', async () => {
     const r = await run('localErase');

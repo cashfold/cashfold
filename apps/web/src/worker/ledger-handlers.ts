@@ -47,6 +47,7 @@ export function createLedgerHandlers({ open, clock, rng }: LedgerHandlerDeps): H
     'ledger.updateGroup': { def: accounts.updateAccountGroup as unknown as AnyCommand },
     'ledger.deleteGroup': { def: accounts.deleteAccountGroup as unknown as AnyCommand },
     'ledger.groupAccounts': { def: accounts.groupAccounts as unknown as AnyCommand },
+    'ledger.moveAccountToGroup': { def: accounts.moveAccountToGroup as unknown as AnyCommand },
     'ledger.createCategory': { def: categories.createCategory as unknown as AnyCommand, mint },
     'ledger.updateCategory': { def: categories.updateCategory as unknown as AnyCommand },
     'ledger.moveCategory': { def: categories.moveCategory as unknown as AnyCommand },

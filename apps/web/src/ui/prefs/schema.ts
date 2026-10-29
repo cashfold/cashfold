@@ -5,6 +5,8 @@ export type PeriodKind = 'thisMonth' | 'lastMonth' | 'thisYear' | 'lastYear' | '
 export type PeriodChoice = { kind: PeriodKind } | { kind: 'custom'; from: string; to: string };
 export type OverviewSectionId = 'category' | 'tag' | 'trend' | 'balance' | 'accounts';
 export type PlanView = 'budgets' | 'goals' | 'schedules';
+/** `auto` is "never chosen": the Accounts page opens by group once an account is in a group. */
+export type AccountsViewChoice = 'auto' | 'group' | 'type';
 /** `auto` follows the browser's languages; the others are the person's own choice. */
 export const LANGUAGE_CHOICES = ['auto', 'en', 'uk', 'pl'] as const;
 export type LanguageChoice = (typeof LANGUAGE_CHOICES)[number];
@@ -20,7 +22,7 @@ export interface Prefs {
   recents: { account: Record<string, string>; categories: Record<string, string[]> };
   hints: { dismissed: string[] };
   firstRun: { dismissed: boolean };
-  lists: { showArchivedAccounts: boolean };
+  lists: { showArchivedAccounts: boolean; accountsView: AccountsViewChoice };
 }
 
 export const PREFS_KEY = 'cashfold.ui';
@@ -47,7 +49,7 @@ export const DEFAULT_PREFS: Prefs = {
   recents: { account: {}, categories: {} },
   hints: { dismissed: [] },
   firstRun: { dismissed: false },
-  lists: { showArchivedAccounts: false },
+  lists: { showArchivedAccounts: false, accountsView: 'auto' },
 };
 
 const isRecord = (x: unknown): x is Record<string, unknown> => typeof x === 'object' && x !== null && !Array.isArray(x);
@@ -120,7 +122,10 @@ export function parsePrefs(raw: string | null | undefined): Prefs {
     },
     hints: { dismissed },
     firstRun: { dismissed: bool(isRecord(data['firstRun']) ? data['firstRun']['dismissed'] : undefined, false) },
-    lists: { showArchivedAccounts: bool(isRecord(data['lists']) ? data['lists']['showArchivedAccounts'] : undefined, false) },
+    lists: {
+      showArchivedAccounts: bool(isRecord(data['lists']) ? data['lists']['showArchivedAccounts'] : undefined, false),
+      accountsView: oneOf(isRecord(data['lists']) ? data['lists']['accountsView'] : undefined, ['auto', 'group', 'type'] as const, 'auto'),
+    },
   };
 }
 

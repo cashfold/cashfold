@@ -1,10 +1,10 @@
 'use client';
 
 import {
-  ACCOUNT_KINDS, CURRENCY_EXPONENTS, type AccountKind, type AccountRow, type DeletionSummary, type LocalDate,
+  ACCOUNT_KINDS, CURRENCY_EXPONENTS, type AccountGroup, type AccountKind, type AccountRow, type DeletionSummary, type LocalDate,
 } from '@cashfold/core';
 import Link from 'next/link';
-import { useMemo, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { InputField, SelectField } from '../forms/Field';
 import { useRowContextMenu } from '../desktop/ContextMenu';
 import { useI18n } from '../i18n/I18nProvider';
@@ -21,7 +21,13 @@ import { useAddSheet } from '../shell/add-context';
 import { useStatus } from '../shell/StatusProvider';
 import { AmountInput } from '../transactions/AmountInput';
 import { accountActions } from './account-actions';
+import { moveWithin } from './account-order';
+import { accountSections, groupOf, type AccountSection } from './account-sections';
+import { effectiveView } from './accounts-view';
+import { AccountsViewSwitch } from './AccountsViewSwitch';
+import { GroupDeleteDialog, GroupFormDialog } from './GroupDialogs';
 import { GroupManager } from './GroupManager';
+import { GroupSection } from './GroupSection';
 
 const CURRENCIES = Object.keys(CURRENCY_EXPONENTS).sort();
 const HAS_LIMIT: ReadonlySet<AccountKind> = new Set(['credit_card', 'loan']);
@@ -37,26 +43,40 @@ interface FormState {
   group: string;
 }
 
-/** Accounts as cards grouped by type, with a menu per account (FR-028). */
+/** Accounts as cards grouped by group or by type, with a menu per account (FR-028). */
 export function AccountsScreen() {
   const { t, locale } = useI18n();
   const ledger = useLedger();
   const status = useStatus();
   const { openAdd } = useAddSheet();
   const showArchived = usePrefs((p) => p.lists.showArchivedAccounts);
+  const viewPref = usePrefs((p) => p.lists.accountsView);
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<AccountRow | undefined>();
   const [adjusting, setAdjusting] = useState<AccountRow | undefined>();
   const [deleting, setDeleting] = useState<{ account: AccountRow; summary: DeletionSummary } | undefined>();
+  const [groupForm, setGroupForm] = useState<AccountGroup | 'new' | undefined>();
+  const [groupDelete, setGroupDelete] = useState<AccountGroup | undefined>();
   const [message, setMessage] = useState<string | undefined>();
+  const afterMove = useRef<{ account: string } | undefined>(undefined);
 
   const basics = ledger.basics;
-  const groups = basics?.groups ?? [];
+  const groups = useMemo(() => basics?.groups ?? [], [basics]);
   const accounts = useMemo(() => (basics?.accounts ?? []).filter((a) => showArchived || !a.archived), [basics, showArchived]);
-  const byKind = useMemo(
-    () => ACCOUNT_KINDS.map((kind) => ({ kind, accounts: accounts.filter((a) => a.kind === kind) })).filter((s) => s.accounts.length > 0),
-    [accounts],
-  );
+  const view = effectiveView(viewPref, basics?.accounts ?? [], groups);
+  const sections = useMemo(() => accountSections({ accounts, groups, view }), [accounts, groups, view]);
+
+  // After a move the account's row is drawn again in its new place; focus returns to its menu button so keyboard users keep their place.
+  useEffect(() => {
+    const pending = afterMove.current;
+    if (pending === undefined) return;
+    const row = document.querySelector(`[data-account-id="${pending.account}"]`);
+    const button = row?.querySelector('button');
+    if (button instanceof HTMLElement) {
+      button.focus();
+      afterMove.current = undefined;
+    }
+  });
 
   const fail = (code: string) => setMessage(ledger.explain(code));
 
@@ -67,15 +87,20 @@ export function AccountsScreen() {
     else if (archived) status.notify('status.accountArchived');
   }
 
-  /** Swaps an account with its neighbour by renumbering the whole visible list, so equal positions cannot stall a move. */
-  async function move(section: AccountRow[], index: number, delta: -1 | 1) {
-    const order = [...section];
-    const other = index + delta;
-    if (other < 0 || other >= order.length) return;
-    [order[index], order[other]] = [order[other]!, order[index]!];
-    for (const [position, account] of order.entries()) {
-      if (account.sortOrder !== position) await ledger.run('ledger.updateAccount', { id: account.id, changes: { sortOrder: position } });
-    }
+  /** Swaps an account with its neighbour in the section it is shown in; the saved order is the one list both views share. */
+  async function move(section: readonly AccountRow[], index: number, delta: -1 | 1) {
+    const moves = moveWithin(basics?.accounts ?? [], section, index, delta);
+    if (moves === undefined) return;
+    for (const [id, sortOrder] of moves) await ledger.run('ledger.updateAccount', { id, changes: { sortOrder } });
+  }
+
+  async function moveToGroup(account: AccountRow, group: AccountGroup | undefined) {
+    setMessage(undefined);
+    const r = await ledger.run('ledger.moveAccountToGroup', { account: account.id, group: group?.id ?? null });
+    if (!r.ok) return fail(r.error.code);
+    afterMove.current = { account: account.id };
+    if (group === undefined) status.notify('status.accountUngrouped');
+    else status.notify('status.accountMoved', { name: group.name });
   }
 
   async function askDelete(account: AccountRow) {
@@ -96,31 +121,66 @@ export function AccountsScreen() {
   }
 
   const none = (basics?.accounts.length ?? 0) === 0;
+  const rows = (section: AccountSection) => (
+    <ul className="mt-2 divide-y divide-zinc-950/10 rounded-xl border border-zinc-950/10 dark:divide-white/10 dark:border-white/10" aria-label={sectionName(section)}>
+      {section.accounts.map((a, index) => (
+        <AccountItem
+          key={a.id} a={a} index={index} count={section.accounts.length} showGroup={view === 'type'} groups={groups} locale={locale}
+          onAdd={() => openAdd({ accountId: a.id })} onAdjust={() => setAdjusting(a)} onEdit={() => setEditing(a)}
+          onMove={(direction) => void move(section.accounts, index, direction)} onMoveToGroup={(group) => void moveToGroup(a, group)}
+          onToggleArchived={() => void archive(a, !a.archived)} onRemove={() => void askDelete(a)}
+        />
+      ))}
+    </ul>
+  );
+  const sectionName = (section: AccountSection) =>
+    section.kind === 'type' ? t(`ledger.kind.${section.accountKind}`) : section.kind === 'group' ? section.group!.name : t('ledger.groups.ungrouped');
+
   return (
-    <LedgerFrame titleKey="page.accounts.title" actions={<Button onClick={() => setCreating(true)}>{t('ledger.accounts.add')}</Button>}>
+    <LedgerFrame
+      titleKey="page.accounts.title"
+      actions={<div className="flex flex-wrap items-center gap-3"><Button outline onClick={() => setGroupForm('new')}>{t('ledger.groups.add')}</Button><Button onClick={() => setCreating(true)}>{t('ledger.accounts.add')}</Button></div>}
+    >
       <p className="mt-3 text-zinc-600 dark:text-zinc-400">{t('ledger.accounts.lede')}</p>
+      {groups.length === 0 ? <p className="mt-2 text-zinc-600 dark:text-zinc-400">{t('ledger.groups.lede')}</p> : null}
       {message ? <p role="alert" className="mt-3 text-(--danger)">{message}</p> : null}
 
-      <SwitchField className="mt-4">
-        <Label>{t('ledger.accounts.showArchived')}</Label>
-        <Switch checked={showArchived} onChange={(on) => prefsStore.update((p) => ({ ...p, lists: { ...p.lists, showArchivedAccounts: on } }))} />
-      </SwitchField>
+      <div className="mt-4 flex flex-wrap items-center gap-x-8 gap-y-3">
+        {groups.length > 0 ? <AccountsViewSwitch value={view} /> : null}
+        <SwitchField>
+          <Label>{t('ledger.accounts.showArchived')}</Label>
+          <Switch checked={showArchived} onChange={(on) => prefsStore.update((p) => ({ ...p, lists: { ...p.lists, showArchivedAccounts: on } }))} />
+        </SwitchField>
+      </div>
 
       {none ? (
         <EmptyState className="mt-6" icon={BanknotesIcon} title={t('empty.accounts.title')} body={t('ledger.accounts.empty')} action={<Button onClick={() => setCreating(true)}>{t('empty.accounts.action')}</Button>} />
       ) : null}
-      {byKind.map((section) => (
-        <section key={section.kind} className="mt-6" aria-labelledby={`kind-${section.kind}`}>
-          <h2 id={`kind-${section.kind}`} className="text-lg font-semibold">{t(`ledger.kind.${section.kind}`)}</h2>
-          <ul className="mt-2 divide-y divide-zinc-950/10 rounded-xl border border-zinc-950/10 dark:divide-white/10 dark:border-white/10" aria-label={t(`ledger.kind.${section.kind}`)}>
-            {section.accounts.map((a, index) => (
-              <AccountItem key={a.id} a={a} index={index} accounts={section.accounts} />
-            ))}
-          </ul>
-        </section>
-      ))}
+      {sections.map((section) =>
+        section.kind === 'type' ? (
+          <section key={section.key} className="mt-6" aria-labelledby={`kind-${section.accountKind}`}>
+            <h2 id={`kind-${section.accountKind}`} className="text-lg font-semibold">{sectionName(section)}</h2>
+            {rows(section)}
+          </section>
+        ) : (
+          <GroupSection
+            key={section.key} section={section}
+            actions={section.group ? (
+              <span className="flex flex-wrap gap-2">
+                <Button plain onClick={() => setGroupForm(section.group)} aria-label={`${t('ledger.groups.rename')}: ${section.group.name}`}>{t('ledger.groups.rename')}</Button>
+                <Button plain onClick={() => setGroupDelete(section.group)} aria-label={`${t('ledger.groups.delete')}: ${section.group.name}`}>{t('ledger.groups.delete')}</Button>
+              </span>
+            ) : undefined}
+          >
+            {rows(section)}
+          </GroupSection>
+        ),
+      )}
 
-      <GroupManager />
+      {view === 'type' ? <GroupManager groups={groups} onRename={setGroupForm} onDelete={setGroupDelete} /> : null}
+
+      {groupForm ? <GroupFormDialog key={groupForm === 'new' ? 'new' : groupForm.id} group={groupForm} onClose={() => setGroupForm(undefined)} /> : null}
+      {groupDelete ? <GroupDeleteDialog key={groupDelete.id} group={groupDelete} onClose={() => setGroupDelete(undefined)} /> : null}
 
       {creating ? <AccountSheet
         open title={t('ledger.accounts.add')} submitLabel={t('ledger.accounts.create')} onClose={() => setCreating(false)} creating
@@ -130,7 +190,7 @@ export function AccountsScreen() {
           if (!input.ok) return input.error;
           const r = await ledger.run<{ id: string }>('ledger.createAccount', input.value);
           if (!r.ok) return ledger.explain(r.error.code);
-          if (values.group !== '') await ledger.run('ledger.groupAccounts', { group: values.group, accounts: [r.value.id], member: true });
+          if (values.group !== '') await ledger.run('ledger.moveAccountToGroup', { account: r.value.id, group: values.group });
           setCreating(false);
           status.notify('status.accountSaved');
           return undefined;
@@ -143,7 +203,7 @@ export function AccountsScreen() {
           initial={{
             name: editing.name, kind: editing.kind, currency: editing.currency, opening: formatPlain(editing.openingBalanceMinor, editing.currency, locale),
             openingDate: dateToInput(editing.openingDate), limit: editing.creditLimitMinor === null ? '' : formatPlain(editing.creditLimitMinor, editing.currency, locale),
-            inNetWorth: editing.includeInNetWorth, group: editing.groupIds.find((g) => groups.some((x) => x.id === g)) ?? '',
+            inNetWorth: editing.includeInNetWorth, group: groupOf(editing, groups)?.id ?? '',
           }}
           onSubmit={async (values) => {
             const input = toInput(values, ledger.parse, t);
@@ -151,10 +211,9 @@ export function AccountsScreen() {
             const { kind, name, currency, openingBalanceMinor, openingDate, includeInNetWorth, creditLimitMinor } = input.value;
             const r = await ledger.run('ledger.updateAccount', { id: editing.id, changes: { kind, name, currency, openingBalanceMinor, openingDate, includeInNetWorth, creditLimitMinor } });
             if (!r.ok) return ledger.explain(r.error.code);
-            const before = editing.groupIds.find((g) => groups.some((x) => x.id === g)) ?? '';
-            if (before !== values.group) {
-              if (before !== '') await ledger.run('ledger.groupAccounts', { group: before, accounts: [editing.id], member: false });
-              if (values.group !== '') await ledger.run('ledger.groupAccounts', { group: values.group, accounts: [editing.id], member: true });
+            if ((groupOf(editing, groups)?.id ?? '') !== values.group) {
+              const moved = await ledger.run('ledger.moveAccountToGroup', { account: editing.id, group: values.group === '' ? null : values.group });
+              if (!moved.ok) return ledger.explain(moved.error.code);
             }
             setEditing(undefined);
             status.notify('status.accountSaved');
@@ -172,33 +231,49 @@ export function AccountsScreen() {
       />
     </LedgerFrame>
   );
+}
 
-  function AccountItem({ a, index, accounts }: { a: AccountRow; index: number; accounts: AccountRow[] }) {
-    const actions = accountActions({
-      archived: a.archived, index, count: accounts.length,
-      labels: { add: t('ledger.tx.add'), adjust: t('ledger.accounts.adjust'), edit: t('ledger.edit'), moveUp: t('ledger.accounts.moveUp', { name: a.name }), moveDown: t('ledger.accounts.moveDown', { name: a.name }), archive: t('ledger.accounts.archive'), unarchive: t('ledger.accounts.unarchive'), remove: t('ledger.delete') },
-      add: () => openAdd({ accountId: a.id }), adjust: () => setAdjusting(a), edit: () => setEditing(a),
-      move: (direction) => void move(accounts, index, direction), toggleArchived: () => void archive(a, !a.archived), remove: () => void askDelete(a),
-    });
-    const onContextMenu = useRowContextMenu(actions);
-    return (
-              <li className="flex flex-wrap items-center gap-3 p-3" data-testid="account-row" onContextMenu={onContextMenu}>
-                <Avatar initials={a.name.slice(0, 1).toUpperCase()} className="size-9 shrink-0 bg-zinc-200 text-zinc-900 dark:bg-zinc-700 dark:text-white" square />
-                <div className="min-w-0 flex-1 basis-40">
-                  <div className="flex flex-wrap items-center gap-x-2">
-                    <Link className="truncate font-semibold underline-offset-4 hover:underline" href={`/transactions/?account=${a.id}`}>{a.name}</Link>
-                    <span className="text-sm text-zinc-600 dark:text-zinc-400">{a.currency}</span>
-                    {a.archived ? <Badge>{t('ledger.accounts.archived')}</Badge> : null}
-                    {a.includeInNetWorth ? null : <Badge>{t('ledger.accounts.excluded')}</Badge>}
-                  </div>
-                </div>
-                <div className="text-lg" data-sign={a.balanceMinor === null ? 'zero' : a.balanceMinor > 0n ? 'gain' : a.balanceMinor < 0n ? 'loss' : 'zero'} data-testid="account-balance">
-                  {a.balanceMinor === null ? t('ledger.accounts.balanceUnavailable') : <Amount minor={a.balanceMinor} currency={a.currency} locale={locale} />}
-                </div>
-                <RowActionsMenu label={`${t('ledger.list.actions')} ${a.name}`} actions={actions} />
-              </li>
-    );
-  }
+interface AccountItemProps {
+  a: AccountRow; index: number; count: number; showGroup: boolean; groups: readonly AccountGroup[]; locale: string;
+  onAdd: () => void; onAdjust: () => void; onEdit: () => void; onMove: (direction: -1 | 1) => void; onMoveToGroup: (group: AccountGroup | undefined) => void;
+  onToggleArchived: () => void; onRemove: () => void;
+}
+
+function AccountItem({ a, index, count, showGroup, groups, locale, onAdd, onAdjust, onEdit, onMove, onMoveToGroup, onToggleArchived, onRemove }: AccountItemProps) {
+  const { t } = useI18n();
+  const current = groupOf(a, groups);
+  const actions = accountActions({
+    archived: a.archived, index, count,
+    labels: {
+      add: t('ledger.tx.add'), adjust: t('ledger.accounts.adjust'), edit: t('ledger.edit'), moveUp: t('ledger.accounts.moveUp', { name: a.name }), moveDown: t('ledger.accounts.moveDown', { name: a.name }),
+      moveToGroup: (name) => t('ledger.accounts.moveToGroup', { name }), moveToUngrouped: t('ledger.accounts.moveToUngrouped'),
+      currentGroup: (name) => t('ledger.accounts.currentGroup', { name }), currentUngrouped: t('ledger.accounts.currentUngrouped'),
+      archive: t('ledger.accounts.archive'), unarchive: t('ledger.accounts.unarchive'), remove: t('ledger.delete'),
+    },
+    add: onAdd, adjust: onAdjust, edit: onEdit, move: onMove, toggleArchived: onToggleArchived, remove: onRemove,
+    groups: groups.map((g) => ({ id: g.id, name: g.name })), currentGroup: current?.id,
+    moveToGroup: (id) => onMoveToGroup(id === null ? undefined : groups.find((g) => g.id === id)),
+  });
+  // The desktop pop-up takes at most 12 short, plain items, so it leaves out the one-per-group moves; the actions button has them all.
+  const onContextMenu = useRowContextMenu(actions.filter((x) => !x.id.startsWith('move-to:')));
+  return (
+    <li className="flex flex-wrap items-center gap-3 p-3" data-testid="account-row" data-account-id={a.id} onContextMenu={onContextMenu}>
+      <Avatar initials={a.name.slice(0, 1).toUpperCase()} className="size-9 shrink-0 bg-zinc-200 text-zinc-900 dark:bg-zinc-700 dark:text-white" square />
+      <div className="min-w-0 flex-1 basis-40">
+        <div className="flex flex-wrap items-center gap-x-2">
+          <Link className="truncate font-semibold underline-offset-4 hover:underline" href={`/transactions/?account=${a.id}`}>{a.name}</Link>
+          <span className="text-sm text-zinc-600 dark:text-zinc-400">{a.currency}</span>
+          {a.archived ? <Badge>{t('ledger.accounts.archived')}</Badge> : null}
+          {a.includeInNetWorth ? null : <Badge>{t('ledger.accounts.excluded')}</Badge>}
+          {showGroup && current ? <Badge data-testid="account-group">{t('ledger.accounts.groupLabel', { name: current.name })}</Badge> : null}
+        </div>
+      </div>
+      <div className="text-lg" data-sign={a.balanceMinor === null ? 'zero' : a.balanceMinor > 0n ? 'gain' : a.balanceMinor < 0n ? 'loss' : 'zero'} data-testid="account-balance">
+        {a.balanceMinor === null ? t('ledger.accounts.balanceUnavailable') : <Amount minor={a.balanceMinor} currency={a.currency} locale={locale} />}
+      </div>
+      <RowActionsMenu label={`${t('ledger.list.actions')} ${a.name}`} actions={actions} />
+    </li>
+  );
 }
 
 type Parse = ReturnType<typeof useLedger>['parse'];

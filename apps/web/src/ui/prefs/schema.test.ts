@@ -128,3 +128,27 @@ describe('the language preference', () => {
     expect(parsePrefs(serializePrefs({ ...DEFAULT_PREFS, language: 'pl' })).language).toBe('pl');
   });
 });
+
+describe('lists.accountsView', () => {
+  it('defaults to auto', () => {
+    expect(DEFAULT_PREFS.lists.accountsView).toBe('auto');
+    expect(parse({ v: 1 }).lists.accountsView).toBe('auto');
+  });
+
+  it('keeps auto, group and type', () => {
+    for (const view of ['auto', 'group', 'type'] as const) expect(parse({ v: 1, lists: { accountsView: view } }).lists.accountsView).toBe(view);
+  });
+
+  it('turns anything else into auto without touching the other preferences', () => {
+    for (const bad of ['table', 3, null, {}, '']) {
+      const prefs = parse({ v: 1, theme: 'dark', lists: { showArchivedAccounts: true, accountsView: bad } });
+      expect(prefs.lists).toEqual({ showArchivedAccounts: true, accountsView: 'auto' });
+      expect(prefs.theme).toBe('dark');
+    }
+  });
+
+  it('survives serialising and parsing again', () => {
+    const prefs: Prefs = { ...DEFAULT_PREFS, lists: { ...DEFAULT_PREFS.lists, accountsView: 'group' } };
+    expect(parsePrefs(serializePrefs(prefs)).lists.accountsView).toBe('group');
+  });
+});
