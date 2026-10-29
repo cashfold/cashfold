@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.9.0](https://github.com/cashfold/cashfold/compare/v0.8.0...v0.9.0) (2026-10-29)
+
+
+### Features
+
+* **web:** show account groups on the Accounts page ([#51](https://github.com/cashfold/cashfold/issues/51)) ([f9f59bc](https://github.com/cashfold/cashfold/commit/f9f59bc4d339a0e145120890949c2455e3fcc4e0))
+
 ## [0.8.0](https://github.com/cashfold/cashfold/compare/v0.7.0...v0.8.0) (2026-10-29)
 
 
