@@ -7,7 +7,7 @@ import { TextField } from '../forms/TextField';
 import { useI18n } from '../i18n/I18nProvider';
 import { downloadText } from '../settings/OneTimeSecret';
 import { accountErrorText, type Reply } from '../settings/errors';
-import { Button, Select } from '../kit';
+import { Button, Select, SelectOption } from '../kit';
 
 
 /** CSV export (FR-092). The file is plain text, so the warning comes first and the password is asked for again. */
@@ -44,7 +44,7 @@ export function CsvExportPanel({ folds }: { folds: readonly FoldSummary[] }) {
         {folds.length > 1 ? (
           <label className="mt-4 block">
             <span className="mb-3 block font-medium">{t('ledger.fold.label')}</span>
-            <Select value={fold} onChange={(e) => setFold(e.target.value)}>{folds.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}</Select>
+            <Select value={fold} onChange={setFold}>{folds.map((f) => <SelectOption key={f.id} value={f.id}>{f.name}</SelectOption>)}</Select>
           </label>
         ) : null}
         <TextField label={t('account.credentials.current')} type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} required />

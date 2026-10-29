@@ -1,6 +1,7 @@
 import type { Page } from '@playwright/test';
 import { expect, test } from './fixtures/index.js';
 import { go, moreDetails, cancelAdd, openRowAction, toggleRecentlyDeleted, unlock, openAddTransaction } from './fixtures/nav.js';
+import { choose } from './fixtures/select.js';
 
 // User story 3: move money between accounts and currencies (FR-043 to FR-046), offline.
 
@@ -30,8 +31,8 @@ test.describe('@us3 transfers', () => {
     await page.getByRole('button', { name: 'Add account', exact: true }).click();
     const dialog = page.getByRole('dialog');
     await dialog.getByLabel('Name', { exact: true }).fill(name);
-    if (opts.kind) await dialog.getByLabel('Kind').selectOption({ label: opts.kind });
-    if (opts.currency) await dialog.getByLabel('Currency').selectOption(opts.currency);
+    if (opts.kind) await choose(dialog.getByLabel('Kind'), opts.kind);
+    if (opts.currency) await choose(dialog.getByLabel('Currency'), opts.currency);
     await dialog.getByLabel(/^Opening balance/).fill(opening);
     await dialog.getByRole('button', { name: 'Create account' }).click();
     await expect(page.getByRole('dialog')).toHaveCount(0);
@@ -53,8 +54,8 @@ test.describe('@us3 transfers', () => {
     await page.getByRole('button', { name: 'Add', exact: true }).first().click();
     await page.getByRole('tab', { name: 'Transfer' }).click();
     const dialog = page.getByRole('dialog');
-    await dialog.getByLabel('From account').selectOption({ label: from });
-    await dialog.getByLabel('To account').selectOption({ label: to });
+    await choose(dialog.getByLabel('From account'), from);
+    await choose(dialog.getByLabel('To account'), to);
     await dialog.getByLabel(/^Amount leaving/).fill(out);
     if (arriving !== undefined) await dialog.getByLabel(/^Amount arriving/).fill(arriving);
     return dialog;
@@ -139,7 +140,7 @@ test.describe('@us3 transfers', () => {
     await openAddTransaction(page);
     dialog = page.getByRole('dialog');
     await dialog.getByRole('tab', { name: 'Income' }).click();
-    await dialog.getByLabel('Account').selectOption({ label: 'Holiday fund (USD)' });
+    await choose(dialog.getByLabel('Account'), 'Holiday fund (USD)');
     await dialog.getByLabel('Amount (USD)').fill('10.00');
     await dialog.getByRole('button', { name: 'Save' }).click();
     await expect(dialog.getByRole('alert')).toContainText('goal takes only transfers');

@@ -5,10 +5,8 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { InputField, SelectField } from '../forms/Field';
 import { useI18n } from '../i18n/I18nProvider';
-import {
-  Amount, Badge, Button, RowButton, Chip, ConfirmDialog, Dropdown, DropdownButton, DropdownItem, DropdownLabel, DropdownMenu, ArrowsRightLeftIcon, EllipsisHorizontalIcon, EmptyState, FunnelIcon, Input,
-  InputGroup, MagnifyingGlassIcon, Notice, Sheet,
-} from '../kit';
+import { Amount, Badge, Button, RowButton, Chip, ConfirmDialog, Dropdown, DropdownButton, DropdownItem, DropdownLabel, DropdownMenu, ArrowsRightLeftIcon, EllipsisHorizontalIcon, EmptyState, FunnelIcon, Input,
+  InputGroup, MagnifyingGlassIcon, Notice, Sheet, SelectOption } from '../kit';
 import { dateToInput, formatDate, inputToDate } from '../ledger/dates';
 import { LedgerFrame } from '../ledger/LedgerFrame';
 import { useLedger } from '../ledger/LedgerProvider';
@@ -420,17 +418,17 @@ function FiltersPanel({ open, onClose, filters, invalid, onApply }: { open: bool
       footer={<><Button plain type="button" onClick={() => onApply(NO_FILTERS)}>{t('filter.clearAll')}</Button><Button type="submit" form="filters-form">{t('filter.apply')}</Button></>}
     >
       <form id="filters-form" className="space-y-4" onSubmit={(e) => { e.preventDefault(); onApply(draft); }}>
-        <SelectField label={t('ledger.filter.account')} value={draft.account} onChange={(e) => setDraft((f) => ({ ...f, account: e.target.value, ...(e.target.value === '' ? { min: '', max: '' } : {}) }))}>
-          <option value="">{t('ledger.filter.any')}</option>
-          {basics.accounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+        <SelectField label={t('ledger.filter.account')} value={draft.account} onChange={(v) => setDraft((f) => ({ ...f, account: v, ...(v === '' ? { min: '', max: '' } : {}) }))}>
+          <SelectOption value="">{t('ledger.filter.any')}</SelectOption>
+          {basics.accounts.map((a) => <SelectOption key={a.id} value={a.id}>{a.name}</SelectOption>)}
         </SelectField>
-        <SelectField label={t('ledger.filter.category')} value={draft.category} onChange={(e) => set('category', e.target.value)}>
-          <option value="">{t('ledger.filter.any')}</option>
-          {basics.categories.map((c) => <option key={c.id} value={c.id}>{c.parentId === null ? c.name : `${basics.categories.find((x) => x.id === c.parentId)?.name ?? ''} › ${c.name}`}</option>)}
+        <SelectField label={t('ledger.filter.category')} value={draft.category} onChange={(v) => set('category', v)}>
+          <SelectOption value="">{t('ledger.filter.any')}</SelectOption>
+          {basics.categories.map((c) => <SelectOption key={c.id} value={c.id}>{c.parentId === null ? c.name : `${basics.categories.find((x) => x.id === c.parentId)?.name ?? ''} › ${c.name}`}</SelectOption>)}
         </SelectField>
-        <SelectField label={t('ledger.filter.status')} value={draft.status} onChange={(e) => set('status', e.target.value as StatusFilter)}>
-          <option value="">{t('ledger.filter.any')}</option>
-          {(['pending', 'posted', 'void'] as const).map((s) => <option key={s} value={s}>{t(`ledger.status.${s}`)}</option>)}
+        <SelectField label={t('ledger.filter.status')} value={draft.status} onChange={(v) => set('status', v as StatusFilter)}>
+          <SelectOption value="">{t('ledger.filter.any')}</SelectOption>
+          {(['pending', 'posted', 'void'] as const).map((s) => <SelectOption key={s} value={s}>{t(`ledger.status.${s}`)}</SelectOption>)}
         </SelectField>
         <div className="grid grid-cols-2 gap-4">
           <InputField label={t('ledger.filter.from')} type="date" value={draft.from} onChange={(e) => set('from', e.target.value)} />

@@ -4,7 +4,7 @@ import type { BudgetRow, LocalDate } from '@cashfold/core';
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { Modal } from '../forms/Modal';
 import { TextField } from '../forms/TextField';
-import { Button, Checkbox, CheckboxField, Disclosure, EmptyState, FlagIcon, Label, Select } from '../kit';
+import { Button, Checkbox, CheckboxField, Disclosure, EmptyState, FlagIcon, Label, Select, SelectOption } from '../kit';
 import { useI18n } from '../i18n/I18nProvider';
 import { AmountField } from '../ledger/AmountField';
 import { dateToInput, formatDate, inputToDate, todayLocal } from '../ledger/dates';
@@ -58,8 +58,8 @@ function BudgetsBody() {
       {message ? <p role="alert" className="mt-3 text-danger">{message}</p> : null}
       <div className="mt-4">
         <label htmlFor="budget-mode" className="me-2 font-medium">{t('budgets.mode')}</label>
-        <Select id="budget-mode" value={mode} onChange={(e) => setMode(e.target.value as Mode)}>
-          {MODES.map((m) => <option key={m} value={m}>{t(`budgets.mode.${m}`)}</option>)}
+        <Select id="budget-mode" value={mode} onChange={(v) => setMode(v as Mode)}>
+          {MODES.map((m) => <SelectOption key={m} value={m}>{t(`budgets.mode.${m}`)}</SelectOption>)}
         </Select>
       </div>
 
@@ -223,8 +223,8 @@ function BudgetForm({ row, onDone }: { row?: BudgetRow | undefined; onDone: () =
       <div className="mt-4">
         <div>
           <label htmlFor="bg-unit" className="mb-3 block font-medium">{t('budgets.form.period')}</label>
-          <Select id="bg-unit" value={unit} onChange={(e) => setUnit(e.target.value as (typeof UNITS)[number])}>
-            {UNITS.map((u) => <option key={u} value={u}>{t(`budgets.unit.${u}`)}</option>)}
+          <Select id="bg-unit" value={unit} onChange={(v) => setUnit(v as (typeof UNITS)[number])}>
+            {UNITS.map((u) => <SelectOption key={u} value={u}>{t(`budgets.unit.${u}`)}</SelectOption>)}
           </Select>
         </div>
       </div>
@@ -242,17 +242,17 @@ function BudgetForm({ row, onDone }: { row?: BudgetRow | undefined; onDone: () =
       <Disclosure className="mt-6" title={t('budgets.form.more')} defaultOpen={existing !== undefined}>
       <div className="mt-4">
         <label htmlFor="bg-direction" className="mb-3 block font-medium">{t('budgets.form.direction')}</label>
-        <Select id="bg-direction" value={direction} onChange={(e) => setDirection(e.target.value as 'expense' | 'income')}>
-          <option value="expense">{t('ledger.kind.expense')}</option>
-          <option value="income">{t('ledger.kind.income')}</option>
+        <Select id="bg-direction" value={direction} onChange={(v) => setDirection(v as 'expense' | 'income')}>
+          <SelectOption value="expense">{t('ledger.kind.expense')}</SelectOption>
+          <SelectOption value="income">{t('ledger.kind.income')}</SelectOption>
         </Select>
       </div>
       {unit !== 'custom' ? <TextField label={t('budgets.form.every')} type="number" min={1} step={1} value={interval} onChange={(e) => setInterval(e.target.value)} required /> : null}
       <AmountField label={t('budgets.form.allocation')} currency={currency} value={allocation} onChange={setAllocation} hint={t('budgets.form.allocation.hint')} />
       <div className="mt-4">
         <label htmlFor="bg-rollover" className="mb-3 block font-medium">{t('budgets.form.rollover')}</label>
-        <Select id="bg-rollover" value={rollover} onChange={(e) => setRollover(e.target.value as (typeof ROLLOVERS)[number])}>
-          {ROLLOVERS.map((r) => <option key={r} value={r}>{t(`budgets.rollover.${r}`)}</option>)}
+        <Select id="bg-rollover" value={rollover} onChange={(v) => setRollover(v as (typeof ROLLOVERS)[number])}>
+          {ROLLOVERS.map((r) => <SelectOption key={r} value={r}>{t(`budgets.rollover.${r}`)}</SelectOption>)}
         </Select>
       </div>
       <fieldset className="mt-6">
@@ -276,11 +276,16 @@ function BudgetForm({ row, onDone }: { row?: BudgetRow | undefined; onDone: () =
 function Picker({ id, label, options, value, onChange }: { id: string; label: string; options: ReadonlyArray<{ id: string; label: string }>; value: string[]; onChange: (v: string[]) => void }) {
   if (options.length === 0) return null;
   return (
-    <div className="mt-4">
-      <label htmlFor={id} className="mb-3 block font-medium">{label}</label>
-      <Select id={id} multiple className="h-28" value={value} onChange={(e) => onChange([...e.target.selectedOptions].map((o) => o.value))}>
-        {options.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
-      </Select>
+    <div className="mt-4" role="group" aria-labelledby={id}>
+      <div id={id} className="mb-3 block font-medium">{label}</div>
+      <div className="max-h-40 overflow-y-auto">
+        {options.map((o) => (
+          <CheckboxField key={o.id} className="py-1">
+            <Checkbox checked={value.includes(o.id)} onChange={(checked) => onChange(checked ? [...value, o.id] : value.filter((x) => x !== o.id))} />
+            <Label>{o.label}</Label>
+          </CheckboxField>
+        ))}
+      </div>
     </div>
   );
 }

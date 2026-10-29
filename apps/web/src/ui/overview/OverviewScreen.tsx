@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react';
 import { InputField, SelectField } from '../forms/Field';
 import { useI18n } from '../i18n/I18nProvider';
-import { Amount, Button, Disclosure, EmptyState, Label, Notice, Sheet, Stat, Switch, SwitchField, BanknotesIcon, PlusIcon } from '../kit';
+import { Amount, Button, Disclosure, EmptyState, Label, Notice, Sheet, Stat, Switch, SwitchField, BanknotesIcon, PlusIcon, SelectOption } from '../kit';
 import { dateToInput, formatDate, inputToDate, todayLocal } from '../ledger/dates';
 import { parseRateText, percentOf } from '../ledger/format';
 import { LedgerFrame } from '../ledger/LedgerFrame';
@@ -76,12 +76,11 @@ function OverviewBody() {
     <div className="mt-4 grid gap-4 sm:grid-cols-3">
       <SelectField
         label={t('overview.period')} value={choice.kind}
-        onChange={(e) => {
-          const kind = e.target.value as (typeof PERIODS)[number];
+        onChange={(kind) => {
           setChoice(kind === 'custom' ? { kind: 'custom', from: customFrom, to: customTo >= customFrom ? customTo : customFrom } : { kind });
         }}
       >
-        {PERIODS.map((p) => <option key={p} value={p}>{t(`overview.period.${p}`)}</option>)}
+        {PERIODS.map((p) => <SelectOption key={p} value={p}>{t(`overview.period.${p}`)}</SelectOption>)}
       </SelectField>
       {choice.kind === 'custom' ? (
         <>
@@ -295,8 +294,8 @@ function DayEnd({ account, onAccount, period, today }: { account: string; onAcco
 
   return (
     <div>
-      <SelectField label={t('ledger.tx.account')} value={chosen.id} onChange={(e) => onAccount(e.target.value)}>
-        {accounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+      <SelectField label={t('ledger.tx.account')} value={chosen.id} onChange={onAccount}>
+        {accounts.map((a) => <SelectOption key={a.id} value={a.id}>{a.name}</SelectOption>)}
       </SelectField>
       {days.length > 0 ? (
         <>

@@ -4,6 +4,7 @@ import type { Browser, BrowserContext, Page } from '@playwright/test';
 import { expect, test } from './fixtures/index.js';
 import { createAccount, go, lock, moreDetails, openAddTransaction } from './fixtures/nav.js';
 import { expectNoResidue } from './fixtures/residue.js';
+import { choose, chooseLanguage } from './fixtures/select.js';
 
 // Spec 011: leaving the account on this device so another can be used. Production build, real encrypted database in a real worker, and the real relay
 // built from this checkout for the accounts that are on a service. Chromium and Firefox, as the other specs that need OPFS in workers.
@@ -87,7 +88,7 @@ async function addExpense(page: Page, account: string, amount: string, note: str
   await go(page, 'Transactions');
   await openAddTransaction(page);
   const dialog = page.getByRole('dialog');
-  await dialog.getByLabel('Account').selectOption({ label: `${account} (USD)` });
+  await choose(dialog.getByLabel('Account'), `${account} (USD)`);
   await dialog.getByLabel('Amount (USD)').fill(amount);
   await moreDetails(dialog);
   await dialog.getByLabel('Note').fill(note);
@@ -306,7 +307,7 @@ test.describe('@us11 sign out and switch account', () => {
     await createAccount(page, 'Everyday', '100.00');
     await expect(page.locator('[data-sync-state]').first()).toHaveAttribute('data-sync-state', 'synced', { timeout: 60_000 });
     await go(page, 'Appearance');
-    await page.getByLabel('Language').selectOption('uk'); // a device preference, which must survive
+    await chooseLanguage(page.getByLabel('Language'), 'uk'); // a device preference, which must survive
     await expect(page.locator('h1').first()).toHaveText('Вигляд');
 
     await go(page, 'Profile');
@@ -402,7 +403,7 @@ test.describe('@us11 sign out and switch account', () => {
     test(`reads in ${code}: the section, the dialog, the lock-screen link and the signed-out screen, with no raw message key`, async ({ page, expectNoA11yViolations }) => {
       const raw = /\b(signout|signedout)\.[a-zA-Z_.]+/;
       await page.goto('/sign-up/');
-      await page.getByLabel('Language').selectOption(code);
+      await chooseLanguage(page.getByLabel('Language'), code);
       const address = email('lang');
       await page.locator('input[type=email]').fill(address);
       const passwords = page.locator('input[type=password]');

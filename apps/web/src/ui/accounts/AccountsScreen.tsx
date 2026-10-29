@@ -8,9 +8,7 @@ import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { InputField, SelectField } from '../forms/Field';
 import { useRowContextMenu } from '../desktop/ContextMenu';
 import { useI18n } from '../i18n/I18nProvider';
-import {
-  Amount, Avatar, Badge, Button, ConfirmDialog, Disclosure, EmptyState, BanknotesIcon, Label, Sheet, Switch, SwitchField,
-} from '../kit';
+import { Amount, Avatar, Badge, Button, ConfirmDialog, Disclosure, EmptyState, BanknotesIcon, Label, Sheet, Switch, SwitchField, SelectOption } from '../kit';
 import { dateToInput, inputToDate, todayLocal } from '../ledger/dates';
 import { decimalsOf, formatPlain } from '../ledger/format';
 import { LedgerFrame } from '../ledger/LedgerFrame';
@@ -319,11 +317,11 @@ function AccountSheet({ open, title, submitLabel, initial, creating = false, onS
     >
       <form id="account-form" onSubmit={submit} className="space-y-4">
         <InputField label={t('ledger.accounts.form.name')} value={v.name} onChange={(e) => set('name', e.target.value)} required maxLength={80} autoFocus />
-        <SelectField label={t('ledger.accounts.form.kind')} value={v.kind} onChange={(e) => set('kind', e.target.value as AccountKind)}>
-          {ACCOUNT_KINDS.map((k) => <option key={k} value={k}>{t(`ledger.kind.${k}`)}</option>)}
+        <SelectField label={t('ledger.accounts.form.kind')} value={v.kind} onChange={(v) => set('kind', v as AccountKind)}>
+          {ACCOUNT_KINDS.map((k) => <SelectOption key={k} value={k}>{t(`ledger.kind.${k}`)}</SelectOption>)}
         </SelectField>
-        <SelectField label={t('ledger.accounts.form.currency')} value={v.currency} onChange={(e) => set('currency', e.target.value)} disabled={!creating}>
-          {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
+        <SelectField label={t('ledger.accounts.form.currency')} value={v.currency} onChange={(v) => set('currency', v)} disabled={!creating}>
+          {CURRENCIES.map((c) => <SelectOption key={c} value={c}>{c}</SelectOption>)}
         </SelectField>
         <AmountInput label={t('ledger.accounts.form.opening')} currency={v.currency} value={v.opening} onChange={(x) => set('opening', x)} />
         <Disclosure title={t('ledger.accounts.moreOptions')} defaultOpen={!creating}>
@@ -331,9 +329,9 @@ function AccountSheet({ open, title, submitLabel, initial, creating = false, onS
             <InputField label={t('ledger.accounts.form.openingDate')} type="date" value={v.openingDate} onChange={(e) => set('openingDate', e.target.value)} required />
             {HAS_LIMIT.has(v.kind) ? <AmountInput label={t('ledger.accounts.form.limit')} currency={v.currency} value={v.limit} onChange={(x) => set('limit', x)} /> : null}
             {ledger.basics && ledger.basics.groups.length > 0 ? (
-              <SelectField label={t('ledger.accounts.form.group')} value={v.group} onChange={(e) => set('group', e.target.value)}>
-                <option value="">{t('ledger.accounts.ungrouped')}</option>
-                {ledger.basics.groups.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
+              <SelectField label={t('ledger.accounts.form.group')} value={v.group} onChange={(v) => set('group', v)}>
+                <SelectOption value="">{t('ledger.accounts.ungrouped')}</SelectOption>
+                {ledger.basics.groups.map((g) => <SelectOption key={g.id} value={g.id}>{g.name}</SelectOption>)}
               </SelectField>
             ) : null}
             <SwitchField><Label>{t('ledger.accounts.form.inNetWorth')}</Label><Switch checked={v.inNetWorth} onChange={(on) => set('inNetWorth', on)} /></SwitchField>

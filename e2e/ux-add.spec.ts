@@ -1,6 +1,7 @@
 import type { Page } from '@playwright/test';
 import { expect, test } from './fixtures/index.js';
 import { go } from './fixtures/nav.js';
+import { choose } from './fixtures/select.js';
 
 // User story 1 of the redesign: record a transaction in seconds (FR-007 to FR-011, FR-020 to FR-022; SC-001, SC-002).
 
@@ -59,7 +60,7 @@ test.describe('@ux add sheet', () => {
     // More details: note, saved; reopening keeps the group expanded and the last account.
     await page.getByRole('button', { name: 'Add', exact: true }).first().click();
     await page.getByRole('button', { name: 'Savings (USD)' }).count();
-    await sheet.getByLabel('Account').selectOption({ label: 'Savings (USD)' });
+    await choose(sheet.getByLabel('Account'), 'Savings (USD)');
     await sheet.getByLabel(/^Amount/).fill('3.00');
     await sheet.getByRole('button', { name: 'More details' }).click();
     await sheet.getByLabel('Note').fill('Stamps');
@@ -67,8 +68,7 @@ test.describe('@ux add sheet', () => {
     await expect(page.getByTestId('tx-row').filter({ hasText: 'Stamps' })).toHaveCount(1);
     await page.getByRole('button', { name: 'Add', exact: true }).first().click();
     await expect(sheet.getByRole('button', { name: 'More details' })).toHaveAttribute('aria-expanded', 'true');
-    await expect(sheet.getByLabel('Account')).toHaveValue(await sheet.getByLabel('Account').inputValue());
-    await expect(sheet.getByLabel('Account').locator('option:checked')).toHaveText('Savings (USD)');
+    await expect(sheet.getByLabel('Account')).toContainText('Savings (USD)');
   });
 
   test('asks before discarding what was typed, and not when nothing was typed', async ({ page }) => {

@@ -1,6 +1,7 @@
 import type { Page } from '@playwright/test';
 import { expect, test } from './fixtures/index.js';
 import { go, moreDetails, cancelAdd, openRowAction, toggleRecentlyDeleted, editRow, accountAction, unlock, openAddTransaction } from './fixtures/nav.js';
+import { choose } from './fixtures/select.js';
 
 // User story 2: accounts, categories and transactions, entirely offline (FR-023 to FR-036, FR-051, FR-072).
 // Runs on the production build with the real encrypted database. The network goes away after the app has loaded.
@@ -50,7 +51,7 @@ test.describe('@us2 ledger', () => {
   async function addExpense(page: Page, account: string, amount: string, note: string): Promise<void> {
     await openAddTransaction(page);
     const dialog = page.getByRole('dialog');
-    await dialog.getByLabel('Account').selectOption({ label: `${account} (USD)` });
+    await choose(dialog.getByLabel('Account'), `${account} (USD)`);
     await dialog.getByLabel('Amount (USD)').fill(amount);
     await moreDetails(dialog);
     await dialog.getByLabel('Note').fill(note);
@@ -140,7 +141,7 @@ test.describe('@us2 ledger', () => {
     await openAddTransaction(page);
     dialog = page.getByRole('dialog');
     await dialog.getByRole('tab', { name: 'Income' }).click();
-    await dialog.getByLabel('Account').selectOption({ label: 'Everyday (USD)' });
+    await choose(dialog.getByLabel('Account'), 'Everyday (USD)');
     await dialog.getByLabel('Amount (USD)').fill('90071992547409.93');
     await moreDetails(dialog);
     await dialog.getByLabel('Note').fill('Windfall');
@@ -151,7 +152,7 @@ test.describe('@us2 ledger', () => {
     // --- category, payee, a new tag and a place on one transaction
     await openAddTransaction(page);
     dialog = page.getByRole('dialog');
-    await dialog.getByLabel('Account').selectOption({ label: 'Everyday (USD)' });
+    await choose(dialog.getByLabel('Account'), 'Everyday (USD)');
     await dialog.getByLabel('Amount (USD)').fill('8.00');
     await dialog.getByLabel('Category').fill('Groceries');
     await dialog.getByRole('option', { name: /Food & Drink › Groceries/ }).click();
@@ -177,7 +178,7 @@ test.describe('@us2 ledger', () => {
     await expectNoA11yViolations();
     await cancelAdd(page, dialog);
     await page.getByRole('button', { name: /^Filters/ }).click();
-    await page.getByLabel('Category', { exact: true }).selectOption({ label: 'Food & Drink › Groceries' });
+    await choose(page.getByLabel('Category', { exact: true }), 'Food & Drink › Groceries');
     await page.getByRole('button', { name: 'Apply' }).click();
     await expect(page.getByTestId('tx-count')).toHaveText('1 transaction');
     await page.getByTestId('filter-chips').getByRole('button', { name: 'Clear all' }).click();
@@ -234,7 +235,7 @@ test.describe('@us2 ledger', () => {
     await page.getByRole('button', { name: 'Actions for Home', exact: true }).click();
     await page.getByRole('menuitem', { name: 'Merge', exact: true }).click();
     dialog = page.getByRole('dialog');
-    await dialog.getByLabel('Merge into').selectOption({ label: 'Food & Drink › Groceries' });
+    await choose(dialog.getByLabel('Merge into'), 'Food & Drink › Groceries');
     await dialog.getByRole('button', { name: 'Merge', exact: true }).click();
     await expect(dialog.getByRole('alert')).toContainText('at most two levels');
     await cancelAdd(page, dialog);

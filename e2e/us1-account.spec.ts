@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { expect, test } from './fixtures/index.js';
 import { go, unlock } from './fixtures/nav.js';
+import { choose } from './fixtures/select.js';
 
 // User story 1: create a private account and a first Fold, entirely on this device (FR-001 to FR-007, FR-020, FR-022).
 // Runs on the production build with the real encrypted database in a real worker.
@@ -116,7 +117,7 @@ test.describe('@us1 account', () => {
 
     await page.getByRole('button', { name: 'New Fold' }).click();
     await page.getByLabel('Fold name').fill(FOLD_NAME);
-    await page.getByLabel('Base currency').selectOption('EUR');
+    await choose(page.getByLabel('Base currency'), 'EUR');
     await page.getByRole('button', { name: 'Create Fold' }).click();
     await expect(page.getByTestId('fold-name')).toHaveText(['Personal', FOLD_NAME]);
 
@@ -196,7 +197,7 @@ test.describe('@us1 account', () => {
     await expect(page.getByRole('heading', { level: 1, name: 'Profile and security' })).toBeVisible();
     await expectNoA11yViolations();
 
-    await page.getByLabel('Lock after no activity for').selectOption('15');
+    await choose(page.getByLabel('Lock after no activity for'), '15 minutes');
     await expect(page.getByRole('status').filter({ hasText: 'Saved' })).toBeVisible();
 
     await page.getByRole('region', { name: 'Emergency Kit' }).getByLabel('Password').fill('this is not my password');
@@ -213,6 +214,6 @@ test.describe('@us1 account', () => {
     await page.reload();
     await unlock(page, PASSWORD);
     await go(page, 'Settings');
-    await expect(page.getByLabel('Lock after no activity for')).toHaveValue('15');
+    await expect(page.getByLabel('Lock after no activity for')).toContainText('15 minutes');
   });
 });

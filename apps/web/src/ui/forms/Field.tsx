@@ -18,7 +18,7 @@ export function InputField({ label, hint, error, className, ...input }: Shared &
   );
 }
 
-export function SelectField({ label, hint, error, className, children, ...select }: Shared & Omit<ComponentProps<typeof Select>, 'className' | 'invalid'>) {
+export function SelectField<T extends string | number>({ label, hint, error, className, children, ...select }: Shared & Omit<ComponentProps<typeof Select<T>>, 'className' | 'invalid'>) {
   return (
     <Field {...(className === undefined ? {} : { className })}>
       <Label>{label}</Label>

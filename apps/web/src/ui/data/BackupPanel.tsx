@@ -8,7 +8,7 @@ import { restoreHandoff } from '../desktop/restore-handoff';
 import { TextField } from '../forms/TextField';
 import { useI18n } from '../i18n/I18nProvider';
 import { accountErrorText, type Reply } from '../settings/errors';
-import { Button, Select } from '../kit';
+import { Button, Select, SelectOption } from '../kit';
 import { returnsToSignOut } from '../settings/sign-out-return';
 
 
@@ -92,7 +92,7 @@ export function BackupPanel({ folds }: { folds: readonly FoldSummary[] }) {
         {folds.length > 1 ? (
           <label className="mt-4 block">
             <span className="mb-3 block font-medium">{t('ledger.fold.label')}</span>
-            <Select value={fold} onChange={(e) => setFold(e.target.value)}>{folds.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}</Select>
+            <Select value={fold} onChange={setFold}>{folds.map((f) => <SelectOption key={f.id} value={f.id}>{f.name}</SelectOption>)}</Select>
           </label>
         ) : null}
         <TextField label={t('data.backup.passphrase')} hint={t('data.backup.passphrase.hint')} type="password" autoComplete="new-password" value={passphrase} onChange={(e) => setPassphrase(e.target.value)} required />

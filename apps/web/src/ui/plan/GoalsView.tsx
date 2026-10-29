@@ -4,7 +4,7 @@ import type { GoalRow } from '@cashfold/core';
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { Modal } from '../forms/Modal';
 import { TextField } from '../forms/TextField';
-import { Button, EmptyState, FlagIcon, Progress, Select } from '../kit';
+import { Button, EmptyState, FlagIcon, Progress, Select, SelectOption } from '../kit';
 import { useI18n } from '../i18n/I18nProvider';
 import { AmountField } from '../ledger/AmountField';
 import { dateToInput, formatDate, inputToDate, todayLocal } from '../ledger/dates';
@@ -145,16 +145,16 @@ function GoalForm({ row, free, onDone }: { row?: GoalRow | undefined; free: Read
       <TextField label={t('goals.form.name')} value={name} onChange={(e) => setName(e.target.value)} required maxLength={80} autoFocus />
       <div className="mt-4">
         <label htmlFor="goal-account" className="mb-3 block font-medium">{t('goals.form.account')}</label>
-        <Select id="goal-account" value={accountId} onChange={(e) => setAccountId(e.target.value)} required>
-          {options.map((a) => <option key={a.id} value={a.id}>{a.name} ({a.currency})</option>)}
+        <Select id="goal-account" value={accountId} onChange={setAccountId}>
+          {options.map((a) => <SelectOption key={a.id} value={a.id}>{a.name} ({a.currency})</SelectOption>)}
         </Select>
       </div>
       <AmountField label={t('goals.form.target')} currency={currency} value={target} onChange={setTarget} required />
       <TextField label={t('goals.form.date')} type="date" value={due} onChange={(e) => setDue(e.target.value)} required />
       <div className="mt-4">
         <label htmlFor="goal-color" className="mb-3 block font-medium">{t('ledger.categories.form.color')}</label>
-        <Select id="goal-color" value={color} onChange={(e) => setColor(Number(e.target.value))}>
-          {Array.from({ length: COLOR_COUNT }, (_, i) => <option key={i} value={i}>{t(`ledger.color.${i}`)}</option>)}
+        <Select id="goal-color" value={color} onChange={setColor}>
+          {Array.from({ length: COLOR_COUNT }, (_, i) => <SelectOption key={i} value={i}>{t(`ledger.color.${i}`)}</SelectOption>)}
         </Select>
       </div>
       {error ? <p role="alert" className="mt-3 text-danger">{error}</p> : null}

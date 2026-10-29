@@ -8,7 +8,7 @@ import { deviceOffsetAt, inputToMoment, momentToInput, nowInput } from '../ledge
 import { decimalsOf, formatPlain, formatRate } from '../ledger/format';
 import { useLedger } from '../ledger/LedgerProvider';
 import { suggestDestination } from '../ledger/transfer/suggest';
-import { Button, Disclosure } from '../kit';
+import { Button, Disclosure, SelectOption } from '../kit';
 import { AmountInput } from './AmountInput';
 import { isDirty } from './dirty';
 import type { ModeReport } from './modes';
@@ -97,11 +97,11 @@ export function TransferMode({ formId, existing, accountId, report }: { formId: 
 
   return (
     <form id={formId} onSubmit={submit} className="space-y-4">
-      <SelectField label={t('ledger.xfer.from')} value={fromId} onChange={(e) => setFromId(e.target.value)} required>
-        {usable.map((a) => <option key={a.id} value={a.id}>{a.name} ({a.currency})</option>)}
+      <SelectField label={t('ledger.xfer.from')} value={fromId} onChange={setFromId}>
+        {usable.map((a) => <SelectOption key={a.id} value={a.id}>{a.name} ({a.currency})</SelectOption>)}
       </SelectField>
-      <SelectField label={t('ledger.xfer.to')} value={toId} onChange={(e) => setToId(e.target.value)} required>
-        {usable.map((a) => <option key={a.id} value={a.id}>{a.name} ({a.currency})</option>)}
+      <SelectField label={t('ledger.xfer.to')} value={toId} onChange={setToId}>
+        {usable.map((a) => <SelectOption key={a.id} value={a.id}>{a.name} ({a.currency})</SelectOption>)}
       </SelectField>
       <AmountInput label={t('ledger.xfer.fromAmount')} currency={from?.currency ?? 'USD'} value={fromText} onChange={setFromText} autoFocus />
       {sameCurrency ? (
@@ -121,8 +121,8 @@ export function TransferMode({ formId, existing, accountId, report }: { formId: 
       <Disclosure title={t('ledger.add.more')} summary={t('ledger.add.moreSummaryTransfer')} defaultOpen={existing !== undefined && (note !== '' || status !== 'posted')}>
         <div className="space-y-4">
           <TextareaField label={t('ledger.tx.note')} rows={2} maxLength={MAX_NOTE} value={note} onChange={(e) => setNote(e.target.value)} />
-          <SelectField label={t('ledger.tx.status')} value={status} onChange={(e) => setStatus(e.target.value as TxnStatus)}>
-            {(['pending', 'posted', 'void'] as const).filter((s) => existing === undefined || canTransition(existing.status, s)).map((s) => <option key={s} value={s}>{t(`ledger.status.${s}`)}</option>)}
+          <SelectField label={t('ledger.tx.status')} value={status} onChange={(v) => setStatus(v as TxnStatus)}>
+            {(['pending', 'posted', 'void'] as const).filter((s) => existing === undefined || canTransition(existing.status, s)).map((s) => <SelectOption key={s} value={s}>{t(`ledger.status.${s}`)}</SelectOption>)}
           </SelectField>
         </div>
       </Disclosure>
