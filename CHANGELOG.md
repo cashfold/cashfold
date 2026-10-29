@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.0](https://github.com/cashfold/cashfold/compare/v0.7.0...v0.8.0) (2026-10-29)
+
+
+### Features
+
+* **web:** local-only accounts and signing out of an account ([#49](https://github.com/cashfold/cashfold/issues/49)) ([f90a5c6](https://github.com/cashfold/cashfold/commit/f90a5c6bdd5f91a1f2f04a97ee686db45ec022c5))
+
 ## [0.7.0](https://github.com/cashfold/cashfold/compare/v0.6.0...v0.7.0) (2026-10-27)
 
 
