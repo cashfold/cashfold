@@ -181,6 +181,56 @@ describe('createAccount (US1: sign up offline, get a Secret Key and a first Fold
   });
 });
 
+describe('local-only sign-up (spec 010: no service address)', () => {
+  const localInput = (extra: Record<string, unknown> = {}) => ({ email: 'Alice@Example.com', password: passwordOf(GOOD_PASSWORD), discoverable: true, ...extra });
+
+  it.each([['absent', {}], ['empty', { server: '' }]])('creates the whole account on this device and registers nothing when the address is %s', async (_name, extra) => {
+    const s = await setup();
+    const r = await s.runWith(localInput(extra));
+    expect(r).toMatchObject({ ok: true, value: { secretKeyText: SECRET_KEY_TEXT, accountId: 'XRG88A', registration: 'local', account: { state: 'draft', email: 'alice@example.com', server: '' } } });
+    if (!r.ok) return;
+    expect(r.value.fold).toMatchObject({ name: 'Personal', role: 'owner', epoch: 1 });
+    expect(s.folds.size).toBe(1);
+    expect(s.registered).toEqual([]);
+    expect(s.getStored()).toMatchObject({ accountId: 'XRG88A', email: 'alice@example.com', server: '', registration: 'local' });
+  });
+
+  it('never reports an invalid or taken address, and keeps the keys for the session', async () => {
+    const s = await setup({ registration: { ok: false, reason: 'email_taken' } }); // would reject if it were asked
+    const r = await s.runWith(localInput());
+    expect(r.ok).toBe(true);
+    expect(s.registered).toEqual([]);
+    expect(s.sessionKey.isWiped).toBe(false);
+    await s.session.lock();
+    expect(s.sessionKey.isWiped).toBe(true);
+  });
+
+  it('wipes the password and still validates the email and the password policy', async () => {
+    const s = await setup();
+    const password = passwordOf(GOOD_PASSWORD);
+    expect(await s.runWith({ email: 'nope', password, discoverable: true })).toEqual({ ok: false, error: expect.objectContaining({ code: 'invalid_email' }) });
+    expect(password.isWiped).toBe(true);
+    expect(await s.runWith({ email: 'a@example.com', password: passwordOf('short'), discoverable: true })).toEqual({ ok: false, error: expect.objectContaining({ code: 'weak_password' }) });
+    expect(s.getStored()).toBeUndefined();
+  });
+
+  it('rolls everything back when the first Fold cannot be created', async () => {
+    const s = await setup({ foldFails: true });
+    await expect(s.runWith(localInput())).rejects.toThrow('keystore broken');
+    expect(s.getStored()).toBeUndefined();
+    expect(s.stopped).toHaveBeenCalled();
+    expect(s.sessionKey.isWiped).toBe(true);
+  });
+
+  it('does not log the email, and says only that the account is local', async () => {
+    const s = await setup();
+    await s.runWith(localInput({ email: 'private.person@example.com' }));
+    const out = JSON.stringify(s.entries);
+    expect(out).toContain('local');
+    expect(out).not.toMatch(/private\.person|XRG88A-/);
+  });
+});
+
 describe('other refusals', () => {
   it('rolls back when the service rejects the registration for another reason', async () => {
     const s = await setup({ registration: { ok: false, reason: 'rejected' } });

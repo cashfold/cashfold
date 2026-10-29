@@ -44,8 +44,10 @@ export interface DeviceCredentials {
   readonly deviceId: Id;
   readonly accountId: string;
   readonly email: string;
+  /** The service address. Empty for `local`, and never read then. */
   readonly server: string;
-  readonly registration: 'pending' | 'done';
+  /** `local`: the person chose to keep everything on this device, so nothing was or will be registered until they connect (spec 010). */
+  readonly registration: 'pending' | 'done' | 'local';
   /** Opaque sealed blob: device salt, Secret Key and cached SRP-x. */
   readonly sealed: Uint8Array;
 }
@@ -96,6 +98,21 @@ export interface AccountCryptoPort {
 }
 
 /** Per-device settings kept outside the encrypted database so they apply before and after unlocking. */
+/**
+ * A note that a sign-out has started and not finished (spec 011). It holds nothing about the account: only that the erase must be completed, so a
+ * crash or a closed tab halfway through never leaves a half-erased account that opens.
+ */
+export interface PendingEraseMarkerPort {
+  set(): Promise<void>;
+  isSet(): Promise<boolean>;
+  clear(): Promise<void>;
+}
+
+/** Erases everything this device holds for the account: the database files, the credentials, quick unlock, and what in the settings belongs to the account. Safe to repeat, and needs no key and no open database. */
+export interface LocalEraserPort {
+  eraseAll(): Promise<void>;
+}
+
 export interface DeviceSettingsPort {
   load(): Promise<DeviceSettings>;
   save(settings: DeviceSettings): Promise<void>;

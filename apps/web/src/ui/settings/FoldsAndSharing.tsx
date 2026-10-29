@@ -10,7 +10,9 @@ import { useI18n } from '../i18n/I18nProvider';
 import { Modal } from '../forms/Modal';
 import { InvitationsSection } from '../sharing/InvitationsSection';
 import { MyCode } from '../sharing/MyCode';
+import { RelayNeeded } from '../sharing/RelayNeeded';
 import { SharingPanel } from '../sharing/SharingPanel';
+import { useLocalOnly } from '../sync/useLocalOnly';
 import { KitReminder } from '../shell/KitReminder';
 import { starterCategoryNames } from '../i18n/starter-names';
 import { Badge, Button, Sheet, Select } from '../kit';
@@ -34,6 +36,8 @@ export function FoldsAndSharing() {
   const [sharing, setSharing] = useState<FoldSummary | undefined>();
   const [removedNotice, setRemovedNotice] = useState(false);
   const ledger = useLedger();
+  // Sharing, invitations and the invitation code all need a service: kept only on this device, they are shown disabled with the reason (spec 010, FR-007b).
+  const local = useLocalOnly() === true;
   const noticeShown = removedNotice || ledger.foldRemoved;
   const [creating, setCreating] = useState(false);
 
@@ -104,7 +108,7 @@ export function FoldsAndSharing() {
           <Button outline className="mt-2" type="button" onClick={() => { setRemovedNotice(false); ledger.dismissFoldRemoved(); }}>{t('sharing.removed.dismiss')}</Button>
         </div>
       ) : null}
-      <InvitationsSection onChanged={() => void load()} />
+      {local ? <div className="mt-4"><RelayNeeded /></div> : <InvitationsSection onChanged={() => void load()} />}
 
       <h2 className="mt-6 text-lg font-semibold">{t('folds.list.label')}</h2>
       {folds.length === 0 ? <p className="mt-2 text-muted">{t('folds.empty')}</p> : null}
@@ -127,7 +131,7 @@ export function FoldsAndSharing() {
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <Button outline type="button" onClick={() => setSharing(fold)} aria-label={`${t('sharing.open')} ${fold.name}`}>{t('sharing.open')}</Button>
+                  <Button outline type="button" onClick={() => setSharing(fold)} aria-label={`${t('sharing.open')} ${fold.name}`} {...(local ? { disabled: true, 'aria-describedby': 'relay-needed' } : {})}>{t('sharing.open')}</Button>
                   {fold.role === 'owner' ? (
                     <>
                       <Button outline type="button" onClick={() => setRenaming({ id: fold.id, name: fold.name })} aria-label={`${t('folds.rename')} ${fold.name}`}>{t('folds.rename')}</Button>
@@ -158,7 +162,7 @@ export function FoldsAndSharing() {
         </form>
       </Sheet>
 
-      <MyCode />
+      {local ? null : <MyCode />}
 
       <Modal open={sharing !== undefined} title={sharing ? t('sharing.title', { name: sharing.name }) : ''} onClose={() => setSharing(undefined)}>
         {sharing ? <SharingPanel fold={sharing.id} name={sharing.name} onClose={() => setSharing(undefined)} onLeft={() => { setSharing(undefined); setRemovedNotice(false); void load(); }} /> : null}

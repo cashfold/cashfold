@@ -4,6 +4,8 @@ import type { DeviceSettings } from '@cashfold/core';
 import { useEffect, useState, type FormEvent } from 'react';
 import { useCore, withPasswordBytes } from '../core/CoreProvider';
 import { useDesktop } from '../desktop/DesktopSettingsProvider';
+import { accountDetailsView } from './account-details';
+import { SignOutSection } from './SignOutSection';
 import { downloadKit, printKit, type KitSource } from '../emergency-kit/actions';
 import { TextField } from '../forms/TextField';
 import { useI18n } from '../i18n/I18nProvider';
@@ -21,6 +23,7 @@ type KitResult = { ok: true; value: KitSource } | { ok: false; error: { code: st
 export function ProfileSecurity() {
   const { t, locale, dir } = useI18n();
   const core = useCore();
+  const details = core.account === undefined ? undefined : accountDetailsView(core.account);
   // The desktop app locks a hidden window at the idle time (ADR-0012), so the hidden-window time does not apply there.
   const { isDesktop } = useDesktop();
   const [settings, setSettings] = useState<DeviceSettings | undefined>();
@@ -81,13 +84,15 @@ export function ProfileSecurity() {
 
       <RecoverySection />
 
+      <SignOutSection />
+
       <section aria-labelledby="account-heading" className="mt-8">
         <h2 id="account-heading" className="text-lg font-semibold">{t('settings.account.title')}</h2>
-        {core.account ? (
+        {core.account && details ? (
           <dl className="mt-2 grid max-w-md grid-cols-1 gap-x-4 gap-y-0 sm:grid-cols-[max-content_minmax(0,1fr)] sm:gap-y-1">
             <dt className="font-medium">{t('signup.email.label')}</dt><dd className="break-all max-sm:mb-2">{core.account.email}</dd>
-            <dt className="font-medium">{t('signup.server.label')}</dt><dd className="break-all max-sm:mb-2">{core.account.server}</dd>
-            <dt className="font-medium">{t('settings.account.registration')}</dt><dd className="max-sm:mb-2">{core.account.registration === 'done' ? t('settings.account.registered') : t('settings.account.pending')}</dd>
+            {details.showAddress ? <><dt className="font-medium">{t('signup.server.label')}</dt><dd className="break-all max-sm:mb-2">{core.account.server}</dd></> : null}
+            <dt className="font-medium">{t('settings.account.registration')}</dt><dd className="max-sm:mb-2">{t(details.registrationKey)}</dd>
           </dl>
         ) : null}
       </section>

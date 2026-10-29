@@ -138,6 +138,7 @@ export async function signUpAndEnter(page: Page, email = 'alice@example.com'): P
   const passwords = page.locator('input[type=password]');
   await passwords.nth(0).fill(PASSWORD_FOR_SETUP);
   await passwords.nth(1).fill(PASSWORD_FOR_SETUP);
+  await page.locator('form [role=checkbox]').first().uncheck(); // keep-everything-on-this-device, in any language
   await page.locator('input[type=url]').fill('https://relay.example.com');
   await page.locator('form button[type=submit]').click();
   await page.getByTestId('secret-key').waitFor({ timeout: 60_000 });

@@ -108,6 +108,29 @@ describe('Emergency Kit document', () => {
   });
 });
 
+describe('Emergency Kit document for an account kept only on this device (spec 010)', () => {
+  const html = buildEmergencyKitHtml({ ...kit, server: '' }, 'https://app.example.org', english);
+
+  it('still has the account details and the Secret Key', () => {
+    for (const text of [kit.accountId, kit.email, kit.secretKeyText, kit.generatedOn]) expect(html).toContain(text);
+  });
+
+  it('has no service address and no add-device link or QR, and says the account is stored only on this device', () => {
+    expect(html).not.toContain(kit.server);
+    expect(html).toContain(`>${ENGLISH['kit.doc.service']}</dt><dd>${ENGLISH['kit.doc.local']}</dd>`);
+    expect(html).not.toMatch(/server=|#email=|<svg/);
+    expect(html).not.toContain(ENGLISH['kit.doc.qr.text']!);
+    expect(html).toContain(ENGLISH['kit.doc.local']!);
+  });
+
+  it('is unchanged for an account with a service: its address, its QR, and no mention of a local-only account', () => {
+    const withService = buildEmergencyKitHtml(kit, 'https://app.example.org', english);
+    expect(withService).toContain(kit.server);
+    expect(withService).toMatch(/<svg/);
+    expect(withService).not.toContain(ENGLISH['kit.doc.local']!);
+  });
+});
+
 describe('copy with auto-clear (FR-016: clipboard copies need an explicit action and are cleared after 60 s)', () => {
   it('writes the text, then overwrites the clipboard after the delay', async () => {
     vi.useFakeTimers();

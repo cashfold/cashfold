@@ -4,6 +4,20 @@ Cashfold keeps your financial data encrypted on your devices. The service (the r
 
 If you run your own service, everything below is visible to whoever runs it.
 
+## If you keep everything on this device
+
+At sign-up you can choose **Keep everything on this device for now**. An account made that way sends **nothing to any service**: not your email address, not a key, not a request. Sync does not run, exchange rates are the ones you enter, and sharing a Fold is not available. Nothing on this page applies to you until you connect a service later in Settings → Sync. From that moment, everything below applies, and the account is registered as not findable by email unless you tick that box while connecting.
+
+The cost of keeping everything on one device is that there is no second copy. Make encrypted backups (Settings → Data and storage), because a lost device or a forgotten password cannot be recovered by anyone.
+
+## When you sign out
+
+Signing out (Settings → Profile and security, or "Use a different account" on the lock screen) erases **this device's copy** of the account: the database, the keys, the stored credentials, quick unlock and any changes that had not been sent. Your language, theme and lock settings stay, because they belong to the device. Before it erases, an account that is also on a service sends what has not reached it, so nothing is lost; if the service cannot be reached you are told how many changes would be lost and must agree.
+
+If the service can be reached, the device is also removed from the account's list of devices; that one request carries only the device's id. If it cannot be reached, the device may stay listed there until you remove it from another device. The account, its data and your other devices are not changed. You come back with your Secret Key and password, as on any new device.
+
+An account kept only on this device has no other copy, so signing out erases it for good; the app says so first and asks you to type the account's email address. The lock-screen option sends nothing to any service and asks for that address instead of the password.
+
 ## What the service cannot read
 
 - Amounts, dates, names, notes, categories, payees, tags, places, budgets, goals, schedules, exchange rates you entered, and the names and base currencies of your Folds.
@@ -66,7 +80,7 @@ Confirmation links and invitation notices. A notice names only the person inviti
 
 ### The desktop app and updates
 
-The desktop app (Windows, macOS, Linux) is the same app in its own window, so everything above holds for it too. It adds one thing: it looks for new versions of itself, when it starts and every few hours, by asking GitHub (where releases are published) for a small file that lists the newest version. That request reveals your **network address** and the **version of the app** you run, to GitHub, as any download does, and nothing else: no account, no data, no identifier. Downloading an update, and installing it, happen only when you choose to. You can switch the automatic check off in Settings → Advanced → Updates; you can still check by hand. The desktop app has no analytics, no crash reporting and no other connection of its own; its only other connection is to the service address you chose, exactly as in the web app.
+The desktop app (Windows, macOS, Linux) is the same app in its own window, so everything above holds for it too. It adds one thing: it looks for new versions of itself, when it starts and every few hours, by asking GitHub (where releases are published) for a small file that lists the newest version. That request reveals your **network address** and the **version of the app** you run, to GitHub, as any download does, and nothing else: no account, no data, no identifier. Downloading an update, and installing it, happen only when you choose to. You can switch the automatic check off in Settings → Advanced → Updates; you can still check by hand. The desktop app has no analytics, no crash reporting and no other connection of its own; its only other connection is to the service address you chose, exactly as in the web app. With an account kept only on the device, it has no such connection at all.
 
 ## What is public
 

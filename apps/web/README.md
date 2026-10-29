@@ -40,10 +40,10 @@ development server has no service worker, so test offline behaviour against a bu
 Two variables at build time pin the app to your relay; see
 [Running your own relay](../../docs/self-hosting.md), step 4.
 
-| Variable                     | Effect                                                              |
-| ---------------------------- | ------------------------------------------------------------------- |
-| `NEXT_PUBLIC_DEFAULT_SERVER` | The relay address offered at sign-up                                |
-| `CSP_CONNECT_SOURCES`        | The only addresses the content security policy lets the app talk to |
+| Variable                     | Effect                                                                                   |
+| ---------------------------- | ---------------------------------------------------------------------------------------- |
+| `NEXT_PUBLIC_DEFAULT_SERVER` | The relay offered at sign-up. Empty: sign-up starts on keeping everything on this device |
+| `CSP_CONNECT_SOURCES`        | The only addresses the content security policy lets the app talk to                      |
 
 ## Related
 

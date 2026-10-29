@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { downloadKit, printKit } from '../emergency-kit/actions';
-import { copyWithAutoClear } from '../emergency-kit/kit';
+import { copyWithAutoClear } from '../emergency-kit/clipboard';
 
 import { useI18n } from '../i18n/I18nProvider';
 import { Button, Checkbox, CheckboxField, Label } from '../kit';
@@ -10,7 +10,7 @@ import { Button, Checkbox, CheckboxField, Label } from '../kit';
 export interface CreatedAccount {
   readonly secretKeyText: string;
   readonly accountId: string;
-  readonly registration: 'pending' | 'done';
+  readonly registration: 'pending' | 'done' | 'local';
 }
 
 /** Shown once, right after sign-up (FR-002, FR-003). Leaving it drops the Secret Key from the page. */
@@ -35,6 +35,8 @@ export function SecretKeyScreen({ created, email, server, onDone }: { created: C
       </div>
       <p className="mt-2 text-sm" role="status">{copy === 'copied' ? t('secretkey.copied') : copy === 'failed' ? t('secretkey.copyFailed') : ''}</p>
       {created.registration === 'pending' ? <p className="mt-4 text-muted">{t('secretkey.pending')}</p> : null}
+      {/* The one-time suggestion for an account kept only on this device (spec 010, FR-007a): a second copy is the only safety net. No link here: leaving this screen before the Secret Key is saved would lose it. */}
+      {created.registration === 'local' ? <p className="mt-4" data-testid="local-backup-tip">{t('secretkey.local')}</p> : null}
       <CheckboxField className="mt-6"><Checkbox checked={saved} onChange={(checked) => setSaved(checked)} /><Label>{t('secretkey.confirm')}</Label></CheckboxField>
       <Button className="mt-4" type="button" disabled={!saved} onClick={() => void onDone()}>{t('secretkey.continue')}</Button>
     </div>

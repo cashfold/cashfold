@@ -78,3 +78,47 @@ describe('registerExisting (T200)', () => {
     expect(p2.isWiped).toBe(true);
   });
 });
+
+describe('registerExisting for an account kept only on this device (spec 010)', () => {
+  const LOCAL: DeviceCredentials = { ...OLD, server: '', registration: 'local' };
+
+  it('registers with the address it is given, saves the account as registered, and registers it as not findable when asked', async () => {
+    const s = setup({ stored: LOCAL });
+    const r = await s.run({ password: secret(), server: 'https://relay.example.com/', discoverable: false });
+    expect(r).toMatchObject({ ok: true, value: { server: 'https://relay.example.com' } });
+    expect(s.payloads[0]!.payload).toMatchObject({ email: 'a@example.com', server: 'https://relay.example.com', discoverable: false });
+    expect(s.getStored()).toMatchObject({ registration: 'done', server: 'https://relay.example.com', sealed: new Uint8Array([2, 2]) });
+  });
+
+  it('keeps registering as discoverable when the caller says nothing, as it did for an account that was only pending', async () => {
+    const s = setup();
+    await s.run({ password: secret() });
+    expect(s.payloads[0]!.payload).toMatchObject({ discoverable: true });
+  });
+
+  it('has no address to fall back on: without one it refuses, asks no service, and changes nothing', async () => {
+    const s = setup({ stored: LOCAL });
+    const password = secret();
+    expect(await s.run({ password })).toMatchObject({ ok: false, error: { code: 'invalid_server' } });
+    expect(s.payloads).toEqual([]);
+    expect(s.getStored()).toEqual(LOCAL);
+    expect(password.isWiped).toBe(true);
+  });
+
+  it.each([
+    [{ ok: false, reason: 'offline' }, 'offline'], [{ ok: false, reason: 'email_taken' }, 'email_taken'], [{ ok: false, reason: 'invite_required' }, 'invite_required'],
+    [{ ok: false, reason: 'rate_limited' }, 'rate_limited'], [{ ok: false, reason: 'rejected' }, 'rejected'],
+  ] as const)('stays local-only, with nothing saved, when the service answers %j', async (result, code) => {
+    const s = setup({ stored: LOCAL, result });
+    expect(await s.run({ password: secret(), server: 'https://relay.example.com' })).toMatchObject({ ok: false, error: { code } });
+    expect(s.getStored()).toEqual(LOCAL);
+    expect(s.account.encSk.isWiped && s.account.sigSk.isWiped && s.account.srpX.isWiped).toBe(true);
+  });
+
+  it('leaves it local-only when the password is wrong', async () => {
+    const s = setup({ stored: LOCAL, wrongPassword: true });
+    expect(await s.run({ password: secret(), server: 'https://relay.example.com' })).toMatchObject({ ok: false, error: { code: 'wrong_password' } });
+    expect(s.payloads).toEqual([]);
+    expect(s.getStored()).toEqual(LOCAL);
+  });
+});

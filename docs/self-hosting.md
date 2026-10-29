@@ -51,7 +51,7 @@ own in a few minutes.
      pnpm --filter @cashfold/web build
    ```
 
-   With that setting people can still type another address, but the browser will refuse to reach it.
+   With that setting sign-up offers your relay with its address filled in. People can still choose to keep everything on their device (nothing is sent to any service), or type another address, but the browser will refuse to reach it. Without the setting, sign-up starts on keeping everything on the device.
 
 5. Serve `apps/web/out` with the headers in `apps/web/out/_headers` (written by the build; Netlify and Cloudflare Pages read it as it is).
    Every page already carries its own Content-Security-Policy and a no-referrer policy as `<meta>` tags, and every script and

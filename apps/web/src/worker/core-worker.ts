@@ -1,4 +1,6 @@
 /// <reference lib="webworker" />
+import { createLocalEraser } from '../adapters/local-erase';
+import { createIdbPendingErase } from '../adapters/keystore-idb/pending-erase';
 import { createAccountCrypto } from '../adapters/account-crypto';
 import { createIdbCredentialStore } from '../adapters/keystore-idb/credential-store';
 import { createIdbDeviceSettings } from '../adapters/keystore-idb/device-settings';
@@ -41,13 +43,20 @@ const publishEvent = (event: { readonly type: string; readonly [key: string]: un
   self.postMessage({ rpc: 'event', event });
 };
 
+const credentialStore = createIdbCredentialStore();
+const settingsStore = createIdbDeviceSettings();
+const quickUnlockStore = createIdbQuickUnlockStore();
+
 const app = createAppHandlers({
   runtime: () => loadRuntime(),
   rng,
-  credentials: createIdbCredentialStore(),
-  settings: createIdbDeviceSettings(),
+  credentials: credentialStore,
+  settings: settingsStore,
   accountCrypto,
-  quickStore: createIdbQuickUnlockStore(),
+  quickStore: quickUnlockStore,
+  // Signing out (spec 011): the note that one is under way, and the eraser for what this device holds for the account.
+  pendingErase: createIdbPendingErase(),
+  localEraser: createLocalEraser({ runtime: () => loadRuntime(), credentials: credentialStore, quickStore: quickUnlockStore, settings: settingsStore }),
   quickCrypto: { enroll: (a) => accountCrypto.enrollQuick(a), unlock: (a) => accountCrypto.unlockQuick(a) },
   nowMs: Date.now,
   relayAuth: createWebRelayAuth({ pake }),

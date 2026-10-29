@@ -12,8 +12,10 @@ import { createSqliteAttachmentStore } from './attachment-store';
 import { openOrRecover } from './recovery';
 import { decodeValue, encodeValue } from './value-codec';
 import { createSqliteOpLog, createSqliteProjections } from './sqlite-stores';
-import { createAccount, createSession, parseSettings, unlock, type CredentialStorePort, type DeviceCredentials, type RegistrationResult } from '@cashfold/core';
+import { createAccount, createSession, DEFAULT_SETTINGS, parseSettings, unlock, type CredentialStorePort, type DeviceCredentials, type RegistrationResult } from '@cashfold/core';
 import { createAccountCrypto } from '../account-crypto';
+import { createLocalEraser } from '../local-erase';
+import { createPakeLoader } from '../transport/pake';
 import { createWebSession } from './web-session';
 import { createAppHandlers } from '../../worker/app-handlers';
 import { createRpcServer } from '../../worker/rpc';
@@ -77,6 +79,31 @@ async function rawEdit(rt: SqliteRuntime, dir: string, file: string, edit: (sah:
   }
 }
 
+/** What each slot file of the pool holds: its size, and whether any byte in it is not zero. */
+async function slotFiles(rt: SqliteRuntime, dir: string): Promise<Array<{ size: number; nonZero: boolean }>> {
+  await rt.pool.pauseVfs();
+  try {
+    const root = await navigator.storage.getDirectory();
+    let d = root;
+    for (const part of dir.split('/').filter(Boolean)) d = await d.getDirectoryHandle(part);
+    d = await d.getDirectoryHandle('.opaque');
+    const out: Array<{ size: number; nonZero: boolean }> = [];
+    for await (const [, handle] of (d as unknown as { entries(): AsyncIterable<[string, FileSystemHandle]> }).entries()) {
+      const sah = await (handle as FileSystemFileHandle).createSyncAccessHandle();
+      try {
+        const bytes = new Uint8Array(sah.getSize());
+        sah.read(bytes, { at: 0 });
+        out.push({ size: bytes.length, nonZero: bytes.some((b) => b !== 0) });
+      } finally {
+        sah.close();
+      }
+    }
+    return out;
+  } finally {
+    await rt.pool.unpauseVfs();
+  }
+}
+
 const rng = { bytes: (n: number) => crypto.getRandomValues(new Uint8Array(n)) };
 const pwBuf = (text: string) => SecretBuf.from(new TextEncoder().encode(text));
 
@@ -130,6 +157,205 @@ export const scenarios = {
     await call('session.pageHide');
     await new Promise((r) => setTimeout(r, 50));
     out['afterPageHide'] = { announced: lockedAnnounced, calls: await call('folds.list').catch((e: Error) => (e as { code?: string }).code), statusAfter: await call('status') };
+    return out;
+  },
+
+  /** The local eraser (spec 011): everything in the pool goes, with nothing stale left in the slots, and what belongs to the device stays. */
+  async localErase(ctx: ScenarioContext) {
+    const rt = await runtimeFor(ctx);
+    let stored: DeviceCredentials | undefined = { deviceId: '00000000-0000-4000-8000-000000000001' as DeviceCredentials['deviceId'], accountId: 'ABCDEF', email: 'a@example.com', server: '', registration: 'local', sealed: new Uint8Array([1, 2, 3]) };
+    const credentials: CredentialStorePort = { save: async (c) => void (stored = c), load: async () => stored, clear: async () => void (stored = undefined) };
+    let quick: unknown = { credentialId: new Uint8Array([1]) };
+    const quickStore = { load: async () => quick as never, save: async () => undefined, clear: async () => void (quick = undefined) };
+    let settings = { ...DEFAULT_SETTINGS, autoLockMinutes: 15, quickUnlock: { enabled: true, maxIdleMinutes: 90 }, lastBackupAtMs: 1_700_000_000_000, kitReminderDismissed: true };
+    const settingsPort = { load: async () => settings, save: async (x: typeof settings) => void (settings = x) };
+    const eraser = createLocalEraser({ runtime: async () => rt, credentials, quickStore, settings: settingsPort });
+    const out: Record<string, unknown> = {};
+
+    await withDb(ctx, 7, (db) => {
+      db.exec('CREATE TABLE m(v BLOB NOT NULL) STRICT');
+      db.run('INSERT INTO m VALUES (?)', [new TextEncoder().encode('Zebra Savings account balance')]);
+    });
+    out['filesBefore'] = rt.pool.getFileNames().length;
+    out['slotsBefore'] = (await slotFiles(rt, ctx.dir)).filter((f) => f.nonZero).length;
+
+    await eraser.eraseAll();
+    out['filesAfter'] = rt.pool.getFileNames();
+    out['slotsAfterWithContent'] = (await slotFiles(rt, ctx.dir)).filter((f) => f.size > 4096 || f.nonZero).length;
+    out['credentials'] = stored;
+    out['quick'] = quick;
+    out['settings'] = settings;
+
+    await eraser.eraseAll(); // safe to repeat
+    out['again'] = { files: rt.pool.getFileNames(), credentials: stored };
+    return out;
+  },
+
+  /**
+   * A local-only account (spec 010) through the worker handlers: nothing reaches a service while it is local, it stays local across
+   * lock, unlock and a restart, and connecting later registers it without losing the data.
+   */
+  async localOnly(ctx: ScenarioContext) {
+    const rt = await runtimeFor(ctx);
+    const PASSWORD = 'correct horse battery staple';
+    let stored: DeviceCredentials | undefined;
+    const credentials: CredentialStorePort = { save: async (c) => void (stored = c), load: async () => stored, clear: async () => void (stored = undefined) };
+    let savedSettings: unknown;
+    const calls = { signIn: 0, register: 0, rates: 0 };
+    const payloads: Array<{ discoverable: boolean; server: string }> = [];
+    let nextRegistration: RegistrationResult = { ok: true };
+    const accountCrypto = createAccountCrypto({ rng, pake: createPakeLoader({ rng }), kdf: { kdf: 'argon2id', mKib: 32768, t: 2, p: 1 } });
+    const build = () => createAppHandlers({
+      runtime: async () => rt, rng, credentials, nowMs: Date.now, onLocked: () => undefined,
+      accountCrypto, registerCrypto: accountCrypto,
+      settings: { load: async () => parseSettings(savedSettings), save: async (x) => void (savedSettings = x) },
+      quickStore: { load: async () => undefined, save: async () => undefined, clear: async () => undefined },
+      quickCrypto: { enroll: async () => 'wrong_password', unlock: async () => 'failed' },
+      relayAuth: { signIn: async () => (calls.signIn++, { ok: false, kind: 'offline' }) },
+      registration: { register: async (payload) => (calls.register++, payloads.push({ discoverable: payload.discoverable, server: payload.server }), nextRegistration) },
+      ratesSource: () => ({ fetch: async () => (calls.rates++, Promise.reject(new Error('no service'))) }),
+    });
+    const bytes = (text: string) => new TextEncoder().encode(text);
+    type Ok<T> = { ok: true; value: T } | { ok: false; error: { code: string } };
+    const out: Record<string, unknown> = {};
+
+    let app = build();
+    let server = createRpcServer(app.handlers);
+    let call = <T = unknown>(method: string, args?: unknown) => server.invoke(method, args) as Promise<T>;
+    const restart = async () => {
+      await call('session.pageHide');
+      await new Promise((r) => setTimeout(r, 50));
+      app = build();
+      server = createRpcServer(app.handlers);
+      call = <T = unknown>(method: string, args?: unknown) => server.invoke(method, args) as Promise<T>;
+    };
+
+    const created = await call<Ok<{ registration: string; fold: { id: string } }>>('createAccount', { email: 'a@example.com', password: bytes(PASSWORD) });
+    out['created'] = created.ok ? { ok: true, registration: created.value.registration } : created;
+    if (!created.ok) return out;
+    const fold = created.value.fold.id;
+    const acct = await call<Ok<{ id: string }>>('ledger.createAccount', { fold, kind: 'checking', name: 'Checking', currency: 'USD', openingBalanceMinor: 100_000n, openingDate: 20_260_101 });
+    out['accountCreated'] = acct.ok;
+    out['afterSignUp'] = { status: await call('status'), sync: await call('sync.status'), stored: { registration: stored?.registration, server: stored?.server } };
+
+    await restart();
+    out['lockedStatus'] = await call('status');
+    out['unlocked'] = (await call<Ok<unknown>>('unlock', { password: bytes(PASSWORD) })).ok;
+    out['afterUnlock'] = { status: await call('status'), sync: await call('sync.status') };
+    await restart();
+    out['unlockedAfterRestart'] = (await call<Ok<unknown>>('unlock', { password: bytes(PASSWORD) })).ok;
+    out['afterRestart'] = { sync: await call('sync.status') };
+    out['callsWhileLocal'] = { ...calls };
+
+    // connecting
+    out['noAddress'] = await call('sync.enable', { password: bytes(PASSWORD) });
+    out['wrongPassword'] = await call('sync.enable', { password: bytes('not the password at all'), server: 'https://relay.example.com' });
+    nextRegistration = { ok: false, reason: 'offline' };
+    out['unreachable'] = await call('sync.enable', { password: bytes(PASSWORD), server: 'https://relay.example.com' });
+    out['stillLocal'] = { registration: stored?.registration, server: stored?.server, accounts: (await call<Ok<{ accounts: unknown[] }>>('ledger.basics', { fold })).ok };
+    nextRegistration = { ok: true };
+    out['connected'] = await call('sync.enable', { password: bytes(PASSWORD), server: 'https://relay.example.com', discoverable: false });
+    out['afterConnect'] = { status: await call('status'), sync: await call('sync.status'), stored: { registration: stored?.registration, server: stored?.server }, registered: payloads.at(-1) };
+    const basics = await call<Ok<{ accounts: Array<{ name: string; balanceMinor: bigint | null }> }>>('ledger.basics', { fold });
+    out['dataAfterConnect'] = basics.ok ? basics.value.accounts.map((a) => [a.name, a.balanceMinor]) : basics.error;
+    await call('session.pageHide');
+    return out;
+  },
+
+  /**
+   * Signing out (spec 011) through the worker handlers over the real encrypted database and pool: everything goes, the lock policy stays, the whole
+   * thing is quick, the lock-screen path erases without a database being open, and a sign-out that was cut short is finished by the very next call.
+   */
+  async signOut(ctx: ScenarioContext) {
+    const rt = await runtimeFor(ctx);
+    const PASSWORD = 'correct horse battery staple';
+    let stored: DeviceCredentials | undefined;
+    const credentials: CredentialStorePort = { save: async (c) => void (stored = c), load: async () => stored, clear: async () => void (stored = undefined) };
+    let savedSettings: unknown;
+    const settings = { load: async () => parseSettings(savedSettings), save: async (x: Parameters<typeof parseSettings>[0]) => void (savedSettings = x) };
+    let quick: unknown;
+    const quickStore = { load: async () => quick as never, save: async (r: unknown) => void (quick = r), clear: async () => void (quick = undefined) };
+    let marked = false;
+    const pendingErase = { set: async () => void (marked = true), isSet: async () => marked, clear: async () => void (marked = false) };
+    const events: string[] = [];
+    const calls = { signIn: 0, register: 0 };
+    const accountCrypto = createAccountCrypto({ rng, pake: createPakeLoader({ rng }), kdf: { kdf: 'argon2id', mKib: 32768, t: 2, p: 1 } });
+    let locked = 0;
+    const build = () => createAppHandlers({
+      runtime: async () => rt, rng, credentials, nowMs: Date.now, onLocked: () => void locked++,
+      accountCrypto, registerCrypto: accountCrypto, settings: settings as never,
+      quickStore: quickStore as never, quickCrypto: { enroll: async () => 'wrong_password', unlock: async () => 'failed' },
+      relayAuth: { signIn: async () => (calls.signIn++, { ok: false, kind: 'offline' }) },
+      registration: { register: async () => (calls.register++, { ok: true }) },
+      pendingErase, localEraser: createLocalEraser({ runtime: async () => rt, credentials, quickStore: quickStore as never, settings: settings as never }),
+      publish: (e) => void events.push(e.type),
+    });
+    const bytes = (text: string) => new TextEncoder().encode(text);
+    type Ok<T> = { ok: true; value: T } | { ok: false; error: { code: string } };
+    let app = build();
+    let server = createRpcServer(app.handlers);
+    let call = <T = unknown>(method: string, args?: unknown) => server.invoke(method, args) as Promise<T>;
+    const restart = async () => {
+      await call('session.pageHide');
+      await new Promise((r) => setTimeout(r, 50));
+      app = build();
+      server = createRpcServer(app.handlers);
+      call = <T = unknown>(method: string, args?: unknown) => server.invoke(method, args) as Promise<T>;
+    };
+    const out: Record<string, unknown> = {};
+    const left = () => ({ files: rt.pool.getFileNames(), credentials: stored, quick, marked });
+
+    // 1. an unlocked account that exists only on this device
+    const created = await call<Ok<{ fold: { id: string } }>>('createAccount', { email: 'a@example.com', password: bytes(PASSWORD) });
+    if (!created.ok) throw new Error('sign-up failed');
+    await call('ledger.createAccount', { fold: created.value.fold.id, kind: 'checking', name: 'Zebra Savings', currency: 'USD', openingBalanceMinor: 100_000n, openingDate: 20_260_101 });
+    await call('settings.set', { autoLockMinutes: 15, lastBackupAtMs: 1_700_000_000_000, kitReminderDismissed: true });
+    out['before'] = { files: rt.pool.getFileNames().length, credentials: stored !== undefined };
+    const started = Date.now();
+    out['signedOut'] = await call('account.signOut');
+    out['tookMs'] = Date.now() - started;
+    await new Promise((r) => setTimeout(r, 250)); // the lock comes just after the reply
+    out['afterSignOut'] = { ...left(), settings: parseSettings(savedSettings), events: [...events], lockedAnnounced: locked, siteContacted: { ...calls } };
+    out['statusAfter'] = await call('status');
+    out['signOutWithNoAccount'] = await call('account.signOut');
+
+    // 2. an account that was registered with a service, which cannot be reached to remove the device
+    events.length = 0;
+    await restart();
+    const registered = await call<Ok<{ fold: { id: string } }>>('createAccount', { email: 'b@example.com', password: bytes(PASSWORD), server: 'https://relay.example.com', discoverable: true });
+    out['registeredCreated'] = registered.ok;
+    // A change made while the service cannot be reached is counted at once, with no sync round having finished to count it (a sign-out relies on this).
+    if (registered.ok) await call('ledger.createAccount', { fold: registered.value.fold.id, kind: 'checking', name: 'Offline', currency: 'USD', openingBalanceMinor: 0n, openingDate: 20_260_101 });
+    out['pendingWhileOffline'] = ((await call<{ folds: Array<{ pendingOps: number }> }>('sync.status')).folds).map((f) => f.pendingOps);
+    out['signedOutRegistered'] = await call('account.signOut');
+    out['afterRegistered'] = left();
+
+    // 3. the lock screen: a wrong address erases nothing, the right one erases with no database open
+    await restart();
+    await call('createAccount', { email: 'c@example.com', password: bytes(PASSWORD) });
+    await restart();
+    out['lockedStatus'] = (await call<{ phase: string }>('status')).phase;
+    out['wrongEmail'] = await call('account.signOutLocked', { email: 'someone@else.com' });
+    out['afterWrongEmail'] = { files: rt.pool.getFileNames().length > 0, credentials: stored !== undefined };
+    out['rightEmail'] = await call('account.signOutLocked', { email: '  C@Example.COM ' });
+    out['afterRightEmail'] = left();
+
+    // 4. a sign-out that was cut short: the marker is set, so the very first call, whatever it is, finishes the erase
+    await restart();
+    await call('createAccount', { email: 'd@example.com', password: bytes(PASSWORD) });
+    await call('session.pageHide');
+    await new Promise((r) => setTimeout(r, 50));
+    marked = true; // what a crash after the first step leaves behind
+    events.length = 0;
+    app = build();
+    server = createRpcServer(app.handlers);
+    call = <T = unknown>(method: string, args?: unknown) => server.invoke(method, args) as Promise<T>;
+    out['firstCallIsUnlock'] = await call('unlock', { password: bytes(PASSWORD) });
+    out['afterFinish'] = left();
+    const status = await call('status');
+    out['statusAfterFinish'] = status;
+    out['statusAgain'] = await call('status');
+    out['finishedAnnounced'] = events.filter((e) => e === 'SignedOut').length;
     return out;
   },
 

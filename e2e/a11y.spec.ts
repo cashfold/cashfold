@@ -18,6 +18,7 @@ test.describe('@a11y primary tasks', () => {
     await page.getByLabel('Email address', { exact: true }).fill('alice@example.com');
     await page.getByLabel('Password', { exact: true }).fill(PASSWORD);
     await page.getByLabel('Repeat password').fill(PASSWORD);
+    await page.getByLabel('Keep everything on this device for now').uncheck();
     await page.getByLabel('Service address').fill('https://relay.example.com');
     await page.getByRole('button', { name: 'Create account' }).click();
     await expect(page.getByTestId('secret-key')).toBeVisible({ timeout: 60_000 });
@@ -32,7 +33,10 @@ test.describe('@a11y primary tasks', () => {
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
     await expectNoA11yViolations();
     // Every field has a name a screen reader announces, and an error is announced, not only coloured.
-    for (const label of ['Email address', 'Password', 'Repeat password', 'Service address']) await expect(page.getByLabel(label, { exact: true })).toBeVisible();
+    for (const label of ['Email address', 'Password', 'Repeat password']) await expect(page.getByLabel(label, { exact: true })).toBeVisible();
+    await expect(page.getByLabel('Keep everything on this device for now')).toBeVisible(); // its name includes its hint, so not an exact match
+    await page.getByLabel('Keep everything on this device for now').uncheck();
+    await expect(page.getByLabel('Service address', { exact: true })).toBeVisible();
     await page.getByRole('button', { name: 'Create account' }).click();
     await expect(page.locator('form [role=alert], [aria-invalid=true]').first()).toBeVisible();
     await expectNoA11yViolations();

@@ -12,6 +12,11 @@
 // desktop settings. Every one of those modules is loaded by a dynamic import that runs only inside the desktop app (ui/desktop/lazy.tsx), so a browser
 // never downloads them and the initial budget did not move (358,045 against 374,784 bytes); but this budget counts every lazy chunk, and it rose from
 // 262,057 to 276,393 bytes (about 14 KB). It is now 278 KiB, the measurement plus about 4%.
+// Signing out (spec 011) added the confirmation and its rules, the use case, the eraser and the signed-out screen. The confirmation, the screen, the
+// Emergency Kit module (which holds the QR generator, the largest single piece of the interface, about 8 KB gzipped) and the passkey code are loaded
+// on first use, because the unlock form and the page gate are carried by every route and the build copies what they import into each route's chunk.
+// Before that the QR generator was in five chunks and the passkey code in 17, about 60 KB gzipped between them. The measurement is now 259,920
+// bytes, well inside the limit, which did not need to move (the initial budget is 365,292 against 374,784).
 // Language catalogues (spec 004) are data, not code, and a person downloads only the one they use (the service worker precaches them all for
 // offline use). They are counted apart from the worker budget and each is held to its own limit, so a new language cannot hide code growth and
 // code growth cannot hide in a language.
