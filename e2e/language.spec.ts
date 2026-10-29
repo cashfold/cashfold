@@ -97,7 +97,7 @@ test.describe('@language', () => {
         await page.goto('/sign-up/');
         await signUp(page, words.starterFold);
         await go(page, 'Accounts');
-        await page.locator('main h1').locator('xpath=..').getByRole('button').first().click();
+        await page.locator('main h1').locator('xpath=..').getByRole('button').last().click();
         const dialog = page.getByRole('dialog');
         await dialog.getByLabel(words.name, { exact: true }).fill('Everyday');
         await dialog.getByLabel(words.opening).fill('1 234,56');

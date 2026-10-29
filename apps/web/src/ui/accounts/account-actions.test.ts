@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { accountActions } from './account-actions';
 
-const labels = { add: 'Add transaction', adjust: 'Adjust balance', edit: 'Edit', moveUp: 'Move Cash up', moveDown: 'Move Cash down', archive: 'Archive', unarchive: 'Restore', remove: 'Delete' };
+const labels = { add: 'Add transaction', adjust: 'Adjust balance', edit: 'Edit', moveUp: 'Move Cash up', moveDown: 'Move Cash down', moveToGroup: (name: string) => `Move to ${name}`, moveToUngrouped: 'Move to Ungrouped', currentGroup: (name: string) => `${name} (current group)`, currentUngrouped: 'Ungrouped (current group)', archive: 'Archive', unarchive: 'Restore', remove: 'Delete' };
 const base = () => ({ archived: false, index: 1, count: 3, labels, add: vi.fn(), adjust: vi.fn(), edit: vi.fn(), move: vi.fn(), toggleArchived: vi.fn(), remove: vi.fn() });
 
 // The same set, in the same order, as the account's dropdown has always had.
@@ -35,5 +35,51 @@ describe('the actions of an account row', () => {
 
   it('use ids the native menu accepts', () => {
     for (const a of accountActions(base())) expect(a.id).toMatch(/^[a-z][a-z-]{0,23}$/);
+  });
+});
+
+describe('the move-to-group actions', () => {
+  const groups = [{ id: 'g1', name: 'Household' }, { id: 'g2', name: 'Savings' }];
+  const withGroups = (over: Record<string, unknown> = {}) => ({ ...base(), groups, currentGroup: undefined, moveToGroup: vi.fn(), ...over });
+  const ids = (actions: Array<{ id: string }>) => actions.map((a) => a.id);
+
+  it('come after Edit: one per group, then Ungrouped', () => {
+    const actions = accountActions(withGroups({ currentGroup: 'g2' }));
+    expect(ids(actions)).toEqual(['add', 'adjust', 'edit', 'move-to:g1', 'move-to:g2', 'move-to:none', 'move-up', 'move-down', 'archive', 'delete']);
+    expect(actions.find((a) => a.id === 'move-to:g1')!.label).toBe('Move to Household');
+    expect(actions.find((a) => a.id === 'move-to:none')!.label).toBe('Move to Ungrouped');
+  });
+
+  it('disable the current group and say so', () => {
+    const actions = accountActions(withGroups({ currentGroup: 'g2' }));
+    const current = actions.find((a) => a.id === 'move-to:g2')!;
+    expect(current.disabled).toBe(true);
+    expect(current.label).toBe('Savings (current group)');
+    expect(actions.find((a) => a.id === 'move-to:g1')!.disabled).toBeUndefined();
+    expect(actions.find((a) => a.id === 'move-to:none')!.disabled).toBeUndefined();
+  });
+
+  it('disable Ungrouped when the account has no group', () => {
+    const none = accountActions(withGroups()).find((a) => a.id === 'move-to:none')!;
+    expect(none.disabled).toBe(true);
+    expect(none.label).toBe('Ungrouped (current group)');
+  });
+
+  it('are absent with no groups, leaving the list as it was', () => {
+    expect(ids(accountActions({ ...base(), groups: [], currentGroup: undefined, moveToGroup: vi.fn() }))).toEqual(['add', 'adjust', 'edit', 'move-up', 'move-down', 'archive', 'delete']);
+  });
+
+  it('run moveToGroup with the group id, or null for Ungrouped', () => {
+    const h = withGroups({ currentGroup: 'g1' });
+    const actions = accountActions(h);
+    actions.find((a) => a.id === 'move-to:g2')!.run();
+    actions.find((a) => a.id === 'move-to:none')!.run();
+    expect(h.moveToGroup.mock.calls).toEqual([['g2'], [null]]);
+  });
+
+  it('have ids that start with move-to:, so the desktop pop-up (which takes short plain ids and at most 12 items) can leave them out', () => {
+    const moves = accountActions(withGroups()).filter((a) => a.id.startsWith('move-to:'));
+    expect(moves).toHaveLength(3);
+    for (const a of accountActions(withGroups()).filter((x) => !x.id.startsWith('move-to:'))) expect(a.id).toMatch(/^[a-z][a-z-]{0,23}$/);
   });
 });

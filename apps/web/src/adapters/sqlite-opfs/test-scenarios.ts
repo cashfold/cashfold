@@ -359,6 +359,49 @@ export const scenarios = {
     return out;
   },
 
+  /** Moving an account between groups (spec 012) through the worker handlers over the real encrypted database. */
+  async groupMove(ctx: ScenarioContext) {
+    const rt = await runtimeFor(ctx);
+    const PASSWORD = 'correct horse battery staple';
+    let stored: DeviceCredentials | undefined;
+    const credentials: CredentialStorePort = { save: async (c) => void (stored = c), load: async () => stored, clear: async () => void (stored = undefined) };
+    let savedSettings: unknown;
+    const app = createAppHandlers({
+      runtime: async () => rt, rng, credentials, nowMs: () => Date.UTC(2026, 2, 1, 12), onLocked: () => undefined,
+      accountCrypto: createAccountCrypto({ rng, kdf: { kdf: 'argon2id', mKib: 32768, t: 2, p: 1 } }),
+      settings: { load: async () => parseSettings(savedSettings), save: async (x) => void (savedSettings = x) },
+      quickStore: { load: async () => undefined, save: async () => undefined, clear: async () => undefined },
+      quickCrypto: { enroll: async () => 'wrong_password', unlock: async () => 'failed' },
+    });
+    const server = createRpcServer(app.handlers);
+    const call = <T = unknown>(method: string, args?: unknown) => server.invoke(method, args) as Promise<T>;
+    type Ok<T> = { ok: true; value: T } | { ok: false; error: { code: string } };
+    const out: Record<string, unknown> = {};
+
+    const created = await call<Ok<{ fold: { id: string } }>>('createAccount', { email: 'a@example.com', password: new TextEncoder().encode(PASSWORD), server: 'https://relay.example.com', discoverable: true, baseCurrency: 'USD' });
+    if (!created.ok) throw new Error('sign-up failed');
+    const fold = created.value.fold.id;
+    const acct = await call<Ok<{ id: string }>>('ledger.createAccount', { fold, kind: 'checking', name: 'Checking', currency: 'USD', openingBalanceMinor: 100n, openingDate: 20_260_101 });
+    const first = await call<Ok<string>>('ledger.createGroup', { fold, name: 'Household' });
+    const second = await call<Ok<string>>('ledger.createGroup', { fold, name: 'Savings' });
+    if (!acct.ok || !first.ok || !second.ok) throw new Error('setup failed');
+    const groupsOf = async () => {
+      const b = await call<Ok<{ accounts: Array<{ id: string; groupIds: string[] }> }>>('ledger.basics', { fold });
+      return b.ok ? b.value.accounts.find((a) => a.id === acct.value.id)!.groupIds : b.error;
+    };
+    const move = (group: string | null) => call<Ok<unknown>>('ledger.moveAccountToGroup', { fold, account: acct.value.id, group });
+
+    out['ids'] = { first: first.value, second: second.value };
+    out['name'] = await call('ledger.createGroup', { fold, name: ' household ' });
+    out['intoFirst'] = [(await move(first.value)).ok, await groupsOf()];
+    out['intoSecond'] = [(await move(second.value)).ok, await groupsOf()];
+    out['out'] = [(await move(null)).ok, await groupsOf()];
+    await call('ledger.deleteGroup', { fold, id: second.value });
+    out['toDeleted'] = [await move(second.value), await groupsOf()];
+    await call('session.pageHide');
+    return out;
+  },
+
   /** The ledger (user story 2) over the real encrypted database, driven through the worker handlers. */
   async ledger(ctx: ScenarioContext) {
     const rt = await runtimeFor(ctx);

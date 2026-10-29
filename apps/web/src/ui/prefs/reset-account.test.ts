@@ -7,7 +7,7 @@ const mine: Prefs = {
   theme: 'dark', language: 'uk', moreDetailsOpen: true, optionalFields: { 'tx.note': true },
   overview: { period: { kind: 'last90' }, collapsed: ['trend'] }, plan: { view: 'goals' },
   recents: { account: { f1: 'a1' }, categories: { f1: ['c1', 'c2'] } },
-  hints: { dismissed: ['folds-sharing'] }, firstRun: { dismissed: true }, lists: { showArchivedAccounts: true },
+  hints: { dismissed: ['folds-sharing'] }, firstRun: { dismissed: true }, lists: { showArchivedAccounts: true, accountsView: 'type' },
 };
 
 describe('what the interface preferences forget when an account is signed out (spec 011)', () => {
@@ -26,7 +26,7 @@ describe('what the interface preferences forget when an account is signed out (s
     expect(r.overview).toEqual(mine.overview);
     expect(r.plan).toEqual({ view: 'goals' });
     expect(r.hints).toEqual({ dismissed: ['folds-sharing'] });
-    expect(r.lists).toEqual({ showArchivedAccounts: true });
+    expect(r.lists).toEqual({ showArchivedAccounts: true, accountsView: 'type' });
   });
 
   it('does not change its input', () => {
