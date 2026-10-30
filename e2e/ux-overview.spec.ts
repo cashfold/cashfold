@@ -1,5 +1,6 @@
 import { expect, test } from './fixtures/index.js';
 import { createAccount, go, moreDetails, signUpAndEnter } from './fixtures/nav.js';
+import { choose } from './fixtures/select.js';
 
 // The Overview (FR-014 to FR-018; SC-004): four headline figures, a period that is remembered, secondary sections that collapse and stay collapsed,
 // and rows that lead to the filtered list.
@@ -40,7 +41,7 @@ test.describe('@ux overview', () => {
     expect(await page.evaluate(() => JSON.parse(localStorage.getItem('cashfold.ui') ?? '{}').overview.collapsed)).toContain('tag');
 
     // The period is remembered and its dates are stated.
-    await page.getByLabel('Period').selectOption({ label: 'Last month' });
+    await choose(page.getByLabel('Period'), 'Last month');
     await expect(page.getByText(/^Showing /)).toBeVisible();
     expect(await page.evaluate(() => JSON.parse(localStorage.getItem('cashfold.ui') ?? '{}').overview.period.kind)).toBe('lastMonth');
   });

@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import type { Page } from '@playwright/test';
 import { expect, test } from './fixtures/index.js';
 import { createAccount, go, lock, openAddTransaction, unlock } from './fixtures/nav.js';
+import { choose, chooseLanguage } from './fixtures/select.js';
 
 // Spec 010: an account that never talks to a relay. Production build, real encrypted database in a real worker.
 // The build under test has no default relay, so sign-up offers to keep everything on this device.
@@ -188,7 +189,7 @@ test.describe('@us10 local-only sign-up', () => {
     await go(page, 'Transactions');
     await openAddTransaction(page);
     const sheet = page.getByRole('dialog');
-    await sheet.getByLabel('Account').selectOption({ label: 'Everyday (USD)' });
+    await choose(sheet.getByLabel('Account'), 'Everyday (USD)');
     await sheet.getByLabel('Amount (USD)').fill('4.50');
     await sheet.getByRole('button', { name: 'Save' }).click();
     await expect(page.getByRole('dialog')).toHaveCount(0);
@@ -260,7 +261,7 @@ test.describe('@us10 local-only sign-up', () => {
       test.setTimeout(120_000);
       const words = WORDS[code];
       await page.goto('/sign-up/');
-      await page.getByLabel('Language').selectOption(code);
+      await chooseLanguage(page.getByLabel('Language'), code);
       await expect(page.getByLabel(words.local)).toBeChecked();
       expect(await page.locator('body').innerText()).not.toMatch(RAW_KEY);
       await expectNoA11yViolations();

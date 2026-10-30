@@ -1,6 +1,6 @@
 'use client';
 
-import { Select } from '../kit';
+import { Select, SelectOption } from '../kit';
 import { LANGUAGE_NAMES, SELECTABLE_LOCALES, type LanguageChoice } from './i18n';
 import { useI18n } from './I18nProvider';
 
@@ -13,11 +13,11 @@ export function LanguagePicker({ id, className }: { id?: string; className?: str
   return (
     <Select
       {...(id === undefined ? {} : { id })} {...(className === undefined ? {} : { className })}
-      name="language" aria-label={t('language.label')} value={language} onChange={(e) => setLanguage(e.target.value as LanguageChoice)}
+      aria-label={t('language.label')} value={language} onChange={(choice: LanguageChoice) => setLanguage(choice)}
     >
-      <option value="auto">{t('language.auto')}</option>
+      <SelectOption value="auto">{t('language.auto')}</SelectOption>
       {SELECTABLE_LOCALES.map((locale) => (
-        <option key={locale} value={locale} lang={locale}>{LANGUAGE_NAMES[locale]}</option>
+        <SelectOption key={locale} value={locale}>{LANGUAGE_NAMES[locale]}</SelectOption>
       ))}
     </Select>
   );

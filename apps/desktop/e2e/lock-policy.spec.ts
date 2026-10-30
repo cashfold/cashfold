@@ -2,6 +2,7 @@ import type { ElectronApplication, Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { go } from '../../../e2e/fixtures/nav.js';
+import { choose } from '../../../e2e/fixtures/select.js';
 import { expect, signUp, test } from './fixtures';
 
 // User story 1 (spec 006): in the desktop app the computer locking, sleeping or idling locks the app; clicking another window does not.
@@ -16,7 +17,7 @@ const unlockScreen = (page: Page) => page.getByRole('heading', { name: 'Unlock C
 
 async function setIdleMinutes(page: Page, minutes: number): Promise<void> {
   await go(page, 'Profile');
-  await page.getByLabel('Lock after no activity for').selectOption({ value: String(minutes) });
+  await choose(page.getByLabel('Lock after no activity for'), minutes === 1 ? '1 minute' : `${minutes} minutes`);
   await expect(page.getByRole('status').filter({ hasText: 'Saved' })).toBeVisible();
 }
 

@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import net from 'node:net';
 import { expect, test } from './fixtures/index.js';
 import { accountAction, go, moreDetails, openAddTransaction } from './fixtures/nav.js';
+import { choose } from './fixtures/select.js';
 
 // User story 4: the same data on several devices, through a relay that sees only ciphertext (FR-004, FR-010, FR-072 to FR-082).
 // Two real browsers (separate contexts, so separate encrypted databases) and the real relay built from this checkout.
@@ -92,7 +93,7 @@ async function addExpense(page: Page, account: string, amount: string, note: str
   await go(page, 'Transactions');
   await openAddTransaction(page);
   const dialog = page.getByRole('dialog');
-  await dialog.getByLabel('Account').selectOption({ label: `${account} (USD)` });
+  await choose(dialog.getByLabel('Account'), `${account} (USD)`);
   await dialog.getByLabel('Amount (USD)').fill(amount);
   await moreDetails(dialog);
   await dialog.getByLabel('Note').fill(note);

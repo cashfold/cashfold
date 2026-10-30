@@ -7,7 +7,7 @@ import { TextField } from '../forms/TextField';
 import { useI18n } from '../i18n/I18nProvider';
 import { Fingerprint } from './Fingerprint';
 import { sharingError } from './errors';
-import { Button, Checkbox, CheckboxField, Label, Radio, RadioField, RadioGroup, Select } from '../kit';
+import { Button, Checkbox, CheckboxField, Label, Radio, RadioField, RadioGroup, Select, SelectOption } from '../kit';
 
 type Outcome<T> = { ok: true; value: T } | { ok: false; error: { code: string } };
 interface BundleView { bundle: PublicKeyBundle; fingerprint: string[]; fingerprintQr: string }
@@ -106,9 +106,9 @@ export function InviteForm({ fold, onDone }: { fold: string; onDone: () => void 
 
       <div className="mt-4">
         <label htmlFor="inv-role" className="mb-3 block font-medium">{t('sharing.invite.role')}</label>
-        <Select id="inv-role" value={role} onChange={(e) => setRole(e.target.value as 'editor' | 'viewer')}>
-          <option value="editor">{t('sharing.role.editor.long')}</option>
-          <option value="viewer">{t('sharing.role.viewer.long')}</option>
+        <Select id="inv-role" value={role} onChange={(v) => setRole(v as 'editor' | 'viewer')}>
+          <SelectOption value="editor">{t('sharing.role.editor.long')}</SelectOption>
+          <SelectOption value="viewer">{t('sharing.role.viewer.long')}</SelectOption>
         </Select>
       </div>
       <fieldset className="mt-4">

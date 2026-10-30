@@ -1,6 +1,7 @@
 import type { Page } from '@playwright/test';
 import { expect, test } from './fixtures/index.js';
 import { go } from './fixtures/nav.js';
+import { chooseLanguage } from './fixtures/select.js';
 
 // Ukrainian and Polish (spec 004): the app follows the browser's language, can be switched by hand before and after sign-in, remembers the choice,
 // keeps what was typed, works offline, and does not overflow with the longer words. These specs read Ukrainian and Polish text on purpose;
@@ -43,7 +44,7 @@ test.describe('@language', () => {
   const htmlLang = (page: Page) => page.evaluate(() => document.documentElement.lang);
 
   /** The language control (contract: language-control-placement.md). */
-  const CONTROL = (page: Page) => page.locator('select[name="language"]');
+  const CONTROL = (page: Page) => page.getByRole('button', { name: /^(Language|Мова|Język)(\s|$)/ });
 
   for (const language of ['uk', 'pl'] as const) {
     test.describe(`browser language ${language}`, () => {
@@ -131,7 +132,7 @@ test.describe('@language', () => {
       await page.locator('input[type=email]').fill('typed@example.com');
 
       const picker = page.getByLabel('Language');
-      await picker.selectOption('pl');
+      await chooseLanguage(picker, 'pl');
       await expect(page.getByRole('heading', { level: 1 })).toHaveText(TEXT.pl.signUp, { timeout: 1_000 });
       expect(await htmlLang(page)).toBe('pl');
       await expect(page.locator('input[type=email]')).toHaveValue('typed@example.com');
@@ -140,18 +141,18 @@ test.describe('@language', () => {
       await expect(page.getByRole('heading', { level: 1 })).toHaveText(TEXT.pl.signUp);
       expect(await htmlLang(page)).toBe('pl');
 
-      await page.getByLabel('Język').selectOption('uk');
+      await chooseLanguage(page.getByLabel('Język'), 'uk');
       await expect(page.getByRole('heading', { level: 1 })).toHaveText(TEXT.uk.signUp, { timeout: 1_000 });
 
       // "Automatic" follows the browser again (English here).
-      await page.getByLabel('Мова').selectOption('auto');
+      await chooseLanguage(page.getByLabel('Мова'), 'auto');
       await expect(page.getByRole('heading', { level: 1 })).toHaveText(TEXT.en.signUp);
       expect(await htmlLang(page)).toBe('en');
     });
 
     test('a saved choice applies on a page without a control, and sign-up shows it selected again', async ({ page }) => {
       await page.goto('/sign-up/');
-      await page.getByLabel('Language').selectOption('uk');
+      await chooseLanguage(page.getByLabel('Language'), 'uk');
       await expect(page.getByRole('heading', { level: 1 })).toHaveText(TEXT.uk.signUp);
       // Another page before sign-in: the language is kept (FR-009), and it offers no control (FR-002).
       await page.goto('/');
@@ -159,14 +160,14 @@ test.describe('@language', () => {
       await expect(CONTROL(page)).toHaveCount(0);
       // Someone who left sign-up without creating an account finds their choice there again.
       await page.goto('/sign-up/');
-      await expect(page.getByLabel('Мова')).toHaveValue('uk');
+      await expect(page.getByLabel('Мова')).toContainText('Українська');
     });
 
     test('the choice made on sign-up carries through account creation', async ({ page }) => {
       test.setTimeout(180_000);
       await page.goto('/sign-up/');
       await expect(CONTROL(page)).toHaveCount(1);
-      await page.getByLabel('Language').selectOption('uk');
+      await chooseLanguage(page.getByLabel('Language'), 'uk');
       await expect(page.getByRole('heading', { level: 1 })).toHaveText(TEXT.uk.signUp);
       await page.locator('input[type=email]').fill('alice@example.com');
       const passwords = page.locator('input[type=password]');
@@ -189,7 +190,7 @@ test.describe('@language', () => {
       await page.goto('/sign-up/');
       await signUp(page, TEXT.en.starterFold);
       await go(page, 'Appearance');
-      await page.getByLabel('Language').selectOption('uk');
+      await chooseLanguage(page.getByLabel('Language'), 'uk');
       await expect(page.locator('h1').first()).toHaveText('Вигляд', { timeout: 1_000 });
       await page.reload();
       // Reloading locks the app; the unlock page keeps the language and offers no way to change it (contract rule 4).
@@ -230,11 +231,11 @@ test.describe('@language', () => {
       test('a saved English choice wins over the browser, and Automatic follows the browser again', async ({ page }) => {
         await page.goto('/sign-up/');
         await expect(page.getByRole('heading', { level: 1 })).toHaveText(TEXT.pl.signUp);
-        await page.getByLabel('Język').selectOption('en');
+        await chooseLanguage(page.getByLabel('Język'), 'en');
         await expect(page.getByRole('heading', { level: 1 })).toHaveText(TEXT.en.signUp);
         await page.reload();
         await expect(page.getByRole('heading', { level: 1 })).toHaveText(TEXT.en.signUp);
-        await page.getByLabel('Language').selectOption('auto');
+        await chooseLanguage(page.getByLabel('Language'), 'auto');
         await expect(page.getByRole('heading', { level: 1 })).toHaveText(TEXT.pl.signUp);
       });
     });
@@ -246,16 +247,16 @@ test.describe('@language', () => {
       await expect.poll(() => page.evaluate(() => navigator.serviceWorker.controller !== null)).toBe(true);
       await context.setOffline(true);
       await page.reload();
-      await page.getByLabel('Language').selectOption('uk');
+      await chooseLanguage(page.getByLabel('Language'), 'uk');
       await expect(page.getByRole('heading', { level: 1 })).toHaveText(TEXT.uk.signUp, { timeout: 5_000 });
-      await page.getByLabel('Мова').selectOption('pl');
+      await chooseLanguage(page.getByLabel('Мова'), 'pl');
       await expect(page.getByRole('heading', { level: 1 })).toHaveText(TEXT.pl.signUp, { timeout: 5_000 });
     });
   });
 
   test('the fonts have the letters of both languages', async ({ page }) => {
     await page.goto('/sign-up/');
-    await page.getByLabel('Language').selectOption('uk');
+    await chooseLanguage(page.getByLabel('Language'), 'uk');
     await expect(page.getByRole('heading', { level: 1 })).toHaveText(TEXT.uk.signUp);
     const missing = await page.evaluate(async () => {
       await document.fonts.ready;

@@ -7,7 +7,7 @@ import { userEvent } from 'vitest/browser';
 import '../../app/globals.css';
 import {
   Alert, AlertActions, AlertDescription, AlertTitle, Amount, Avatar, Badge, Button, Checkbox, CheckboxField, Chip, ConfirmDialog, Description, Disclosure, Divider, Dropdown, DropdownButton,
-  DropdownItem, DropdownLabel, DropdownMenu, EmptyState, ErrorMessage, Field, Heading, Input, Label, Listbox, ListboxLabel, ListboxOption, Notice, Progress, Radio, RadioField, RadioGroup, Select,
+  DropdownItem, DropdownLabel, DropdownMenu, EmptyState, ErrorMessage, Field, Heading, Input, Label, Listbox, ListboxLabel, ListboxOption, Notice, Progress, Radio, RadioField, RadioGroup, Select, SelectOption,
   Sheet, Stat, StatusMessage, Switch, SwitchField, Tabs, Text, Textarea, BanknotesIcon,
 } from './index';
 
@@ -58,7 +58,7 @@ function Gallery() {
       <Divider />
       <Field><Label>Name</Label><Input defaultValue="Alice" /><Description>Hint</Description></Field>
       <Field><Label>Broken</Label><Input invalid defaultValue="x" /><ErrorMessage>It is wrong</ErrorMessage></Field>
-      <Field><Label>Kind</Label><Select defaultValue="a"><option value="a">A</option><option value="b">B</option></Select></Field>
+      <Field><Label>Kind</Label><Select value="a" onChange={() => undefined}><SelectOption value="a">A</SelectOption><SelectOption value="b">B</SelectOption></Select></Field>
       <Field><Label>Note</Label><Textarea defaultValue="n" /></Field>
       <CheckboxField><Checkbox defaultChecked /><Label>Check</Label></CheckboxField>
       <RadioGroup defaultValue="a" aria-label="Choice"><RadioField><Radio value="a" /><Label>One</Label></RadioField><RadioField><Radio value="b" /><Label>Two</Label></RadioField></RadioGroup>

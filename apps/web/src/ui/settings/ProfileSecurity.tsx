@@ -13,7 +13,7 @@ import { AccountSection } from './AccountSection';
 import { CredentialsSection } from './CredentialsSection';
 import { QuickUnlockSection } from './QuickUnlockSection';
 import { RecoverySection } from './RecoverySection';
-import { Button, Select } from '../kit';
+import { Button, Select, SelectOption } from '../kit';
 
 const IDLE_MINUTES = [1, 2, 5, 10, 15, 30, 60];
 const HIDDEN_SECONDS = [0, 15, 30, 60, 120, 300];
@@ -61,15 +61,15 @@ export function ProfileSecurity() {
           <div className="mt-3 grid max-w-md gap-4">
             <label className="block">
               <span className="mb-3 block font-medium">{t('settings.lock.idle')}</span>
-              <Select value={settings.autoLockMinutes} onChange={(e) => void change({ autoLockMinutes: Number(e.target.value) })}>
-                {IDLE_MINUTES.map((m) => <option key={m} value={m}>{t('settings.lock.minutes', { minutes: m })}</option>)}
+              <Select value={settings.autoLockMinutes} onChange={(v) => void change({ autoLockMinutes: v })}>
+                {IDLE_MINUTES.map((m) => <SelectOption key={m} value={m}>{t('settings.lock.minutes', { minutes: m })}</SelectOption>)}
               </Select>
             </label>
             {isDesktop ? null : (
               <label className="block">
                 <span className="mb-3 block font-medium">{t('settings.lock.hidden')}</span>
-                <Select value={settings.hiddenGraceSeconds} onChange={(e) => void change({ hiddenGraceSeconds: Number(e.target.value) })}>
-                  {HIDDEN_SECONDS.map((s) => <option key={s} value={s}>{s === 0 ? t('settings.lock.immediately') : t('settings.lock.seconds', { seconds: s })}</option>)}
+                <Select value={settings.hiddenGraceSeconds} onChange={(v) => void change({ hiddenGraceSeconds: v })}>
+                  {HIDDEN_SECONDS.map((s) => <SelectOption key={s} value={s}>{s === 0 ? t('settings.lock.immediately') : t('settings.lock.seconds', { seconds: s })}</SelectOption>)}
                 </Select>
               </label>
             )}

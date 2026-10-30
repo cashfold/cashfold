@@ -1,6 +1,7 @@
 import type { Page } from '@playwright/test';
 import { expect, test } from './fixtures/index.js';
 import { go, moreDetails, unlock } from './fixtures/nav.js';
+import { choose } from './fixtures/select.js';
 
 // User story 6: recurring transactions (FR-062 to FR-066), offline. Dates are relative to the device clock.
 
@@ -54,11 +55,11 @@ test.describe('@us6 schedules', () => {
     const dialog = page.getByRole('dialog');
     await dialog.getByLabel('Name', { exact: true }).fill(s.name);
     await dialog.getByLabel('Amount (USD)').fill(s.amount);
-    if (s.unit) await dialog.getByLabel('Repeats').selectOption({ label: s.unit });
+    if (s.unit) await choose(dialog.getByLabel('Repeats'), s.unit);
     if (s.every) await dialog.getByLabel('Every', { exact: true }).fill(s.every);
     await dialog.getByLabel('First on').fill(s.first);
     if (s.last || s.confirm || s.reminder) await moreDetails(dialog);
-    if (s.reminder) await dialog.getByLabel('Reminder', { exact: true }).selectOption({ label: s.reminder });
+    if (s.reminder) await choose(dialog.getByLabel('Reminder', { exact: true }), s.reminder);
     if (s.last) await dialog.getByLabel('Last on (optional)').fill(s.last);
     if (s.confirm) {
       await dialog.getByLabel('Ask me to confirm each one before it counts').check();

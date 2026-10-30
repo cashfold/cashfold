@@ -7,7 +7,7 @@ import { importHandoff } from '../desktop/import-handoff';
 import { useI18n } from '../i18n/I18nProvider';
 import { formatDate } from '../ledger/dates';
 import { useLedger } from '../ledger/LedgerProvider';
-import { Button, Checkbox, CheckboxField, Label, Radio, RadioField, RadioGroup, Select } from '../kit';
+import { Button, Checkbox, CheckboxField, Label, Radio, RadioField, RadioGroup, Select, SelectOption } from '../kit';
 
 
 interface Sample { delimiter: ',' | ';' | '\t'; rows: number; header: string[]; sample: string[][] }
@@ -152,9 +152,9 @@ export function CsvImportPanel() {
   const columnSelect = (field: string, label: string) => (
     <label className="block" key={field}>
       <span className="mb-3 block font-medium">{label}</span>
-      <Select value={columns[field] ?? NONE} onChange={(e) => setColumns({ ...columns, [field]: Number(e.target.value) })}>
-        <option value={NONE}>{t('data.import.none')}</option>
-        {(sample?.header ?? []).map((h, i) => <option key={i} value={i}>{hasHeader && h.trim() !== '' ? h : t('data.import.column', { n: i + 1 })}</option>)}
+      <Select value={columns[field] ?? NONE} onChange={(v) => setColumns({ ...columns, [field]: v })}>
+        <SelectOption value={NONE}>{t('data.import.none')}</SelectOption>
+        {(sample?.header ?? []).map((h, i) => <SelectOption key={i} value={i}>{hasHeader && h.trim() !== '' ? h : t('data.import.column', { n: i + 1 })}</SelectOption>)}
       </Select>
     </label>
   );
@@ -174,18 +174,18 @@ export function CsvImportPanel() {
             <div className="mt-4 grid gap-4 sm:grid-cols-2">
               <label className="block sm:col-span-2">
                 <span className="mb-3 block font-medium">{t('data.import.account')}</span>
-                <Select value={chosen?.id} onChange={(e) => { setAccount(e.target.value); setPreview(undefined); }}>
-                  {accounts.map((a) => <option key={a.id} value={a.id}>{a.name} ({a.currency})</option>)}
+                <Select value={chosen?.id ?? ''} onChange={(v) => { setAccount(v); setPreview(undefined); }}>
+                  {accounts.map((a) => <SelectOption key={a.id} value={a.id}>{a.name} ({a.currency})</SelectOption>)}
                 </Select>
               </label>
               <CheckboxField className="sm:col-span-2"><Checkbox checked={hasHeader} onChange={(checked) => setHasHeader(checked)} /><Label>{t('data.import.header')}</Label></CheckboxField>
               {columnSelect('date', t('data.import.date'))}
               <label className="block">
                 <span className="mb-3 block font-medium">{t('data.import.dateOrder')}</span>
-                <Select value={dateOrder} onChange={(e) => setDateOrder(e.target.value as typeof dateOrder)}>
-                  <option value="ymd">{t('data.import.order.ymd')}</option>
-                  <option value="dmy">{t('data.import.order.dmy')}</option>
-                  <option value="mdy">{t('data.import.order.mdy')}</option>
+                <Select value={dateOrder} onChange={(v) => setDateOrder(v as typeof dateOrder)}>
+                  <SelectOption value="ymd">{t('data.import.order.ymd')}</SelectOption>
+                  <SelectOption value="dmy">{t('data.import.order.dmy')}</SelectOption>
+                  <SelectOption value="mdy">{t('data.import.order.mdy')}</SelectOption>
                 </Select>
               </label>
               <fieldset className="sm:col-span-2">
@@ -198,9 +198,9 @@ export function CsvImportPanel() {
               {amountStyle === 'signed' ? columnSelect('signed', t('data.import.amount')) : (<>{columnSelect('income', t('data.import.income'))}{columnSelect('expense', t('data.import.expense'))}</>)}
               <label className="block">
                 <span className="mb-3 block font-medium">{t('data.import.decimal')}</span>
-                <Select value={decimal} onChange={(e) => setDecimal(e.target.value as typeof decimal)}>
-                  <option value=".">{t('data.import.decimal.dot')}</option>
-                  <option value=",">{t('data.import.decimal.comma')}</option>
+                <Select value={decimal} onChange={(v) => setDecimal(v as typeof decimal)}>
+                  <SelectOption value=".">{t('data.import.decimal.dot')}</SelectOption>
+                  <SelectOption value=",">{t('data.import.decimal.comma')}</SelectOption>
                 </Select>
               </label>
               {columnSelect('currency', t('data.import.currency'))}

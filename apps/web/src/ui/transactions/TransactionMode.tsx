@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } 
 import { useCore } from '../core/CoreProvider';
 import { InputField, SelectField, TextareaField } from '../forms/Field';
 import { useI18n } from '../i18n/I18nProvider';
-import { Button, Chip, Combobox, ComboboxCreate, ComboboxLabel, ComboboxOption, Description, Disclosure, Field, Label, Switch, SwitchField } from '../kit';
+import { Button, Chip, Combobox, ComboboxCreate, ComboboxLabel, ComboboxOption, Description, Disclosure, Field, Label, Switch, SwitchField, SelectOption } from '../kit';
 import { AttachmentField, type AttachmentChoice } from '../ledger/AttachmentField';
 import { deviceOffsetAt, inputToMoment, momentToInput, nowInput } from '../ledger/dates';
 import { decimalsOf, degreesFromDevice, formatDegrees, formatPlain, parseDegrees } from '../ledger/format';
@@ -247,8 +247,8 @@ export function TransactionMode({ formId, kind, existing, accountId, report }: {
       </div>
     ),
     'tx.status': () => (
-      <SelectField key="status" label={t('ledger.tx.status')} value={status} onChange={(e) => setStatus(e.target.value as TxnStatus)}>
-        {(['pending', 'posted', 'void'] as const).filter((s) => existing === undefined || canTransition(existing.status, s)).map((s) => <option key={s} value={s}>{t(`ledger.status.${s}`)}</option>)}
+      <SelectField key="status" label={t('ledger.tx.status')} value={status} onChange={(v) => setStatus(v as TxnStatus)}>
+        {(['pending', 'posted', 'void'] as const).filter((s) => existing === undefined || canTransition(existing.status, s)).map((s) => <SelectOption key={s} value={s}>{t(`ledger.status.${s}`)}</SelectOption>)}
       </SelectField>
     ),
     'tx.refund': () => (
@@ -269,8 +269,8 @@ export function TransactionMode({ formId, kind, existing, accountId, report }: {
       ) : null}
       {kind === 'adjustment' ? <p className="font-medium">{t('ledger.kind.adjustment')}</p> : null}
       <AmountInput label={t('ledger.tx.amount')} currency={currency} value={amount} onChange={setAmount} autoFocus hint={kind === 'adjustment' ? t('ledger.tx.amount.signed') : undefined} />
-      <SelectField label={t('ledger.tx.account')} value={accountIdState} onChange={(e) => setAccountId(e.target.value)} required>
-        {usable.map((a) => <option key={a.id} value={a.id}>{a.name} ({a.currency})</option>)}
+      <SelectField label={t('ledger.tx.account')} value={accountIdState} onChange={setAccountId}>
+        {usable.map((a) => <SelectOption key={a.id} value={a.id}>{a.name} ({a.currency})</SelectOption>)}
       </SelectField>
       {kind === 'adjustment' ? null : (
         <Field>

@@ -1,6 +1,7 @@
 import type { Page } from '@playwright/test';
 import { expect, test } from './fixtures/index.js';
 import { go, moreDetails, openAddTransaction } from './fixtures/nav.js';
+import { choose } from './fixtures/select.js';
 
 // Direction and number formatting (FR-095). The `rtl` project runs this under an Arabic browser locale: the layout mirrors with logical
 // properties, and amounts stay exact (bigint minor units, Latin digits, never a floating-point number), even beyond 2^53.
@@ -84,7 +85,7 @@ test.describe('@i18n direction and formatting', () => {
     await go(page, 'Transactions');
     await openAddTransaction(page);
     const tx = page.getByRole('dialog');
-    await tx.getByLabel('Account').selectOption({ label: 'Vault (USD)' });
+    await choose(tx.getByLabel('Account'), 'Vault (USD)');
     await tx.getByLabel('Amount (USD)').fill('0.01');
     await moreDetails(tx);
     await tx.getByLabel('Note').fill('One cent');

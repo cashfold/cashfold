@@ -1,6 +1,7 @@
 import AxeBuilder from '@axe-core/playwright';
 import type { ElectronApplication, Page } from '@playwright/test';
 import { HELP_SHORTCUTS, type HelpShortcut } from '../../../packages/platform/src/help-shortcuts';
+import { chooseLanguage } from '../../../e2e/fixtures/select.js';
 import { expect, signUp, test } from './fixtures';
 
 // Spec 008: the Help dialog lists the desktop shortcuts as this system writes them, every listed shortcut does what its name says, the list says only Lock
@@ -266,7 +267,7 @@ for (const [language, shortcutsHeading, newTransaction] of [['uk', 'Комбін
     await settled(page);
     await pressItem(app, 'go-settings');
     await page.locator('a[href="/settings/appearance/"]:visible').first().click();
-    await page.locator('select[name="language"]').selectOption(language);
+    await chooseLanguage(page.getByLabel('Language'), language);
     await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]!.setSize(480, 760));
     await page.getByRole('button', { name: 'Open menu' }).or(page.getByRole('button', { name: /Відкрити меню|Otwórz menu/ })).first().click();
     await page.getByRole('button', { name: language === 'uk' ? 'Довідка' : 'Pomoc', exact: true }).click();

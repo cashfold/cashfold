@@ -1,6 +1,7 @@
 import type { Page } from '@playwright/test';
 import { expect, test } from './fixtures/index.js';
 import { go, moreDetails, unlock, openAddTransaction } from './fixtures/nav.js';
+import { choose } from './fixtures/select.js';
 
 // User story 5: envelope budgets with rollover (FR-054 to FR-061), offline.
 // The scenario runs against the device clock: the budget starts at the first day of last month, so "month one" is
@@ -63,7 +64,7 @@ test.describe('@us5 budgets', () => {
     await dialog.getByLabel('Starting on').fill(FIRST_OF_LAST_MONTH);
     await dialog.getByLabel('Limit (USD)').fill('300.00');
     await moreDetails(dialog);
-    await dialog.getByLabel('What is left over').selectOption({ label: rollover });
+    await choose(dialog.getByLabel('What is left over'), rollover);
     await dialog.getByRole('button', { name: 'Create budget' }).click();
     await expect(page.getByRole('dialog')).toHaveCount(0);
   }
@@ -106,7 +107,7 @@ test.describe('@us5 budgets', () => {
     // --- changing the policy recomputes from the same transactions
     await page.getByRole('button', { name: 'Edit Fresh start' }).click();
     dialog = page.getByRole('dialog');
-    await dialog.getByLabel('What is left over').selectOption({ label: 'Carry over what is left' });
+    await choose(dialog.getByLabel('What is left over'), 'Carry over what is left');
     await dialog.getByRole('button', { name: 'Save' }).click();
     await expect(page.getByRole('dialog')).toHaveCount(0);
     await expect(figure(page, 'Fresh start')).toHaveText('480.00 USD');

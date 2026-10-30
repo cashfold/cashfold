@@ -9,6 +9,7 @@ export function Listbox<T>({
   className,
   placeholder,
   autoFocus,
+  id,
   'aria-label': ariaLabel,
   children: options,
   ...props
@@ -16,15 +17,17 @@ export function Listbox<T>({
   className?: string
   placeholder?: React.ReactNode
   autoFocus?: boolean
+  id?: string
   'aria-label'?: string
   children?: React.ReactNode
 } & Omit<Headless.ListboxProps<typeof Fragment, T>, 'as' | 'multiple' | 'name'>) {
   return (
     <Headless.Listbox {...props} multiple={false}>
+      {ariaLabel === undefined ? null : <Headless.Label className="sr-only">{ariaLabel}</Headless.Label>}
       <Headless.ListboxButton
         {...(autoFocus === undefined ? {} : { autoFocus })}
+        {...(id === undefined ? {} : { id })}
         data-slot="control"
-        aria-label={ariaLabel}
         className={clsx([
           className,
           // Basic layout

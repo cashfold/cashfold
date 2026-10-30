@@ -8,7 +8,7 @@ import { useI18n } from '../i18n/I18nProvider';
 import { Fingerprint } from './Fingerprint';
 import { InviteForm } from './InviteForm';
 import { sharingError } from './errors';
-import { Button, Select } from '../kit';
+import { Button, Select, SelectOption } from '../kit';
 
 type Role = 'owner' | 'editor' | 'viewer';
 type Outcome<T> = { ok: true; value: T } | { ok: false; error: { code: string } };
@@ -83,10 +83,10 @@ export function SharingPanel({ fold, name, onClose, onLeft }: { fold: string; na
                 {owner && !m.isMe ? (
                   <>
                     <label className="sr-only" htmlFor={`role-${m.account}`}>{t('sharing.members.roleOf', { account: m.account })}</label>
-                    <Select id={`role-${m.account}`} value={m.role} disabled={busy} onChange={(e) => void run('sharing.changeRole', { member: m.account, role: e.target.value })}>
-                      <option value="owner">{t('sharing.role.owner')}</option>
-                      <option value="editor">{t('sharing.role.editor')}</option>
-                      <option value="viewer">{t('sharing.role.viewer')}</option>
+                    <Select id={`role-${m.account}`} value={m.role} disabled={busy} onChange={(v) => void run('sharing.changeRole', { member: m.account, role: v })}>
+                      <SelectOption value="owner">{t('sharing.role.owner')}</SelectOption>
+                      <SelectOption value="editor">{t('sharing.role.editor')}</SelectOption>
+                      <SelectOption value="viewer">{t('sharing.role.viewer')}</SelectOption>
                     </Select>
                     <Button outline type="button" onClick={() => setDialog({ kind: 'remove', member: m })} aria-label={`${t('sharing.members.remove')} ${m.account}`}>{t('sharing.members.remove')}</Button>
                     {m.role === 'owner' ? null : <Button outline type="button" onClick={() => setDialog({ kind: 'transfer', member: m })} aria-label={`${t('sharing.members.transfer')} ${m.account}`}>{t('sharing.members.transfer')}</Button>}

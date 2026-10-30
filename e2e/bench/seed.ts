@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { type Page } from '@playwright/test';
 import { expect } from '../fixtures/index.js';
 import { go } from '../fixtures/nav.js';
+import { choose } from '../fixtures/select.js';
 
 // Seeding shared by the benchmarks: an account and a number of transactions brought in through the CSV import, which is the way a person gets that
 // many in. Ten thousand rows go in per file.
@@ -53,7 +54,7 @@ export async function seed(page: Page, total: number): Promise<void> {
     await go(page, 'Data');
     const importing = page.getByRole('region', { name: 'Import from a CSV file' });
     await importing.getByLabel('CSV file').setInputFiles(csv);
-    if (f > 0) await importing.getByLabel('Import into account').selectOption({ label: 'Everyday (USD)' });
+    if (f > 0) await choose(importing.getByLabel('Import into account'), 'Everyday (USD)');
     await importing.getByRole('button', { name: 'Show what would be imported' }).click();
     await expect(page.getByTestId('import-preview')).toBeVisible({ timeout: 120_000 });
     await importing.getByRole('button', { name: 'Import these rows' }).click();

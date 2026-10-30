@@ -1,6 +1,7 @@
 import type { Browser, BrowserContext, Page } from '@playwright/test';
 import { expect, test } from './fixtures/index.js';
 import { cancelAdd, chooseFold, go, moreDetails, openAddTransaction } from './fixtures/nav.js';
+import { choose } from './fixtures/select.js';
 
 // User story 7: share a Fold with other people (FR-083 to FR-089, FR-102, FR-104). Three real browsers on the real relay
 // built from this checkout: each has its own account, its own encrypted database and its own keys.
@@ -54,7 +55,7 @@ async function addExpense(page: Page, account: string, amount: string, note: str
   await goIn(page, 'Transactions');
   await openAddTransaction(page);
   const dialog = page.getByRole('dialog');
-  await dialog.getByLabel('Account').selectOption({ label: `${account} (USD)` });
+  await choose(dialog.getByLabel('Account'), `${account} (USD)`);
   await dialog.getByLabel('Amount (USD)').fill(amount);
   await moreDetails(dialog);
   await dialog.getByLabel('Note').fill(note);
@@ -101,7 +102,7 @@ async function invite(page: Page, fold: string, how: { email: string } | { code:
   await expect(dialog.getByRole('button', { name: 'Send invitation' })).toBeDisabled();
   await dialog.getByLabel('Type what they read to you (optional)').fill(theirFingerprint);
   await expect(dialog.getByText('It matches.')).toBeVisible();
-  await dialog.getByLabel('What can they do?').selectOption({ label: opts.role });
+  await choose(dialog.getByLabel('What can they do?'), opts.role);
   await dialog.getByLabel(opts.scope === 'full' ? /^All history/ : /^From now on/).check();
   await dialog.getByRole('button', { name: 'Send invitation' }).click();
   await expect(page.getByRole('heading', { name: 'Invite someone' })).toHaveCount(0, { timeout: 60_000 });
@@ -188,7 +189,7 @@ test.describe('@us7 sharing', () => {
     await openSharing(page, 'Household');
     // members are listed in the order they joined, so the first one who is not Alice is Bob
     const bobRow = page.getByTestId('member-row').filter({ hasNotText: '(you)' }).first();
-    await bobRow.getByRole('combobox').selectOption({ label: 'Viewer' });
+    await choose(bobRow.locator('[aria-haspopup=listbox]'), 'Viewer');
     await expect(bobRow).toContainText('Viewer', { timeout: 30_000 });
     await expectNoA11yViolations();
     await page.keyboard.press('Escape');

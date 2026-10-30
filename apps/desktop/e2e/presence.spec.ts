@@ -1,5 +1,6 @@
 import type { ElectronApplication, Page } from '@playwright/test';
 import { go, lock, moreDetails } from '../../../e2e/fixtures/nav.js';
+import { choose } from '../../../e2e/fixtures/select.js';
 import { expect, signUp, test, unlock } from './fixtures';
 
 // Spec 006, user story 5: the count of waiting entries, reminders on any screen and in the background, the tray, dock menu and jump list, and
@@ -62,7 +63,7 @@ async function addSchedule(page: Page, s: { name: string; first: string; confirm
   await moreDetails(dialog);
   await dialog.getByLabel('Last on (optional)').fill(s.first);
   if (s.confirm) await dialog.getByLabel('Ask me to confirm each one before it counts').check();
-  if (s.reminder) await dialog.getByLabel('Reminder', { exact: true }).selectOption({ label: s.reminder });
+  if (s.reminder) await choose(dialog.getByLabel('Reminder', { exact: true }), s.reminder);
   await dialog.getByRole('button', { name: 'Create schedule' }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
 }

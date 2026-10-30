@@ -15,7 +15,7 @@ import { SharingPanel } from '../sharing/SharingPanel';
 import { useLocalOnly } from '../sync/useLocalOnly';
 import { KitReminder } from '../shell/KitReminder';
 import { starterCategoryNames } from '../i18n/starter-names';
-import { Badge, Button, Sheet, Select } from '../kit';
+import { Badge, Button, Sheet, Select, SelectOption } from '../kit';
 
 type Outcome<T> = { ok: true; value: T } | { ok: false; error: { code: string } };
 interface DeletionSummary { name: string; memberCount: number; isLastFold: boolean }
@@ -154,8 +154,8 @@ export function FoldsAndSharing() {
           <TextField label={t('folds.name.label')} value={name} onChange={(e) => setName(e.target.value)} required autoFocus />
           <div>
             <label htmlFor="fold-currency" className="mb-3 block font-medium">{t('folds.currency.label')}</label>
-            <Select id="fold-currency" value={currency} onChange={(e) => setCurrency(e.target.value)}>
-              {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
+            <Select id="fold-currency" value={currency} onChange={setCurrency}>
+              {CURRENCIES.map((c) => <SelectOption key={c} value={c}>{c}</SelectOption>)}
             </Select>
           </div>
           {error ? <p role="alert" className="text-(--danger)">{error}</p> : null}

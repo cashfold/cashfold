@@ -1,6 +1,7 @@
 import type { Page } from '@playwright/test';
 import { expect, test } from './fixtures/index.js';
 import { go, moreDetails } from './fixtures/nav.js';
+import { choose } from './fixtures/select.js';
 
 // Accessibility of every primary task (FR-094, SC-016): axe at WCAG 2.2 AA on each screen and each dialog, the primary tasks done with the
 // keyboard alone, and the names, roles and live regions a screen reader announces.
@@ -99,7 +100,7 @@ test.describe('@a11y primary tasks', () => {
     await page.getByRole('button', { name: 'Add transaction', exact: true }).focus();
     await page.keyboard.press('Enter');
     const tx = page.getByRole('dialog');
-    await tx.getByLabel('Account').selectOption({ label: 'Everyday (USD)' });
+    await choose(tx.getByLabel('Account'), 'Everyday (USD)');
     await tx.getByLabel('Amount (USD)').fill('12.50');
     await moreDetails(tx);
     await tx.getByLabel('Note').fill('Coffee beans');

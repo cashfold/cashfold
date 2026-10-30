@@ -137,5 +137,6 @@ test('the interface never says "browser" in the desktop app', async ({ session }
     expect(await page.locator('body').innerText(), screen).not.toMatch(/browser/i);
   }
   await go(page, 'Appearance');
-  await expect(page.locator('select[name="language"] option[value="auto"]')).toHaveText('Automatic (follow the system)');
+  await page.getByLabel('Language').click();
+  await expect(page.getByRole('option', { name: 'Automatic (follow the system)' })).toBeVisible();
 });

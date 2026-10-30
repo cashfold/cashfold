@@ -1,6 +1,7 @@
 import type { Browser, Locator, Page } from '@playwright/test';
 import { expect, test } from './fixtures/index.js';
 import { accountAction, go, lock, moreDetails, signUpAndEnter, unlock } from './fixtures/nav.js';
+import { choose } from './fixtures/select.js';
 
 // Account groups on the Accounts page (spec 012): sections by group with exact subtotals, a switch between "By group" and "By type" that is
 // remembered on the device, one-step moving from an account's menu, and groups managed in plain view.
@@ -19,11 +20,11 @@ async function addAccount(page: Page, name: string, opening: string, options: { 
   await page.getByRole('button', { name: 'Add account', exact: true }).click();
   const dialog = page.getByRole('dialog');
   await dialog.getByLabel('Name', { exact: true }).fill(name);
-  if (options.currency) await dialog.getByLabel('Currency').selectOption(options.currency);
+  if (options.currency) await choose(dialog.getByLabel('Currency'), options.currency);
   await dialog.getByLabel(/^Opening balance/).fill(opening);
   if (options.group) {
     await moreDetails(dialog);
-    await dialog.getByLabel('Group', { exact: true }).selectOption({ label: options.group });
+    await choose(dialog.getByLabel('Group', { exact: true }), options.group);
   }
   await dialog.getByRole('button', { name: 'Create account' }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
@@ -171,8 +172,7 @@ test.describe('@ux account groups', () => {
     // Its form shows the new group.
     await accountAction(page, 'Alpha', 'Edit');
     await moreDetails(page.getByRole('dialog'));
-    await expect(page.getByRole('dialog').getByLabel('Group', { exact: true })).toHaveValue(/.+/);
-    await expect(page.getByRole('dialog').getByLabel('Group', { exact: true }).locator('option:checked')).toHaveText('Savings');
+    await expect(page.getByRole('dialog').getByLabel('Group', { exact: true })).toContainText('Savings');
     await page.getByRole('dialog').getByRole('button', { name: 'Cancel' }).click();
 
     // Group view: the account appears in its new section, and the subtotals change.
@@ -239,8 +239,8 @@ test.describe('@ux account groups', () => {
       await form.getByLabel('Name', { exact: true }).fill(name);
       await form.getByLabel('Limit (USD)').fill('300.00');
       await moreDetails(form);
-      await form.getByLabel('Groups').selectOption({ label: 'Household' });
-      if (withAccount) await form.getByLabel('Accounts', { exact: true }).selectOption({ label: 'Alpha' });
+      await form.getByRole('group', { name: 'Groups' }).getByRole('checkbox', { name: 'Household' }).check();
+      if (withAccount) await form.getByRole('group', { name: 'Accounts', exact: true }).getByRole('checkbox', { name: 'Alpha' }).check();
       await form.getByRole('button', { name: 'Create budget' }).click();
       await expect(page.getByRole('dialog')).toHaveCount(0);
     }

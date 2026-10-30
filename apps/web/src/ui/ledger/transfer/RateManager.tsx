@@ -7,7 +7,7 @@ import { useI18n } from '../../i18n/I18nProvider';
 import { dateOfUtcSeconds, dateToInput, formatDate, inputToDate, localDateOfUtcSeconds, startOfLocalDayUtcS, todayLocal } from '../dates';
 import { formatRate, parseRateText } from '../format';
 import { useLedger } from '../LedgerProvider';
-import { Button, Select } from '../../kit';
+import { Button, Select, SelectOption } from '../../kit';
 
 const CURRENCIES = Object.keys(CURRENCY_EXPONENTS).filter((c) => c !== 'USD').sort();
 /** Your own exchange rates, and the action that re-values past transactions with the rates known now. */
@@ -64,8 +64,8 @@ export function RateManager() {
       <form onSubmit={save} className="mt-4 grid max-w-xl gap-x-4 *:min-w-0 sm:grid-cols-3">
         <div className="mt-4">
           <label htmlFor="rate-quote" className="mb-3 block font-medium">{t('ledger.rates.currency')}</label>
-          <Select id="rate-quote" value={quote} onChange={(e) => setQuote(e.target.value)}>
-            {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
+          <Select id="rate-quote" value={quote} onChange={setQuote}>
+            {CURRENCIES.map((c) => <SelectOption key={c} value={c}>{c}</SelectOption>)}
           </Select>
         </div>
         <TextField label={t('ledger.rates.rate', { currency: quote })} value={text} onChange={(e) => setText(e.target.value)} inputMode="decimal" autoComplete="off" required />

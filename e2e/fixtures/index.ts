@@ -18,11 +18,6 @@ export const test = base.extend<{
       await page.exposeFunction('__reportCspViolation', (line: string) => seen.push(line));
       await page.addInitScript(() => {
         document.addEventListener('securitypolicyviolation', (e) => {
-          // WebKit reports a style-src-attr violation for every native <select> under a strict `style-src 'self'` (its own internal styling; checked on a
-          // page with nothing but a <select>, and Chromium and Firefox report nothing). It is not ours: the page sets no style attribute, which
-          // harden-html.mjs also checks at build time. So it is let through only when the page has a <select> and the violation names no source text.
-          const webkitOnly = /AppleWebKit/.test(navigator.userAgent) && !/Chrome|Chromium/.test(navigator.userAgent);
-          if (webkitOnly && e.violatedDirective.startsWith('style-src-attr') && e.sample === '' && document.querySelector('select') !== null) return;
           const report = (window as unknown as { __reportCspViolation?: (line: string) => void }).__reportCspViolation;
           report?.(`${e.violatedDirective} blocked ${e.blockedURI || 'inline'} on ${location.pathname} (${e.sourceFile || 'no source'}:${e.lineNumber})`);
         });
