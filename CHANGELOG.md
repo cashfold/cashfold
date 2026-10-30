@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.0](https://github.com/cashfold/cashfold/compare/v0.9.1...v0.10.0) (2026-10-30)
+
+
+### Features
+
+* **web:** show balances in account dropdowns and list same-minute entries newest first ([#55](https://github.com/cashfold/cashfold/issues/55)) ([4a5f113](https://github.com/cashfold/cashfold/commit/4a5f113ee1b42a5daad12b7981b983f6e071d1d1))
+
 ## [0.9.1](https://github.com/cashfold/cashfold/compare/v0.9.0...v0.9.1) (2026-10-30)
 
 
