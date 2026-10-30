@@ -9,6 +9,7 @@ import { buildAbout } from './about';
 import { createAppearance } from './appearance';
 import { popupContextMenu } from './context-menu';
 import { createBackgroundMode } from './background';
+import { createAppIcon } from './app-icon';
 import { createBadge } from './badge';
 import { BUILD_VERSION, SIGNED, TEST_FEED_ENABLED } from './build';
 import { readBuildInfo } from './build-info';
@@ -231,6 +232,13 @@ async function main(): Promise<void> {
   // The count on the dock icon or taskbar button, and the tray, dock menu and jump list. They show what the unlocked page tells them and nothing
   // while it is locked. Images are read from inside the package.
   const imageAt = (...parts: string[]) => nativeImage.createFromPath(join(app.getAppPath(), 'build', ...parts));
+  // The dock and window icon follow the page's primary colour (spec 014); the packed icon stays for the installer and the launcher.
+  const appIcon = createAppIcon({
+    platform: process.platform,
+    setDockIcon: (image) => app.dock?.setIcon(image),
+    setWindowIcons: (image) => BrowserWindow.getAllWindows().forEach((win) => win.setIcon(image)),
+    image: (id) => imageAt('icons', `${id}.png`),
+  });
   const badge = createBadge({
     platform: process.platform,
     setBadgeCount: (count) => void app.setBadgeCount(count),
@@ -272,6 +280,7 @@ async function main(): Promise<void> {
     presence.dispose();
   });
   exposeTestHook('badge', () => badge.current());
+  exposeTestHook('appIcon', () => appIcon.current());
   exposeTestHook('presence', () => presence.models());
   // What arrives from outside: files and links, held by the shell until the page can take them (intake.ts).
   const intake = createIntake({
@@ -323,6 +332,7 @@ async function main(): Promise<void> {
         return { settings: settingsOf(), applied: { startAtLogin: applied.applied } };
       },
       setTheme: (theme) => appearance.set(theme),
+      setPrimaryColor: (primary) => appIcon.set(primary),
       reportSession: (state) => {
         pageSession = state;
         // A change of session lets the files that were held for an unlock through.

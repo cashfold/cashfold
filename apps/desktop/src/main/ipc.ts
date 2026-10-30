@@ -12,6 +12,7 @@ import {
   SettingsResponseSchema,
   SettingsSetResponseSchema,
   SettingsUpdateSchema,
+  PrimaryColorRequestSchema,
   ThemeRequestSchema,
   UpdateStateSchema,
   VoidResponseSchema,
@@ -22,6 +23,7 @@ import {
   type SettingsSetResponse,
   type SettingsUpdate,
   type ShellLanguage,
+  type PrimaryColorRequest,
   type ThemeRequest,
   type UpdateState,
 } from '@cashfold/platform';
@@ -60,6 +62,8 @@ export interface IpcHandlers {
   /** Stores a change (refusing `background` where there is no status item) and applies what it can; answers with the result. */
   settingsSet(update: SettingsUpdate): Promise<SettingsSetResponse> | SettingsSetResponse;
   setTheme(theme: ThemeRequest['theme']): void;
+  /** The page's primary colour: the dock and window icon follow it. */
+  setPrimaryColor(primary: PrimaryColorRequest['primary']): void;
   /** The page locked or unlocked: surfaces that show app data clear on `locked`, queued items are delivered on `unlocked`. */
   reportSession(state: 'locked' | 'unlocked'): void;
   setBadge(count: number): void;
@@ -167,6 +171,7 @@ export function registerIpc({ ipcMain, log, handlers, extraOrigins = [] }: Regis
   serve(CHANNELS.settings, none, SettingsResponseSchema, () => handlers.settings());
   serve(CHANNELS.settingsSet, one(SettingsUpdateSchema), SettingsSetResponseSchema, (update) => handlers.settingsSet(update));
   serve(CHANNELS.theme, one(ThemeRequestSchema), VoidResponseSchema, (request) => handlers.setTheme(request.theme));
+  serve(CHANNELS.primaryColor, one(PrimaryColorRequestSchema), VoidResponseSchema, (request) => handlers.setPrimaryColor(request.primary));
   serve(CHANNELS.session, one(SessionReportSchema), VoidResponseSchema, (report) => {
     session = report.state;
     handlers.reportSession(report.state);

@@ -54,6 +54,7 @@ describe('what the page can reach', () => {
       'revealDataFolder',
       'setBadge',
       'setLanguage',
+      'setPrimaryColor',
       'setRecentFolds',
       'setTheme',
       'settings',
@@ -147,6 +148,8 @@ describe('desktop experience calls', () => {
     const bridge = createBridge(ipc);
     await bridge.setTheme('dark');
     expect(ipc.invoke).toHaveBeenLastCalledWith(CHANNELS.theme, { theme: 'dark' });
+    await bridge.setPrimaryColor('blue');
+    expect(ipc.invoke).toHaveBeenLastCalledWith(CHANNELS.primaryColor, { primary: 'blue' });
     await bridge.reportSession('locked');
     expect(ipc.invoke).toHaveBeenLastCalledWith(CHANNELS.session, { state: 'locked' });
     await bridge.setBadge(7);
@@ -156,6 +159,7 @@ describe('desktop experience calls', () => {
     await expect(bridge.popupMenu([{ id: 'edit', label: 'Edit' }])).resolves.toBe('edit');
     const calls = vi.mocked(ipc.invoke).mock.calls.length;
     await expect(bridge.setTheme('sepia' as never)).rejects.toThrow();
+    await expect(bridge.setPrimaryColor('purple' as never)).rejects.toThrow();
     await expect(bridge.setBadge(1000)).rejects.toThrow();
     await expect(bridge.setRecentFolds(Array.from({ length: 6 }, (_, i) => ({ id: `${i}`, name: 'x' })))).rejects.toThrow();
     await expect(bridge.popupMenu([{ id: 'Edit', label: 'Edit' }])).rejects.toThrow();

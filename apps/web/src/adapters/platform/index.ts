@@ -70,6 +70,7 @@ function harden(bridge: DesktopBridge): DesktopBridge {
       set: async (change) => SettingsSetResponseSchema.parse(await settings.set(change)),
     },
     setTheme: (theme) => quietly(() => bridge.setTheme(theme)),
+    setPrimaryColor: (primary) => quietly(() => bridge.setPrimaryColor(primary)),
     reportSession: (state) => quietly(() => bridge.reportSession(state)),
     setBadge: (count) => quietly(() => bridge.setBadge(count)),
     setRecentFolds: (folds) => quietly(() => bridge.setRecentFolds(folds)),
