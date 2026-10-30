@@ -102,6 +102,7 @@ test('exposes one frozen bridge and nothing else of the shell', async ({ session
       'revealDataFolder',
       'setBadge',
       'setLanguage',
+      'setPrimaryColor',
       'setRecentFolds',
       'setTheme',
       'settings',
