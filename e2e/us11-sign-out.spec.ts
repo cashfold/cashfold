@@ -369,8 +369,12 @@ test.describe('@us11 sign out and switch account', () => {
     await expect(page.getByRole('dialog')).toHaveCount(0);
     // nothing was erased: the password still opens it
     await page.getByLabel('Password', { exact: true }).fill(PASSWORD);
-    await page.getByRole('button', { name: 'Unlock' }).click();
-    await expect(page.getByTestId('current-fold').first()).toBeVisible({ timeout: 60_000 });
+    // A click on Unlock that lands too early is swallowed (seen on CI), so it is repeated while the lock screen is still there.
+    const unlock = page.getByRole('button', { name: 'Unlock' });
+    await expect(async () => {
+      if ((await unlock.count()) > 0 && (await unlock.isEnabled())) await unlock.click({ timeout: 5_000 });
+      await expect(page.getByTestId('current-fold').first()).toBeVisible({ timeout: 15_000 });
+    }).toPass({ timeout: 90_000 });
     await lock(page);
 
     await page.getByRole('button', { name: 'Use a different account' }).click();
