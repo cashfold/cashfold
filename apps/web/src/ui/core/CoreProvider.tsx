@@ -6,6 +6,7 @@ import { forgetShownReminders } from '../../adapters/notifications/browser';
 import { useDesktop } from '../desktop/DesktopSettingsProvider';
 import { createCoreClient, type CoreClient, type CoreEvent } from './core-client';
 import { prefsStore } from '../prefs/usePrefs';
+import { paletteHistory } from '../palette/history';
 import { resetAccountPrefs } from '../prefs/reset-account';
 import { createSessionHandlers } from './lock-policy';
 
@@ -54,10 +55,11 @@ export async function withPasswordBytes<T>(password: string, use: (bytes: Uint8A
   }
 }
 
-/** What the page keeps that belongs to the account that is gone: the Fold-keyed recents, the hidden Getting started card, the list of shown reminders. */
-function forgetAccountScopedState(): void {
+/** What the page keeps that belongs to the account that is gone: the Fold-keyed recents, the hidden Getting started card, the list of shown reminders, the command palette's history. */
+export function forgetAccountScopedState(): void {
   prefsStore.update(resetAccountPrefs);
   forgetShownReminders();
+  paletteHistory.clear();
 }
 
 const ACTIVITY_THROTTLE_MS = 5_000;
