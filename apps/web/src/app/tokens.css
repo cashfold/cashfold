@@ -56,6 +56,27 @@
   color-scheme: dark;
 }
 
+/* Primary colour overrides (spec 014). Generated from src/ui/theme/palette.ts; src/ui/theme/tokens-primary.test.ts fails if they drift apart.
+   `emerald` is the default and is the base tokens above, so it has no override. Only the primary family is overridden: danger, success and warning keep their meaning. */
+[data-primary="teal"] { --primary: #0f766e; --on-primary: #ffffff; --accent-text: #0f766e; --focus: #0d9488; }
+[data-theme="dark"][data-primary="teal"] { --primary: #14b8a6; --on-primary: #09090b; --accent-text: #2dd4bf; --focus: #2dd4bf; }
+[data-primary="cyan"] { --primary: #0e7490; --on-primary: #ffffff; --accent-text: #0e7490; --focus: #0891b2; }
+[data-theme="dark"][data-primary="cyan"] { --primary: #06b6d4; --on-primary: #09090b; --accent-text: #22d3ee; --focus: #22d3ee; }
+[data-primary="blue"] { --primary: #1d4ed8; --on-primary: #ffffff; --accent-text: #1d4ed8; --focus: #2563eb; }
+[data-theme="dark"][data-primary="blue"] { --primary: #60a5fa; --on-primary: #09090b; --accent-text: #93c5fd; --focus: #93c5fd; }
+[data-primary="indigo"] { --primary: #4338ca; --on-primary: #ffffff; --accent-text: #4338ca; --focus: #4f46e5; }
+[data-theme="dark"][data-primary="indigo"] { --primary: #818cf8; --on-primary: #09090b; --accent-text: #a5b4fc; --focus: #a5b4fc; }
+[data-primary="violet"] { --primary: #6d28d9; --on-primary: #ffffff; --accent-text: #6d28d9; --focus: #7c3aed; }
+[data-theme="dark"][data-primary="violet"] { --primary: #a78bfa; --on-primary: #09090b; --accent-text: #c4b5fd; --focus: #c4b5fd; }
+[data-primary="pink"] { --primary: #be185d; --on-primary: #ffffff; --accent-text: #be185d; --focus: #db2777; }
+[data-theme="dark"][data-primary="pink"] { --primary: #f472b6; --on-primary: #09090b; --accent-text: #f9a8d4; --focus: #f9a8d4; }
+[data-primary="orange"] { --primary: #c2410c; --on-primary: #ffffff; --accent-text: #c2410c; --focus: #ea580c; }
+[data-theme="dark"][data-primary="orange"] { --primary: #fb923c; --on-primary: #09090b; --accent-text: #fdba74; --focus: #fdba74; }
+[data-primary="amber"] { --primary: #b45309; --on-primary: #ffffff; --accent-text: #b45309; --focus: #d97706; }
+[data-theme="dark"][data-primary="amber"] { --primary: #fbbf24; --on-primary: #09090b; --accent-text: #fcd34d; --focus: #fcd34d; }
+[data-primary="slate"] { --primary: #475569; --on-primary: #ffffff; --accent-text: #475569; --focus: #64748b; }
+[data-theme="dark"][data-primary="slate"] { --primary: #94a3b8; --on-primary: #09090b; --accent-text: #cbd5e1; --focus: #cbd5e1; }
+
 @theme inline {
   --color-bg: var(--bg);
   --color-surface: var(--surface);

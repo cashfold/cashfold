@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { parsePrimary } from './palette';
 import { THEME_KEY, parseStoredTheme, resolveTheme } from './resolve-theme';
 
 describe('resolveTheme', () => {
@@ -55,8 +56,9 @@ describe('the pre-paint bootstrap script in the desktop app', () => {
     const { THEME_BOOTSTRAP } = await import('./bootstrap');
     const documentElement = { dataset: {} as Record<string, string>, style: { colorScheme: '' } };
     new Function('document', 'localStorage', 'window', THEME_BOOTSTRAP)({ documentElement }, { getItem: () => null }, { matchMedia: () => ({ matches: false }), cashfoldDesktop: bridge });
-    const { theme, ...rest } = documentElement.dataset;
+    const { theme, primary, ...rest } = documentElement.dataset;
     void theme;
+    void primary;
     return rest;
   }
 
@@ -76,3 +78,23 @@ describe('the pre-paint bootstrap script in the desktop app', () => {
   });
 });
 
+
+describe('the pre-paint bootstrap script and the primary colour', () => {
+  async function primaryOf(stored: string | null, throwing = false): Promise<string | undefined> {
+    const { THEME_BOOTSTRAP } = await import('./bootstrap');
+    const documentElement = { dataset: {} as Record<string, string>, style: { colorScheme: '' } };
+    const localStorage = { getItem: () => { if (throwing) throw new Error('denied'); return stored; } };
+    new Function('document', 'localStorage', 'window', THEME_BOOTSTRAP)({ documentElement }, localStorage, { matchMedia: () => ({ matches: false }) });
+    return documentElement.dataset['primary'];
+  }
+  const cases: Array<[string | null, unknown]> = [
+    ['{"v":1,"primary":"blue"}', 'blue'], ['{"v":1,"primary":"slate"}', 'slate'], ['{"v":1,"primary":"purple"}', 'purple'], ['{"v":1,"primary":3}', 3],
+    ['{"v":1}', undefined], [null, undefined], ['garbage', undefined],
+  ];
+  it.each(cases)('agrees with parsePrimary for %j', async (stored, value) => {
+    expect(await primaryOf(stored)).toBe(parsePrimary(value));
+  });
+  it('falls back to the default when the storage throws', async () => {
+    expect(await primaryOf(null, true)).toBe(parsePrimary(undefined));
+  });
+});

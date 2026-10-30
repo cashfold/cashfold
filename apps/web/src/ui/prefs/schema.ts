@@ -1,5 +1,7 @@
 // Interface preferences (data-model §1): one JSON object in localStorage under `cashfold.ui`, device-local, never synced or exported.
 // Parsing is defensive field by field: unknown keys are dropped and an invalid value falls back to its default without touching the rest.
+import { DEFAULT_PRIMARY, parsePrimary, type PrimaryChoice } from '../theme/palette';
+
 export type ThemeChoice = 'system' | 'light' | 'dark';
 export type PeriodKind = 'thisMonth' | 'lastMonth' | 'thisYear' | 'lastYear' | 'last30' | 'last90' | 'all';
 export type PeriodChoice = { kind: PeriodKind } | { kind: 'custom'; from: string; to: string };
@@ -14,6 +16,8 @@ export type LanguageChoice = (typeof LANGUAGE_CHOICES)[number];
 export interface Prefs {
   v: 1;
   theme: ThemeChoice;
+  /** The primary colour (spec 014): an id from the palette. */
+  primary: PrimaryChoice;
   language: LanguageChoice;
   moreDetailsOpen: boolean;
   optionalFields: Record<string, boolean>;
@@ -41,6 +45,7 @@ const FIELD_ID = /^[a-z]{2}\.[a-zA-Z]+$/;
 export const DEFAULT_PREFS: Prefs = {
   v: 1,
   theme: 'system',
+  primary: DEFAULT_PRIMARY,
   language: 'auto',
   moreDetailsOpen: false,
   optionalFields: {},
@@ -111,6 +116,7 @@ export function parsePrefs(raw: string | null | undefined): Prefs {
   return {
     v: 1,
     theme: oneOf(data['theme'], ['system', 'light', 'dark'] as const, 'system'),
+    primary: parsePrimary(data['primary']),
     language: oneOf(data['language'], LANGUAGE_CHOICES, 'auto'),
     moreDetailsOpen: bool(data['moreDetailsOpen'], false),
     optionalFields,
