@@ -166,8 +166,8 @@ function TransactionsBody() {
       ...rows.items.map((tx) => ({ id: tx.id, localDate: tx.localDate as number, amountMinor: tx.amountMinor, occurredUtcMs: tx.occurredUtcMs, tx })),
       ...visibleTransfers.map((xf) => ({ id: xf.id, localDate: xf.localDate as number, amountMinor: 0n, occurredUtcMs: xf.occurredUtcMs, xf })),
     ];
-    // The transactions arrive newest first already; only merging transfers in needs the order made again.
-    if (visibleTransfers.length > 0) entries.sort((a, b) => b.localDate - a.localDate || b.occurredUtcMs - a.occurredUtcMs);
+    // The transactions arrive newest first already; only merging transfers in needs the order made again. Same minute: newest id first, as in the lists.
+    if (visibleTransfers.length > 0) entries.sort((a, b) => b.localDate - a.localDate || b.occurredUtcMs - a.occurredUtcMs || (a.id < b.id ? 1 : a.id > b.id ? -1 : 0));
     // More transactions exist than are loaded: the last day may be incomplete.
     return groupByDay(entries, entries.length + (rows.count - rows.items.length));
   }, [rows, visibleTransfers]);

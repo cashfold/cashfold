@@ -1,13 +1,14 @@
 import {
   createAccountCommands, createAdjustBalance, createBudgetCommands, createBudgetQueries, createGoalCommands, createGoalQueries, createMaterialiser, createScheduleCommands, createScheduleQueries, createTransferCommands, createCategoryCommands, createLabelCommands, createRateCommands, createRevalue,
-  createImportCommands, createTransactionCommands, importBatches, labelUsage, newIdV4, parseCsv, previewImport, purgeExpired, type ImportOptions, type ClockPort, type CommandDef, type DomainError, type Id,
+  createImportCommands, createTransactionCommands, importBatches, labelUsage, newIdV4, newIdV7, parseCsv, previewImport, purgeExpired, type ImportOptions, type ClockPort, type CommandDef, type DomainError, type Id,
 } from '@cashfold/core';
 import type { OpenSession } from '../adapters/sqlite-opfs/web-session';
 import type { Handlers } from './rpc';
 
 // The ledger's surface on the Core Worker (contracts/core-api.md, "Ledger commands and queries"). Commands go through
 // the command bus (one transaction each, role checked, events published after commit); queries read the cached
-// ledger view. Records the page creates get their ids here, so the page never needs a source of randomness.
+// ledger view. Records the page creates get their ids here, so the page never needs a source of randomness. The ids sort by creation time,
+// which is what puts entries made within the same minute in the order they were made.
 
 export interface LedgerHandlerDeps {
   /** The open, unlocked session, or an `RpcError('locked')`. */
@@ -92,7 +93,7 @@ export function createLedgerHandlers({ open, clock, rng }: LedgerHandlerDeps): H
   for (const [method, { def, mint: needsId }] of Object.entries(commands)) {
     handlers[method] = (async (args: Record<string, unknown>) => {
       const session = open();
-      const command = needsId === true && args['id'] === undefined ? { ...args, id: newIdV4((n) => rng.bytes(n)) } : args;
+      const command = needsId === true && args['id'] === undefined ? { ...args, id: newIdV7(clock.nowMs(), (n) => rng.bytes(n)) } : args;
       // Dates are the device's own: a schedule falls due on the day the person's calendar says.
       const dated = method.startsWith('schedules.') && args['tzOffsetMin'] === undefined ? { ...command, tzOffsetMin: deviceOffsetMin() } : command;
       const result = await session.commandBus.execute(def as CommandDef<unknown, unknown, DomainError>, dated);
