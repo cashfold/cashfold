@@ -7,6 +7,10 @@ import { go } from './fixtures/nav.js';
 
 const PASSWORD = 'correct horse battery staple';
 
+test.beforeEach(({ browserName }) => {
+  test.skip(browserName === 'webkit', 'OPFS access handles in workers are verified on Chromium and Firefox');
+});
+
 /** A new account kept on this device (no service needed), then Settings → Appearance. */
 async function toAppearance(page: Page): Promise<void> {
   await page.goto('/sign-up/');
