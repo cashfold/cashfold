@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.9.1](https://github.com/cashfold/cashfold/compare/v0.9.0...v0.9.1) (2026-10-30)
+
+
+### Bug Fixes
+
+* **web:** use the kit listbox for every select ([#53](https://github.com/cashfold/cashfold/issues/53)) ([bd7ccb2](https://github.com/cashfold/cashfold/commit/bd7ccb2b81652803911a084b55282721142ac1ca))
+
 ## [0.9.0](https://github.com/cashfold/cashfold/compare/v0.8.0...v0.9.0) (2026-10-29)
 
 
