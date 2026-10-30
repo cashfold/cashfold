@@ -155,6 +155,12 @@ describe('transfer queries', () => {
     expect(all.ok && all.value[0]!.lastChanged?.dev).toBe(id(0xa));
     const some = await s.bus.execute(s.queries.listTransfers, { fold: FOLD, accountId: id(3) });
     expect(some.ok && some.value.map((x) => x.id)).toEqual([id(11)]);
+    // Made in the same minute, the one made last (the larger, time-ordered id) comes first.
+    const sameMinute = Date.UTC(2026, 2, 7, 12, 30);
+    await s.commandBus.execute(moves.addTransfer, { ...base, id: id(20), occurredUtcMs: sameMinute });
+    await s.commandBus.execute(moves.addTransfer, { ...base, id: id(21), occurredUtcMs: sameMinute });
+    const ordered = await s.bus.execute(s.queries.listTransfers, { fold: FOLD });
+    expect(ordered.ok && ordered.value.map((x) => x.id)).toEqual([id(21), id(20), id(11), id(10)]);
     await s.commandBus.execute(moves.deleteTransfer, { fold: FOLD, id: id(10) });
     const gone = await s.bus.execute(s.queries.recentlyDeletedTransfers, { fold: FOLD });
     expect(gone.ok && gone.value.map((d) => [d.transfer.id, d.daysLeft])).toEqual([[id(10), 30]]);

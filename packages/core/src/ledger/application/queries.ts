@@ -97,11 +97,11 @@ export function createLedgerQueries({ views, clock, quarantined }: LedgerQueryDe
     },
   );
 
-  /** Transfers, newest first. */
+  /** Transfers, newest first. Entries of the same minute follow the order they were made in (ids made now sort by creation time). */
   const listTransfers = q<{ fold: Id; accountId?: Id }, TransferRow[]>('listTransfers', ({ accountId }, { ledger }) =>
     [...ledger.transfers.values()]
       .filter((x) => accountId === undefined || x.fromAccountId === accountId || x.toAccountId === accountId)
-      .sort((a, b) => b.localDate - a.localDate || b.occurredUtcMs - a.occurredUtcMs || compareText(a.id, b.id))
+      .sort((a, b) => b.localDate - a.localDate || b.occurredUtcMs - a.occurredUtcMs || compareText(b.id, a.id))
       .map((x) => ({ ...x, lastChanged: ledger.lastChanged.get(x.id) })),
   );
 
