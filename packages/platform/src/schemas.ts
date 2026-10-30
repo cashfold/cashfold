@@ -142,6 +142,7 @@ export const ACTION_IDS = [
   'lock',
   'settings',
   'search',
+  'palette',
   'go:overview',
   'go:transactions',
   'go:accounts',

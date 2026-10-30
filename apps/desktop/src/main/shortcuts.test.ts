@@ -46,7 +46,7 @@ describe('the shortcut table', () => {
   });
 
   it('ignores anything it does not own, and presses with an extra modifier', () => {
-    expect(matchShortcut(press('k', { control: true }), 'linux')).toBeUndefined();
+    expect(matchShortcut(press('j', { control: true }), 'linux')).toBeUndefined();
     expect(matchShortcut(press('w', { control: true, alt: true }), 'linux')).toBeUndefined();
     expect(matchShortcut(press('w'), 'linux')).toBeUndefined();
   });
@@ -123,7 +123,7 @@ describe('installShortcuts', () => {
   it('passes through key releases and unknown presses untouched', () => {
     const { contents, send } = setup(false);
     expect(send({ ...press('c', { meta: true }), type: 'keyUp' })).toBe(false);
-    expect(send(press('k', { meta: true }))).toBe(false);
+    expect(send(press('j', { meta: true }))).toBe(false);
     expect(contents.copy).not.toHaveBeenCalled();
   });
 });
@@ -134,6 +134,7 @@ const CONTRACT: ReadonlyArray<readonly [string, string, boolean]> = [
   ['lock', 'l', false],
   ['settings', ',', false],
   ['search', 'f', false],
+  ['palette', 'k', false],
   ['go:overview', '1', false],
   ['go:transactions', '2', false],
   ['go:accounts', '3', false],
@@ -159,7 +160,7 @@ describe('the app-action shortcuts of the contract', () => {
   });
 
   it('has exactly the contract entries and no other app action', () => {
-    const appActions = SHORTCUTS.filter((e) => e.action === 'lock' || e.action.includes(':') || ['new-transaction', 'settings', 'search', 'import', 'export'].includes(e.action));
+    const appActions = SHORTCUTS.filter((e) => e.action === 'lock' || e.action.includes(':') || ['new-transaction', 'settings', 'search', 'palette', 'import', 'export'].includes(e.action));
     expect(appActions.map((e) => e.action).sort()).toEqual(CONTRACT.map(([action]) => action).sort());
   });
 
@@ -170,5 +171,20 @@ describe('the app-action shortcuts of the contract', () => {
   it('keeps full screen on Control+Command+F distinct from search on Command+F', () => {
     expect(matchShortcut(press('f', { meta: true, control: true }), 'darwin')?.action).toBe('toggle-fullscreen');
     expect(matchShortcut(press('f', { meta: true }), 'darwin')?.action).toBe('search');
+  });
+});
+
+describe('the command palette shortcut (spec 015)', () => {
+  it('is Command+K on macOS and Control+K on Windows and Linux, and nothing else', () => {
+    expect(matchShortcut(press('k', { meta: true }), 'darwin')?.action).toBe('palette');
+    expect(matchShortcut(press('k', { control: true }), 'win32')?.action).toBe('palette');
+    expect(matchShortcut(press('k', { control: true }), 'linux')?.action).toBe('palette');
+    expect(matchShortcut(press('k', { control: true }), 'darwin')).toBeUndefined();
+    expect(matchShortcut(press('k', { meta: true, shift: true }), 'darwin')).toBeUndefined();
+    expect(matchShortcut(press('k', { meta: true, alt: true }), 'darwin')).toBeUndefined();
+  });
+
+  it('is ignored while the page is locked, like every action that reaches data', () => {
+    expect(SHORTCUTS.find((e) => e.action === 'palette')?.data).toBe(true);
   });
 });
