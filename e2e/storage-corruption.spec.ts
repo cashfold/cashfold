@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { chromium, type BrowserContext, type Page } from '@playwright/test';
 import { expect, test } from './fixtures/index.js';
 import { chooseFold, go, moreDetails, openAddTransaction } from './fixtures/nav.js';
-import { choose } from './fixtures/select.js';
+import { chooseAccount } from './fixtures/select.js';
 
 // A device whose storage misbehaves (FR-072, FR-016, edge cases): the browser is shut down the moment a change was confirmed; a page of the
 // encrypted database is overwritten while the app is locked. Confirmed changes are never lost without a word, a damaged file is kept, what can
@@ -47,7 +47,7 @@ async function addExpense(page: Page, account: string, amount: string, note: str
   await go(page, 'Transactions');
   await openAddTransaction(page);
   const dialog = page.getByRole('dialog');
-  await choose(dialog.getByLabel('Account'), `${account} (USD)`);
+  await chooseAccount(dialog.getByLabel('Account'), `${account}`);
   await dialog.getByLabel('Amount (USD)').fill(amount);
   await moreDetails(dialog);
   await dialog.getByLabel('Note').fill(note);

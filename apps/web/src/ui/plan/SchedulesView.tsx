@@ -12,6 +12,7 @@ import { dateToInput, formatDate, inputToDate, todayLocal } from '../ledger/date
 import { formatPlain } from '../ledger/format';
 import { LedgerFrame } from '../ledger/LedgerFrame';
 import { useLedger } from '../ledger/LedgerProvider';
+import { AccountOption } from '../accounts/AccountOption';
 
 const UNITS = ['day', 'week', 'month', 'year'] as const;
 const REMINDERS = ['none', '0', '60', '1440'] as const;
@@ -317,7 +318,7 @@ function ScheduleForm({ row, onDone }: { row?: ScheduleRow | undefined; onDone: 
       <div className="mt-4">
         <label htmlFor="sc-account" className="mb-3 block font-medium">{kind === 'transfer' ? t('ledger.xfer.from') : t('schedules.form.account')}</label>
         <Select id="sc-account" value={accountId} onChange={setAccountId}>
-          {basics.accounts.filter((a) => !a.archived).map((a) => <SelectOption key={a.id} value={a.id}>{a.name} ({a.currency})</SelectOption>)}
+          {basics.accounts.filter((a) => !a.archived).map((a) => <AccountOption key={a.id} account={a} />)}
         </Select>
       </div>
       <AmountField label={kind === 'transfer' ? t('ledger.xfer.fromAmount') : t('schedules.form.amount')} currency={account?.currency ?? 'USD'} value={amount} onChange={setAmount} required />
@@ -326,7 +327,7 @@ function ScheduleForm({ row, onDone }: { row?: ScheduleRow | undefined; onDone: 
           <div className="mt-4">
             <label htmlFor="sc-to" className="mb-3 block font-medium">{t('ledger.xfer.to')}</label>
             <Select id="sc-to" value={toAccountId} onChange={setToAccountId}>
-              {basics.accounts.filter((a) => !a.archived && a.id !== accountId).map((a) => <SelectOption key={a.id} value={a.id}>{a.name} ({a.currency})</SelectOption>)}
+              {basics.accounts.filter((a) => !a.archived && a.id !== accountId).map((a) => <AccountOption key={a.id} account={a} />)}
             </Select>
           </div>
           {sameCurrency ? null : <AmountField label={t('ledger.xfer.toAmount')} currency={toAccount?.currency ?? 'USD'} value={toAmount} onChange={setToAmount} required />}

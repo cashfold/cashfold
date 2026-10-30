@@ -1,6 +1,6 @@
 'use client';
 
-import type { GoalRow } from '@cashfold/core';
+import type { AccountRow, GoalRow } from '@cashfold/core';
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { Modal } from '../forms/Modal';
 import { TextField } from '../forms/TextField';
@@ -12,6 +12,7 @@ import { formatPlain } from '../ledger/format';
 import { LedgerFrame } from '../ledger/LedgerFrame';
 import { useLedger } from '../ledger/LedgerProvider';
 import { COLOR_COUNT, colorFor } from '../ledger/palette';
+import { AccountOption } from '../accounts/AccountOption';
 
 
 export function GoalsView() {
@@ -106,7 +107,7 @@ function GoalsBody() {
   );
 }
 
-function GoalForm({ row, free, onDone }: { row?: GoalRow | undefined; free: ReadonlyArray<{ id: string; name: string; currency: string }>; onDone: () => void }) {
+function GoalForm({ row, free, onDone }: { row?: GoalRow | undefined; free: readonly AccountRow[]; onDone: () => void }) {
   const { t, locale } = useI18n();
   const ledger = useLedger();
   const basics = ledger.basics!;
@@ -146,7 +147,7 @@ function GoalForm({ row, free, onDone }: { row?: GoalRow | undefined; free: Read
       <div className="mt-4">
         <label htmlFor="goal-account" className="mb-3 block font-medium">{t('goals.form.account')}</label>
         <Select id="goal-account" value={accountId} onChange={setAccountId}>
-          {options.map((a) => <SelectOption key={a.id} value={a.id}>{a.name} ({a.currency})</SelectOption>)}
+          {options.map((a) => <AccountOption key={a.id} account={a} />)}
         </Select>
       </div>
       <AmountField label={t('goals.form.target')} currency={currency} value={target} onChange={setTarget} required />

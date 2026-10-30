@@ -15,6 +15,7 @@ import type { ModeReport } from './modes';
 import { RatePrompt } from './RatePrompt';
 import { prefsStore } from '../prefs/usePrefs';
 import { recordRecents } from './recents';
+import { AccountOption } from '../accounts/AccountOption';
 
 /** Move money between two accounts (the transfer mode of the add sheet). The command and payload are those of the former Transfers screen. */
 export function TransferMode({ formId, existing, accountId, report }: { formId: string; existing?: TransferRow | undefined; accountId?: string | undefined; report: ModeReport }) {
@@ -98,10 +99,10 @@ export function TransferMode({ formId, existing, accountId, report }: { formId: 
   return (
     <form id={formId} onSubmit={submit} className="space-y-4">
       <SelectField label={t('ledger.xfer.from')} value={fromId} onChange={setFromId}>
-        {usable.map((a) => <SelectOption key={a.id} value={a.id}>{a.name} ({a.currency})</SelectOption>)}
+        {usable.map((a) => <AccountOption key={a.id} account={a} />)}
       </SelectField>
       <SelectField label={t('ledger.xfer.to')} value={toId} onChange={setToId}>
-        {usable.map((a) => <SelectOption key={a.id} value={a.id}>{a.name} ({a.currency})</SelectOption>)}
+        {usable.map((a) => <AccountOption key={a.id} account={a} />)}
       </SelectField>
       <AmountInput label={t('ledger.xfer.fromAmount')} currency={from?.currency ?? 'USD'} value={fromText} onChange={setFromText} autoFocus />
       {sameCurrency ? (

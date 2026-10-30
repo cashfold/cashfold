@@ -4,7 +4,7 @@ import type { Browser, BrowserContext, Page } from '@playwright/test';
 import { expect, test } from './fixtures/index.js';
 import { createAccount, go, lock, moreDetails, openAddTransaction } from './fixtures/nav.js';
 import { expectNoResidue } from './fixtures/residue.js';
-import { choose, chooseLanguage } from './fixtures/select.js';
+import { chooseAccount, chooseLanguage } from './fixtures/select.js';
 
 // Spec 011: leaving the account on this device so another can be used. Production build, real encrypted database in a real worker, and the real relay
 // built from this checkout for the accounts that are on a service. Chromium and Firefox, as the other specs that need OPFS in workers.
@@ -88,7 +88,7 @@ async function addExpense(page: Page, account: string, amount: string, note: str
   await go(page, 'Transactions');
   await openAddTransaction(page);
   const dialog = page.getByRole('dialog');
-  await choose(dialog.getByLabel('Account'), `${account} (USD)`);
+  await chooseAccount(dialog.getByLabel('Account'), `${account}`);
   await dialog.getByLabel('Amount (USD)').fill(amount);
   await moreDetails(dialog);
   await dialog.getByLabel('Note').fill(note);
@@ -365,10 +365,16 @@ test.describe('@us11 sign out and switch account', () => {
     await dialog.getByLabel(/^Type /).fill(address);
     await expect(confirmButton(dialog)).toBeEnabled();
     await dialog.getByRole('button', { name: 'Cancel' }).click();
+    // The rest of the page is inert until the dialog has finished leaving; a click on Unlock before then is swallowed.
+    await expect(page.getByRole('dialog')).toHaveCount(0);
     // nothing was erased: the password still opens it
     await page.getByLabel('Password', { exact: true }).fill(PASSWORD);
-    await page.getByRole('button', { name: 'Unlock' }).click();
-    await expect(page.getByTestId('current-fold').first()).toBeVisible({ timeout: 60_000 });
+    // A click on Unlock that lands too early is swallowed (seen on CI), so it is repeated while the lock screen is still there.
+    const unlock = page.getByRole('button', { name: 'Unlock' });
+    await expect(async () => {
+      if ((await unlock.count()) > 0 && (await unlock.isEnabled())) await unlock.click({ timeout: 5_000 });
+      await expect(page.getByTestId('current-fold').first()).toBeVisible({ timeout: 15_000 });
+    }).toPass({ timeout: 90_000 });
     await lock(page);
 
     await page.getByRole('button', { name: 'Use a different account' }).click();

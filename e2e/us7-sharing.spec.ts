@@ -1,7 +1,7 @@
 import type { Browser, BrowserContext, Page } from '@playwright/test';
 import { expect, test } from './fixtures/index.js';
 import { cancelAdd, chooseFold, go, moreDetails, openAddTransaction } from './fixtures/nav.js';
-import { choose } from './fixtures/select.js';
+import { choose, chooseAccount } from './fixtures/select.js';
 
 // User story 7: share a Fold with other people (FR-083 to FR-089, FR-102, FR-104). Three real browsers on the real relay
 // built from this checkout: each has its own account, its own encrypted database and its own keys.
@@ -55,7 +55,7 @@ async function addExpense(page: Page, account: string, amount: string, note: str
   await goIn(page, 'Transactions');
   await openAddTransaction(page);
   const dialog = page.getByRole('dialog');
-  await choose(dialog.getByLabel('Account'), `${account} (USD)`);
+  await chooseAccount(dialog.getByLabel('Account'), `${account}`);
   await dialog.getByLabel('Amount (USD)').fill(amount);
   await moreDetails(dialog);
   await dialog.getByLabel('Note').fill(note);

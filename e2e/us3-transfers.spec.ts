@@ -1,7 +1,7 @@
 import type { Page } from '@playwright/test';
 import { expect, test } from './fixtures/index.js';
 import { go, moreDetails, cancelAdd, openRowAction, toggleRecentlyDeleted, unlock, openAddTransaction } from './fixtures/nav.js';
-import { choose } from './fixtures/select.js';
+import { choose, chooseAccount } from './fixtures/select.js';
 
 // User story 3: move money between accounts and currencies (FR-043 to FR-046), offline.
 
@@ -54,8 +54,8 @@ test.describe('@us3 transfers', () => {
     await page.getByRole('button', { name: 'Add', exact: true }).first().click();
     await page.getByRole('tab', { name: 'Transfer' }).click();
     const dialog = page.getByRole('dialog');
-    await choose(dialog.getByLabel('From account'), from);
-    await choose(dialog.getByLabel('To account'), to);
+    await chooseAccount(dialog.getByLabel('From account'), from);
+    await chooseAccount(dialog.getByLabel('To account'), to);
     await dialog.getByLabel(/^Amount leaving/).fill(out);
     if (arriving !== undefined) await dialog.getByLabel(/^Amount arriving/).fill(arriving);
     return dialog;
@@ -77,7 +77,7 @@ test.describe('@us3 transfers', () => {
 
     // --- USD 100.00 becomes EUR 91.37, exactly as entered
     await go(page, 'Transfers');
-    let dialog = await transfer(page, 'Everyday (USD)', 'Euro wallet (EUR)', '100.00', '91.37');
+    let dialog = await transfer(page, 'Everyday', 'Euro wallet', '100.00', '91.37');
     await expectNoA11yViolations();
     await dialog.getByRole('button', { name: 'Save' }).click();
     await expect(page.getByRole('dialog')).toHaveCount(0);
@@ -91,14 +91,14 @@ test.describe('@us3 transfers', () => {
 
     // --- the same account on both sides is refused
     await go(page, 'Transfers');
-    dialog = await transfer(page, 'Everyday (USD)', 'Everyday (USD)', '5.00');
+    dialog = await transfer(page, 'Everyday', 'Everyday', '5.00');
     await dialog.getByRole('button', { name: 'Save' }).click();
     await expect(dialog.getByRole('alert')).toContainText('two different accounts');
     await cancelAdd(page, dialog);
     await expect(page.getByTestId('xfer-row')).toHaveCount(1);
 
     // --- same currency mirrors the amount
-    dialog = await transfer(page, 'Everyday (USD)', 'Holiday fund (USD)', '50.00');
+    dialog = await transfer(page, 'Everyday', 'Holiday fund', '50.00');
     await expect(dialog.getByTestId('mirrored')).toBeVisible();
     await expect(dialog.getByLabel(/^Amount arriving/)).toHaveCount(0);
     await dialog.getByRole('button', { name: 'Save' }).click();
@@ -140,7 +140,7 @@ test.describe('@us3 transfers', () => {
     await openAddTransaction(page);
     dialog = page.getByRole('dialog');
     await dialog.getByRole('tab', { name: 'Income' }).click();
-    await choose(dialog.getByLabel('Account'), 'Holiday fund (USD)');
+    await chooseAccount(dialog.getByLabel('Account'), 'Holiday fund');
     await dialog.getByLabel('Amount (USD)').fill('10.00');
     await dialog.getByRole('button', { name: 'Save' }).click();
     await expect(dialog.getByRole('alert')).toContainText('goal takes only transfers');
@@ -185,7 +185,7 @@ test.describe('@us3 transfers', () => {
     await expect(page.getByTestId('rate-list')).toContainText('0.9137');
     await go(page, 'Transactions');
 
-    const dialog = await transfer(page, 'Everyday (USD)', 'Euro wallet (EUR)', '100.00');
+    const dialog = await transfer(page, 'Everyday', 'Euro wallet', '100.00');
     await expect(dialog.getByLabel(/^Amount arriving/)).toHaveValue('');
     await dialog.getByRole('button', { name: 'Suggest from exchange rate' }).click();
     await expect(dialog.getByLabel(/^Amount arriving/)).toHaveValue('91.37');
@@ -203,7 +203,7 @@ test.describe('@us3 transfers', () => {
     await addAccount(page, 'Narwhal Savings', '777.77');
     await addAccount(page, 'Walrus Wallet', '0', { currency: 'EUR' });
     await go(page, 'Transfers');
-    const dialog = await transfer(page, 'Narwhal Savings (USD)', 'Walrus Wallet (EUR)', '321.45', '293.71');
+    const dialog = await transfer(page, 'Narwhal Savings', 'Walrus Wallet', '321.45', '293.71');
     await moreDetails(dialog);
     await dialog.getByLabel('Note').fill('Tusk repairs');
     await dialog.getByRole('button', { name: 'Save' }).click();

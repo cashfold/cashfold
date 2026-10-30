@@ -2,7 +2,7 @@ import { _electron as electron, expect, test as base, type ElectronApplication, 
 import { spawnSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { go, moreDetails } from '../../../e2e/fixtures/nav.js';
-import { choose } from '../../../e2e/fixtures/select.js';
+import { chooseAccount } from '../../../e2e/fixtures/select.js';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { basename, dirname, join } from 'node:path';
@@ -205,7 +205,7 @@ export async function addExpense(page: Page, account: string, amount: string, no
   await go(page, 'Transactions');
   await page.getByRole('button', { name: 'Add transaction', exact: true }).click();
   const dialog = page.getByRole('dialog');
-  await choose(dialog.getByLabel('Account'), `${account} (USD)`);
+  await chooseAccount(dialog.getByLabel('Account'), account);
   await dialog.getByLabel('Amount (USD)').fill(amount);
   await moreDetails(dialog);
   await dialog.getByLabel('Note').fill(note);

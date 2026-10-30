@@ -1,7 +1,7 @@
 import type { Page } from '@playwright/test';
 import { expect, test } from './fixtures/index.js';
 import { go, moreDetails, cancelAdd, openRowAction, toggleRecentlyDeleted, editRow, accountAction, unlock, openAddTransaction } from './fixtures/nav.js';
-import { choose } from './fixtures/select.js';
+import { choose, chooseAccount } from './fixtures/select.js';
 
 // User story 2: accounts, categories and transactions, entirely offline (FR-023 to FR-036, FR-051, FR-072).
 // Runs on the production build with the real encrypted database. The network goes away after the app has loaded.
@@ -51,7 +51,7 @@ test.describe('@us2 ledger', () => {
   async function addExpense(page: Page, account: string, amount: string, note: string): Promise<void> {
     await openAddTransaction(page);
     const dialog = page.getByRole('dialog');
-    await choose(dialog.getByLabel('Account'), `${account} (USD)`);
+    await chooseAccount(dialog.getByLabel('Account'), `${account}`);
     await dialog.getByLabel('Amount (USD)').fill(amount);
     await moreDetails(dialog);
     await dialog.getByLabel('Note').fill(note);
@@ -141,7 +141,7 @@ test.describe('@us2 ledger', () => {
     await openAddTransaction(page);
     dialog = page.getByRole('dialog');
     await dialog.getByRole('tab', { name: 'Income' }).click();
-    await choose(dialog.getByLabel('Account'), 'Everyday (USD)');
+    await chooseAccount(dialog.getByLabel('Account'), 'Everyday');
     await dialog.getByLabel('Amount (USD)').fill('90071992547409.93');
     await moreDetails(dialog);
     await dialog.getByLabel('Note').fill('Windfall');
@@ -152,7 +152,7 @@ test.describe('@us2 ledger', () => {
     // --- category, payee, a new tag and a place on one transaction
     await openAddTransaction(page);
     dialog = page.getByRole('dialog');
-    await choose(dialog.getByLabel('Account'), 'Everyday (USD)');
+    await chooseAccount(dialog.getByLabel('Account'), 'Everyday');
     await dialog.getByLabel('Amount (USD)').fill('8.00');
     await dialog.getByLabel('Category').fill('Groceries');
     await dialog.getByRole('option', { name: /Food & Drink › Groceries/ }).click();

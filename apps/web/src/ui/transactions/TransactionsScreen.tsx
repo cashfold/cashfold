@@ -22,6 +22,7 @@ import { groupByDay, type DayGroup as DayGroupData, type DayRow } from './day-gr
 import { useWindowedBlock } from './useWindowedRows';
 import { NO_FILTERS, appliedChips, filtersFromQuery, filtersToQuery, removeFilter, type Filters, type StatusFilter } from './filters';
 import { foldLetters } from '../i18n/collation';
+import { AccountOption } from '../accounts/AccountOption';
 
 const PAGE = 100;
 /** Day groups below the first screenful are rendered only while they are near the viewport (FR-027); these size the ones not yet seen. */
@@ -165,8 +166,8 @@ function TransactionsBody() {
       ...rows.items.map((tx) => ({ id: tx.id, localDate: tx.localDate as number, amountMinor: tx.amountMinor, occurredUtcMs: tx.occurredUtcMs, tx })),
       ...visibleTransfers.map((xf) => ({ id: xf.id, localDate: xf.localDate as number, amountMinor: 0n, occurredUtcMs: xf.occurredUtcMs, xf })),
     ];
-    // The transactions arrive newest first already; only merging transfers in needs the order made again.
-    if (visibleTransfers.length > 0) entries.sort((a, b) => b.localDate - a.localDate || b.occurredUtcMs - a.occurredUtcMs);
+    // The transactions arrive newest first already; only merging transfers in needs the order made again. Same minute: newest id first, as in the lists.
+    if (visibleTransfers.length > 0) entries.sort((a, b) => b.localDate - a.localDate || b.occurredUtcMs - a.occurredUtcMs || (a.id < b.id ? 1 : a.id > b.id ? -1 : 0));
     // More transactions exist than are loaded: the last day may be incomplete.
     return groupByDay(entries, entries.length + (rows.count - rows.items.length));
   }, [rows, visibleTransfers]);
@@ -420,7 +421,7 @@ function FiltersPanel({ open, onClose, filters, invalid, onApply }: { open: bool
       <form id="filters-form" className="space-y-4" onSubmit={(e) => { e.preventDefault(); onApply(draft); }}>
         <SelectField label={t('ledger.filter.account')} value={draft.account} onChange={(v) => setDraft((f) => ({ ...f, account: v, ...(v === '' ? { min: '', max: '' } : {}) }))}>
           <SelectOption value="">{t('ledger.filter.any')}</SelectOption>
-          {basics.accounts.map((a) => <SelectOption key={a.id} value={a.id}>{a.name}</SelectOption>)}
+          {basics.accounts.map((a) => <AccountOption key={a.id} account={a} />)}
         </SelectField>
         <SelectField label={t('ledger.filter.category')} value={draft.category} onChange={(v) => set('category', v)}>
           <SelectOption value="">{t('ledger.filter.any')}</SelectOption>
