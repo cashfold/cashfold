@@ -65,7 +65,11 @@ test.describe('@ux list', () => {
     await signUpAndEnter(page);
     await createAccount(page, 'Everyday', '500.00');
     await go(page, 'Transactions');
-    await page.getByRole('button', { name: /^Filters/ }).click();
+    // A click that lands before the screen is ready is swallowed (seen on Firefox), so it is repeated until the panel is open.
+    await expect(async () => {
+      if ((await page.getByRole('dialog').count()) === 0) await page.getByRole('button', { name: /^Filters/ }).click({ timeout: 5_000 });
+      await expect(page.getByRole('dialog')).toHaveCount(1, { timeout: 3_000 });
+    }).toPass({ timeout: 30_000 });
     await expect(page.getByLabel('Smallest amount')).toBeDisabled();
     await chooseAccount(page.getByLabel('Account'), 'Everyday');
     await expect(page.getByLabel('Smallest amount')).toBeEnabled();
