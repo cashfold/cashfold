@@ -38,6 +38,7 @@ A static export that a worker (`apps/web/src/sw`) keeps on the device, so the ap
 ## Known limits
 
 - **Start-up colour.** The system's start-up screen before the app loads uses one colour from the manifest. A dark-theme person may see it light on systems that cannot follow the theme; the app's own first screen is always in the right theme.
+- **Primary colour and the icon.** Settings → Appearance lets a person pick one of ten colours; the tab icon, the touch icon, the browser's address-bar colour and the manifest the page links follow it (`apps/web/src/ui/theme/mirror-icon.ts`, files made by `pnpm gen:assets` in `public/icons/<colour>/` and `public/manifests/<colour>.webmanifest`). An app that is already installed keeps the icon it was installed with: the system decides that, so the setting says so. The manifest stays same-origin, so the Content-Security-Policy is unchanged.
 - **Firefox on a computer** cannot install web apps; offline and update still work.
 - **Chromium decides** when it fires the install event, and may wait after a decline. The Install section appears when it does.
 - Showing a count of waiting entries on the icon, and opening files and links from outside, are not part of this feature (the desktop app has them).
