@@ -14,6 +14,7 @@
 
 - Q: On the lock screen, where a backup can't be made without the password, how should "Use a different account" protect a local-only account's only copy? → A: The same typed-email confirmation, with the "only copy" warning first, and the backup offer replaced by a hint to unlock first and make a backup if the password is remembered.
 - Q: Besides Settings → Profile and security and the lock screen, should "Sign out" also be reachable from the sidebar, next to Lock? → A: No. It is reachable from Settings → Profile and security and from the lock screen only.
+- Note (2026-10-31): spec 015 adds the command palette as one more way to open the same sign-out confirmation ("Sign out / use a different account"). Nothing about the flow or its confirmation changes.
 
 ## User Scenarios & Testing _(mandatory)_
 
