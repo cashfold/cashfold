@@ -18,6 +18,10 @@ If the service can be reached, the device is also removed from the account's lis
 
 An account kept only on this device has no other copy, so signing out erases it for good; the app says so first and asks you to type the account's email address. The lock-screen option sends nothing to any service and asks for that address instead of the password.
 
+## What the command palette remembers
+
+The command palette (Cmd/Ctrl+K) keeps a short list of the places and actions you open most, to show them first. It is stored **only on this device**, in the browser's local storage under the key `cashfold.palette`, and is never sent to the service or to your other devices. It holds an opaque identifier, a count and a time for each entry, at most 24, and never a name, an amount or anything you typed. The names you see in the palette are read from your encrypted data each time it opens. The list is deleted when you sign out or use a different account, and Settings → Data and storage has a button that clears it.
+
 ## What the service cannot read
 
 - Amounts, dates, names, notes, categories, payees, tags, places, budgets, goals, schedules, exchange rates you entered, and the names and base currencies of your Folds.

@@ -69,12 +69,15 @@ The shell, not the web app, makes the window feel native (spec 007), so the web 
   | Mod+L                                                      | Lock (works while locked)                        |
   | Mod+,                                                      | Settings                                         |
   | Mod+F                                                      | Search transactions                              |
+  | Mod+K                                                      | Command palette (opens and closes it)            |
   | Mod+1 to Mod+5                                             | Overview, Transactions, Accounts, Plan, Settings |
   | Mod+Shift+I / Mod+Shift+E                                  | Import / export (Settings → Data)                |
   | Mod+W, Mod+M, Mod+Q (not macOS), F11 (Ctrl+Cmd+F on macOS) | Close, minimise, quit, full screen               |
   | Mod+plus, Mod+minus, Mod+0                                 | Zoom in, out, reset                              |
 
-  While the app is locked every action except Lock is ignored. The table is `apps/desktop/src/main/shortcuts.ts`.
+  While the app is locked every action except Lock is ignored, the command palette included. The table is `apps/desktop/src/main/shortcuts.ts`.
+
+  **Command palette (spec 015).** Mod+K sends the page the `palette` action; the page toggles the palette (`apps/web/src/ui/palette/`). Unlike the other actions it does not close Help or the narrow-window drawer first, because the palette never opens over another dialog. In a browser the web app listens for Command+K (Apple systems) or Ctrl+K (others) itself, and Help shows that one shortcut there.
 
   **Help lists these.** Help in the sidebar opens a dialog that shows them, written the way the person's system writes them (spec 008). The list is `packages/platform/src/help-shortcuts.ts`; a test in `apps/desktop/src/main/help-shortcuts.test.ts` fails when it and the table disagree, so change both together. Redo is Shift+Mod+Z; reload and developer tools exist only in an unpackaged run and are not listed.
 
