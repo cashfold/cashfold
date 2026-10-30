@@ -22,6 +22,7 @@ import { groupByDay, type DayGroup as DayGroupData, type DayRow } from './day-gr
 import { useWindowedBlock } from './useWindowedRows';
 import { NO_FILTERS, appliedChips, filtersFromQuery, filtersToQuery, removeFilter, type Filters, type StatusFilter } from './filters';
 import { foldLetters } from '../i18n/collation';
+import { AccountOption } from '../accounts/AccountOption';
 
 const PAGE = 100;
 /** Day groups below the first screenful are rendered only while they are near the viewport (FR-027); these size the ones not yet seen. */
@@ -420,7 +421,7 @@ function FiltersPanel({ open, onClose, filters, invalid, onApply }: { open: bool
       <form id="filters-form" className="space-y-4" onSubmit={(e) => { e.preventDefault(); onApply(draft); }}>
         <SelectField label={t('ledger.filter.account')} value={draft.account} onChange={(v) => setDraft((f) => ({ ...f, account: v, ...(v === '' ? { min: '', max: '' } : {}) }))}>
           <SelectOption value="">{t('ledger.filter.any')}</SelectOption>
-          {basics.accounts.map((a) => <SelectOption key={a.id} value={a.id}>{a.name}</SelectOption>)}
+          {basics.accounts.map((a) => <AccountOption key={a.id} account={a} />)}
         </SelectField>
         <SelectField label={t('ledger.filter.category')} value={draft.category} onChange={(v) => set('category', v)}>
           <SelectOption value="">{t('ledger.filter.any')}</SelectOption>

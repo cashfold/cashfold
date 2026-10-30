@@ -4,7 +4,7 @@ import type { Browser, BrowserContext, Page } from '@playwright/test';
 import { expect, test } from './fixtures/index.js';
 import { createAccount, go, lock, moreDetails, openAddTransaction } from './fixtures/nav.js';
 import { expectNoResidue } from './fixtures/residue.js';
-import { choose, chooseLanguage } from './fixtures/select.js';
+import { chooseAccount, chooseLanguage } from './fixtures/select.js';
 
 // Spec 011: leaving the account on this device so another can be used. Production build, real encrypted database in a real worker, and the real relay
 // built from this checkout for the accounts that are on a service. Chromium and Firefox, as the other specs that need OPFS in workers.
@@ -88,7 +88,7 @@ async function addExpense(page: Page, account: string, amount: string, note: str
   await go(page, 'Transactions');
   await openAddTransaction(page);
   const dialog = page.getByRole('dialog');
-  await choose(dialog.getByLabel('Account'), `${account} (USD)`);
+  await chooseAccount(dialog.getByLabel('Account'), `${account}`);
   await dialog.getByLabel('Amount (USD)').fill(amount);
   await moreDetails(dialog);
   await dialog.getByLabel('Note').fill(note);

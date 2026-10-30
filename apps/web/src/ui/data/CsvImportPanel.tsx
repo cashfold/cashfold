@@ -8,6 +8,7 @@ import { useI18n } from '../i18n/I18nProvider';
 import { formatDate } from '../ledger/dates';
 import { useLedger } from '../ledger/LedgerProvider';
 import { Button, Checkbox, CheckboxField, Label, Radio, RadioField, RadioGroup, Select, SelectOption } from '../kit';
+import { AccountOption } from '../accounts/AccountOption';
 
 
 interface Sample { delimiter: ',' | ';' | '\t'; rows: number; header: string[]; sample: string[][] }
@@ -175,7 +176,7 @@ export function CsvImportPanel() {
               <label className="block sm:col-span-2">
                 <span className="mb-3 block font-medium">{t('data.import.account')}</span>
                 <Select value={chosen?.id ?? ''} onChange={(v) => { setAccount(v); setPreview(undefined); }}>
-                  {accounts.map((a) => <SelectOption key={a.id} value={a.id}>{a.name} ({a.currency})</SelectOption>)}
+                  {accounts.map((a) => <AccountOption key={a.id} account={a} />)}
                 </Select>
               </label>
               <CheckboxField className="sm:col-span-2"><Checkbox checked={hasHeader} onChange={(checked) => setHasHeader(checked)} /><Label>{t('data.import.header')}</Label></CheckboxField>

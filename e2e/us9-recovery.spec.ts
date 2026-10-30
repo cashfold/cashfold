@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { expect, test } from './fixtures/index.js';
 import { chooseFold, go, moreDetails, editRow, openAddTransaction } from './fixtures/nav.js';
-import { choose } from './fixtures/select.js';
+import { chooseAccount } from './fixtures/select.js';
 
 // User story 9: take your data with you, and get back in (FR-008, FR-009, FR-090 to FR-092, FR-101, SC-013, SC-014). Real browsers
 // on the real relay built from this checkout: each has its own account, its own encrypted database and its own keys.
@@ -49,7 +49,7 @@ async function addExpense(page: Page, account: string, amount: string, note: str
   await go(page, 'Transactions');
   await openAddTransaction(page);
   const dialog = page.getByRole('dialog');
-  await choose(dialog.getByLabel('Account'), `${account} (USD)`);
+  await chooseAccount(dialog.getByLabel('Account'), `${account}`);
   await dialog.getByLabel('Amount (USD)').fill(amount);
   await moreDetails(dialog);
   await dialog.getByLabel('Note').fill(note);
@@ -321,7 +321,7 @@ test.describe('@us9 portability and recovery', () => {
     await go(page, 'Transactions');
     await openAddTransaction(page);
     const dialog = page.getByRole('dialog');
-    await choose(dialog.getByLabel('Account'), 'Everyday (USD)');
+    await chooseAccount(dialog.getByLabel('Account'), 'Everyday');
     await dialog.getByLabel('Amount (USD)').fill('12.50');
     await moreDetails(dialog);
     await dialog.getByLabel('Note').fill('Coffee beans');

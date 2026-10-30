@@ -1,6 +1,6 @@
 import { expect, test } from './fixtures/index.js';
 import { createAccount, go, moreDetails, openRowAction, signUpAndEnter, toggleRecentlyDeleted } from './fixtures/nav.js';
-import { choose } from './fixtures/select.js';
+import { choose, chooseAccount } from './fixtures/select.js';
 
 // The transaction list (FR-024 to FR-027): day groups with net totals, search, one Filters control with chips that live in the address, a row
 // menu with a confirmation that names the transaction, and Recently deleted.
@@ -67,7 +67,7 @@ test.describe('@ux list', () => {
     await go(page, 'Transactions');
     await page.getByRole('button', { name: /^Filters/ }).click();
     await expect(page.getByLabel('Smallest amount')).toBeDisabled();
-    await choose(page.getByLabel('Account'), 'Everyday');
+    await chooseAccount(page.getByLabel('Account'), 'Everyday');
     await expect(page.getByLabel('Smallest amount')).toBeEnabled();
   });
 });

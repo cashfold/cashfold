@@ -17,6 +17,7 @@ import { useAddSheet } from '../shell/add-context';
 import { FirstRunChecklist } from '../firstrun/FirstRunChecklist';
 import { breakdownHref } from './links';
 import { resolvePeriod } from './period';
+import { AccountOption } from '../accounts/AccountOption';
 
 const PERIODS = ['thisMonth', 'lastMonth', 'thisYear', 'lastYear', 'last30', 'last90', 'all', 'custom'] as const;
 
@@ -295,7 +296,7 @@ function DayEnd({ account, onAccount, period, today }: { account: string; onAcco
   return (
     <div>
       <SelectField label={t('ledger.tx.account')} value={chosen.id} onChange={onAccount}>
-        {accounts.map((a) => <SelectOption key={a.id} value={a.id}>{a.name}</SelectOption>)}
+        {accounts.map((a) => <AccountOption key={a.id} account={a} />)}
       </SelectField>
       {days.length > 0 ? (
         <>

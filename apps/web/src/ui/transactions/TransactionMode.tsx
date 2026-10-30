@@ -18,6 +18,7 @@ import type { ModeReport } from './modes';
 import { RatePrompt } from './RatePrompt';
 import { orderCategories, recordRecents, pickDefaultAccount } from './recents';
 import { includesLetters } from '../i18n/collation';
+import { AccountOption } from '../accounts/AccountOption';
 
 export type TxKind = 'expense' | 'income' | 'adjustment';
 interface CategoryOption { id: string; label: string; recent: boolean }
@@ -270,7 +271,7 @@ export function TransactionMode({ formId, kind, existing, accountId, report }: {
       {kind === 'adjustment' ? <p className="font-medium">{t('ledger.kind.adjustment')}</p> : null}
       <AmountInput label={t('ledger.tx.amount')} currency={currency} value={amount} onChange={setAmount} autoFocus hint={kind === 'adjustment' ? t('ledger.tx.amount.signed') : undefined} />
       <SelectField label={t('ledger.tx.account')} value={accountIdState} onChange={setAccountId}>
-        {usable.map((a) => <SelectOption key={a.id} value={a.id}>{a.name} ({a.currency})</SelectOption>)}
+        {usable.map((a) => <AccountOption key={a.id} account={a} />)}
       </SelectField>
       {kind === 'adjustment' ? null : (
         <Field>
