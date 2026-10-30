@@ -42,11 +42,26 @@ describe('the shortcuts in the help dialog', () => {
     expect(html).toContain('<kbd');
   });
 
-  it('is not shown in a browser, where the web app has none of these shortcuts', () => {
+  it('shows only the command palette in a browser, the one shortcut the web app has (spec 015)', () => {
     const html = render(undefined);
-    expect(html).not.toContain(ENGLISH['help.shortcuts.heading']);
+    expect(html).toContain(ENGLISH['help.shortcuts.heading']);
+    expect(html).toContain(ENGLISH['help.shortcut.palette']);
+    expect(html).toContain('Ctrl+K');
     expect(html).not.toContain(ENGLISH['help.shortcuts.locked']);
-    expect(html).not.toContain('<kbd');
+    expect(html).not.toContain(ENGLISH['help.shortcut.new-transaction']);
+    expect(html).not.toContain(ENGLISH['help.shortcuts.standard']);
+    expect(html.match(/<kbd/g)).toHaveLength(1);
+  });
+
+  it('writes the browser shortcut with the Command symbol on an Apple system', () => {
+    const html = renderToStaticMarkup(<HelpContent t={t} platform={undefined} status={open} onShowCard={() => undefined} apple />);
+    expect(html).toContain('⌘K');
+    expect(html).not.toContain('Ctrl+K');
+  });
+
+  it('lists the palette shortcut among the desktop shortcuts', () => {
+    expect(render('linux')).toContain('Ctrl+K');
+    expect(render('darwin')).toContain('⌘K');
   });
 });
 

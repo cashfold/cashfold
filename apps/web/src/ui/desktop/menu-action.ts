@@ -12,6 +12,8 @@ export interface MenuActionDeps {
   focus(target: FocusTarget): void;
   /** Opens the Fold at this place in the list the page sent the shell (0 to 4). */
   openFold(index: number): void;
+  /** Opens the command palette if it is closed and closes it if it is open (spec 015). */
+  togglePalette(): void;
 }
 
 const SECTION_HREF = new Map(PRIMARY_SECTIONS.map((section) => [`go:${section.id}`, section.href]));
@@ -29,6 +31,8 @@ export function performMenuAction(action: string, deps: MenuActionDeps): void {
       return deps.openAdd();
     case 'settings':
       return deps.navigate('/settings/');
+    case 'palette':
+      return deps.togglePalette();
     case 'search':
       deps.focus('transactions-search');
       return deps.navigate('/transactions/');

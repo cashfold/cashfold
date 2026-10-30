@@ -9,6 +9,7 @@ import { useAddSheet } from '../shell/add-context';
 import { afterOverlaysLeave, dismissOverlays } from '../shell/overlay-signal';
 import { recentFoldsOf } from './desktop-presence';
 import { focusRequests } from './focus-request';
+import { togglePalette } from '../palette/palette-bus';
 import { performMenuAction } from './menu-action';
 
 /** Carries out what the desktop shell reports: a shortcut was pressed. Mounted in the unlocked shell, only in the desktop app. */
@@ -26,6 +27,7 @@ export default function DesktopActions() {
     return bridge.onMenuAction((action) => {
       // A help dialog or drawer that is open closes first, and the action runs once it has left, so it does not run behind it.
       const run = () => performMenuAction(action, {
+        togglePalette,
         unlocked: latest.current.core.phase === 'unlocked',
         openAdd: () => latest.current.openAdd(),
         lock: () => void latest.current.core.lock(),
@@ -40,7 +42,9 @@ export default function DesktopActions() {
           r.push('/overview/');
         },
       });
-      if (dismissOverlays() > 0) afterOverlaysLeave(run);
+      // The palette shortcut toggles the palette itself; it does not close Help or the drawer first (the palette never opens over another dialog).
+      if (action === 'palette') run();
+      else if (dismissOverlays() > 0) afterOverlaysLeave(run);
       else run();
     });
   }, []);
