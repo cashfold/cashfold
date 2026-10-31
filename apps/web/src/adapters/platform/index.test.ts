@@ -114,6 +114,7 @@ describe('desktop experience calls and events are checked', () => {
       platform: 'linux',
       settings: { get: vi.fn(async () => ({ settings, capabilities })), set: vi.fn(async () => ({ settings, applied: { startAtLogin: true } })) },
       setTheme: vi.fn(async () => undefined),
+      setPrimaryColor: vi.fn(async () => undefined),
       reportSession: vi.fn(async () => undefined),
       setBadge: vi.fn(async () => undefined),
       setRecentFolds: vi.fn(async () => undefined),

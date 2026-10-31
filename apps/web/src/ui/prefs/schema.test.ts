@@ -152,3 +152,16 @@ describe('lists.accountsView', () => {
     expect(parsePrefs(serializePrefs(prefs)).lists.accountsView).toBe('group');
   });
 });
+
+describe('the primary colour preference', () => {
+  it('defaults to emerald and keeps a valid choice', () => {
+    expect(DEFAULT_PREFS.primary).toBe('emerald');
+    expect(parsePrefs(JSON.stringify({ v: 1, primary: 'violet' })).primary).toBe('violet');
+  });
+  it('falls back to the default for old data without it, and for invalid values, without touching other fields', () => {
+    expect(parsePrefs(JSON.stringify({ v: 1, theme: 'dark' })).primary).toBe('emerald');
+    const bad = parsePrefs(JSON.stringify({ v: 1, theme: 'dark', primary: 'purple' }));
+    expect(bad.primary).toBe('emerald');
+    expect(bad.theme).toBe('dark');
+  });
+});

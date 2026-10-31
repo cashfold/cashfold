@@ -6,6 +6,7 @@ import type {
   FrameState,
   IncomingItem,
   PopupMenuRequest,
+  PrimaryColorRequest,
   RecentFoldsRequest,
   SettingsSetResponse,
   SettingsUpdate,
@@ -30,6 +31,8 @@ export interface DesktopBridge {
   };
   /** Mirrors the page's theme choice so the first frame and the native chrome match. */
   setTheme(theme: ThemeRequest['theme']): Promise<void>;
+  /** Tells the shell the primary colour (a palette id) so the dock and window icon follow it. */
+  setPrimaryColor(primary: PrimaryColorRequest['primary']): Promise<void>;
   /** A presentation hint: the shell holds nothing sensitive whatever it is told. */
   reportSession(state: 'locked' | 'unlocked'): Promise<void>;
   setBadge(count: number): Promise<void>;

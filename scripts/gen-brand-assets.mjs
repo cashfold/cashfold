@@ -4,7 +4,9 @@
 //   assets/logo/logo-light.svg, logo-dark.svg      the mark with the name, for the README (light and dark themes)
 //   apps/desktop/build/icon.png                    the desktop app icon; electron-builder makes the .ico and .icns from it
 //   apps/desktop/build/tray/                       the tray and menu-bar icons (a macOS template image at 1x and 2x, a coloured one for Windows and Linux)
-//   apps/web/public/icon.svg, favicon.ico, apple-touch-icon.png, icon-192.png, icon-512.png, icon-maskable-512.png, manifest.webmanifest
+//   apps/web/public/icon.svg, favicon.ico, apple-touch-icon.png, icon-192.png, icon-512.png, icon-maskable-512.png
+//   apps/web/public/icons/<colour>/ (the same icons) and apps/web/public/manifests/<colour>.webmanifest (the hand-kept manifest.webmanifest with that colour's icons), and apps/desktop/build/icons/<colour>.png,
+//   one set for each primary colour of the palette (apps/web/src/ui/theme/palette.ts), so the app icon can follow the person's choice
 // Created only when missing, so a real image is never overwritten (delete one and run this to get a fresh placeholder):
 //   apps/desktop/build/badges/1.png to 9.png, 9plus.png   the Windows taskbar overlay for a count of waiting entries (they hold digits, not the mark)
 //   assets/social/social-preview.png               1280 x 640, uploaded by hand in the repository settings
@@ -21,6 +23,9 @@ const at = (...parts) => join(root, ...parts);
 
 // The brand colour of the app (apps/web/src/app/tokens.css: --primary in the light theme).
 const BRAND = '#047857';
+
+// The primary colours a person can choose (apps/web/src/ui/theme/palette.ts): the id and the light-theme primary colour of each.
+const PALETTE = [...readFileSync(at('apps/web/src/ui/theme/palette.ts'), 'utf8').matchAll(/id: '(\w+)', light: light\('(#[0-9a-f]{6})'/g)].map((m) => ({ id: m[1], color: m[2] }));
 const NAME = 'Cashfold';
 const TAGLINE = 'Local-first, zero-trust personal finance';
 
@@ -134,29 +139,50 @@ try {
     return entry;
   });
   write(at('apps/web/public/favicon.ico'), Buffer.concat([header, ...entries, ...images]));
-  write(
-    at('apps/web/public/manifest.webmanifest'),
-    `${JSON.stringify(
-      {
-        name: NAME,
-        short_name: NAME,
-        // No description: a static web app cannot offer one per language, so the installed app is known by its name alone (spec 004, FR-009).
-        start_url: '/',
-        scope: '/',
-        display: 'standalone',
-        background_color: '#ffffff',
-        theme_color: BRAND,
-        icons: [
-          { src: '/icon-192.png', sizes: '192x192', type: 'image/png' },
-          { src: '/icon-512.png', sizes: '512x512', type: 'image/png' },
-          { src: '/icon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
-          { src: '/icon.svg', sizes: 'any', type: 'image/svg+xml' },
-        ],
-      },
-      null,
-      2,
-    )}\n`,
-  );
+  // manifest.webmanifest is kept by hand (name, shortcuts, categories: spec 009) and is not rewritten here; the per-colour manifests below are made from it.
+
+  // One icon set for each primary colour: the same mark with only the fill changed, so the app icon follows the person's choice (spec 014).
+  const icoFile = (images, sizes) => {
+    const header = Buffer.alloc(6);
+    header.writeUInt16LE(1, 2);
+    header.writeUInt16LE(sizes.length, 4);
+    let offset = 6 + 16 * sizes.length;
+    const entries = sizes.map((size, i) => {
+      const entry = Buffer.alloc(16);
+      entry.writeUInt8(size, 0);
+      entry.writeUInt8(size, 1);
+      entry.writeUInt16LE(1, 4);
+      entry.writeUInt16LE(32, 6);
+      entry.writeUInt32LE(images[i].length, 8);
+      entry.writeUInt32LE(offset, 12);
+      offset += images[i].length;
+      return entry;
+    });
+    return Buffer.concat([header, ...entries, ...images]);
+  };
+  for (const { id, color } of PALETTE) {
+    const coloured = mark.replace(BRAND, color);
+    const data = `data:image/svg+xml;base64,${Buffer.from(coloured).toString('base64')}`;
+    const img = (size) => `<img src="${data}" width="${size}" height="${size}" style="display:block">`;
+    const out = (file) => at('apps/web/public/icons', id, file);
+    write(out('icon.svg'), coloured);
+    await shot(img(180), 180, 180, out('apple-touch-icon.png'), { transparent: true });
+    await shot(img(192), 192, 192, out('icon-192.png'), { transparent: true });
+    await shot(img(512), 512, 512, out('icon-512.png'), { transparent: true });
+    await shot(`<div style="width:512px;height:512px;background:${color};display:flex;align-items:center;justify-content:center">${img(358)}</div>`, 512, 512, out('icon-maskable-512.png'));
+    write(out('favicon.ico'), icoFile(await Promise.all([16, 32, 48].map((size) => buffer(img(size), size))), [16, 32, 48]));
+    await shot(img(1024), 1024, 1024, at('apps/desktop/build/icons', `${id}.png`), { transparent: true });
+    // The page swaps to this manifest, so an app installed after the choice gets the coloured icon. The same file as the main manifest, with other icons and colour.
+    const manifest = JSON.parse(readFileSync(at('apps/web/public/manifest.webmanifest'), 'utf8'));
+    manifest.theme_color = color;
+    manifest.icons = [
+      { src: `/icons/${id}/icon-192.png`, sizes: '192x192', type: 'image/png' },
+      { src: `/icons/${id}/icon-512.png`, sizes: '512x512', type: 'image/png' },
+      { src: `/icons/${id}/icon-maskable-512.png`, sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+      { src: `/icons/${id}/icon.svg`, sizes: 'any', type: 'image/svg+xml' },
+    ];
+    write(at('apps/web/public/manifests', `${id}.webmanifest`), `${JSON.stringify(manifest, null, 2)}\n`);
+  }
 
   // The tray and menu-bar icons, from the mark. macOS wants a black template image with transparency, which it tints for light and dark menu bars
   // (the file name ends in "Template"); Windows and Linux get the coloured mark.

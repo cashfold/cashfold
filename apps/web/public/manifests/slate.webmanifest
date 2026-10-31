@@ -1,0 +1,70 @@
+{
+  "id": "/",
+  "name": "Cashfold",
+  "short_name": "Cashfold",
+  "description": "Private personal finance that works offline: accounts, budgets and plans, with your data encrypted on your device.",
+  "lang": "en",
+  "dir": "auto",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": [
+    "standalone"
+  ],
+  "orientation": "any",
+  "categories": [
+    "finance"
+  ],
+  "background_color": "#ffffff",
+  "theme_color": "#475569",
+  "icons": [
+    {
+      "src": "/icons/slate/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/slate/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/slate/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icons/slate/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "New transaction",
+      "short_name": "New",
+      "url": "/transactions/?new=expense"
+    },
+    {
+      "name": "Overview",
+      "url": "/overview/"
+    },
+    {
+      "name": "Transactions",
+      "url": "/transactions/"
+    },
+    {
+      "name": "Accounts",
+      "url": "/accounts/"
+    },
+    {
+      "name": "Plan",
+      "url": "/plan/"
+    },
+    {
+      "name": "Settings",
+      "url": "/settings/"
+    }
+  ]
+}

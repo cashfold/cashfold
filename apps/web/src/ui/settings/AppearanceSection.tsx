@@ -7,13 +7,14 @@ import { Button, ConfirmDialog, Description, Field, Fieldset, Label, Legend, Rad
 import { optionalFieldsOf } from '../prefs/fields';
 import { prefsStore, usePrefs } from '../prefs/usePrefs';
 import { useStatus } from '../shell/StatusProvider';
+import { PALETTE, colorOf, type PrimaryChoice } from '../theme/palette';
 import { useTheme } from '../theme/ThemeProvider';
 import type { ThemeChoice } from '../theme/resolve-theme';
 
 /** Settings → Appearance: the theme, which optional fields the add form shows by default, and a reset of the device's interface settings. */
 export function AppearanceSection() {
   const { t } = useI18n();
-  const { choice, setChoice } = useTheme();
+  const { choice, setChoice, primary, setPrimary, resolved } = useTheme();
   const optional = usePrefs((p) => p.optionalFields);
   const [resetting, setResetting] = useState(false);
   const status = useStatus();
@@ -40,6 +41,24 @@ export function AppearanceSection() {
             </RadioField>
           ))}
         </RadioGroup>
+      </Fieldset>
+
+      <Fieldset>
+        <Legend>{t('settings.appearance.primary')}</Legend>
+        <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">{t('settings.appearance.primary.description')}</p>
+        <RadioGroup value={primary} onChange={(v) => setPrimary(v as PrimaryChoice)} className="mt-3">
+          {PALETTE.map((c) => (
+            <RadioField key={c.id}>
+              <Radio value={c.id} />
+              <Label>
+                <span aria-hidden className="me-2 inline-block size-3 rounded-full align-middle ring-1 ring-(--border-strong)" ref={(el) => { if (el) el.style.backgroundColor = colorOf(c.id)[resolved].primary; }} />
+                {t(`settings.appearance.primary.${c.id}`)}
+                {c.id === 'emerald' ? <span className="ms-1 text-(--text-muted)">({t('settings.appearance.primary.default')})</span> : null}
+              </Label>
+            </RadioField>
+          ))}
+        </RadioGroup>
+        <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">{t('settings.appearance.primary.installedNote')}</p>
       </Fieldset>
 
       <Fieldset>
