@@ -6,6 +6,9 @@ import { amountsAllowed, permission, rememberShown, show, shownKeys } from '../.
 import { isDesktopApp } from '../../adapters/platform/detect';
 import { useI18n } from '../i18n/I18nProvider';
 import { formatDate } from '../ledger/dates';
+import { formatMoney } from '../ledger/format';
+import { prefsStore } from '../prefs/usePrefs';
+import { effectiveNotificationDetails } from '../privacy/notification-details';
 import { useLedger } from '../ledger/LedgerProvider';
 import { createReminderService } from './reminder-service';
 
@@ -40,15 +43,22 @@ export function ReminderService() {
           }),
         alreadyShown: shownKeys,
         remember: rememberShown,
-        showAmounts: amountsAllowed(),
+        // Read when a notification is made, so a change in Settings applies to the next one without restarting anything (spec 016).
+        get details() {
+          return effectiveNotificationDetails(prefsStore.get().notificationDetails, amountsAllowed());
+        },
+        get amounts() {
+          return amountsAllowed();
+        },
         copy: {
           title: (name) => latest.current.t('schedules.notify.message.title', { name }),
           body: (date) => latest.current.t('schedules.notify.message.body', { date }),
           bodyWithAmount: (date, amount) => latest.current.t('schedules.notify.message.bodyAmount', { date, amount }),
-          many: (count) => ({ title: latest.current.t('schedules.notify.message.many', { count }), body: latest.current.t('schedules.notify.message.manyBody') }),
+          generic: { title: latest.current.t('schedules.notify.generic.title'), body: latest.current.t('schedules.notify.generic.body') },
         },
         formatDate: (d) => formatDate(d, latest.current.locale),
-        formatAmount: (minor, currency) => latest.current.ledger.money(minor, currency),
+        // The real formatter, never the ledger's masked strings: Privacy mode changes what is drawn in the window, not what a notification the person asked for says.
+        formatAmount: (minor, currency) => formatMoney(minor, currency, latest.current.locale),
         currencyOf: (account) => latest.current.ledger.basics?.accounts.find((a) => a.id === account)?.currency,
       },
     });

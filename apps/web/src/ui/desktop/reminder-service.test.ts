@@ -8,7 +8,7 @@ const reminder = (key: string): Reminder => ({
   template: { kind: 'transaction', direction: 'expense', accountId: 'a' as never, amountMinor: -123_456n, categoryId: null, payeeId: null, tagIds: [], note: 'secret note' },
 });
 
-function setup(over: { unlocked?: () => boolean; permission?: NotifyDeps['permission']; reminders?: Reminder[]; showAmounts?: boolean } = {}) {
+function setup(over: { unlocked?: () => boolean; permission?: NotifyDeps['permission']; reminders?: Reminder[]; details?: boolean; amounts?: boolean } = {}) {
   const shown: Array<{ title: string; body: string; tag: string }> = [];
   const seen = new Set<string>();
   let tick: () => void = () => undefined;
@@ -18,8 +18,9 @@ function setup(over: { unlocked?: () => boolean; permission?: NotifyDeps['permis
     show: (text) => void shown.push(text),
     alreadyShown: () => seen,
     remember: (keys) => keys.forEach((k) => seen.add(k)),
-    copy: { title: (n) => `Due: ${n}`, body: (d) => `On ${d}`, bodyWithAmount: (d, a) => `On ${d}: ${a}`, many: (n) => ({ title: `${n} due`, body: 'Open the app' }) },
-    showAmounts: over.showAmounts ?? false,
+    copy: { title: (n) => `Due: ${n}`, body: (d) => `On ${d}`, bodyWithAmount: (d, a) => `On ${d}: ${a}`, generic: { title: 'Cashfold has a reminder', body: 'Open Cashfold to see it.' } },
+    details: over.details ?? false,
+    amounts: over.amounts ?? false,
     formatDate: (d) => `D${d}`,
     formatAmount: (m, c) => `${m} ${c}`,
     currencyOf: () => 'USD',
@@ -48,23 +49,35 @@ describe('the reminder service', () => {
     expect(s.readReminders).toHaveBeenCalled();
   });
 
-  it('shows no amount unless the opt-in is on', async () => {
+  it('shows only the generic text by default: no name, no day, no amount, no note (spec 016)', async () => {
     const off = setup();
     off.service.start();
     await settle();
-    expect(JSON.stringify(off.shown)).not.toMatch(/123456|secret/);
-    const on = setup({ showAmounts: true });
-    on.service.start();
-    await settle();
-    expect(on.shown[0]!.body).toBe('On D20260310: 123456 USD');
+    expect(off.shown).toEqual([{ title: 'Cashfold has a reminder', body: 'Open Cashfold to see it.', tag: 'a' }]);
+    expect(JSON.stringify(off.shown)).not.toMatch(/Rent|D2026|123456|secret/);
   });
 
-  it('shows one summary when several came due while it was not looking (after an unlock), and one reminder as itself', async () => {
+  it('names the schedule and the day when details are on, and adds the amount only when amounts are on too', async () => {
+    const details = setup({ details: true });
+    details.service.start();
+    await settle();
+    expect(details.shown[0]).toMatchObject({ title: 'Due: Rent', body: 'On D20260310' });
+    const both = setup({ details: true, amounts: true });
+    both.service.start();
+    await settle();
+    expect(both.shown[0]!.body).toBe('On D20260310: 123456 USD');
+    const amountsOnly = setup({ amounts: true });
+    amountsOnly.service.start();
+    await settle();
+    expect(JSON.stringify(amountsOnly.shown)).not.toMatch(/Rent|123456/);
+  });
+
+  it('shows one generic summary, with no count, when several came due while it was not looking (after an unlock), and one reminder as itself when details are on', async () => {
     const many = setup({ reminders: [reminder('a'), reminder('b'), reminder('c')] });
     many.service.start();
     await settle();
-    expect(many.shown).toEqual([{ title: '3 due', body: 'Open the app', tag: 'reminders-summary' }]);
-    const one = setup({ reminders: [reminder('a')] });
+    expect(many.shown).toEqual([{ title: 'Cashfold has a reminder', body: 'Open Cashfold to see it.', tag: 'reminders-summary' }]);
+    const one = setup({ reminders: [reminder('a')], details: true });
     one.service.start();
     await settle();
     expect(one.shown[0]!.title).toBe('Due: Rent');
