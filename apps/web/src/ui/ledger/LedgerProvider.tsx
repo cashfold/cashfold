@@ -176,8 +176,8 @@ export function LedgerProvider({ children }: { children: ReactNode }) {
     () => ({
       folds, fold, selectFold: setFoldId, basics: shown, version, loading, failed, run, read, reload, refreshFolds, foldRemoved, dismissFoldRemoved: () => setFoldRemoved(false),
       // With Privacy mode on these give the mask, and the figure is not formatted at all (spec 016). Forms and exports use format.ts and the core, not these.
-      money: (minor, currency) => (privacy ? maskedMoney(currency) : formatMoney(minor, currency, locale)),
-      signed: (minor, currency) => (privacy ? maskedMoney(currency) : formatSigned(minor, currency, locale)),
+      money: (minor, currency) => (privacy ? maskedMoney(currency, locale) : formatMoney(minor, currency, locale)),
+      signed: (minor, currency) => (privacy ? maskedMoney(currency, locale) : formatSigned(minor, currency, locale)),
       parse: (text, currency) => parseMoney(text, currency, locale),
       explain,
     }),

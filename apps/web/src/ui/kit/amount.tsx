@@ -5,7 +5,7 @@ import { useId, type HTMLAttributes, type KeyboardEvent, type MouseEvent } from 
 import { createTranslator } from '../i18n/i18n'
 import { useOptionalI18n } from '../i18n/I18nProvider'
 import { formatMoney, formatSigned, signOf } from '../ledger/format'
-import { MASK_WIDTH_CLASS, maskedMoney } from '../privacy/mask'
+import { MASK_FIGURE_CLASS, MASK_WIDTH_CLASS, maskedFigure } from '../privacy/mask'
 import { usePrivacy, useRevealed } from '../privacy/usePrivacy'
 
 interface AmountProps {
@@ -37,11 +37,13 @@ export function Amount(props: AmountProps) {
  * The amount as one element. Masked, it is only the mask and the currency code: the figure is not formatted, and its sign, direction and colour are not
  * drawn. Shown, it is exactly the plain amount. It is the same element in both states, so a revealed amount that has keyboard focus keeps it, also when it hides again.
  */
-function AmountSpan({ minor, currency, locale, tone = 'neutral', showSign = false, align, className, masked, ...extra }: AmountProps & { masked: boolean } & HTMLAttributes<HTMLSpanElement>) {
+function AmountSpan({ minor, currency, locale, tone = 'neutral', showSign = false, align, className, masked, hiddenLabel, ...extra }: AmountProps & { masked: boolean; hiddenLabel?: string } & HTMLAttributes<HTMLSpanElement>) {
   if (masked) {
+    // Zeros in the shape of a figure, blurred, and the currency code. The zeros are a constant drawn from an attribute (not a text node), hidden from assistive technology, which gets the label instead.
     return (
       <span {...extra} className={clsx('tabular-nums whitespace-nowrap', align === 'end' && 'block', className)}>
-        {maskedMoney(currency)}
+        <span aria-hidden="true" data-privacy-mask data-zeros={maskedFigure(locale)} className={MASK_FIGURE_CLASS} /> <span aria-hidden="true">{currency}</span>
+        {hiddenLabel === undefined ? null : <span className="sr-only">{hiddenLabel}</span>}
       </span>
     )
   }
@@ -78,12 +80,14 @@ function RevealableAmount(props: AmountProps) {
   }
   const { inert: _inert, ...rest } = props
   void _inert
+  const hiddenLabel = (i18n?.t ?? createTranslator(locale))('privacy.amount.hidden', { currency })
   const common = {
     onClick: show,
     // The same minimum width masked and shown, so revealing a typical figure moves nothing around it.
     className: clsx(MASK_WIDTH_CLASS, 'cursor-pointer rounded-sm focus-visible:outline-2 focus-visible:outline-(--focus)', props.className),
   }
-  if (inert) return <AmountSpan {...rest} {...common} masked={!revealed} />
+  // Inside something clickable the amount is plain text, so a reader is told by a hidden label; as a button it is told by the button's name.
+  if (inert) return <AmountSpan {...rest} {...common} masked={!revealed} {...(revealed ? {} : { hiddenLabel })} />
   return (
     <AmountSpan
       {...rest}
@@ -91,7 +95,7 @@ function RevealableAmount(props: AmountProps) {
       masked={!revealed}
       tabIndex={0}
       // Masked it is a button with a name that says no figure; shown it is the figure itself, read as text.
-      {...(revealed ? {} : { role: 'button', 'aria-label': (i18n?.t ?? createTranslator(locale))('privacy.amount.hidden', { currency }) })}
+      {...(revealed ? {} : { role: 'button', 'aria-label': hiddenLabel })}
       onKeyDown={(event: KeyboardEvent) => {
         if (event.key === 'Enter' || event.key === ' ') {
           event.preventDefault()
