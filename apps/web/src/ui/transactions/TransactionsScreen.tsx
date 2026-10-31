@@ -4,6 +4,7 @@ import type { LocalDate, NeedsAttentionItem, RecentlyDeleted, RecentlyDeletedTra
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { InputField, SelectField } from '../forms/Field';
+import { usePrivacy } from '../privacy/usePrivacy';
 import { useI18n } from '../i18n/I18nProvider';
 import { Amount, Badge, Button, RowButton, Chip, ConfirmDialog, Dropdown, DropdownButton, DropdownItem, DropdownLabel, DropdownMenu, ArrowsRightLeftIcon, EllipsisHorizontalIcon, EmptyState, FunnelIcon, Input,
   InputGroup, MagnifyingGlassIcon, Notice, Sheet, SelectOption } from '../kit';
@@ -261,7 +262,7 @@ function TransactionsBody() {
               <li key={d.transaction.id} className="flex flex-wrap items-center justify-between gap-3 p-3">
                 <div>
                   <span className="font-medium">{d.transaction.note !== '' ? d.transaction.note : (d.transaction.payeeId === null ? undefined : payeesById.get(d.transaction.payeeId))?.name ?? accountsById.get(d.transaction.accountId)?.name}</span>
-                  <span className="ms-3 text-sm text-zinc-600 dark:text-zinc-400">{formatDate(d.transaction.localDate, locale)} · {ledger.signed(d.transaction.amountMinor, d.transaction.currency)} · {t('ledger.deleted.daysLeft', { days: d.daysLeft })}</span>
+                  <span className="ms-3 text-sm text-zinc-600 dark:text-zinc-400">{formatDate(d.transaction.localDate, locale)} · <Amount minor={d.transaction.amountMinor} currency={d.transaction.currency} locale={locale} showSign /> · {t('ledger.deleted.daysLeft', { days: d.daysLeft })}</span>
                 </div>
                 <Button outline onClick={() => void restore(d.transaction.id)} aria-label={`${t('ledger.deleted.restore')} ${formatDate(d.transaction.localDate, locale)}`}>{t('ledger.deleted.restore')}</Button>
               </li>
@@ -363,9 +364,9 @@ function TransactionsBody() {
             {x.status === 'posted' ? null : <Badge color={x.status === 'void' ? 'red' : 'amber'}>{t(`ledger.status.${x.status}`)}</Badge>}
           </span>
           <span className="block truncate text-sm text-zinc-600 dark:text-zinc-400">
-            <span data-testid="xfer-out">{from ? ledger.signed(-x.fromAmountMinor, from.currency) : ''}</span>
+            <span data-testid="xfer-out">{from ? <Amount minor={-x.fromAmountMinor} currency={from.currency} locale={locale} showSign inert /> : ''}</span>
             {' → '}
-            <span data-testid="xfer-in">{to ? ledger.signed(x.toAmountMinor, to.currency) : ''}</span>
+            <span data-testid="xfer-in">{to ? <Amount minor={x.toAmountMinor} currency={to.currency} locale={locale} showSign inert /> : ''}</span>
             {x.note !== '' ? ` · ${x.note}` : ''}
           </span>
         </RowButton>
@@ -375,6 +376,7 @@ function TransactionsBody() {
   }
 
   function Row({ row, title, onEdit, onPin, onDelete }: { row: TransactionRow; title: string; onEdit: () => void; onPin: () => void; onDelete: () => void }) {
+    const { on: privacy } = usePrivacy();
     const account = accountsById.get(row.accountId);
     const category = row.categoryId === null ? undefined : categoriesById.get(row.categoryId);
     const payee = row.payeeId === null ? undefined : payeesById.get(row.payeeId);
@@ -396,7 +398,7 @@ function TransactionsBody() {
           </span>
           <span className="block truncate text-sm text-zinc-600 dark:text-zinc-400">{[category?.name, account?.name, row.place?.name, payee && row.note !== '' ? row.note : undefined].filter(Boolean).join(' · ')}</span>
         </RowButton>
-        <span data-testid="tx-amount" data-sign={row.amountMinor > 0n ? 'gain' : row.amountMinor < 0n ? 'loss' : 'zero'}>
+        <span data-testid="tx-amount" {...(privacy ? {} : { 'data-sign': row.amountMinor > 0n ? 'gain' : row.amountMinor < 0n ? 'loss' : 'zero' })}>
           <Amount minor={row.amountMinor} currency={row.currency} locale={locale} tone="auto" showSign />
         </span>
         <RowActionsMenu label={`${t('ledger.list.actions')} ${title}`} actions={actions} />

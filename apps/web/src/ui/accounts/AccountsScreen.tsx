@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { InputField, SelectField } from '../forms/Field';
 import { useRowContextMenu } from '../desktop/ContextMenu';
+import { usePrivacy } from '../privacy/usePrivacy';
 import { useI18n } from '../i18n/I18nProvider';
 import { Amount, Avatar, Badge, Button, ConfirmDialog, Disclosure, EmptyState, BanknotesIcon, Label, Sheet, Switch, SwitchField, SelectOption } from '../kit';
 import { dateToInput, inputToDate, todayLocal } from '../ledger/dates';
@@ -239,6 +240,7 @@ interface AccountItemProps {
 
 function AccountItem({ a, index, count, showGroup, groups, locale, onAdd, onAdjust, onEdit, onMove, onMoveToGroup, onToggleArchived, onRemove }: AccountItemProps) {
   const { t } = useI18n();
+  const { on: privacy } = usePrivacy();
   const current = groupOf(a, groups);
   const actions = accountActions({
     archived: a.archived, index, count,
@@ -266,7 +268,7 @@ function AccountItem({ a, index, count, showGroup, groups, locale, onAdd, onAdju
           {showGroup && current ? <Badge data-testid="account-group">{t('ledger.accounts.groupLabel', { name: current.name })}</Badge> : null}
         </div>
       </div>
-      <div className="text-lg" data-sign={a.balanceMinor === null ? 'zero' : a.balanceMinor > 0n ? 'gain' : a.balanceMinor < 0n ? 'loss' : 'zero'} data-testid="account-balance">
+      <div className="text-lg" {...(privacy ? {} : { 'data-sign': a.balanceMinor === null ? 'zero' : a.balanceMinor > 0n ? 'gain' : a.balanceMinor < 0n ? 'loss' : 'zero' })} data-testid="account-balance">
         {a.balanceMinor === null ? t('ledger.accounts.balanceUnavailable') : <Amount minor={a.balanceMinor} currency={a.currency} locale={locale} />}
       </div>
       <RowActionsMenu label={`${t('ledger.list.actions')} ${a.name}`} actions={actions} />

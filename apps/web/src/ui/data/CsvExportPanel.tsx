@@ -4,6 +4,7 @@ import { useState, type FormEvent } from 'react';
 import type { FoldSummary } from '@cashfold/core';
 import { useCore, withPasswordBytes } from '../core/CoreProvider';
 import { TextField } from '../forms/TextField';
+import { usePrivacy } from '../privacy/usePrivacy';
 import { useI18n } from '../i18n/I18nProvider';
 import { downloadText } from '../settings/OneTimeSecret';
 import { accountErrorText, type Reply } from '../settings/errors';
@@ -13,6 +14,7 @@ import { Button, Select, SelectOption } from '../kit';
 /** CSV export (FR-092). The file is plain text, so the warning comes first and the password is asked for again. */
 export function CsvExportPanel({ folds }: { folds: readonly FoldSummary[] }) {
   const { t } = useI18n();
+  const { on: privacy } = usePrivacy();
   const core = useCore();
   const [fold, setFold] = useState(folds[0]?.id ?? '');
   const [password, setPassword] = useState('');
@@ -40,6 +42,7 @@ export function CsvExportPanel({ folds }: { folds: readonly FoldSummary[] }) {
     <section aria-labelledby="export-heading" className="mt-8">
       <h2 id="export-heading" className="text-lg font-semibold">{t('data.export.title')}</h2>
       <p className="mt-1 font-medium text-danger" role="note">{t('data.export.warning')}</p>
+      {privacy ? <p className="mt-1 text-muted" data-testid="export-real-figures">{t('privacy.exportNote')}</p> : null}
       <form onSubmit={submit} aria-busy={busy} className="max-w-md">
         {folds.length > 1 ? (
           <label className="mt-4 block">

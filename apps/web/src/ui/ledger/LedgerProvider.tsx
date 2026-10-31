@@ -5,6 +5,8 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import { useCore } from '../core/CoreProvider';
 import { useI18n } from '../i18n/I18nProvider';
 import { sortedByName } from '../i18n/collation';
+import { maskedMoney } from '../privacy/mask';
+import { usePrivacy } from '../privacy/usePrivacy';
 import { formatMoney, formatSigned, parseMoney } from './format';
 
 export type Outcome<T> = { ok: true; value: T } | { ok: false; error: { code: string; message?: string; currency?: string } };
@@ -59,6 +61,7 @@ export function useLedger(): LedgerView {
 export function LedgerProvider({ children }: { children: ReactNode }) {
   const core = useCore();
   const { t, locale } = useI18n();
+  const { on: privacy } = usePrivacy();
   const [folds, setFolds] = useState<readonly FoldSummary[]>([]);
   const [foldId, setFoldId] = useState<string | undefined>();
   const [basics, setBasics] = useState<LedgerView['basics']>();
@@ -172,12 +175,13 @@ export function LedgerProvider({ children }: { children: ReactNode }) {
   const value = useMemo<LedgerView>(
     () => ({
       folds, fold, selectFold: setFoldId, basics: shown, version, loading, failed, run, read, reload, refreshFolds, foldRemoved, dismissFoldRemoved: () => setFoldRemoved(false),
-      money: (minor, currency) => formatMoney(minor, currency, locale),
-      signed: (minor, currency) => formatSigned(minor, currency, locale),
+      // With Privacy mode on these give the mask, and the figure is not formatted at all (spec 016). Forms and exports use format.ts and the core, not these.
+      money: (minor, currency) => (privacy ? maskedMoney(currency) : formatMoney(minor, currency, locale)),
+      signed: (minor, currency) => (privacy ? maskedMoney(currency) : formatSigned(minor, currency, locale)),
       parse: (text, currency) => parseMoney(text, currency, locale),
       explain,
     }),
-    [folds, fold, shown, version, loading, failed, run, read, reload, refreshFolds, foldRemoved, locale, explain],
+    [folds, fold, shown, version, loading, failed, run, read, reload, refreshFolds, foldRemoved, locale, explain, privacy],
   );
 
   return <Context.Provider value={value}>{children}</Context.Provider>;

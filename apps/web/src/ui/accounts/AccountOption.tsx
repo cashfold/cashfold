@@ -3,6 +3,7 @@
 import type { AccountRow } from '@cashfold/core';
 import { Amount, ListboxLabel, ListboxOption } from '../kit';
 import { useI18n } from '../i18n/I18nProvider';
+import { usePrivacy } from '../privacy/usePrivacy';
 
 type OptionAccount = Pick<AccountRow, 'id' | 'name' | 'currency' | 'balanceMinor'>;
 
@@ -18,10 +19,12 @@ export function AccountOption({ account }: { account: OptionAccount }) {
 }
 
 export function AccountOptionView({ account, locale }: { account: OptionAccount; locale: string }) {
+  // With Privacy mode on a list of choices shows the name only: there is nothing in it to click to reveal a balance without choosing the account (spec 016).
+  const { on: privacy } = usePrivacy();
   return (
     <ListboxOption<string> value={account.id}>
       <ListboxLabel>{account.name}</ListboxLabel>
-      {account.balanceMinor === null ? null : (
+      {account.balanceMinor === null || privacy ? null : (
         <span className="ms-auto shrink-0 ps-4" data-testid="account-option-balance">
           <Amount minor={account.balanceMinor} currency={account.currency} locale={locale} />
         </span>
