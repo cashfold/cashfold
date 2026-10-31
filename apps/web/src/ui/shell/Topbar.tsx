@@ -20,7 +20,7 @@ export function Topbar() {
     <Navbar>
       {current ? <NavbarLabel className="truncate font-semibold">{t(current.labelKey)}</NavbarLabel> : null}
       <NavbarSpacer />
-      <NavbarSection>
+      <NavbarSection className="gap-0!">
         <Suspense fallback={null}><PrivacyTopbarItemLazy /></Suspense>
         <NavbarItem onClick={() => openAdd()} aria-label={t('shell.add')} className="min-h-11 min-w-11 justify-center">
           <PlusIcon aria-hidden="true" />
