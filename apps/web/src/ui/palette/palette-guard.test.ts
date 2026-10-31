@@ -41,7 +41,7 @@ describe('where the palette lives', () => {
 
   it('is toggled by the desktop action without closing Help first', () => {
     const actions = read('desktop/DesktopActions.tsx');
-    expect(actions).toMatch(/if \(action === 'palette'\) run\(\);\s*else if \(dismissOverlays\(\) > 0\)/);
+    expect(actions).toMatch(/if \(action === 'palette' \|\| action === 'privacy'\) run\(\);\s*else if \(dismissOverlays\(\) > 0\)/);
   });
 });
 

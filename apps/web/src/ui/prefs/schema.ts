@@ -12,6 +12,9 @@ export type AccountsViewChoice = 'auto' | 'group' | 'type';
 /** `auto` follows the browser's languages; the others are the person's own choice. */
 export const LANGUAGE_CHOICES = ['auto', 'en', 'uk', 'pl'] as const;
 export type LanguageChoice = (typeof LANGUAGE_CHOICES)[number];
+/** `auto` is "never chosen": it follows the older show-amounts choice, so a person who allowed amounts keeps details on (spec 016). */
+export const NOTIFICATION_DETAIL_CHOICES = ['auto', 'on', 'off'] as const;
+export type NotificationDetailChoice = (typeof NOTIFICATION_DETAIL_CHOICES)[number];
 
 export interface Prefs {
   v: 1;
@@ -19,6 +22,10 @@ export interface Prefs {
   /** The primary colour (spec 014): an id from the palette. */
   primary: PrimaryChoice;
   language: LanguageChoice;
+  /** Mask money amounts on screen until one is revealed (spec 016). Device-local, never synced. */
+  privacyMode: boolean;
+  /** Whether notifications include the schedule's name and day (spec 016). */
+  notificationDetails: NotificationDetailChoice;
   moreDetailsOpen: boolean;
   optionalFields: Record<string, boolean>;
   overview: { period: PeriodChoice; collapsed: OverviewSectionId[] };
@@ -47,6 +54,8 @@ export const DEFAULT_PREFS: Prefs = {
   theme: 'system',
   primary: DEFAULT_PRIMARY,
   language: 'auto',
+  privacyMode: false,
+  notificationDetails: 'auto',
   moreDetailsOpen: false,
   optionalFields: {},
   overview: { period: { kind: 'thisMonth' }, collapsed: [] },
@@ -118,6 +127,8 @@ export function parsePrefs(raw: string | null | undefined): Prefs {
     theme: oneOf(data['theme'], ['system', 'light', 'dark'] as const, 'system'),
     primary: parsePrimary(data['primary']),
     language: oneOf(data['language'], LANGUAGE_CHOICES, 'auto'),
+    privacyMode: bool(data['privacyMode'], false),
+    notificationDetails: oneOf(data['notificationDetails'], NOTIFICATION_DETAIL_CHOICES, 'auto'),
     moreDetailsOpen: bool(data['moreDetailsOpen'], false),
     optionalFields,
     overview: { period: parsePeriod(overview['period']), collapsed },

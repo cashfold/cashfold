@@ -181,7 +181,7 @@ function OverviewBody() {
                     {data.netWorth.accounts.map((a) => (
                       <li key={a.accountId} className="flex flex-wrap items-center justify-between gap-2 py-2">
                         <Link className="underline" href={breakdownHref({ kind: 'account', id: a.accountId }, resolved)}>{basics.accounts.find((x) => x.id === a.accountId)?.name}</Link>
-                        <span className="tabular-nums">{ledger.money(a.balanceMinor, a.currency)}{a.currency !== currency && a.baseMinor !== null ? ` ≈ ${ledger.money(a.baseMinor, currency)}` : ''}</span>
+                        <span className="tabular-nums"><Amount minor={a.balanceMinor} currency={a.currency} locale={locale} />{a.currency !== currency && a.baseMinor !== null ? <> ≈ <Amount minor={a.baseMinor} currency={currency} locale={locale} /></> : ''}</span>
                       </li>
                     ))}
                   </ul>
@@ -209,7 +209,7 @@ function Section({ id, title, summary, open, onToggle, children }: { id: Overvie
 }
 
 function Breakdown({ empty, rows, totalMinor, currency }: { empty: string; rows: Array<{ key: string; name: string; minor: bigint; href: string | undefined }>; totalMinor: bigint; currency: string }) {
-  const ledger = useLedger();
+  const { locale } = useI18n();
   return (
     <>
       {rows.length === 0 ? <p className="text-zinc-600 dark:text-zinc-400">{empty}</p> : null}
@@ -218,7 +218,7 @@ function Breakdown({ empty, rows, totalMinor, currency }: { empty: string; rows:
           <li key={r.key}>
             <div className="flex justify-between gap-3">
               {r.href ? <Link className="underline" href={r.href}>{r.name}</Link> : <span>{r.name}</span>}
-              <span className="tabular-nums">{ledger.money(r.minor, currency)}</span>
+              <span className="tabular-nums"><Amount minor={r.minor} currency={currency} locale={locale} /></span>
             </div>
             <progress className="mt-1 block h-2 w-full appearance-none overflow-hidden rounded-full bg-zinc-200 [&::-moz-progress-bar]:bg-(--primary) [&::-webkit-progress-bar]:bg-zinc-200 [&::-webkit-progress-value]:bg-(--primary) dark:bg-white/10 dark:[&::-webkit-progress-bar]:bg-white/10" value={percentOf(r.minor, totalMinor)} max={100} aria-hidden="true" />
           </li>

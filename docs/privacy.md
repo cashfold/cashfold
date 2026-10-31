@@ -18,6 +18,14 @@ If the service can be reached, the device is also removed from the account's lis
 
 An account kept only on this device has no other copy, so signing out erases it for good; the app says so first and asks you to type the account's email address. The lock-screen option sends nothing to any service and asks for that address instead of the password.
 
+## What privacy mode hides
+
+Privacy mode (Settings → Appearance → Privacy, or the shortcut in Help) hides money amounts **on your screen** until you reveal one, so you can use Cashfold on a train or on a shared screen. It changes what is drawn and nothing else: amounts become a row of dots with the currency code, with no figure, sign or gain-and-loss colour, and a screen reader says "Hidden amount" instead of the figure. Click, tap, or press Enter or Space on one amount to show it for about five seconds; it hides again by itself, when you go to another screen, leave the window, or lock the app. Names, dates, categories, notes, the chart shapes and percentages stay visible, and so does the window itself in the app switcher and in a screen capture.
+
+Nothing is changed or sent: the add and edit forms always show what you type, and exports and backups always hold the real figures. The setting is a device preference, kept in the browser's local storage with your other interface settings, never synced to the service or your other devices, and kept when you sign out.
+
+Notifications for reminders say only that something needs attention ("Cashfold has a reminder"), with no schedule name, day, amount or count, unless you switch on **Show details in notifications** (the schedule's name and the day) and, on top of that, **Show amounts in notifications**. Those two choices are device preferences too. Privacy mode makes no difference to a notification.
+
 ## What the command palette remembers
 
 The command palette (Cmd/Ctrl+K) keeps a short list of the places and actions you open most, to show them first. It is stored **only on this device**, in the browser's local storage under the key `cashfold.palette`, and is never sent to the service or to your other devices. It holds an opaque identifier, a count and a time for each entry, at most 24, and never a name, an amount or anything you typed. The names you see in the palette are read from your encrypted data each time it opens. The list is deleted when you sign out or use a different account, and Settings → Data and storage has a button that clears it.

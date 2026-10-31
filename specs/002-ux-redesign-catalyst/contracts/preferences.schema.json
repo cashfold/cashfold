@@ -9,6 +9,8 @@
     "v": { "const": 1 },
     "theme": { "enum": ["system", "light", "dark"], "default": "system" },
     "primary": { "enum": ["emerald", "teal", "cyan", "blue", "indigo", "violet", "pink", "orange", "amber", "slate"], "default": "emerald", "description": "The primary colour (spec 014)." },
+    "privacyMode": { "type": "boolean", "default": false, "description": "Mask money amounts on screen until one is revealed (spec 016)." },
+    "notificationDetails": { "enum": ["auto", "on", "off"], "default": "auto", "description": "Include the schedule's name and day in reminder notifications; auto follows the older show-amounts choice (spec 016)." },
     "language": { "enum": ["auto", "en", "uk", "pl"], "default": "auto", "description": "The interface language; auto follows the browser (spec 004)." },
     "moreDetailsOpen": { "type": "boolean", "default": false },
     "optionalFields": {

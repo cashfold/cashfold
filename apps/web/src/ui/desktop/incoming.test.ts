@@ -112,7 +112,7 @@ describe('the words of the desktop-only messages', () => {
     'desktop.drop.unsupported', 'desktop.drop.tooLarge', 'desktop.drop.empty', 'desktop.drop.locked', 'desktop.drop.single',
     'settings.desktop.startAtLogin', 'settings.desktop.startAtLogin.description', 'settings.desktop.startAtLogin.failed',
     'settings.desktop.close.title', 'settings.desktop.close.quit', 'settings.desktop.close.background', 'settings.desktop.close.description', 'settings.desktop.close.unavailable', 'settings.desktop.reminders.note',
-    'schedules.notify.message.many', 'schedules.notify.message.manyBody',
+    'schedules.notify.generic.title', 'schedules.notify.generic.body',
   ];
 
   it.each(['en', 'uk', 'pl'])('%s has every one of them, and none is empty', (language) => {

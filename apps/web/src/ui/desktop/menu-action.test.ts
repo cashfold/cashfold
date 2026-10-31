@@ -12,6 +12,7 @@ const deps = (unlocked: boolean) => {
     focus: vi.fn((target: string) => void calls.push(`focus ${target}`)),
     openFold: vi.fn((index: number) => void calls.push(`fold ${index}`)),
     togglePalette: vi.fn(() => void calls.push('palette')),
+    togglePrivacy: vi.fn(() => void calls.push('privacy')),
   };
   return { d, calls };
 };
@@ -23,6 +24,7 @@ describe('what a menu action does in the page', () => {
     ['settings', ['go /settings/']],
     ['search', ['focus transactions-search', 'go /transactions/']],
     ['palette', ['palette']],
+    ['privacy', ['privacy']],
     ['go:overview', ['go /overview/']],
     ['go:transactions', ['go /transactions/']],
     ['go:accounts', ['go /accounts/']],

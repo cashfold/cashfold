@@ -29,6 +29,12 @@ describe('what the interface preferences forget when an account is signed out (s
     expect(r.lists).toEqual({ showArchivedAccounts: true, accountsView: 'type' });
   });
 
+  it('keeps the privacy preferences, which belong to the device and not to the account (spec 016, FR-020)', () => {
+    const r = resetAccountPrefs({ ...mine, privacyMode: true, notificationDetails: 'on' });
+    expect(r.privacyMode).toBe(true);
+    expect(r.notificationDetails).toBe('on');
+  });
+
   it('does not change its input', () => {
     const before = JSON.stringify(mine);
     resetAccountPrefs(mine);

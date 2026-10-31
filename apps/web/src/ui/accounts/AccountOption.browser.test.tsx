@@ -7,6 +7,7 @@ import { userEvent } from 'vitest/browser';
 import type { CurrencyCode, Id } from '@cashfold/core';
 import '../../app/globals.css';
 import { Field, Label, Select } from '../kit';
+import { PrivacyContext } from '../privacy/usePrivacy';
 import { AccountOptionView } from './AccountOption';
 
 // The account option in a real browser: name and balance for every kind of account, the balance kept whole next to a long name on a narrow
@@ -107,3 +108,23 @@ describe('the account option', () => {
     expect(chosen).toEqual(['a2']);
   });
 });
+
+describe('the account option with Privacy mode on (spec 016)', () => {
+  const masked = <PrivacyContext.Provider value={{ on: true, toggle: () => undefined, reveal: () => undefined }}><Host /></PrivacyContext.Provider>;
+
+  it('shows the names only, in the list and in the closed control, with no balance and no mask', async () => {
+    const el = mount(masked);
+    expect(el.querySelector('button')!.textContent).toBe('Checking');
+    const options = await open(el);
+    expect(options.map((o) => o.textContent)).toEqual(['Checking', 'Card', 'Empty', 'Złoty', 'Huge', LONG]);
+    expect(document.querySelector('[data-testid=account-option-balance]')).toBeNull();
+    expect(document.body.textContent).not.toMatch(/\d{2,}[.,]\d{2}|••••/);
+  });
+
+  it('has no accessibility violations open', async () => {
+    await open(mount(masked, 'dark'));
+    const result = await axe.run(document.body, { runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'] } });
+    expect(result.violations.map((v) => v.id)).toEqual([]);
+  });
+});
+

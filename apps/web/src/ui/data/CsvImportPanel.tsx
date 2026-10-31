@@ -7,7 +7,7 @@ import { importHandoff } from '../desktop/import-handoff';
 import { useI18n } from '../i18n/I18nProvider';
 import { formatDate } from '../ledger/dates';
 import { useLedger } from '../ledger/LedgerProvider';
-import { Button, Checkbox, CheckboxField, Label, Radio, RadioField, RadioGroup, Select, SelectOption } from '../kit';
+import { Amount, Button, Checkbox, CheckboxField, Label, Radio, RadioField, RadioGroup, Select, SelectOption } from '../kit';
 import { AccountOption } from '../accounts/AccountOption';
 
 
@@ -231,7 +231,7 @@ export function CsvImportPanel() {
                       <tr key={r.line} className="border-t border-border-strong">
                         <td className="p-1">{r.line}</td>
                         <td className="p-1">{r.localDate === undefined ? '' : formatDate(r.localDate, locale)}</td>
-                        <td className="p-1" dir="ltr">{r.amountMinor === undefined ? '' : ledger.signed(r.amountMinor, chosen.currency)}</td>
+                        <td className="p-1" dir="ltr">{r.amountMinor === undefined ? '' : <Amount minor={r.amountMinor} currency={chosen.currency} locale={locale} showSign />}</td>
                         <td className="p-1">{[r.payee, r.category, r.note].filter(Boolean).join(' · ')}</td>
                         <td className="p-1">{r.problem !== undefined ? <span className="text-danger">{t(`data.import.problem.${r.problem}`)}</span> : r.duplicate ? t('data.import.duplicate') : r.categoryUnknown ? t('data.import.noCategory') : t('data.import.okRow')}</td>
                       </tr>

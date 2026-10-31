@@ -42,26 +42,31 @@ describe('the shortcuts in the help dialog', () => {
     expect(html).toContain('<kbd');
   });
 
-  it('shows only the command palette in a browser, the one shortcut the web app has (spec 015)', () => {
+  it('shows only the command palette and Privacy mode in a browser, the two shortcuts the web app has (specs 015 and 016)', () => {
     const html = render(undefined);
     expect(html).toContain(ENGLISH['help.shortcuts.heading']);
     expect(html).toContain(ENGLISH['help.shortcut.palette']);
     expect(html).toContain('Ctrl+K');
+    expect(html).toContain(ENGLISH['help.shortcut.privacy']);
+    expect(html).toContain('Ctrl+Shift+M');
     expect(html).not.toContain(ENGLISH['help.shortcuts.locked']);
     expect(html).not.toContain(ENGLISH['help.shortcut.new-transaction']);
     expect(html).not.toContain(ENGLISH['help.shortcuts.standard']);
-    expect(html.match(/<kbd/g)).toHaveLength(1);
+    expect(html.match(/<kbd/g)).toHaveLength(2);
   });
 
   it('writes the browser shortcut with the Command symbol on an Apple system', () => {
     const html = renderToStaticMarkup(<HelpContent t={t} platform={undefined} status={open} onShowCard={() => undefined} apple />);
     expect(html).toContain('⌘K');
+    expect(html).toContain('⇧⌘M');
     expect(html).not.toContain('Ctrl+K');
   });
 
-  it('lists the palette shortcut among the desktop shortcuts', () => {
+  it('lists the palette and Privacy mode shortcuts among the desktop shortcuts', () => {
     expect(render('linux')).toContain('Ctrl+K');
+    expect(render('linux')).toContain('Ctrl+Shift+M');
     expect(render('darwin')).toContain('⌘K');
+    expect(render('darwin')).toContain('⇧⌘M');
   });
 });
 

@@ -11,6 +11,9 @@ export interface PaletteContext {
   toggleTheme(): void;
   openSignOut(): void;
   openHelp(): void;
+  /** Whether Privacy mode is on, and a way to flip it (spec 016). */
+  readonly privacy: boolean;
+  togglePrivacy(): void;
   /** How many accounts the viewed Fold has, for `enabled` rules. */
   readonly accounts: number;
   readonly foldId: string | undefined;

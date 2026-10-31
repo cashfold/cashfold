@@ -165,3 +165,40 @@ describe('the primary colour preference', () => {
     expect(bad.theme).toBe('dark');
   });
 });
+
+describe('the privacy preferences (spec 016)', () => {
+  it('default to off and to never chosen', () => {
+    expect(DEFAULT_PREFS.privacyMode).toBe(false);
+    expect(DEFAULT_PREFS.notificationDetails).toBe('auto');
+    const old = parsePrefs(JSON.stringify({ v: 1, theme: 'dark' }));
+    expect(old.privacyMode).toBe(false);
+    expect(old.notificationDetails).toBe('auto');
+  });
+
+  it('keep valid choices', () => {
+    expect(parsePrefs(JSON.stringify({ v: 1, privacyMode: true })).privacyMode).toBe(true);
+    for (const choice of ['auto', 'on', 'off'] as const) expect(parsePrefs(JSON.stringify({ v: 1, notificationDetails: choice })).notificationDetails).toBe(choice);
+  });
+
+  it.each([1, 'true', null, {}, []])('fall back for an invalid privacy mode %j without touching the rest', (privacyMode) => {
+    const prefs = parsePrefs(JSON.stringify({ v: 1, theme: 'dark', privacyMode }));
+    expect(prefs.privacyMode).toBe(false);
+    expect(prefs.theme).toBe('dark');
+  });
+
+  it.each(['yes', true, 0, null, 'ON'])('fall back to auto for invalid notification details %j', (notificationDetails) => {
+    const prefs = parsePrefs(JSON.stringify({ v: 1, theme: 'dark', notificationDetails }));
+    expect(prefs.notificationDetails).toBe('auto');
+    expect(prefs.theme).toBe('dark');
+  });
+
+  it('survive a save and a load, and keep the object within its size cap', () => {
+    const prefs: Prefs = { ...DEFAULT_PREFS, privacyMode: true, notificationDetails: 'on' };
+    const text = serializePrefs(prefs);
+    const back = parsePrefs(text);
+    expect(back.privacyMode).toBe(true);
+    expect(back.notificationDetails).toBe('on');
+    expect(new TextEncoder().encode(text).length).toBeLessThanOrEqual(4096);
+  });
+});
+

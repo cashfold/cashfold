@@ -61,6 +61,7 @@ export const HELP_SHORTCUTS: readonly HelpShortcut[] = [
   app('settings', 'settings', primary(',')),
   app('search', 'search', primary('F')),
   app('palette', 'palette', primary('K')),
+  app('privacy', 'privacy', primary('M', 'shift')),
   app('go-overview', 'go:overview', primary('1')),
   app('go-transactions', 'go:transactions', primary('2')),
   app('go-accounts', 'go:accounts', primary('3')),

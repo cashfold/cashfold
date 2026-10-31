@@ -1,11 +1,13 @@
 'use client';
 
+import Link from 'next/link';
 import { addDays, DEFAULT_HORIZON_DAYS, type PendingOccurrence, type ScheduleRow, type Upcoming } from '@cashfold/core';
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
-import { allowAmounts, amountsAllowed, permission, requestPermission } from '../../adapters/notifications/browser';
+import { useCallback, useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react';
+import { permission, requestPermission } from '../../adapters/notifications/browser';
 import { Modal } from '../forms/Modal';
+import { interleaveMessage } from '../privacy/interleave';
 import { TextField } from '../forms/TextField';
-import { ArrowPathIcon, Button, Checkbox, CheckboxField, Disclosure, EmptyState, Label, Select, SelectOption } from '../kit';
+import { Amount, ArrowPathIcon, Button, Checkbox, CheckboxField, Disclosure, EmptyState, Label, Select, SelectOption } from '../kit';
 import { useI18n } from '../i18n/I18nProvider';
 import { AmountField } from '../ledger/AmountField';
 import { dateToInput, formatDate, inputToDate, todayLocal } from '../ledger/dates';
@@ -58,14 +60,20 @@ function SchedulesBody() {
   }, [ledger.version, t]);
   useEffect(() => void load(), [load]);
 
-  const amountText = (template: Upcoming['template']): string => {
+  // Amounts are <Amount>, so Privacy mode masks each one and a click shows that one (spec 016).
+  const amountText = (template: Upcoming['template']): ReactNode => {
     if (template.kind === 'transaction') {
       const a = accounts.get(template.accountId);
-      return a ? ledger.signed(template.amountMinor, a.currency) : '—';
+      return a ? <Amount minor={template.amountMinor} currency={a.currency} locale={locale} showSign /> : '—';
     }
     const from = accounts.get(template.fromAccountId);
     const to = accounts.get(template.toAccountId);
-    return from && to ? t('schedules.transferAmount', { out: ledger.money(template.fromAmountMinor, from.currency), into: ledger.money(template.toAmountMinor, to.currency) }) : '—';
+    return from && to
+      ? interleaveMessage(t, 'schedules.transferAmount', {
+          out: <Amount minor={template.fromAmountMinor} currency={from.currency} locale={locale} />,
+          into: <Amount minor={template.toAmountMinor} currency={to.currency} locale={locale} />,
+        })
+      : '—';
   };
 
   async function act(method: string, args: Record<string, unknown>) {
@@ -205,8 +213,8 @@ function ProjectedBalances() {
           <li key={r.id} className="flex flex-wrap items-center justify-between gap-3 p-3" data-testid="projected-row">
             <strong>{r.name}</strong>
             <span>
-              <span className="text-muted">{r.now === null ? '—' : ledger.money(r.now, r.currency)} → </span>
-              <span data-testid="projected-balance">{r.later === undefined ? '—' : ledger.money(r.later, r.currency)}</span>
+              <span className="text-muted">{r.now === null ? '—' : <Amount minor={r.now} currency={r.currency} locale={locale} />} → </span>
+              <span data-testid="projected-balance">{r.later === undefined ? '—' : <Amount minor={r.later} currency={r.currency} locale={locale} />}</span>
             </span>
           </li>
         ))}
@@ -219,7 +227,6 @@ function ProjectedBalances() {
 function ReminderSettings() {
   const { t } = useI18n();
   const [state, setState] = useState(permission());
-  const [amounts, setAmounts] = useState(amountsAllowed());
   if (state === 'unsupported') return <p className="mt-3 text-sm text-muted">{t('schedules.notify.unsupported')}</p>;
   return (
     <div className="mt-4 rounded-ui border border-border-strong p-3">
@@ -227,8 +234,8 @@ function ReminderSettings() {
       {state === 'granted' ? <p className="text-sm text-muted">{t('schedules.notify.on')}</p> : null}
       {state === 'denied' ? <p className="text-sm text-muted">{t('schedules.notify.denied')}</p> : null}
       {state === 'default' ? <Button outline className="mt-2" type="button" onClick={async () => setState(await requestPermission())}>{t('schedules.notify.enable')}</Button> : null}
-      <CheckboxField className="mt-2"><Checkbox checked={amounts} onChange={(checked) => { setAmounts(checked); allowAmounts(checked); }} /><Label>{t('schedules.notify.amounts')}</Label></CheckboxField>
-      <p className="text-sm text-muted">{t('schedules.notify.amounts.hint')}</p>
+      {/* What a notification shows (details, amounts) is a device privacy setting: it lives with Privacy mode (spec 016). */}
+      <p className="mt-2 text-sm text-muted">{t('schedules.notify.moreInSettings')} <Link className="underline" href="/settings/appearance/">{t('schedules.notify.settingsLink')}</Link>.</p>
     </div>
   );
 }

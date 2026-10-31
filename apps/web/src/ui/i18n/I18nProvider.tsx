@@ -68,6 +68,11 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   return <Context.Provider value={value}>{children}</Context.Provider>;
 }
 
+/** The translator when a provider is above, else nothing: for a component that must also work without one (the kit's money display). */
+export function useOptionalI18n(): I18n | null {
+  return useContext(Context);
+}
+
 export function useI18n(): I18n {
   const value = useContext(Context);
   if (value === null) throw new Error('useI18n must be used inside I18nProvider');

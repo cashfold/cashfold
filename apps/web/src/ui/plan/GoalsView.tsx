@@ -4,7 +4,7 @@ import type { AccountRow, GoalRow } from '@cashfold/core';
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { Modal } from '../forms/Modal';
 import { TextField } from '../forms/TextField';
-import { Button, EmptyState, FlagIcon, Progress, Select, SelectOption } from '../kit';
+import { Amount, Button, EmptyState, FlagIcon, Progress, Select, SelectOption } from '../kit';
 import { useI18n } from '../i18n/I18nProvider';
 import { AmountField } from '../ledger/AmountField';
 import { dateToInput, formatDate, inputToDate, todayLocal } from '../ledger/dates';
@@ -52,7 +52,7 @@ function GoalsBody() {
       <ul className="mt-4 divide-y divide-border-strong rounded-ui border border-border-strong empty:hidden" aria-label={t('page.goals.title')}>
         {rows.map((row) => {
           const { goal, progress } = row;
-          const money = (minor: bigint) => ledger.money(minor, goal.currency);
+          const money = (minor: bigint) => <Amount minor={minor} currency={goal.currency} locale={locale} />;
           return (
             <li key={goal.id} className={`p-3 ${ITEM_ROW_CLASS}`} data-testid="goal-row" {...ITEM_ROW_PROPS(goal.id)}>
               <div className="flex flex-wrap items-center justify-between gap-3">

@@ -143,6 +143,7 @@ export const ACTION_IDS = [
   'settings',
   'search',
   'palette',
+  'privacy',
   'go:overview',
   'go:transactions',
   'go:accounts',

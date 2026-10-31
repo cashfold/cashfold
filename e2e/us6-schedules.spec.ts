@@ -101,7 +101,8 @@ test.describe('@us6 schedules', () => {
     await go(page, 'Accounts');
     await addAccount(page, 'Savings', '10.00');
     await go(page, 'Overview');
-    await expect.poll(shown).toEqual(['Due: Rent']);
+    // By default a notification says only that something needs attention: no schedule name (spec 016).
+    await expect.poll(shown).toEqual(['Cashfold has a reminder']);
   });
 
   test('creates occurrences on their due date, asks for confirmation when told to, projects balances, and edits only the future', async ({ page, context, expectNoA11yViolations }) => {

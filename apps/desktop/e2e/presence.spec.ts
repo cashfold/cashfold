@@ -120,9 +120,10 @@ test('a hidden window still shows a due reminder, once', async ({ session }) => 
   await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]!.hide());
   await allow(page);
   // The window is hidden: its timer must still run, so the reminder comes within the next check (a minute).
-  await expect.poll(() => shown(page), { timeout: 90_000 }).toEqual(['Due: Rent']);
+  // By default a notification names nothing (spec 016); the schedule's name is shown only when details are switched on in Settings.
+  await expect.poll(() => shown(page), { timeout: 90_000 }).toEqual(['Cashfold has a reminder']);
   await page.waitForTimeout(1_000);
-  expect(await shown(page)).toEqual(['Due: Rent']);
+  expect(await shown(page)).toEqual(['Cashfold has a reminder']);
 });
 
 test('a launch with --action=add-transaction shows the window and opens the add sheet', async ({ session }) => {

@@ -10,6 +10,7 @@ import { afterOverlaysLeave, dismissOverlays } from '../shell/overlay-signal';
 import { recentFoldsOf } from './desktop-presence';
 import { focusRequests } from './focus-request';
 import { togglePalette } from '../palette/palette-bus';
+import { usePrivacy } from '../privacy/usePrivacy';
 import { performMenuAction } from './menu-action';
 
 /** Carries out what the desktop shell reports: a shortcut was pressed. Mounted in the unlocked shell, only in the desktop app. */
@@ -18,8 +19,9 @@ export default function DesktopActions() {
   const ledger = useLedger();
   const router = useRouter();
   const { openAdd } = useAddSheet();
-  const latest = useRef({ core, router, openAdd, ledger });
-  latest.current = { core, router, openAdd, ledger };
+  const privacy = usePrivacy();
+  const latest = useRef({ core, router, openAdd, ledger, privacy });
+  latest.current = { core, router, openAdd, ledger, privacy };
 
   useEffect(() => {
     const bridge = getDesktopBridge();
@@ -28,6 +30,7 @@ export default function DesktopActions() {
       // A help dialog or drawer that is open closes first, and the action runs once it has left, so it does not run behind it.
       const run = () => performMenuAction(action, {
         togglePalette,
+        togglePrivacy: () => latest.current.privacy.toggle(),
         unlocked: latest.current.core.phase === 'unlocked',
         openAdd: () => latest.current.openAdd(),
         lock: () => void latest.current.core.lock(),
@@ -43,7 +46,8 @@ export default function DesktopActions() {
         },
       });
       // The palette shortcut toggles the palette itself; it does not close Help or the drawer first (the palette never opens over another dialog).
-      if (action === 'palette') run();
+      // Toggling the palette or Privacy mode needs no dialog to close first (the palette never opens over another dialog, and hiding figures changes nothing under it).
+      if (action === 'palette' || action === 'privacy') run();
       else if (dismissOverlays() > 0) afterOverlaysLeave(run);
       else run();
     });

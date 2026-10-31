@@ -5,7 +5,7 @@ import type { Command, PaletteContext } from './registry';
 
 const ctx = () => {
   const navigate = vi.fn<(href: string) => void>();
-  const context: PaletteContext = { navigate, openAdd: vi.fn(), lock: vi.fn(), toggleTheme: vi.fn(), openSignOut: vi.fn(), openHelp: vi.fn(), accounts: 2, foldId: 'f1' };
+  const context: PaletteContext = { navigate, openAdd: vi.fn(), lock: vi.fn(), toggleTheme: vi.fn(), openSignOut: vi.fn(), openHelp: vi.fn(), privacy: false, togglePrivacy: vi.fn(), accounts: 2, foldId: 'f1' };
   return Object.assign(context, { calls: navigate.mock.calls });
 };
 const account = (id: string, name: string, over: Record<string, unknown> = {}): AccountRow => ({ id, name, currency: 'EUR', archived: false, groupIds: [], ...over }) as unknown as AccountRow;

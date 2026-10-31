@@ -14,6 +14,8 @@ export interface MenuActionDeps {
   openFold(index: number): void;
   /** Opens the command palette if it is closed and closes it if it is open (spec 015). */
   togglePalette(): void;
+  /** Turns Privacy mode on or off (spec 016). */
+  togglePrivacy(): void;
 }
 
 const SECTION_HREF = new Map(PRIMARY_SECTIONS.map((section) => [`go:${section.id}`, section.href]));
@@ -33,6 +35,8 @@ export function performMenuAction(action: string, deps: MenuActionDeps): void {
       return deps.navigate('/settings/');
     case 'palette':
       return deps.togglePalette();
+    case 'privacy':
+      return deps.togglePrivacy();
     case 'search':
       deps.focus('transactions-search');
       return deps.navigate('/transactions/');

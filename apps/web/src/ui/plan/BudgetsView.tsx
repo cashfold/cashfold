@@ -1,13 +1,15 @@
 'use client';
 
 import type { BudgetRow, LocalDate } from '@cashfold/core';
-import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { Modal } from '../forms/Modal';
 import { TextField } from '../forms/TextField';
-import { Button, Checkbox, CheckboxField, Disclosure, EmptyState, FlagIcon, Label, Select, SelectOption } from '../kit';
+import { Amount, Button, Checkbox, CheckboxField, Disclosure, EmptyState, FlagIcon, Label, Select, SelectOption } from '../kit';
 import { useI18n } from '../i18n/I18nProvider';
 import { AmountField } from '../ledger/AmountField';
 import { dateToInput, formatDate, inputToDate, todayLocal } from '../ledger/dates';
+import { formatPlain } from '../ledger/format';
+import { interleaveMessage } from '../privacy/interleave';
 import { Progress } from '../kit';
 import { budgetStatus } from '../plan/status';
 import { LedgerFrame } from '../ledger/LedgerFrame';
@@ -95,14 +97,14 @@ function BudgetsBody() {
 
 function BudgetItem({ row, mode, onOpen, onEdit, onDelete }: { row: BudgetRow; mode: Mode; onOpen: () => void; onEdit: () => void; onDelete: () => void }) {
   const { t, locale } = useI18n();
-  const ledger = useLedger();
   const { budget, period, velocity } = row;
-  const money = (minor: bigint) => ledger.money(minor, budget.currency);
+  // Each figure is an <Amount>, so with Privacy mode on it is masked and can be revealed on its own (spec 016).
+  const money = (minor: bigint) => <Amount minor={minor} currency={budget.currency} locale={locale} />;
   const shown = period === undefined ? undefined
     : mode === 'spent' ? money(period.spentMinor)
       : mode === 'limit' ? money(period.limitMinor)
         : mode === 'available' ? money(period.availableMinor)
-          : t('budgets.ratio', { spent: money(period.spentMinor), limit: money(period.allocationMinor + period.carryInMinor) });
+          : interleaveMessage(t, 'budgets.ratio', { spent: money(period.spentMinor), limit: money(period.allocationMinor + period.carryInMinor) });
   const status = period === undefined ? undefined : budgetStatus(period.spentMinor, period.allocationMinor + period.carryInMinor);
   const over = period !== undefined && period.availableMinor < 0n;
   return (
@@ -133,13 +135,12 @@ function BudgetItem({ row, mode, onOpen, onEdit, onDelete }: { row: BudgetRow; m
 
 function BudgetDetail({ row, onClose }: { row: BudgetRow; onClose: () => void }) {
   const { t, locale } = useI18n();
-  const ledger = useLedger();
   const { budget, period, velocity } = row;
-  const money = (minor: bigint) => ledger.money(minor, budget.currency);
+  const money = (minor: bigint) => <Amount minor={minor} currency={budget.currency} locale={locale} />;
   if (period === undefined || velocity === undefined) {
     return <div><p className="mt-3">{t('budgets.notStarted', { date: formatDate(budget.anchorLocalDate, locale) })}</p><Button outline className="mt-6" type="button" onClick={onClose}>{t('ledger.close')}</Button></div>;
   }
-  const rows: Array<[string, string, string]> = [
+  const rows: Array<[string, ReactNode, string]> = [
     [t('budgets.detail.carryIn'), money(period.carryInMinor), 'carry-in'],
     [t('budgets.detail.allocation'), money(period.allocationMinor), 'allocation'],
     [t('budgets.detail.spent'), money(period.spentMinor), 'spent'],
@@ -166,12 +167,13 @@ function BudgetDetail({ row, onClose }: { row: BudgetRow; onClose: () => void })
 }
 
 function BudgetForm({ row, onDone }: { row?: BudgetRow | undefined; onDone: () => void }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const ledger = useLedger();
   const basics = ledger.basics!;
   const existing = row?.budget;
   const currency = existing?.currency ?? basics.baseCurrency ?? 'USD';
-  const text = (minor: bigint | undefined) => (minor === undefined ? '' : ledger.money(minor, currency).replace(/ [A-Z]{3}$/, '').replace('−', '-'));
+  // The edit form always shows the real figure, so it is filled from the plain formatter and never from the masked ledger strings (spec 016, FR-012).
+  const text = (minor: bigint | undefined) => (minor === undefined ? '' : formatPlain(minor, currency, locale));
 
   const [name, setName] = useState(existing?.name ?? '');
   const [direction, setDirection] = useState<'expense' | 'income'>(existing?.direction ?? 'expense');
