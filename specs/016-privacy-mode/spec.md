@@ -14,6 +14,7 @@
 
 - Q: Should graphics that show relative size (bars, trend lines, progress bars) and percentages stay visible while Privacy mode is on? → A: Yes. Only figures, axis values and tooltip values are masked; shapes and percentages stay.
 - Q: Should a masked amount keep its currency code? → A: Yes. The mask stays next to the code (for example a blurred "0,000.00 USD").
+- Note (2026-11-01): spec 017 replaces the indicator that appeared only while the mode was on (FR-011) with a control that is always shown in both states.
 
 ## User Scenarios & Testing *(mandatory)*
 

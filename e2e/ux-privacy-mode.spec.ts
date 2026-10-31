@@ -207,41 +207,41 @@ test.describe('@ux privacy mode', () => {
     const apple = await page.evaluate(() => /mac|iphone|ipad|ipod/i.test((navigator as unknown as { userAgentData?: { platform?: string } }).userAgentData?.platform ?? navigator.platform));
     const key = apple ? 'Meta+Shift+M' : 'Control+Shift+M';
     const balance = page.getByTestId('account-balance').first();
-    const indicator = page.getByTestId('privacy-indicator');
+    const indicator = page.getByTestId('privacy-switch');
 
     await expect(balance).toContainText(/\d[.,]\d{2} USD/);
-    await expect(indicator).toHaveCount(0);
+    await expect(indicator).toHaveAttribute('aria-pressed', 'false');
     await page.keyboard.press(key);
     await expect(balance.locator(MASK)).toHaveCount(1);
     await expect(balance).toContainText('USD');
-    await expect(indicator).toBeVisible();
-    await expect(indicator).toContainText('Privacy mode on');
+    await expect(indicator).toHaveAttribute('aria-pressed', 'true');
+    await expect(indicator).toContainText('Privacy mode: on');
     await page.keyboard.press(key);
     await expect(balance).toContainText(/\d[.,]\d{2} USD/);
-    await expect(indicator).toHaveCount(0);
+    await expect(indicator).toHaveAttribute('aria-pressed', 'false');
 
     // Also while a text field has focus, and it types nothing.
     await go(page, 'Transactions');
     const search = page.getByRole('searchbox');
     await search.focus();
     await page.keyboard.press(key);
-    await expect(indicator).toBeVisible();
+    await expect(indicator).toHaveAttribute('aria-pressed', 'true');
     await expect(search).toHaveValue('');
     await expect(search).toBeFocused();
 
     // The indicator turns it off again.
     await indicator.click();
-    await expect(indicator).toHaveCount(0);
+    await expect(indicator).toHaveAttribute('aria-pressed', 'false');
 
     // Locked, the key does nothing: the mode is what it was after unlocking.
     await page.keyboard.press(key);
-    await expect(indicator).toBeVisible();
+    await expect(indicator).toHaveAttribute('aria-pressed', 'true');
     await lock(page);
     await expect(page.getByRole('heading', { name: 'Unlock Cashfold' })).toBeVisible();
     await page.keyboard.press(key);
     await unlock(page, PASSWORD);
     await expect(page.getByTestId('current-fold').first()).toBeAttached();
-    await expect(page.getByTestId('privacy-indicator')).toBeVisible();
+    await expect(page.getByTestId('privacy-switch')).toBeVisible();
   });
 
   test('notifications say nothing private by default, name the schedule when details are on, add the amount when amounts are on, and do not depend on Privacy mode (user story 3)', async ({ page }) => {
