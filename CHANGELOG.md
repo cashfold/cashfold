@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.11.0](https://github.com/cashfold/cashfold/compare/v0.10.0...v0.11.0) (2026-10-31)
+
+
+### Features
+
+* add a command palette (Cmd/Ctrl+K) ([#58](https://github.com/cashfold/cashfold/issues/58)) ([9fe36c8](https://github.com/cashfold/cashfold/commit/9fe36c85c297677ac6e5afb7b491ebeca7142f1e))
+* add privacy mode and generic reminder notifications ([#60](https://github.com/cashfold/cashfold/issues/60)) ([a5b2ba4](https://github.com/cashfold/cashfold/commit/a5b2ba4f0e7369f88e727e9f4ed1d2df3b73e563))
+* **web:** choose the primary color and have the app icon follow it ([#57](https://github.com/cashfold/cashfold/issues/57)) ([72ed8d0](https://github.com/cashfold/cashfold/commit/72ed8d0dbd9b0d218d6889f654ef9f19699aec73))
+
 ## [0.10.0](https://github.com/cashfold/cashfold/compare/v0.9.1...v0.10.0) (2026-10-30)
 
 
