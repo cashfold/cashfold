@@ -34,8 +34,12 @@ export function PrivacyProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (covered) clear();
   }, [covered]);
+  const mounted = useRef(false);
   useEffect(() => {
     clear();
+    // Whichever route changed the mode (the switch, Settings, the key, the palette), it is said once, but not when the shell first appears.
+    if (mounted.current) setAnnouncement(t(on ? 'privacy.announce.on' : 'privacy.announce.off'));
+    mounted.current = true;
   }, [on]);
   useEffect(() => {
     const leave = () => clear();

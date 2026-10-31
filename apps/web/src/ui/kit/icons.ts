@@ -11,6 +11,7 @@ export {
   Cog6ToothIcon,
   EllipsisHorizontalIcon,
   ExclamationTriangleIcon,
+  EyeIcon,
   EyeSlashIcon,
   FlagIcon,
   FunnelIcon,

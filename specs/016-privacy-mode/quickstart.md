@@ -24,7 +24,7 @@ Expected: all green. The source-scan test fails with the file name if someone ad
 
 ## Manual scenarios
 
-1. **Hide (US1)**: Settings → Appearance → turn on Privacy mode. Visit Overview, Accounts, Transactions, Plan (budgets, goals, schedules), Data → import preview. Every amount reads `•••• USD` (or its currency); names, dates, categories and notes are readable; no sign or red/green colour on amounts; nothing jumps.
+1. **Hide (US1)**: Settings → Appearance → turn on Privacy mode. Visit Overview, Accounts, Transactions, Plan (budgets, goals, schedules), Data → import preview. Every amount shows as blurred zeros with its currency code (`0,000.00 USD`, the same for every amount); names, dates, categories and notes are readable; no sign or red/green colour on amounts; nothing jumps.
 2. **Reveal (US1)**: Click one amount: only that one shows its figure, then hides in about 5 seconds. Reveal one, then go to another screen, lock, or click away from the window: it is masked again. Revealing one amount does not reveal the same figure elsewhere.
 3. **Keyboard and screen reader (US1)**: Tab to a masked amount, press Enter or Space: it reveals and focus stays. A screen reader says "Hidden amount, USD. Press to reveal." and, after reveal, the figure; a polite message says amounts were shown or hidden.
 4. **Dropdowns (US1)**: Open the account dropdown in the add form and in a filter: names only while the mode is on.

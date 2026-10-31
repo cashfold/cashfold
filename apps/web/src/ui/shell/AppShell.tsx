@@ -20,8 +20,8 @@ import { subscribeOverlays } from './overlay-signal';
 import { showGettingStartedCard } from './show-card';
 
 // The command palette is loaded as its own chunk once the app is unlocked, so it is not part of the JavaScript every page loads up front (the service worker has the chunk for offline use).
-// The privacy indicator and its key are another small chunk of the same kind.
-const PrivacyIndicatorLazy = lazy(() => import('../privacy/PrivacyIndicator').then((module) => ({ default: module.PrivacyIndicator })));
+// The privacy switch and its key are another small chunk of the same kind.
+const PrivacySidebarItemLazy = lazy(() => import('../privacy/PrivacySwitch').then((module) => ({ default: module.PrivacySidebarItem })));
 const PrivacyKeysLazy = lazy(() => import('../privacy/PrivacyKeys').then((module) => ({ default: module.PrivacyKeys })));
 const PaletteHostLazy = lazy(() => import('../palette/PaletteHost').then((module) => ({ default: module.PaletteHost })));
 import { DesktopOnly } from '../desktop/lazy';
@@ -143,7 +143,7 @@ function NavigationSidebar() {
       <SidebarFooter>
         <SyncIndicator />
         <SidebarSection className="mt-2">
-          <Suspense fallback={null}><PrivacyIndicatorLazy /></Suspense>
+          <Suspense fallback={null}><PrivacySidebarItemLazy /></Suspense>
           <HelpItem />
           <SidebarItem onClick={() => core.lock()}>
             <LockClosedIcon data-slot="icon" aria-hidden="true" />

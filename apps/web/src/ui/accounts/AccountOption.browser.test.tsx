@@ -118,7 +118,7 @@ describe('the account option with Privacy mode on (spec 016)', () => {
     const options = await open(el);
     expect(options.map((o) => o.textContent)).toEqual(['Checking', 'Card', 'Empty', 'Złoty', 'Huge', LONG]);
     expect(document.querySelector('[data-testid=account-option-balance]')).toBeNull();
-    expect(document.body.textContent).not.toMatch(/\d{2,}[.,]\d{2}|••••/);
+    expect(document.body.textContent).not.toMatch(/\d{2,}[.,]\d{2}|0,000\.00/);
   });
 
   it('has no accessibility violations open', async () => {
