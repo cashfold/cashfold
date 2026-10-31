@@ -221,6 +221,7 @@ describe('desktop experience schemas (spec 006)', () => {
 
   it('knows only the closed set of actions', () => {
     expect(ActionIdSchema.safeParse('new-transaction').success).toBe(true);
+    expect(ActionIdSchema.safeParse('palette').success).toBe(true);
     expect(ActionIdSchema.safeParse('open-fold:4').success).toBe(true);
     expect(ActionIdSchema.safeParse('open-fold:5').success).toBe(false);
     expect(ActionIdSchema.safeParse('rm -rf').success).toBe(false);

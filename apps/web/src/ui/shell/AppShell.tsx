@@ -2,13 +2,12 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { useCore } from '../core/CoreProvider';
 import { useI18n } from '../i18n/I18nProvider';
 import { LedgerProvider, useLedger } from '../ledger/LedgerProvider';
 import { ArrowsRightLeftIcon, AuthLayout, BanknotesIcon, InformationCircleIcon, Button, Cog6ToothIcon, FlagIcon, HomeIcon, LockClosedIcon, PlusIcon,
   Sidebar, SidebarBody, SidebarFooter, SidebarHeader, SidebarItem, SidebarLabel, SidebarLayout, SidebarSection, Badge } from '../kit';
-import { prefsStore } from '../prefs/usePrefs';
 import { SyncIndicator } from '../sync/SyncIndicator';
 import { AddSheetHost } from '../transactions/AddSheetHost';
 import { useScheduleInbox } from '../transactions/useScheduleInbox';
@@ -17,7 +16,11 @@ import { Topbar } from './Topbar';
 import { OverlayHost } from './OverlayHost';
 import { FoldSwitcher } from './FoldSwitcher';
 import { HelpDialog } from './HelpDialog';
-import { dismissOverlays, subscribeOverlays } from './overlay-signal';
+import { subscribeOverlays } from './overlay-signal';
+import { showGettingStartedCard } from './show-card';
+
+// The command palette is loaded as its own chunk once the app is unlocked, so it is not part of the JavaScript every page loads up front (the service worker has the chunk for offline use).
+const PaletteHostLazy = lazy(() => import('../palette/PaletteHost').then((module) => ({ default: module.PaletteHost })));
 import { DesktopOnly } from '../desktop/lazy';
 import { useDesktop } from '../desktop/useDesktop';
 import { ReminderService } from '../desktop/ReminderService';
@@ -88,11 +91,7 @@ function HelpItem() {
   const [open, setOpen] = useState(false);
   const close = useCallback(() => setOpen(false), []);
   // Brings the Getting started card back, as Help used to, and leaves the dialog and, on a narrow window, the drawer.
-  const showCard = () => {
-    prefsStore.update((p) => ({ ...p, firstRun: { dismissed: false } }));
-    dismissOverlays();
-    router.push('/overview/');
-  };
+  const showCard = () => showGettingStartedCard(router);
   return (
     <>
       <SidebarItem onClick={() => setOpen(true)}>
@@ -166,6 +165,7 @@ function UnlockedShell({ children }: { children: ReactNode }) {
             <DesktopOnly load={() => import('../desktop/DropTarget')} />
             <DesktopOnly load={() => import('../desktop/DesktopPresence')} />
             <ReminderService />
+            <Suspense fallback={null}><PaletteHostLazy /></Suspense>
             <Banners />
             {children}
           </SidebarLayout>

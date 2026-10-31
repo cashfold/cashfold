@@ -4,7 +4,7 @@ import { HELP_SHORTCUTS } from './help-shortcuts';
 
 // The Help dialog's list (spec 008). Its agreement with what the desktop shell really handles is tested in apps/desktop (help-shortcuts.test.ts).
 
-const APP_ACTIONS = ACTION_IDS.filter((id) => id === 'new-transaction' || id === 'lock' || id === 'settings' || id === 'search' || id === 'import' || id === 'export' || id.startsWith('go:'));
+const APP_ACTIONS = ACTION_IDS.filter((id) => id === 'new-transaction' || id === 'lock' || id === 'settings' || id === 'search' || id === 'palette' || id === 'import' || id === 'export' || id.startsWith('go:'));
 
 describe('the help shortcut list', () => {
   it('has unique ids and only the two groups', () => {

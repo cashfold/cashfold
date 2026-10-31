@@ -10,6 +10,7 @@ import { type DesktopPlatform } from '../desktop/desktop-store';
 import { formatShortcut } from '../desktop/format-shortcut';
 import { useDesktop } from '../desktop/useDesktop';
 import { subscribeOverlays } from './overlay-signal';
+import { isApplePlatform } from '../palette/palette-keys';
 
 function ShortcutGroup({ title, shortcuts, platform, t }: { title: string; shortcuts: readonly HelpShortcut[]; platform: DesktopPlatform; t: Translate }) {
   const id = useId();
@@ -38,10 +39,16 @@ function ShortcutGroup({ title, shortcuts, platform, t }: { title: string; short
  * What the help dialog says. The keyboard shortcuts are shown only in the desktop app (`platform` is undefined in a browser); the getting-started part is
  * a button while steps are left and a plain line once they are all done.
  */
-export function HelpContent({ t, platform, status, onShowCard }: { t: Translate; platform: DesktopPlatform | undefined; status: ChecklistStatus; onShowCard: () => void }) {
+export function HelpContent({ t, platform, status, onShowCard, apple = false }: { t: Translate; platform: DesktopPlatform | undefined; status: ChecklistStatus; onShowCard: () => void; apple?: boolean }) {
   return (
     <>
-      {platform === undefined ? null : (
+      {platform === undefined ? (
+        // In a browser the command palette is the one keyboard shortcut the web app has (spec 015, FR-021).
+        <section aria-label={t('help.shortcuts.heading')}>
+          <Subheading level={3}>{t('help.shortcuts.heading')}</Subheading>
+          <ShortcutGroup title={t('help.shortcuts.app')} shortcuts={HELP_SHORTCUTS.filter((s) => s.action === 'palette')} platform={apple ? 'darwin' : 'linux'} t={t} />
+        </section>
+      ) : (
         <section aria-label={t('help.shortcuts.heading')}>
           <Subheading level={3}>{t('help.shortcuts.heading')}</Subheading>
           <Text className="mt-1">{t('help.shortcuts.locked')}</Text>
@@ -50,7 +57,7 @@ export function HelpContent({ t, platform, status, onShowCard }: { t: Translate;
         </section>
       )}
       {status.known ? (
-        <section aria-label={t('help.start.heading')} className={platform === undefined ? '' : 'mt-8'}>
+        <section aria-label={t('help.start.heading')} className="mt-8">
           <Subheading level={3}>{t('help.start.heading')}</Subheading>
           {status.complete ? <Text className="mt-1">{t('help.start.done')}</Text> : <Button className="mt-2" onClick={onShowCard}>{t('help.start.show')}</Button>}
         </section>
@@ -64,7 +71,7 @@ function HelpBody({ onShowCard }: { onShowCard: () => void }) {
   const { t } = useI18n();
   const { platform } = useDesktop();
   const status = useChecklistStatus();
-  return <HelpContent t={t} platform={platform} status={status} onShowCard={onShowCard} />;
+  return <HelpContent t={t} platform={platform} status={status} onShowCard={onShowCard} apple={isApplePlatform()} />;
 }
 
 /** The dialog the Help item opens. It closes with Escape or Close, and when a desktop shortcut arrives. */

@@ -1,7 +1,7 @@
 import { expect, test } from './fixtures/index.js';
 import { createAccount, go, signUpAndEnter } from './fixtures/nav.js';
 
-// Spec 008: Help opens a dialog. In a browser it has no keyboard shortcuts, offers the getting-started card while steps are left and says so when they
+// Spec 008: Help opens a dialog. In a browser its only keyboard shortcut is the command palette's (spec 015), it offers the getting-started card while steps are left and says so when they
 // are done, opens from the sidebar and from the drawer, closes with Escape or Close and gives focus back to Help, and passes the accessibility checks.
 
 test.describe('@ux help', () => {
@@ -9,7 +9,7 @@ test.describe('@ux help', () => {
     test.skip(browserName === 'webkit', 'OPFS access handles in workers are verified on Chromium and Firefox');
   });
 
-  test('opens from the sidebar, has no keyboard shortcuts in a browser, and closes with Escape or Close, returning focus to Help', async ({ page }) => {
+  test('opens from the sidebar, lists only the palette shortcut in a browser, and closes with Escape or Close, returning focus to Help', async ({ page }) => {
     test.setTimeout(240_000);
     await signUpAndEnter(page);
     const help = page.getByRole('button', { name: 'Help', exact: true });
@@ -17,8 +17,10 @@ test.describe('@ux help', () => {
     const dialog = page.getByRole('dialog', { name: 'Help' });
     await expect(dialog.getByRole('heading', { name: 'Help', level: 2 })).toBeVisible();
     await expect(dialog.getByRole('button', { name: 'Show the getting-started card' })).toBeVisible();
-    await expect(dialog.getByText('Keyboard shortcuts')).toHaveCount(0);
-    await expect(dialog.locator('kbd')).toHaveCount(0);
+    await expect(dialog.getByText('Keyboard shortcuts')).toBeVisible();
+    await expect(dialog.getByText('Open the command palette')).toBeVisible();
+    await expect(dialog.locator('kbd')).toHaveCount(1);
+    await expect(dialog.locator('kbd')).toHaveText(/^(⌘K|Ctrl\+K)$/);
     await page.keyboard.press('Escape');
     await expect(dialog).toHaveCount(0);
     await expect(help).toBeFocused();

@@ -12,6 +12,7 @@ import { formatPlain } from '../ledger/format';
 import { LedgerFrame } from '../ledger/LedgerFrame';
 import { useLedger } from '../ledger/LedgerProvider';
 import { COLOR_COUNT, colorFor } from '../ledger/palette';
+import { ITEM_ROW_CLASS, ITEM_ROW_PROPS, useFocusItem } from './item-focus';
 import { AccountOption } from '../accounts/AccountOption';
 
 
@@ -38,6 +39,7 @@ function GoalsBody() {
     }
   }, [ledger.version, t]);
   useEffect(() => void load(), [load]);
+  useFocusItem(rows.map((r) => r.goal.id));
 
   const free = basics.accounts.filter((a) => a.kind === 'goal' && !a.archived && !rows.some((r) => r.goal.accountId === a.id));
 
@@ -52,7 +54,7 @@ function GoalsBody() {
           const { goal, progress } = row;
           const money = (minor: bigint) => ledger.money(minor, goal.currency);
           return (
-            <li key={goal.id} className="p-3" data-testid="goal-row">
+            <li key={goal.id} className={`p-3 ${ITEM_ROW_CLASS}`} data-testid="goal-row" {...ITEM_ROW_PROPS(goal.id)}>
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <span aria-hidden="true" className="me-2 inline-block h-3 w-3 rounded-ui" style={{ background: colorFor(goal.color) }} />

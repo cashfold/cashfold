@@ -12,6 +12,7 @@ import { Progress } from '../kit';
 import { budgetStatus } from '../plan/status';
 import { LedgerFrame } from '../ledger/LedgerFrame';
 import { useLedger } from '../ledger/LedgerProvider';
+import { ITEM_ROW_CLASS, ITEM_ROW_PROPS, useFocusItem } from './item-focus';
 
 type Mode = 'spent' | 'limit' | 'available' | 'ratio';
 const MODES: readonly Mode[] = ['spent', 'limit', 'available', 'ratio'];
@@ -42,6 +43,7 @@ function BudgetsBody() {
     }
   }, [ledger.version, t]);
   useEffect(() => void load(), [load]);
+  useFocusItem(rows.map((r) => r.budget.id));
 
   async function confirmRemove() {
     if (!removing) return;
@@ -104,7 +106,7 @@ function BudgetItem({ row, mode, onOpen, onEdit, onDelete }: { row: BudgetRow; m
   const status = period === undefined ? undefined : budgetStatus(period.spentMinor, period.allocationMinor + period.carryInMinor);
   const over = period !== undefined && period.availableMinor < 0n;
   return (
-    <li className="p-3" data-testid="budget-row">
+    <li className={`p-3 ${ITEM_ROW_CLASS}`} data-testid="budget-row" {...ITEM_ROW_PROPS(row.budget.id)}>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <Button plain type="button" onClick={onOpen}>{budget.name}</Button>

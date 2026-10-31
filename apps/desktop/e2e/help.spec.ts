@@ -56,6 +56,7 @@ const EFFECT: Record<string, (page: Page) => Promise<void>> = {
     await expect.poll(() => path(page)).toBe('/transactions/');
     await expect(page.getByRole('searchbox')).toBeFocused();
   },
+  palette: (page) => expect(page.getByRole('dialog', { name: 'Command palette' }).getByRole('combobox')).toBeFocused(),
   'go-overview': (page) => expect.poll(() => path(page)).toBe('/overview/'),
   'go-transactions': (page) => expect.poll(() => path(page)).toBe('/transactions/'),
   'go-accounts': (page) => expect.poll(() => path(page)).toBe('/accounts/'),
@@ -75,8 +76,8 @@ test('Help lists the shortcuts the way this system writes them, with the locked 
   await expect(d.getByText('While the app is locked, only Lock works.')).toBeVisible();
   const text = (await d.innerText()).replace(/\s+/g, ' ');
   for (const [name, written] of mac
-    ? [['New transaction', '⌘N'], ['Import', '⇧⌘I'], ['Full screen', '⌃⌘F']]
-    : [['New transaction', 'Ctrl+N'], ['Import', 'Ctrl+Shift+I'], ['Full screen', 'F11']]) {
+    ? [['New transaction', '⌘N'], ['Open the command palette', '⌘K'], ['Import', '⇧⌘I'], ['Full screen', '⌃⌘F']]
+    : [['New transaction', 'Ctrl+N'], ['Open the command palette', 'Ctrl+K'], ['Import', 'Ctrl+Shift+I'], ['Full screen', 'F11']]) {
     expect(text, name).toContain(`${name} ${written}`);
   }
   await page.keyboard.press('Escape');
@@ -97,7 +98,7 @@ test('every listed app shortcut does what its name says', async ({ session }) =>
     await expect.poll(() => path(page), item.id).toBe('/overview/');
     await pressItem(app, item.id);
     await EFFECT[item.id]!(page);
-    if (item.id === 'new-transaction') await page.keyboard.press('Escape');
+    if (item.id === 'new-transaction' || item.id === 'palette') await page.keyboard.press('Escape');
   }
   await pressItem(app, 'lock');
   await expect(page.getByRole('heading', { name: 'Unlock Cashfold' })).toBeVisible();

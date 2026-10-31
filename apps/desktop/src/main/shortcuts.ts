@@ -24,7 +24,7 @@ export type ShortcutAction =
   | 'toggle-devtools';
 
 /** The app actions that have a shortcut. */
-export type AppShortcutAction = Extract<ActionId, 'new-transaction' | 'lock' | 'settings' | 'search' | 'import' | 'export' | `go:${string}`>;
+export type AppShortcutAction = Extract<ActionId, 'new-transaction' | 'lock' | 'settings' | 'search' | 'palette' | 'import' | 'export' | `go:${string}`>;
 
 export interface ShortcutInput {
   readonly key: string;
@@ -70,6 +70,7 @@ export const SHORTCUTS: readonly ShortcutEntry[] = [
   { keys: ['l'], modifier: 'primary', shift: false, platforms: 'all', action: 'lock' },
   { keys: [','], modifier: 'primary', shift: false, platforms: 'all', action: 'settings', data: true },
   { keys: ['f'], modifier: 'primary', shift: false, platforms: 'all', action: 'search', data: true },
+  { keys: ['k'], modifier: 'primary', shift: false, platforms: 'all', action: 'palette', data: true },
   { keys: ['1'], modifier: 'primary', shift: false, platforms: 'all', action: 'go:overview', data: true },
   { keys: ['2'], modifier: 'primary', shift: false, platforms: 'all', action: 'go:transactions', data: true },
   { keys: ['3'], modifier: 'primary', shift: false, platforms: 'all', action: 'go:accounts', data: true },
