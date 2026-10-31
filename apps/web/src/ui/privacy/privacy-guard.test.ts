@@ -38,3 +38,37 @@ describe('where Privacy mode lives', () => {
     }
   });
 });
+
+// The switch (spec 017): one control in the sidebar footer, a compact one in the narrow top bar, both loaded lazily, and the change said politely.
+describe('where the Privacy mode switch lives', () => {
+  const shell = read('shell/AppShell.tsx');
+  const topbar = read('shell/Topbar.tsx');
+  const plain = shell.slice(shell.indexOf('function PlainShell'));
+
+  it('is imported lazily from the privacy chunk, not statically', () => {
+    expect(shell).toMatch(/lazy\(\(\) => import\('\.\.\/privacy\/PrivacySwitch'\)/);
+    expect(topbar).toMatch(/lazy\(\(\) => import\('\.\.\/privacy\/PrivacySwitch'\)/);
+    expect(shell).not.toMatch(/^import .*PrivacySwitch/m);
+    expect(topbar).not.toMatch(/^import .*PrivacySwitch/m);
+  });
+
+  it('is rendered once in the sidebar footer and not before sign-in', () => {
+    expect(shell.match(/<PrivacySidebarItemLazy \/>/g)).toHaveLength(1);
+    expect(plain).not.toContain('PrivacySidebarItem');
+    const footer = shell.slice(shell.indexOf('<SidebarFooter>'));
+    expect(footer.indexOf('<PrivacySidebarItemLazy')).toBeGreaterThan(-1);
+    expect(footer.indexOf('<PrivacySidebarItemLazy')).toBeLessThan(footer.indexOf('<HelpItem'));
+  });
+
+  it('replaces the old indicator, which nothing refers to any more', () => {
+    for (const file of ['shell/AppShell.tsx', 'shell/Topbar.tsx', 'privacy/PrivacyProvider.tsx']) expect(read(file), file).not.toContain('PrivacyIndicator');
+  });
+
+  it('is announced by the provider when the mode changes, and not when the shell first appears', () => {
+    const provider = read('privacy/PrivacyProvider.tsx');
+    expect(provider).toContain("'privacy.announce.on'");
+    expect(provider).toContain("'privacy.announce.off'");
+    expect(provider).toMatch(/if \(mounted\.current\) setAnnouncement/);
+  });
+});
+

@@ -62,6 +62,7 @@ afterEach(() => {
 });
 
 const amountIn = (testid: string) => document.querySelector<HTMLElement>(`[data-testid="${testid}"] > span`)!;
+const isMasked = (el: HTMLElement): boolean => el.querySelector('[data-privacy-mask]') !== null;
 const FIGURE = /\d[\d.,\s]*[.,]\d{2}\b|[+−]\d/;
 
 describe('masked amounts', () => {
@@ -69,11 +70,20 @@ describe('masked amounts', () => {
     mount(<Screen />);
     for (const id of ['first', 'second', 'third', 'cell']) {
       const el = amountIn(id);
-      expect(el.textContent).toMatch(/^•••• [A-Z]{3}$/);
+      // The currency code is the only text; the zeros are one constant drawn as generated content, blurred and hidden from a reader.
+      expect(el.textContent?.trim()).toMatch(/^[A-Z]{3}$/);
+      const zeros = el.querySelector<HTMLElement>('[data-privacy-mask]')!;
+      expect(zeros.textContent).toBe('');
+      expect(zeros.getAttribute('data-zeros')).toBe('0,000.00');
+      expect(getComputedStyle(zeros, '::before').content).toBe('"0,000.00"');
+      expect(zeros.getAttribute('aria-hidden')).toBe('true');
+      expect(getComputedStyle(zeros).filter).toMatch(/blur/);
       expect(el.getAttribute('data-sign')).toBeNull();
       expect(el.className).not.toMatch(/success|danger/);
     }
-    const everything = [...document.querySelectorAll('main *')].flatMap((e) => [e.textContent ?? '', ...[...e.attributes].map((a) => a.value)]).join(' ');
+    // Everything a reader could take a figure from. The zeros of a mask are generated content, so none is among it.
+    const main = document.querySelector('main')!.cloneNode(true) as HTMLElement;
+    const everything = [main, ...main.querySelectorAll('*')].flatMap((e) => [e === main ? (e.textContent ?? '') : '', ...[...e.attributes].filter((a) => a.name !== 'data-zeros').map((a) => a.value)]).join(' ');
     expect(everything.replace(/2026-10/g, '')).not.toMatch(FIGURE);
   });
 
@@ -104,6 +114,19 @@ describe('masked amounts', () => {
     expect(line.getBoundingClientRect().height).toBe(before.lineHeight);
   });
 
+  it('blur by a fraction of the text size, so large figures are hidden as well as small ones', () => {
+    mount(<Screen />);
+    const zeros = amountIn('first').querySelector<HTMLElement>('[data-privacy-mask]')!;
+    const blurOf = () => Number(/blur\(([\d.]+)px\)/.exec(getComputedStyle(zeros).filter)![1]);
+    const size = () => Number.parseFloat(getComputedStyle(zeros).fontSize);
+    const small = { blur: blurOf(), size: size() };
+    document.querySelector<HTMLElement>('main')!.style.fontSize = '60px';
+    const large = { blur: blurOf(), size: size() };
+    expect(large.size).toBeGreaterThan(small.size * 2);
+    expect(large.blur / large.size).toBeCloseTo(small.blur / small.size, 2);
+    expect(large.blur / large.size).toBeGreaterThanOrEqual(0.35);
+  });
+
   it('look as before when the mode is off', () => {
     mount(<Screen on={false} />);
     expect(amountIn('first').textContent).toBe('+1,234.56 USD');
@@ -117,8 +140,8 @@ describe('revealing one amount', () => {
     mount(<Screen />);
     await userEvent.click(amountIn('first'));
     expect(amountIn('first').textContent).toBe('+1,234.56 USD');
-    expect(amountIn('second').textContent).toBe('•••• USD');
-    expect(amountIn('third').textContent).toBe('•••• EUR');
+    expect(isMasked(amountIn('second'))).toBe(true);
+    expect(isMasked(amountIn('third'))).toBe(true);
   });
 
   it.each([['Enter', '{Enter}'], ['Space', ' ']])('works with the %s key and keeps keyboard focus', async (_name, keys) => {
@@ -155,7 +178,7 @@ describe('revealing one amount', () => {
     const first = document.activeElement as HTMLElement;
     await userEvent.keyboard('{Enter}');
     expect(first.textContent).toBe('+1,234.56 USD');
-    await vi.waitFor(() => expect(first.textContent).toBe('•••• USD'), { timeout: REVEAL_MS + 3000 });
+    await vi.waitFor(() => expect(isMasked(first)).toBe(true), { timeout: REVEAL_MS + 3000 });
     expect(document.activeElement).toBe(first);
   });
 
@@ -165,8 +188,8 @@ describe('revealing one amount', () => {
     await userEvent.click(amountIn('third'));
     clear();
     await vi.waitFor(() => {
-      expect(amountIn('first').textContent).toBe('•••• USD');
-      expect(amountIn('third').textContent).toBe('•••• EUR');
+      expect(isMasked(amountIn('first'))).toBe(true);
+      expect(isMasked(amountIn('third'))).toBe(true);
     });
   });
 });

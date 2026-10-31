@@ -42,18 +42,19 @@ REVEAL_MS = 5000
 | State | Output |
 |-------|--------|
 | Mode off | exactly today's output (text, `data-sign`, tone colour, sign) |
-| Mode on, not revealed | `••••` + currency code, fixed width; `role="button"` + `tabIndex=0` + name "Hidden amount, {currency}. Press to reveal."; no `data-sign`, no tone class, no plus or minus; click, tap, Enter and Space reveal this one amount |
+| Mode on, not revealed | blurred `0,000.00` (generated content from `data-zeros`, not text, the same for every figure) + currency code, fixed width; `role="button"` + `tabIndex=0` + name "Hidden amount, {currency}. Press to reveal."; no `data-sign`, no tone class, no plus or minus; click, tap, Enter and Space reveal this one amount |
 | Mode on, revealed | today's output for 5 seconds, then masked again |
 | Mode on, inside an interactive ancestor | masked `span` without `tabIndex`; a click reveals it and does not activate the ancestor |
 
 - The real figure is formatted only in the revealed branch.
+- The blur is a fraction of the text size (`blur-[0.4em]`), so it hides large figures as well as small ones.
 - Masked width comes from a class (no inline style).
 - Forms and exports never use `Amount`; they use `formatPlain` or the core exporters and are unchanged.
 
 ## 4. Strings from the ledger view
 
 ```text
-ledger.money(minor, currency): string     // masked ("•••• USD") while the mode is on
+ledger.money(minor, currency): string     // masked ("0,000.00 USD") while the mode is on
 ledger.signed(minor, currency): string    // same, with no plus or minus while masked
 ```
 

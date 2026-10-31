@@ -23,7 +23,7 @@ No other `Intl.NumberFormat` is used for money (the only ones are file sizes and
 
 **Decision**: when the mode is on and the amount is not revealed, `Amount` renders:
 
-- the text `••••` followed by the currency code (clarification 2), in a fixed-width inline box (`min-width` in `ch`, set by a class, no inline style), so a screen does not shift;
+- a constant row of zeros in the shape of a figure (`0,000.00` with the locale's marks), blurred, then the currency code (clarification 2), in a fixed-width inline box (`min-width` in `ch`, set by a class, no inline style), so a screen does not shift;
 - no `data-sign`, no gain or loss colour and no plus sign (FR-003), and none of the real figure anywhere in the element, its attributes or its children;
 - `role="button"`, `tabIndex={0}`, an accessible name "Hidden amount, USD. Press to reveal" (the currency is not secret), `aria-live` not set (the reveal is announced by a polite status, R4);
 - on click, tap, Enter or Space: reveal this one amount for 5 seconds.

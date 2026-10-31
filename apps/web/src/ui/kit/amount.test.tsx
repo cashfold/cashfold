@@ -63,15 +63,16 @@ describe('Amount with Privacy mode', () => {
 
   it.each([123_456n, -450n, 0n, 2n ** 62n])('shows no part of %s while masked: no digits, no sign, no direction, no colour', (minor) => {
     const out = masked({ minor, tone: 'auto', showSign: true });
-    expect(text(out)).toBe('•••• USD');
-    expect(text(out)).not.toMatch(/\d/);
+    // Only the currency code is text: the zeros are generated content, so no digit is in the markup at all.
+    expect(text(out).trim()).toBe('USD');
+    expect(out.replace(/min-w-\[14ch\]|blur-\[0\.4em\]|outline-2|outline-\(--focus\)/g, '')).not.toMatch(/[1-9]/);
     expect(out).not.toContain('data-sign');
     expect(out).not.toMatch(/text-\(--(success|danger)\)/);
     expect(text(out)).not.toMatch(/[+−-]\s?\d/);
   });
 
   it('keeps the currency code and a fixed width, whatever the figure', () => {
-    expect(text(masked({ minor: 1n, currency: 'EUR' }))).toBe('•••• EUR');
+    expect(text(masked({ minor: 1n, currency: 'EUR' })).trim()).toBe('EUR');
     expect(masked({ minor: 1n })).toContain('min-w-');
     expect(masked({ minor: 1n })).toMatch(/class="[^"]*\btabular-nums\b/);
     expect(masked({ minor: 1n }).match(/class="[^"]*min-w-[^"]*"/)![0]).toBe(masked({ minor: 99_999_999n }).match(/class="[^"]*min-w-[^"]*"/)![0]);
@@ -89,7 +90,15 @@ describe('Amount with Privacy mode', () => {
     const out = masked({ minor: 123_456n, inert: true });
     expect(out).not.toContain('tabindex');
     expect(out).not.toContain('role="button"');
-    expect(text(out)).toBe('•••• USD');
+    expect(text(out).trim()).toBe('USDHidden amount, USD. Press to reveal.');
+  });
+
+  it('puts the zeros in a blurred span a reader skips, and the same zeros for every figure', () => {
+    const small = masked({ minor: 1n });
+    const huge = masked({ minor: 2n ** 62n });
+    expect(small).toBe(huge);
+    expect(small).toMatch(/<span aria-hidden="true" data-privacy-mask="true" data-zeros="0,000\.00" class="[^"]*blur-\[0\.4em\][^"]*before:content-\[attr\(data-zeros\)\][^"]*"><\/span>/);
+    expect(small).toContain('<span aria-hidden="true">USD</span>');
   });
 });
 

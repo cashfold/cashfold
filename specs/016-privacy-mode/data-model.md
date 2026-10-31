@@ -39,7 +39,7 @@ The existing device-local JSON object, same parsing rules (field by field, defau
 
 | Part | Value |
 |------|-------|
-| Text | `••••` then the currency code, fixed width |
+| Look | a constant row of zeros in the locale's marks (`0,000.00`), blurred, drawn as generated content from an attribute so it is not text, then the currency code; fixed width |
 | Name for assistive technology | "Hidden amount, {currency}. Press to reveal." |
 | Absent while masked | the figure, its sign, its direction, gain or loss colour, any `data-` attribute that varies with the figure |
 

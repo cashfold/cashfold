@@ -13,13 +13,14 @@
 ### Session 2026-10-31
 
 - Q: Should graphics that show relative size (bars, trend lines, progress bars) and percentages stay visible while Privacy mode is on? → A: Yes. Only figures, axis values and tooltip values are masked; shapes and percentages stay.
-- Q: Should a masked amount keep its currency code? → A: Yes. The mask stays next to the code (for example "•••• USD").
+- Q: Should a masked amount keep its currency code? → A: Yes. The mask stays next to the code (for example a blurred "0,000.00 USD").
+- Note (2026-11-01): spec 017 replaces the indicator that appeared only while the mode was on (FR-011) with a control that is always shown in both states.
 
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Hide the money on screen and reveal one amount at a time (Priority: P1)
 
-A person turns on Privacy mode in Settings. From then on every money amount in the app shows as a row of dots instead of a figure, so someone looking over their shoulder sees names, dates and categories but no amounts. When the person wants to see one amount, they click or press it, read it, and it hides again by itself after a few seconds.
+A person turns on Privacy mode in Settings. From then on every money amount in the app shows as a blurred row of zeros instead of a figure, so someone looking over their shoulder sees names, dates and categories but no amounts. When the person wants to see one amount, they click or press it, read it, and it hides again by itself after a few seconds.
 
 **Why this priority**: This is the core of the feature and works on its own. It is what lets someone use the app on a train or on a shared screen.
 
@@ -183,7 +184,7 @@ Privacy mode only changes what is shown on screen. Typing into the add and edit 
 ## Assumptions
 
 - Amounts that reach the screen through the app's shared money display are covered together; any amount found elsewhere (chart labels, dropdown options, titles, labels) is brought under the same rule as part of this feature.
-- The mask is a fixed row of dots with the currency code kept, as the second clarification decided; the exact look is a design detail. The reveal time is about five seconds and can be tuned without changing the spec.
+- The mask is a fixed, blurred row of zeros (the same for every amount, never made from the figure, so it shows nothing about its size) with the currency code kept, as the second clarification decided; the exact look is a design detail. The reveal time is about five seconds and can be tuned without changing the spec.
 - The exact shortcut keys are chosen in planning so that they do not clash with browser, system or existing app shortcuts, and are listed in Help.
 - Relative-size graphics and percentages stay visible, as the clarification above decided; they hold no figure, and hiding them would make budgets and the overview hard to use.
 - Tapping reveals on touch devices; there is no hover-to-reveal, because hover would be used by anyone sitting next to the person.
