@@ -135,6 +135,7 @@ const CONTRACT: ReadonlyArray<readonly [string, string, boolean]> = [
   ['settings', ',', false],
   ['search', 'f', false],
   ['palette', 'k', false],
+  ['privacy', 'm', true],
   ['go:overview', '1', false],
   ['go:transactions', '2', false],
   ['go:accounts', '3', false],
@@ -160,7 +161,7 @@ describe('the app-action shortcuts of the contract', () => {
   });
 
   it('has exactly the contract entries and no other app action', () => {
-    const appActions = SHORTCUTS.filter((e) => e.action === 'lock' || e.action.includes(':') || ['new-transaction', 'settings', 'search', 'palette', 'import', 'export'].includes(e.action));
+    const appActions = SHORTCUTS.filter((e) => e.action === 'lock' || e.action.includes(':') || ['new-transaction', 'settings', 'search', 'palette', 'privacy', 'import', 'export'].includes(e.action));
     expect(appActions.map((e) => e.action).sort()).toEqual(CONTRACT.map(([action]) => action).sort());
   });
 
@@ -188,3 +189,23 @@ describe('the command palette shortcut (spec 015)', () => {
     expect(SHORTCUTS.find((e) => e.action === 'palette')?.data).toBe(true);
   });
 });
+
+describe('the privacy mode shortcut (spec 016)', () => {
+  it('is Command+Shift+M on macOS and Control+Shift+M on Windows and Linux', () => {
+    expect(matchShortcut(press('m', { meta: true, shift: true }), 'darwin')?.action).toBe('privacy');
+    expect(matchShortcut(press('m', { control: true, shift: true }), 'win32')?.action).toBe('privacy');
+    expect(matchShortcut(press('m', { control: true, shift: true }), 'linux')?.action).toBe('privacy');
+    expect(matchShortcut(press('m', { control: true, shift: true }), 'darwin')).toBeUndefined();
+  });
+
+  it('leaves Mod+M alone: it still minimises', () => {
+    expect(matchShortcut(press('m', { meta: true }), 'darwin')?.action).toBe('minimize');
+    expect(matchShortcut(press('m', { control: true }), 'linux')?.action).toBe('minimize');
+  });
+
+  it('ignores Alt combinations, and is ignored while the page is locked like every action that reaches data', () => {
+    expect(matchShortcut(press('m', { meta: true, shift: true, alt: true }), 'darwin')).toBeUndefined();
+    expect(SHORTCUTS.find((e) => e.action === 'privacy')?.data).toBe(true);
+  });
+});
+

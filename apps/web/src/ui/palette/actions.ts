@@ -15,6 +15,8 @@ export const ACTION_COMMANDS: readonly Command[] = [
   { id: 'lock-now', titleKey: 'palette.command.lock', keywordKeys: ['palette.keywords.lock'], group: 'action', run: (ctx) => ctx.lock() },
   { id: 'switch-theme', titleKey: 'palette.command.theme', keywordKeys: ['palette.keywords.theme'], group: 'action', run: (ctx) => ctx.toggleTheme() },
   { id: 'sign-out', titleKey: 'palette.command.signOut', keywordKeys: ['palette.keywords.signOut'], group: 'action', run: (ctx) => ctx.openSignOut() },
+  { id: 'privacy-on', titleKey: 'privacy.palette.on', keywordKeys: ['privacy.keywords.on'], group: 'action', enabled: (ctx) => !ctx.privacy, run: (ctx) => ctx.togglePrivacy() },
+  { id: 'privacy-off', titleKey: 'privacy.palette.off', keywordKeys: ['privacy.keywords.off'], group: 'action', enabled: (ctx) => ctx.privacy, run: (ctx) => ctx.togglePrivacy() },
   { id: 'help', titleKey: 'palette.command.help', keywordKeys: ['palette.keywords.help'], group: 'action', run: (ctx) => ctx.openHelp() },
 ];
 

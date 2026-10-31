@@ -10,6 +10,7 @@ import { useDesktop } from '../desktop/useDesktop';
 import { useI18n } from '../i18n/I18nProvider';
 import { useLedger } from '../ledger/LedgerProvider';
 import { usePrefs } from '../prefs/usePrefs';
+import { usePrivacy } from '../privacy/usePrivacy';
 import { HelpDialog } from '../shell/HelpDialog';
 import { useAddSheet } from '../shell/add-context';
 import { afterOverlaysLeave, subscribeOverlays } from '../shell/overlay-signal';
@@ -40,6 +41,7 @@ export function PaletteHost() {
   const { openAdd } = useAddSheet();
   const { resolved, setChoice } = useTheme();
   const desktop = useDesktop();
+  const { on: privacyOn, toggle: togglePrivacy } = usePrivacy();
   const showArchived = usePrefs(selectShowArchived);
 
   const [open, setOpen] = useState(false);
@@ -125,10 +127,12 @@ export function PaletteHost() {
       toggleTheme: () => setChoice(resolved === 'dark' ? 'light' : 'dark'),
       openSignOut: () => setSignOutOpen(true),
       openHelp: () => setHelpOpen(true),
+      privacy: privacyOn,
+      togglePrivacy: togglePrivacy,
       accounts: accountCount,
       foldId,
     }),
-    [router, openAdd, core, setChoice, resolved, accountCount, foldId],
+    [router, openAdd, core, setChoice, resolved, accountCount, foldId, privacyOn, togglePrivacy],
   );
 
   const entries = useMemo<PaletteEntry[]>(() => {

@@ -14,6 +14,8 @@ const ctx = (over: Partial<PaletteContext> = {}) => {
     toggleTheme: vi.fn(() => void calls.push('theme')),
     openSignOut: vi.fn(() => void calls.push('signout')),
     openHelp: vi.fn(() => void calls.push('help')),
+    privacy: false,
+    togglePrivacy: vi.fn(() => void calls.push('privacy')),
     accounts: 1,
     foldId: 'f1',
     ...over,
@@ -57,6 +59,20 @@ describe('the built-in actions', () => {
     const { context, calls } = ctx();
     find(id).run(context);
     expect(calls).toEqual([expected]);
+  });
+
+  it('offers Turn privacy mode on only while it is off and Turn it off only while it is on, each flipping it once and nothing else (spec 016)', () => {
+    const off = ctx({ privacy: false });
+    expect(find('privacy-on').enabled!(off.context)).toBe(true);
+    expect(find('privacy-off').enabled!(off.context)).toBe(false);
+    find('privacy-on').run(off.context);
+    expect(off.calls).toEqual(['privacy']);
+    const on = ctx({ privacy: true });
+    expect(find('privacy-on').enabled!(on.context)).toBe(false);
+    expect(find('privacy-off').enabled!(on.context)).toBe(true);
+    find('privacy-off').run(on.context);
+    expect(on.calls).toEqual(['privacy']);
+    expect(on.context.lock).not.toHaveBeenCalled();
   });
 
   it('only opens the sign-out dialog; the dialog asks for its own confirmation, so the palette never signs out by itself', () => {

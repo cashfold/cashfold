@@ -20,12 +20,16 @@ import { subscribeOverlays } from './overlay-signal';
 import { showGettingStartedCard } from './show-card';
 
 // The command palette is loaded as its own chunk once the app is unlocked, so it is not part of the JavaScript every page loads up front (the service worker has the chunk for offline use).
+// The privacy indicator and its key are another small chunk of the same kind.
+const PrivacyIndicatorLazy = lazy(() => import('../privacy/PrivacyIndicator').then((module) => ({ default: module.PrivacyIndicator })));
+const PrivacyKeysLazy = lazy(() => import('../privacy/PrivacyKeys').then((module) => ({ default: module.PrivacyKeys })));
 const PaletteHostLazy = lazy(() => import('../palette/PaletteHost').then((module) => ({ default: module.PaletteHost })));
 import { DesktopOnly } from '../desktop/lazy';
 import { useDesktop } from '../desktop/useDesktop';
 import { ReminderService } from '../desktop/ReminderService';
 import { PrivacyCover } from './PrivacyCover';
 import { PRIMARY_SECTIONS, matchSection, type Section } from './routes';
+import { PrivacyProvider } from '../privacy/PrivacyProvider';
 import { StatusProvider } from './StatusProvider';
 import { StorageNotice } from './StorageNotice';
 import { UpdateNotice } from './UpdateNotice';
@@ -139,6 +143,7 @@ function NavigationSidebar() {
       <SidebarFooter>
         <SyncIndicator />
         <SidebarSection className="mt-2">
+          <Suspense fallback={null}><PrivacyIndicatorLazy /></Suspense>
           <HelpItem />
           <SidebarItem onClick={() => core.lock()}>
             <LockClosedIcon data-slot="icon" aria-hidden="true" />
@@ -155,6 +160,7 @@ function UnlockedShell({ children }: { children: ReactNode }) {
   const { t } = useI18n();
   const core = useCore();
   return (
+    <PrivacyProvider>
     <LedgerProvider>
       <StatusProvider>
         <AddSheetHost>
@@ -165,13 +171,14 @@ function UnlockedShell({ children }: { children: ReactNode }) {
             <DesktopOnly load={() => import('../desktop/DropTarget')} />
             <DesktopOnly load={() => import('../desktop/DesktopPresence')} />
             <ReminderService />
-            <Suspense fallback={null}><PaletteHostLazy /></Suspense>
+            <Suspense fallback={null}><PaletteHostLazy /><PrivacyKeysLazy /></Suspense>
             <Banners />
             {children}
           </SidebarLayout>
         </AddSheetHost>
       </StatusProvider>
     </LedgerProvider>
+    </PrivacyProvider>
   );
 }
 

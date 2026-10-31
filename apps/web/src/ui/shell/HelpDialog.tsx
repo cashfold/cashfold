@@ -43,10 +43,10 @@ export function HelpContent({ t, platform, status, onShowCard, apple = false }: 
   return (
     <>
       {platform === undefined ? (
-        // In a browser the command palette is the one keyboard shortcut the web app has (spec 015, FR-021).
+        // In a browser the web app has two keyboard shortcuts: the command palette (spec 015, FR-021) and Privacy mode (spec 016, FR-010).
         <section aria-label={t('help.shortcuts.heading')}>
           <Subheading level={3}>{t('help.shortcuts.heading')}</Subheading>
-          <ShortcutGroup title={t('help.shortcuts.app')} shortcuts={HELP_SHORTCUTS.filter((s) => s.action === 'palette')} platform={apple ? 'darwin' : 'linux'} t={t} />
+          <ShortcutGroup title={t('help.shortcuts.app')} shortcuts={HELP_SHORTCUTS.filter((s) => s.action === 'palette' || s.action === 'privacy')} platform={apple ? 'darwin' : 'linux'} t={t} />
         </section>
       ) : (
         <section aria-label={t('help.shortcuts.heading')}>
