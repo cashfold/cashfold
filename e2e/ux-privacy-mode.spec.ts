@@ -32,10 +32,16 @@ async function readable(page: Page): Promise<string[]> {
       }
     }
     // The text on screen, outside form fields (a field legitimately shows what the person typed).
+    // A mask is a constant of zeros, blurred and hidden from a reader: it is checked to be only that, and left out of the scan.
     const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
     for (let node = walker.nextNode(); node !== null; node = walker.nextNode()) {
       const parent = node.parentElement;
-      if (parent !== null && !['SCRIPT', 'STYLE', 'TEXTAREA', 'OPTION'].includes(parent.tagName) && (node.textContent ?? '').trim() !== '') out.push(node.textContent ?? '');
+      if (parent === null || ['SCRIPT', 'STYLE', 'TEXTAREA', 'OPTION'].includes(parent.tagName) || (node.textContent ?? '').trim() === '') continue;
+      if (parent.closest('[data-privacy-mask]') !== null) {
+        if (!/^[0.,\s\u00a0\u202f]+$/.test(node.textContent ?? '')) out.push(`a mask holds more than zeros: ${node.textContent}`);
+        continue;
+      }
+      out.push(node.textContent ?? '');
     }
     return out;
   });
@@ -102,6 +108,8 @@ async function turnOn(page: Page): Promise<void> {
 }
 
 const SCREENS = ['Overview', 'Accounts', 'Transactions', 'Budgets', 'Goals', 'Schedules', 'Data', 'Appearance'] as const;
+/** The blurred zeros of a masked amount (generated content, so there is no figure in the text). */
+const MASK = '[data-privacy-mask]';
 const masked = (page: Page): Locator => page.locator('[role="button"][aria-label^="Hidden amount"]');
 
 test.describe('@ux privacy mode', () => {
@@ -136,7 +144,7 @@ test.describe('@ux privacy mode', () => {
     await expect(page.getByTestId('import-preview')).toBeVisible({ timeout: 15_000 });
     await page.waitForTimeout(400);
     expect(await figuresOnPage(page), 'readable figures in the import preview').toEqual([]);
-    await expect(page.getByTestId('import-preview')).toContainText('••••');
+    await expect(page.getByTestId('import-preview').locator(MASK).first()).toBeAttached();
 
     // Names, dates and notes stay readable.
     await go(page, 'Accounts');
@@ -145,7 +153,8 @@ test.describe('@ux privacy mode', () => {
     await go(page, 'Transactions');
     await expect(page.getByTestId('tx-row').first()).toBeVisible();
     // The mask keeps the currency code, and nothing says whether money came in or went out.
-    await expect(page.getByTestId('tx-amount').first()).toContainText('•••• USD');
+    await expect(page.getByTestId('tx-amount').first().locator(MASK)).toHaveCount(1);
+    await expect(page.getByTestId('tx-amount').first()).toContainText('USD');
     await expect(page.getByTestId('tx-amount').first()).not.toHaveAttribute('data-sign', /.+/);
     await expect(page.getByTestId('tx-amount').first().locator('[data-sign]')).toHaveCount(0);
 
@@ -155,7 +164,7 @@ test.describe('@ux privacy mode', () => {
     await dialog.getByLabel('Account', { exact: true }).click();
     const options = page.getByRole('option');
     await expect(options.first()).toBeVisible();
-    for (const option of await options.allTextContents()) expect(option).not.toMatch(/••••|\d[.,]\d{2}/);
+    for (const option of await options.allTextContents()) expect(option).not.toMatch(/\d[.,]\d{2}/);
     await page.keyboard.press('Escape');
     await page.keyboard.press('Escape');
     await expect(page.getByRole('dialog')).toHaveCount(0);
@@ -163,18 +172,18 @@ test.describe('@ux privacy mode', () => {
     // Reveal one amount by click: only that one, and it hides again by itself.
     await go(page, 'Accounts');
     const balances = page.getByTestId('account-balance');
-    await expect(balances.first()).toContainText('••••');
+    await expect(balances.first().locator(MASK)).toHaveCount(1);
     await balances.first().locator('[role="button"]').click();
     await expect(balances.first()).toContainText(/\d[.,]\d{2} (USD|EUR)/);
-    await expect(balances.nth(1)).toContainText('••••');
-    await expect(balances.first()).toContainText('••••', { timeout: 9_000 });
+    await expect(balances.nth(1).locator(MASK)).toHaveCount(1);
+    await expect(balances.first().locator(MASK)).toHaveCount(1, { timeout: 9_000 });
 
     // Leaving the screen hides it again.
     await balances.first().locator('[role="button"]').click();
     await expect(balances.first()).toContainText(/\d[.,]\d{2}/);
     await go(page, 'Overview');
     await go(page, 'Accounts');
-    await expect(page.getByTestId('account-balance').first()).toContainText('••••');
+    await expect(page.getByTestId('account-balance').first().locator(MASK)).toHaveCount(1);
 
     // The keyboard reveals too, and focus stays.
     const first = page.getByTestId('account-balance').first().locator('[role="button"]');
@@ -203,7 +212,8 @@ test.describe('@ux privacy mode', () => {
     await expect(balance).toContainText(/\d[.,]\d{2} USD/);
     await expect(indicator).toHaveCount(0);
     await page.keyboard.press(key);
-    await expect(balance).toContainText('•••• USD');
+    await expect(balance.locator(MASK)).toHaveCount(1);
+    await expect(balance).toContainText('USD');
     await expect(indicator).toBeVisible();
     await expect(indicator).toContainText('Privacy mode on');
     await page.keyboard.press(key);
@@ -405,7 +415,7 @@ test.describe('@ux privacy mode', () => {
     // The export is the same file with the mode on: real figures, nothing masked.
     const withMode = await exportCsv();
     expect(withMode).toBe(withoutMode);
-    expect(withMode).not.toContain('••••');
+    expect(withMode).not.toContain('0,000.00');
 
     // The edit forms show the real figure.
     await go(page, 'Transactions');
@@ -438,7 +448,7 @@ test.describe('@ux privacy mode', () => {
     await go(page, 'Transactions');
     const rows = page.getByTestId('tx-row');
     const newest = rows.filter({ has: page.locator('[data-testid=tx-amount]') }).first();
-    await expect(newest.getByTestId('tx-amount')).toContainText('••••');
+    await expect(newest.getByTestId('tx-amount').locator(MASK)).toHaveCount(1);
     await newest.getByTestId('tx-amount').locator('[role="button"]').click();
     await expect(newest.getByTestId('tx-amount')).toContainText(/7\.77|12\.50/);
 
@@ -447,8 +457,8 @@ test.describe('@ux privacy mode', () => {
     const balance = page.getByTestId('account-balance').first();
     const selected = () => page.evaluate(() => window.getSelection()?.toString() ?? '');
     await balance.locator('[role="button"]').evaluate((el) => { const range = document.createRange(); range.selectNodeContents(el); const s = window.getSelection()!; s.removeAllRanges(); s.addRange(range); });
-    expect(await selected()).toBe('•••• USD');
-    expect(await selected()).not.toMatch(/\d/);
+    // The blurred zeros cannot be selected, and carry no figure either way.
+    expect(await selected()).not.toMatch(/[1-9]/);
     await balance.locator('[role="button"]').click();
     await balance.locator('span').first().evaluate((el) => { const range = document.createRange(); range.selectNodeContents(el); const s = window.getSelection()!; s.removeAllRanges(); s.addRange(range); });
     expect(await selected()).toMatch(/^\d[\d,]*\.\d{2} USD$/);

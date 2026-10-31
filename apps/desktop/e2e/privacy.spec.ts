@@ -32,7 +32,8 @@ test('Command/Ctrl+Shift+M turns Privacy mode on and off, shows the state, and d
   await expect(indicator(page)).toHaveCount(0);
 
   await press(app, 'm', primary, 'shift');
-  await expect(balance(page)).toContainText('•••• USD');
+  await expect(balance(page).locator('[data-privacy-mask]')).toHaveCount(1);
+  await expect(balance(page)).toContainText('USD');
   await expect(balance(page)).not.toContainText('1,234');
   await expect(indicator(page)).toContainText('Privacy mode on');
 
@@ -62,5 +63,5 @@ test('a revealed amount is masked again when the window is left', async ({ sessi
   await balance(page).locator('[role="button"]').click();
   await expect(balance(page)).toContainText('1,234.56 USD');
   await page.evaluate(() => window.dispatchEvent(new Event('blur')));
-  await expect(balance(page)).toContainText('•••• USD');
+  await expect(balance(page).locator('[data-privacy-mask]')).toHaveCount(1);
 });
