@@ -48,7 +48,7 @@ export async function checkDesktopConfig({ root, release = false, env = process.
 
   if (release) {
     const keys = identity.updatePublicKeys ?? [];
-    if (keys.length === 0) problems.push('identity.json updatePublicKeys is empty: a release must trust at least one update-signing key (ADR-0010)');
+    if (keys.length === 0) problems.push('identity.json updatePublicKeys is empty: a release must trust at least one update-signing key');
     else if (keys.length > 2) problems.push('identity.json updatePublicKeys has more than two keys: at most two (current and next) may be trusted');
     else if (keys.some((k) => typeof k !== 'string' || Buffer.from(k, 'base64').length !== 32 || Buffer.from(k, 'base64').toString('base64') !== k)) problems.push('identity.json updatePublicKeys must be raw 32-byte Ed25519 public keys in base64');
   }

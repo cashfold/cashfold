@@ -19,9 +19,6 @@ change the security surface of the desktop app.
 
 - Each channel does one thing, takes no path, URL or command from the page, and has a strict schema.
   An unexpected argument is a refusal.
-- Changes need two reviewers and a threat-model note; see
-  [Contributing](../../CONTRIBUTING.md#security-sensitive-changes) and
-  [`.github/CODEOWNERS`](../../.github/CODEOWNERS).
 
 ## Test
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Rebuilds the SRP big-integer WASM module from packages/crypto/wasm/srp-bigint and installs it, with its SHA-256, next to
 # the TypeScript adapter. The crate is pinned (Cargo.lock, crypto-bigint =0.7.5) and built with --locked, so the output is
-# reproducible for a given Rust toolchain on Linux x86_64; CI rebuilds and compares (docs/adr/0006-srp-wasm.md).
+# reproducible for a given Rust toolchain on Linux x86_64; CI rebuilds and compares.
 #
 # The compiler's output differs between host architectures (an arm64 Mac builds different bytes from an x86_64 Linux machine from the
 # same source and toolchain), so Linux x86_64 is the reference. On any other machine this script runs itself in an x86_64 Linux

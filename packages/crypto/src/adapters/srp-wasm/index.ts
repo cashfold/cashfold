@@ -1,5 +1,5 @@
 // Constant-time big-integer arithmetic for the SRP client, in WebAssembly built from the audited `crypto-bigint` crate
-// (packages/crypto/wasm/srp-bigint, docs/adr/0006-srp-wasm.md). JavaScript `bigint` is variable-time, so every
+// (packages/crypto/wasm/srp-bigint). JavaScript `bigint` is variable-time, so every
 // operation whose inputs include a secret exponent runs here (ARCH 6.9). The module has no imports, so it can reach
 // nothing outside its own memory. Its bytes are checked against a pinned SHA-256 before they are compiled.
 

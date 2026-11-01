@@ -27,8 +27,7 @@ exact money amounts (integers, never floating point), and treats the server as u
   rest is an encrypted SQLite database.
 - **Recovery you control.** An Emergency Kit, an optional Recovery Key, encrypted backups, and
   optional quick unlock with your device's biometrics or PIN.
-- **Open source.** AGPL-3.0, with a [threat model](docs/threat-model.md), documented
-  [architecture decisions](docs/adr/README.md) and a reproducible web build.
+- **Open source.** AGPL-3.0, with a documented [architecture](docs/ARCHITECTURE.md) and a reproducible web build.
 
 ## Get Cashfold
 
@@ -87,9 +86,6 @@ Cashfold is available in **English**, **Українська** (Ukrainian) and *
 - Your password and Secret Key are never sent to the relay. If you lose your password or your Secret
   Key and have no Recovery Key, nobody can recover your data, including the maintainers. That is
   how zero-knowledge works, so keep your Emergency Kit and Recovery Key somewhere safe.
-- The [threat model](docs/threat-model.md) states who is defended against, what is out of scope and
-  which risks are accepted. The [security review](docs/security-review/README.md) records what has
-  been reviewed.
 
 To report a vulnerability, see [SECURITY.md](SECURITY.md).
 
@@ -103,7 +99,6 @@ Start at the [documentation index](docs/README.md). The most useful pages:
 | know what the service can see          | [docs/privacy.md](docs/privacy.md)           |
 | understand the design                  | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) |
 | build, test or release the desktop app | [docs/desktop.md](docs/desktop.md)           |
-| see why a technology was chosen        | [docs/adr/](docs/adr/README.md)              |
 
 ## Development
 
@@ -136,7 +131,6 @@ change becomes a release.
 - Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request.
 - For questions and help, see [SUPPORT.md](SUPPORT.md).
 - Everyone taking part is expected to follow the [Code of Conduct](CODE_OF_CONDUCT.md).
-- How the project is run is described in [GOVERNANCE.md](GOVERNANCE.md).
 
 ## License
 

@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 // @ts-expect-error a plain script module without types
 import { ed25519Sign, ed25519Verify, generateUpdateKeyPair, pkcs8FromSeed, signUpdate, updateMessage, verifyUpdate } from './lib/update-signature.mjs';
 
-// The signature that proves an update came from the project (ADR-0010). It is Ed25519 through WebCrypto, with no primitive of our own, and
+// The signature that proves an update came from the project. It is Ed25519 through WebCrypto, with no primitive of our own, and
 // is tested like every primitive in this repository: against the published known answers (RFC 8032 section 7.1), then for the message
 // format and for every way a signature can be wrong.
 

@@ -1,6 +1,6 @@
 // Copies the reviewed SQLite3 Multiple Ciphers artifacts into public/sqlite3mc/ so they are served byte for byte.
 // The bundler never sees them: the Core Worker imports them from their URL at run time. Fails if a file differs from
-// the hash recorded in vendor/sqlite3mc.sha256 (see ADR-0002).
+// the hash recorded in vendor/sqlite3mc.sha256.
 import { createHash } from 'node:crypto';
 import { copyFileSync, mkdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';

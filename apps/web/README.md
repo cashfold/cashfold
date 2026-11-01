@@ -48,4 +48,4 @@ Two variables at build time pin the app to your relay; see
 ## Related
 
 [Architecture](../../docs/ARCHITECTURE.md) (client hardening, section 10) ·
-[Threat model](../../docs/threat-model.md) · [Contributing](../../CONTRIBUTING.md)
+[Contributing](../../CONTRIBUTING.md)

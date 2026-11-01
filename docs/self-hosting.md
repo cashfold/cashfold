@@ -1,7 +1,7 @@
 # Running your own relay
 
 The relay is the small service your devices sync through. It stores encrypted data it cannot read: no amounts, names, notes,
-dates, passwords or Secret Keys ever reach it (see [the threat model](threat-model.md)). You can use someone else's, or run your
+dates, passwords or Secret Keys ever reach it (see [the architecture notes](ARCHITECTURE.md)). You can use someone else's, or run your
 own in a few minutes.
 
 ## What you need

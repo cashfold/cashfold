@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { generateUpdateKeyPair, signUpdate } from '../../../../scripts/lib/update-signature.mjs';
 import { nameIsForVersion, signatureUrl, verifyDownload } from './update-verify';
 
-// After an update is downloaded and before it can be installed, the app checks the project's signature on exactly the bytes it got (ADR-0010).
+// After an update is downloaded and before it can be installed, the app checks the project's signature on exactly the bytes it got.
 
 const SOURCE = 'https://github.com/cashfold/cashfold';
 const NAME = 'Cashfold-1.3.0-linux-x64.AppImage';

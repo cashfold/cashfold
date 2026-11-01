@@ -53,5 +53,5 @@ pnpm --filter @cashfold/server test:integration   # the same against PostgreSQL 
 
 ## Related
 
-[Threat model](../../docs/threat-model.md) · [Architecture](../../docs/ARCHITECTURE.md) (the service,
+[Architecture](../../docs/ARCHITECTURE.md) (the service,
 section 9) · [Contributing](../../CONTRIBUTING.md)

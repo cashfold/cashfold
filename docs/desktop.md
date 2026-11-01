@@ -1,6 +1,6 @@
 # Cashfold desktop app
 
-The desktop app is the web app in its own window, for Windows, macOS and Linux. It adds no features and changes no data format: the same account works on the web and on the desktop, and the two sync like any two devices. Design: [ADR-0009](adr/0009-electron-desktop-shell.md) (the shell), [ADR-0010](adr/0010-update-signatures.md) (update signatures), [ARCHITECTURE.md §10.1](ARCHITECTURE.md), threat model ([Desktop shell](threat-model.md)), specification in `specs/003-desktop-apps-releases/`.
+The desktop app is the web app in its own window, for Windows, macOS and Linux. It adds no features and changes no data format: the same account works on the web and on the desktop, and the two sync like any two devices. Design: (the shell), (update signatures), [ARCHITECTURE.md §10.1](ARCHITECTURE.md), specification in `specs/003-desktop-apps-releases/`.
 
 ## How it is built
 
@@ -96,7 +96,7 @@ The rules are in `apps/desktop/src/main/native-feel.ts`.
 - **Primary colour.** The colour only changes the page. The shell has one app icon (`build/icon.png`) and is not told the colour (spec 018).
 - **Keep running in the background.** Settings → Desktop has "When I close the window": quit, or keep running. Closing then hides the window; the session, the idle time and the reminders go on, and Quit in the tray or menu bar quits. It is the default on macOS only, and is offered only where a tray or menu-bar icon can bring the app back. On Linux that means KDE, XFCE, Cinnamon, MATE, LXQt, Budgie, Pantheon and Deepin; plain GNOME has no tray without an extension, so closing quits there.
 - **Start at login.** Off by default (Settings → Desktop). When on, the app starts locked and without a window, and waits in the tray or menu bar. Windows and macOS use the system's login item; Linux gets a standard autostart entry in `~/.config/autostart`. If the system refuses, the choice is kept and Settings says so.
-- **Files and links.** Double-clicking a `.cashfold-backup` file opens Cashfold at the restore form with the file chosen. A `.csv` file can be opened with Cashfold ("Open with"); Cashfold never becomes the default CSV program. Dropping a CSV on the window starts the import; dropping a receipt on the open add sheet attaches it. `cashfold://add-device?email=…&server=…` opens the add-device screen with those two filled in and the Secret Key empty; `cashfold://open/<overview|transactions|accounts|plan|settings>` opens that screen. A link never carries a secret, and anything with one is refused. Nothing is imported, restored or signed in until you confirm. Details and limits: [the intake contract](../specs/006-native-desktop-experience/contracts/link-and-file-intake.md) and the [threat model](threat-model.md).
+- **Files and links.** Double-clicking a `.cashfold-backup` file opens Cashfold at the restore form with the file chosen. A `.csv` file can be opened with Cashfold ("Open with"); Cashfold never becomes the default CSV program. Dropping a CSV on the window starts the import; dropping a receipt on the open add sheet attaches it. `cashfold://add-device?email=…&server=…` opens the add-device screen with those two filled in and the Secret Key empty; `cashfold://open/<overview|transactions|accounts|plan|settings>` opens that screen. A link never carries a secret, and anything with one is refused. Nothing is imported, restored or signed in until you confirm. Details and limits: [the intake contract](../specs/006-native-desktop-experience/contracts/link-and-file-intake.md).
 - **The window frame.** On macOS and Windows the title bar is a slim bar of the app's own window with the system's window buttons inside it; on Linux the system's title bar is kept. The sidebar uses the system's translucent material (macOS vibrancy, Windows 11 Mica) and goes plain when reduced transparency or high contrast is on. The bar's height is `--frame-bar-h` (40 px) in `apps/web/src/app/globals.css`; it is zero in a browser and on Linux, so the web layout is unchanged.
 - **What is best effort on Linux.** The screen-lock event depends on the desktop (sleep and the idle poll are what is relied on); the tray depends on the desktop (above); the badge is not shown; start at login is an autostart entry.
 
@@ -121,15 +121,15 @@ The versions above are the targets; the floor is whatever the bundled Electron s
 
 The app looks for a new version when it starts and every few hours (Settings → Advanced → Updates; it can be switched off, and a manual check always works). It never downloads or installs without being asked, in two steps: _Download_, then _Restart and update_ (the app locks first, so an update never meets a write in progress).
 
-- **Windows installer, AppImage** (and the signed macOS app): updated in the app. Before the update can be installed, the app checks the Cashfold project's signature on exactly the file it downloaded ([ADR-0010](adr/0010-update-signatures.md)); if the signature is missing or wrong, the file is deleted and nothing is installed.
+- **Windows installer, AppImage** (and the signed macOS app): updated in the app. Before the update can be installed, the app checks the Cashfold project's signature on exactly the file it downloaded (); if the signature is missing or wrong, the file is deleted and nothing is installed.
 - **`.deb`, `.rpm`, and the unsigned macOS app**: the app tells you a new version exists and opens the release page; install it as you installed the first one.
 - Offline, or if GitHub cannot be reached, the check ends quietly in an "offline" message and everything else keeps working.
 
 ## Releasing
 
-Releases are made by merging the **release proposal** (a pull request that a bot keeps up to date with the next version and the changelog), never by hand; see [repo-settings.md](repo-settings.md) and [CONTRIBUTING.md](../CONTRIBUTING.md) for how titles decide the version. Merging it makes the tag `vX.Y.Z` and a draft release; the tag starts `release.yml`:
+Releases are made by merging the **release proposal** (a pull request that a bot keeps up to date with the next version and the changelog), never by hand; see [Repository setup](#repository-setup-maintainer) and [CONTRIBUTING.md](../CONTRIBUTING.md) for how titles decide the version. Merging it makes the tag `vX.Y.Z` and a draft release; the tag starts `release.yml`:
 
-1. **gates**: the tag is a version tag of this commit and `package.json` says that version; the external security review is complete (`docs/security-review/status.md`); typecheck, lint, tests, licences, no-float, desktop configuration, third-party notices, audit.
+1. **gates**: the tag is a version tag of this commit and `package.json` says that version; typecheck, lint, tests, licences, no-float, desktop configuration, third-party notices, audit.
 2. **web**: two clean builds must be identical; bundle budgets; the export is packaged.
 3. **desktop**: Windows, macOS and Linux installers are built and the _packaged_ app is tested on each (end-to-end tests, plaintext scan, fuses).
 4. **publish**: the installers that update themselves are signed with the update key, the checksums and SBOM are written, provenance is attested, everything is uploaded to the **draft**, the release is checked for completeness, and only then made public. If anything failed earlier, nothing is public and an issue `Release vX.Y.Z failed` is opened; fix the cause and run the Release workflow again on the tag.
@@ -185,3 +185,43 @@ Results of `pnpm --filter @cashfold/desktop test:packaged` (the packaged app) an
 - _"Cannot reach the update service"._ You are offline or GitHub is not reachable; nothing else is affected.
 - _A relay refuses the desktop app._ Add `app://cashfold` to its `ALLOWED_ORIGINS`.
 - _Where is the log?_ `<data folder>/logs/cashfold.log`; it contains no paths, keys or data.
+
+## Repository setup (maintainer)
+
+Settings that live in GitHub, not in a file. `scripts/apply-branch-protection.sh OWNER/REPO` applies the branch protection; a maintainer with admin rights runs it, never CI or contributors.
+
+### Branch protection
+
+`main` is protected:
+
+- **Pull requests only.** Nobody pushes to `main`, administrators included.
+- **Required status check `verify`,** on a branch that is up to date with `main`. It is the CI job: type-check, lint, tests and coverage floors, build, bundle, license and no-float gates, audit, Playwright with blocking axe WCAG 2.2 AA assertions, Testcontainers, SBOM.
+- **Linear history and squash merge only.** Merge commits and rebase merging are switched off, so the pull request title is the commit on `main` and decides the version (see [CONTRIBUTING.md](../CONTRIBUTING.md#releases)).
+- **No force pushes and no deletions** of `main`.
+- **The rules apply to administrators.** Relaxing them for an emergency is a deliberate change in the repository settings, not a button on the pull request.
+
+No approving reviews are required: the project has a single maintainer, and GitHub does not let an author approve their own pull request.
+
+### Releases
+
+Releases are made by merging a **release proposal**, never by hand. The pieces, and what a maintainer sets up once (specs/003-desktop-apps-releases):
+
+- **The proposal.** `.github/workflows/release-please.yml` keeps one pull request up to date on every push to `main`: the next version (worked out from the Conventional Commit titles that were squash-merged: `fix` raises the patch number, `feat` the minor number, a breaking change the major number) and the changelog. Changes under `apps/server`, `docs`, `specs`, `e2e`, `tests`, `deploy` and `.github` are not counted, so they never make a release by themselves. The proposal is an ordinary pull request: it needs the `verify` check like any change, and **merging it is the approval to release**. It then makes the tag `vX.Y.Z` and a draft release.
+- **The GitHub App.** The proposal and the tag are made with a GitHub App token, not the default token (events made with the default token start no other workflows, so the proposal's checks would never run and the tag would never start the release). The App has repository permissions Contents (write), Pull requests (write) and Issues (write), and nothing else; no personal access token is used.
+- **Two environments.**
+  - `release-proposal`: no required reviewers, deployments limited to `main`. Holds `RELEASE_APP_ID` and `RELEASE_APP_PRIVATE_KEY`. Updating a proposal must never wait for a person.
+  - `release`: required reviewers, deployments limited to `v*` tags. Holds `UPDATE_SIGNING_KEY` (the Ed25519 private key that signs updates, base64 PKCS#8) and, once signing is set up, the Apple and Windows signing credentials. Only the `publish` job of `release.yml` and the signing jobs of `desktop-build.yml` use it. Approve all of a run's pending deployments together (_Review deployments_).
+- **Tag ruleset.** Creating a tag that matches `v*` is restricted to the release App; updating and deleting such tags is blocked; nobody bypasses it. Without this, a hand-pushed tag would run the release workflow without a proposal having been approved. Check it by trying to push `v0.0.0-test` as a maintainer: it must be rejected.
+- **Failure.** A failed run leaves the release a draft and opens an issue named `Release vX.Y.Z failed`. To try again, run the Release workflow on the tag.
+
+The release proposal pull request is subject to the same branch protection as any other change.
+
+### Other repository settings
+
+These live in the repository settings, not in a file, and the documentation relies on them:
+
+- **Private vulnerability reporting: on.** [SECURITY.md](../SECURITY.md) and the
+  [Code of Conduct](../CODE_OF_CONDUCT.md) send reporters to _Security → Advisories → Report a vulnerability_. Check that the button exists on the Security tab.
+- **Issues: on, blank issues: off.** The issue forms are in `.github/ISSUE_TEMPLATE/`. Discussions are off; [SUPPORT.md](../SUPPORT.md) says so.
+- **Description and topics** match the README, so the repository is easy to find.
+- **Labels** used by the issue forms and pull request template: `bug`, `enhancement`, `documentation`, `question`, `good first issue` and `help wanted`.
