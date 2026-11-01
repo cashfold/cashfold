@@ -40,6 +40,4 @@ try the layout with the menu in a drawer.
 ## Security notes
 
 The page is isolated and sandboxed with no Node, and talks to the shell only through the bridge;
-every argument and answer is checked against a strict schema. Changes under `src/main/`,
-`src/preload/` and the release workflows need two reviewers and a threat-model note; see
-[Contributing](../../CONTRIBUTING.md#security-sensitive-changes).
+every argument and answer is checked against a strict schema.

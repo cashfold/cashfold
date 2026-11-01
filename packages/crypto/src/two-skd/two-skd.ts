@@ -16,7 +16,7 @@ const encode = (s: string): Uint8Array => new TextEncoder().encode(s);
 /** NFKD of the trimmed password as UTF-8. Returns a fresh buffer; the input is left for the caller to wipe. */
 export function normalisePassword(password: SecretBuf): SecretBuf {
   const decoded = password.use((b) => new TextDecoder().decode(b));
-  // The decoded string cannot be wiped: JavaScript strings are immutable. This is an accepted limit (docs/threat-model.md).
+  // The decoded string cannot be wiped: JavaScript strings are immutable. This is an accepted limit (docs/ARCHITECTURE.md).
   return SecretBuf.take(encode(decoded.trim().normalize('NFKD')));
 }
 

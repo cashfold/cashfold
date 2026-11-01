@@ -17,7 +17,6 @@ Everything about running, understanding and changing Cashfold. If you are new, r
 | Page                            | What it covers                                                                                |
 | ------------------------------- | --------------------------------------------------------------------------------------------- |
 | [Architecture](ARCHITECTURE.md) | The design: keys and sign-in, the data model, sync, sharing, the relay and client hardening   |
-| [Threat model](threat-model.md) | What is protected, who it is defended against, trust boundaries and accepted risks            |
 | [The ledger](ledger.md)         | How accounts, transactions and exchange rates are stored, merged and read                     |
 | [Sync across devices](sync.md)  | How devices stay in step through a relay that sees only ciphertext, and what is not built yet |
 | [Wire protocol](protocol.md)    | The relay's endpoints and wire formats. Generated from the schemas; do not edit by hand       |
@@ -27,17 +26,15 @@ Everything about running, understanding and changing Cashfold. If you are new, r
 
 | Page                                               | What it covers                                                            |
 | -------------------------------------------------- | ------------------------------------------------------------------------- |
-| [Architecture decision records](adr/README.md)     | Why the stack and the main designs are what they are                      |
-| [Security review](security-review/README.md)       | The review package, its status, and the internal review of October 2026   |
+| [Architecture decision records](adr/)              | Why the stack and the main designs are what they are                      |
 | [Constitution](../.specify/memory/constitution.md) | The principles, quality gates and workflow that override every other page |
 
 ## Working on the project
 
 | Page                                    | What it covers                                                   |
 | --------------------------------------- | ---------------------------------------------------------------- |
-| [Contributing](../CONTRIBUTING.md)      | Setup, checks, code rules, commits, reviews and releases         |
+| [Contributing](../CONTRIBUTING.md)      | Setup, checks, code rules, commits and releases                  |
 | [Repository settings](repo-settings.md) | Branch protection, the release pipeline and the secrets it needs |
-| [Governance](../GOVERNANCE.md)          | How decisions are made                                           |
 | [Feature specs](../specs/)              | The specification, plan and tasks of each feature                |
 
 ## Reference material
@@ -51,4 +48,4 @@ as input to the feature specs. It is background reading, not a description of Ca
 - Pages that are generated say so in their first line: change the generator, not the page. The
   generated files are `protocol.md`, `../THIRD_PARTY_NOTICES.md` and the changelog.
 - Format with `pnpm format:docs`; CI runs `pnpm check:docs`.
-- Record a decision that is costly to reverse as an [ADR](adr/README.md).
+- Record a decision that is costly to reverse as an [ADR](adr/), if you want to.

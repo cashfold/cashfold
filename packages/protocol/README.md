@@ -26,8 +26,7 @@ node scripts/gen-protocol-docs.mjs     # CI fails if the committed file differs
 
 ## Rules for this package
 
-- A change to a wire format needs an [ADR](../../docs/adr/README.md), an update to
-  [`docs/ARCHITECTURE.md`](../../docs/ARCHITECTURE.md) and a threat-model note in the same pull request.
+- A change to a wire format updates [`docs/ARCHITECTURE.md`](../../docs/ARCHITECTURE.md) in the same pull request.
 - Keep the contract tests between client and relay passing; frozen test vectors in
   [`vectors/`](../../vectors) must not change by accident.
 

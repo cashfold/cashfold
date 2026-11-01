@@ -16,8 +16,6 @@ merges as a CRDT. The rules are in [Architecture](../../docs/ARCHITECTURE.md) (s
 - Money is a `bigint` in minor units. Never use `number` for amounts.
 - Domain and sync code is written test first. Property tests cover balances, rollover, recurrence and
   convergence of replicas under partition, duplication and reordering.
-- Changes under `src/sync/` and `src/sharing/` need two reviewers and a threat-model note; see
-  [Contributing](../../CONTRIBUTING.md#security-sensitive-changes).
 
 ## Layout
 

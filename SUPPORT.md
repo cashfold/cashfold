@@ -13,7 +13,7 @@ The [documentation index](docs/README.md) lists every page. These answer most qu
 | How do I run my own relay?                              | [docs/self-hosting.md](docs/self-hosting.md)                                         |
 | What can the service see about me?                      | [docs/privacy.md](docs/privacy.md)                                                   |
 | How does sync work, and what is not built yet?          | [docs/sync.md](docs/sync.md)                                                         |
-| How does the app protect my data?                       | [docs/threat-model.md](docs/threat-model.md)                                         |
+| How does the app protect my data?                       | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)                                         |
 
 ## 2. Search the issues
 
@@ -41,4 +41,4 @@ Do not open an issue for a vulnerability. Report it privately; see [SECURITY.md]
   hold your password.
 - **If you have none of these,** nobody can recover your data, including the maintainers. That is how
   zero-knowledge works. See [what the service can see](docs/privacy.md) and the
-  [threat model](docs/threat-model.md).
+  [architecture notes](docs/ARCHITECTURE.md).

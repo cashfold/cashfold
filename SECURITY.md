@@ -61,10 +61,7 @@ In scope, roughly in order of interest:
 Out of scope: the hosting environment of a particular operator, third-party libraries beyond how
 Cashfold uses them (report those upstream), and denial of service by sheer volume.
 
-The [threat model](docs/threat-model.md) lists who Cashfold defends against and the risks it accepts
-(see _Residual risks_). The [security review](docs/security-review/README.md) describes what has been
-reviewed, what was found, and how it was addressed. A report about an accepted risk is still
-welcome if you can show the risk is worse than documented.
+A report about a risk that is already described in [the architecture notes](docs/ARCHITECTURE.md) is still welcome if you can show the risk is worse than documented.
 
 ## Verifying what you download
 

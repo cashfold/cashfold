@@ -6,8 +6,7 @@ All of Cashfold's cryptography, behind narrow interfaces (`Aead`, `Kdf`, `Hpke`,
 
 It imports nothing from `@cashfold/core`. The design is in [Architecture](../../docs/ARCHITECTURE.md)
 (sections 5 and 6), the decisions in [ADR-0004](../../docs/adr/0004-argon2id-wasm.md) and
-[ADR-0006](../../docs/adr/0006-srp-wasm.md), and the risks in the
-[threat model](../../docs/threat-model.md).
+[ADR-0006](../../docs/adr/0006-srp-wasm.md).
 
 ## What is here
 
@@ -27,9 +26,7 @@ It imports nothing from `@cashfold/core`. The design is in [Architecture](../../
 - **Known-answer tests for every primitive.** Fixed vectors live in [`vectors/`](../../vectors). The
   relay has its own, separate implementation of the sealed transport frame, and its tests run it
   against this one and against fixed vectors, so a shared mistake cannot hide.
-- **Test first**, and no new primitive without an [ADR](../../docs/adr/README.md).
-- **Two reviewers and a threat-model note** for every change; see
-  [Contributing](../../CONTRIBUTING.md#security-sensitive-changes).
+- **Test first**, and no hand-written primitives.
 - JavaScript cannot guarantee that memory is erased. `SecretBuf` wipes what it controls; the limit is
   listed in the threat model as an accepted risk.
 

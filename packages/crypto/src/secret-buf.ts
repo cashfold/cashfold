@@ -3,7 +3,7 @@ const INSPECT = Symbol.for('nodejs.util.inspect.custom');
 /**
  * Holds secret bytes. It has no serialisation: `JSON.stringify` yields `{}`, inspection is redacted,
  * and the bytes are reachable only through `use`. `wipe()` zeroes them in place (best effort: JavaScript
- * cannot guarantee that no copy survives elsewhere in memory; see docs/threat-model.md).
+ * cannot guarantee that no copy survives elsewhere in memory; see docs/ARCHITECTURE.md).
  */
 export class SecretBuf {
   #bytes: Uint8Array | null;
