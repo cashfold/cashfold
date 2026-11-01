@@ -92,14 +92,14 @@ function CategoriesBody() {
               {roots.map((root, rootIndex) => {
                 const children = inDirection.filter((c) => c.parentId === root.id);
                 return (
-                  <li key={root.id} className="rounded-ui border border-border-strong" data-testid="category-root">
+                  <li key={root.id} className="rounded-xl border border-zinc-950/10 dark:border-white/10" data-testid="category-root">
                     <CategoryRow
                       c={root} used={count(usage?.categories, root.id)} index={rootIndex} count={roots.length} onEdit={() => setDialog({ kind: 'edit', category: root })} onMerge={() => setDialog({ kind: 'merge', category: root })}
                       onDelete={() => setDialog({ kind: 'delete', category: root })} onArchive={() => void toggleArchive(root)} onMove={(direction) => void move(roots, rootIndex, direction)}
                       onAddChild={() => setDialog({ kind: 'new', direction, parentId: root.id })}
                     />
                     {children.length > 0 ? (
-                      <ul className="ms-6 divide-y divide-border-strong border-t border-border-strong" aria-label={root.name}>
+                      <ul className="ms-6 divide-y divide-zinc-950/10 border-t border-zinc-950/10 dark:divide-white/10 dark:border-white/10" aria-label={root.name}>
                         {children.map((child, i) => (
                           <li key={child.id} data-testid="category-child">
                             <CategoryRow
@@ -324,7 +324,7 @@ function LabelSection({ table, labels, usage, onNew, onEdit, onMerge, onDelete }
         <Button type="button" onClick={onNew}>{t(`ledger.${table}.new`)}</Button>
       </div>
       {labels.length === 0 ? <p className="mt-2 text-muted">{t(`ledger.${table}.empty`)}</p> : null}
-      <ul className="mt-2 divide-y divide-border-strong rounded-ui border border-border-strong empty:hidden" aria-label={t(`ledger.${table}.title`)}>
+      <ul className="mt-2 divide-y divide-zinc-950/10 rounded-xl border border-zinc-950/10 dark:divide-white/10 dark:border-white/10 empty:hidden" aria-label={t(`ledger.${table}.title`)}>
         {labels.map((l) => <LabelRow key={l.id} table={table} l={l} used={usage?.get(l.id as never) ?? 0} onEdit={() => onEdit(l)} onMerge={() => onMerge(l)} onDelete={() => onDelete(l)} />)}
       </ul>
     </section>

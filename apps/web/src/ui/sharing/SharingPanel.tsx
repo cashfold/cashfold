@@ -69,7 +69,7 @@ export function SharingPanel({ fold, name, onClose, onLeft }: { fold: string; na
       {notice ? <p role="status" className="mt-3">{notice}</p> : null}
 
       <h3 className="mt-4 font-medium">{t('sharing.members.title')}</h3>
-      <ul className="mt-2 divide-y divide-border-strong rounded-ui border border-border-strong" aria-label={t('sharing.members.title')}>
+      <ul className="mt-2 divide-y divide-zinc-950/10 rounded-xl border border-zinc-950/10 dark:divide-white/10 dark:border-white/10" aria-label={t('sharing.members.title')}>
         {active.map((m) => (
           <li key={m.account} className="p-3" data-testid="member-row">
             <div className="flex flex-wrap items-center justify-between gap-2">

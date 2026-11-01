@@ -69,7 +69,7 @@ export function DevicesScreen() {
         {devices === undefined && !problem ? <p className="mt-2 text-muted">{t('loading')}</p> : null}
         <ul className="mt-3 grid gap-3">
           {(devices ?? []).map((d) => (
-            <li key={d.id} className="rounded-ui border border-border-strong p-3">
+            <li key={d.id} className="rounded-xl border border-zinc-950/10 p-3 dark:border-white/10">
               <p className="font-medium">
                 {d.label ?? t('devices.unnamed')}
                 {d.thisDevice ? <span className="ms-2 text-sm text-muted">({t('devices.thisDevice')})</span> : null}

@@ -228,7 +228,7 @@ export function CsvImportPanel() {
                   <thead><tr><th scope="col" className="p-1 text-start">{t('data.import.col.line')}</th><th scope="col" className="p-1 text-start">{t('data.import.col.date')}</th><th scope="col" className="p-1 text-start">{t('data.import.col.amount')}</th><th scope="col" className="p-1 text-start">{t('data.import.col.what')}</th><th scope="col" className="p-1 text-start">{t('data.import.col.status')}</th></tr></thead>
                   <tbody>
                     {preview.shown.map((r) => (
-                      <tr key={r.line} className="border-t border-border-strong">
+                      <tr key={r.line} className="border-t border-zinc-950/10 dark:border-white/10">
                         <td className="p-1">{r.line}</td>
                         <td className="p-1">{r.localDate === undefined ? '' : formatDate(r.localDate, locale)}</td>
                         <td className="p-1" dir="ltr">{r.amountMinor === undefined ? '' : <Amount minor={r.amountMinor} currency={chosen.currency} locale={locale} showSign />}</td>
@@ -262,7 +262,7 @@ export function CsvImportPanel() {
       {batches.length > 0 ? (
         <div className="mt-6 max-w-2xl">
           <h3 className="font-semibold">{t('data.import.batches')}</h3>
-          <ul className="mt-2 divide-y divide-border-strong">
+          <ul className="mt-2 divide-y divide-zinc-950/10 dark:divide-white/10">
             {batches.map((b) => (
               <li key={b.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
                 <span>{t('data.import.batch', { source: b.source, count: b.count, when: new Date(b.importedUtcMs).toLocaleDateString(locale) })}</span>
