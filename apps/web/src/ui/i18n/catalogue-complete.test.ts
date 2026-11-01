@@ -13,7 +13,7 @@ const IDENTICAL_ALLOWED = new Set<string>([
   // names and codes
   'app.name', 'locale.en', 'locale.ar', 'settings.about.os.win32', 'settings.about.os.darwin', 'settings.about.os.linux', 'settings.about.packaging.appimage',
   // nothing but placeholders and symbols
-  'schedules.transferAmount', 'goals.percentValue', 'settings.about.systemValue',
+  'schedules.transferAmount', 'goals.percentValue', 'settings.about.systemValue', 'ledger.amount.result',
   // words that happen to be the same in Polish
   'ledger.tx.status', 'ledger.filter.status', 'field.tx.status', 'ledger.color.6', 'ledger.icon.bus', 'ledger.icon.landmark', 'budgets.mode.limit', 'budgets.form.limit',
   'nav.plan', 'page.plan.title', 'plan.title', 'settings.about.system', 'starter.category.expense.transport', 'starter.category.expense.transport.parking',

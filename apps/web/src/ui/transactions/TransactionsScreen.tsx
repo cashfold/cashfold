@@ -4,6 +4,7 @@ import type { LocalDate, NeedsAttentionItem, RecentlyDeleted, RecentlyDeletedTra
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { InputField, SelectField } from '../forms/Field';
+import { AmountInput } from './AmountInput';
 import { usePrivacy } from '../privacy/usePrivacy';
 import { useI18n } from '../i18n/I18nProvider';
 import { Amount, Badge, Button, RowButton, Chip, ConfirmDialog, Dropdown, DropdownButton, DropdownItem, DropdownLabel, DropdownMenu, ArrowsRightLeftIcon, EllipsisHorizontalIcon, EmptyState, FunnelIcon, Input,
@@ -438,8 +439,8 @@ function FiltersPanel({ open, onClose, filters, invalid, onApply }: { open: bool
           <InputField label={t('ledger.filter.to')} type="date" value={draft.to} onChange={(e) => set('to', e.target.value)} />
         </div>
         <div className="grid grid-cols-2 gap-4">
-          <InputField label={t('ledger.filter.min')} value={draft.min} onChange={(e) => set('min', e.target.value)} inputMode="decimal" disabled={account === undefined} hint={account === undefined ? t('ledger.filter.amountNeedsAccount') : account.currency} />
-          <InputField label={t('ledger.filter.max')} value={draft.max} onChange={(e) => set('max', e.target.value)} inputMode="decimal" disabled={account === undefined} error={invalid ? t('ledger.filter.amountInvalid') : undefined} />
+          <AmountInput label={t('ledger.filter.min')} currency={account?.currency ?? ''} value={draft.min} onChange={(text) => set('min', text)} disabled={account === undefined} hint={account === undefined ? t('ledger.filter.amountNeedsAccount') : undefined} />
+          <AmountInput label={t('ledger.filter.max')} currency={account?.currency ?? ''} value={draft.max} onChange={(text) => set('max', text)} disabled={account === undefined} error={invalid ? t('ledger.filter.amountInvalid') : undefined} />
         </div>
       </form>
     </Sheet>
