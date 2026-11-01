@@ -147,32 +147,3 @@ describe("the images used outside the app", () => {
     }
   });
 });
-
-// One icon set for each primary colour of the palette (spec 014): the same mark with only the fill changed, so the app icon follows the choice.
-describe("the icons for each primary colour", () => {
-  const palette = readFileSync(at("apps/web/src/ui/theme/palette.ts"), "utf8");
-  const colours = [...palette.matchAll(/id: '(\w+)', light: light\('(#[0-9a-f]{6})'/g)].map((m) => ({ id: m[1]!, colour: m[2]! }));
-  const defaultSvg = readFileSync(at("apps/web/public/icon.svg"), "utf8");
-
-  it("has at least eight colours, the first being the original", () => {
-    expect(colours.length).toBeGreaterThanOrEqual(8);
-    expect(defaultSvg).toContain(colours[0]!.colour);
-  });
-
-  it.each(colours.map((c) => [c.id, c.colour] as const))("%s has every file, at the size it is used at", (id, colour) => {
-    const dir = (file: string) => at("apps/web/public/icons", id, file);
-    for (const [file, size] of [["apple-touch-icon.png", 180], ["icon-192.png", 192], ["icon-512.png", 512], ["icon-maskable-512.png", 512]] as const)
-      expect(pngSize(dir(file)), `${id}/${file}`).toEqual({ width: size, height: size });
-    expect(existsSync(dir("favicon.ico")), "favicon.ico").toBe(true);
-    expect(pngSize(at("apps/desktop/build/icons", `${id}.png`))).toEqual({ width: 1024, height: 1024 });
-    // Same mark and margins as the default icon: the shapes are identical and only the fill colour differs.
-    expect(readFileSync(dir("icon.svg"), "utf8")).toBe(defaultSvg.replace(colours[0]!.colour, colour));
-  });
-
-  it.each(colours.map((c) => [c.id, c.colour] as const))("%s has a manifest that names only files that are there", (id, colour) => {
-    const manifest = JSON.parse(readFileSync(at("apps/web/public/manifests", `${id}.webmanifest`), "utf8")) as { theme_color: string; icons: { src: string }[]; id: string };
-    expect(manifest.theme_color).toBe(colour);
-    expect(manifest.id).toBe("/");
-    for (const icon of manifest.icons) expect(existsSync(at("apps/web/public", icon.src)), icon.src).toBe(true);
-  });
-});

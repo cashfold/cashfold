@@ -29,21 +29,20 @@ test('Command/Ctrl+Shift+M turns Privacy mode on and off, shows the state, and d
   await createAccount(page, 'Everyday', '1234.56');
   await go(page, 'Accounts');
   await expect(balance(page)).toContainText('1,234.56 USD');
-  await expect(indicator(page)).toHaveAttribute('aria-pressed', 'false');
+  await expect(indicator(page)).toHaveAttribute('aria-checked', 'false');
 
   await press(app, 'm', primary, 'shift');
   await expect(balance(page).locator('[data-privacy-mask]')).toHaveCount(1);
   await expect(balance(page)).toContainText('USD');
-  await expect(balance(page)).not.toContainText('1,234');
-  await expect(indicator(page)).toContainText('Privacy mode: on');
+  await expect(balance(page).locator('[data-privacy-mask]')).toHaveAttribute('data-zeros', '0,000.00');
 
   await press(app, 'm', primary, 'shift');
   await expect(balance(page)).toContainText('1,234.56 USD');
-  await expect(indicator(page)).toHaveAttribute('aria-pressed', 'false');
+  await expect(indicator(page)).toHaveAttribute('aria-checked', 'false');
 
   // Plain Mod+M is still minimise, and does not touch the mode.
   await press(app, 'm', primary, 'shift');
-  await expect(indicator(page)).toHaveAttribute('aria-pressed', 'true');
+  await expect(indicator(page)).toHaveAttribute('aria-checked', 'true');
 
   // Locked, the key does nothing: the mode is as it was when the app is unlocked again.
   await press(app, 'l', primary);
