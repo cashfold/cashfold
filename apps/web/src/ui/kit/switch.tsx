@@ -74,7 +74,7 @@ export function Switch({
         // Base styles
         'group relative isolate inline-flex h-6 w-10 cursor-default rounded-full p-[3px] sm:h-5 sm:w-8',
         // Transitions
-        'transition duration-0 ease-in-out data-changing:duration-200',
+        'transition duration-0 ease-in-out data-changing:duration-200 motion-reduce:transition-none',
         // Outline and background color in forced-colors mode so switch is still visible
         'forced-colors:outline forced-colors:[--switch-bg:Highlight] dark:forced-colors:[--switch-bg:Highlight]',
         // Unchecked
@@ -99,7 +99,7 @@ export function Switch({
           // Basic layout
           'pointer-events-none relative inline-block size-4.5 rounded-full sm:size-3.5',
           // Transition
-          'translate-x-0 transition duration-200 ease-in-out',
+          'translate-x-0 transition duration-200 ease-in-out motion-reduce:transition-none',
           // Invisible border so the switch is still visible in forced-colors mode
           'border border-transparent',
           // Unchecked

@@ -48,7 +48,7 @@ describe('Amount', () => {
   });
 });
 
-// Privacy mode (spec 016): masked amounts carry no figure, sign or direction, and are a way to reveal that one amount.
+// Privacy mode (spec 016, 018): masked amounts are the figure's shape in zeros with its sign and colour, and are a way to reveal that one amount.
 const mode = (on: boolean): PrivacyApi => ({ on, toggle: () => undefined, reveal: () => undefined });
 const masked = (props: Partial<Parameters<typeof Amount>[0]> & { minor: bigint }) =>
   renderToStaticMarkup(<PrivacyContext.Provider value={mode(true)}><Amount currency="USD" locale="en" {...props} /></PrivacyContext.Provider>);
@@ -61,21 +61,31 @@ describe('Amount with Privacy mode', () => {
     expect(off).toContain('data-sign="loss"');
   });
 
-  it.each([123_456n, -450n, 0n, 2n ** 62n])('shows no part of %s while masked: no digits, no sign, no direction, no colour', (minor) => {
+  it.each([123_456n, -450n, 0n, 2n ** 62n])('shows %s as zeros in the shape of the figure: no digit but zero, the sign, the colour and the code kept', (minor) => {
     const out = masked({ minor, tone: 'auto', showSign: true });
-    // Only the currency code is text: the zeros are generated content, so no digit is in the markup at all.
+    // Only the currency code is text: the zeros are generated content, so no digit is in the text at all.
     expect(text(out).trim()).toBe('USD');
-    expect(out.replace(/min-w-\[14ch\]|blur-\[0\.4em\]|outline-2|outline-\(--focus\)/g, '')).not.toMatch(/[1-9]/);
-    expect(out).not.toContain('data-sign');
-    expect(out).not.toMatch(/text-\(--(success|danger)\)/);
-    expect(text(out)).not.toMatch(/[+−-]\s?\d/);
+    expect(out.replace(/blur-\[0\.4em\]|outline-2|outline-\(--focus\)/g, '')).not.toMatch(/[1-9]/);
+    const real = html({ minor, tone: 'auto', showSign: true });
+    expect(out).toContain(`data-zeros="${text(real).replace(/ USD$/, '').replace(/\d/g, '0')}"`);
+    expect(out).toContain(`data-sign="${minor > 0n ? 'gain' : minor < 0n ? 'loss' : 'zero'}"`);
+    expect(out.match(/text-\(--(success|danger)\)/)?.[0]).toBe(real.match(/text-\(--(success|danger)\)/)?.[0]);
   });
 
-  it('keeps the currency code and a fixed width, whatever the figure', () => {
+  it('keeps the sign: a loss has the minus, a gain the plus, and the colours of the shown amount', () => {
+    expect(masked({ minor: -450n, tone: 'auto' })).toContain('data-zeros="−0.00"');
+    expect(masked({ minor: -450n, tone: 'auto' })).toContain('text-(--danger)');
+    expect(masked({ minor: 450n, tone: 'auto' })).toContain('data-zeros="+0.00"');
+    expect(masked({ minor: 450n, tone: 'auto' })).toContain('text-(--success)');
+    expect(masked({ minor: 450n })).toContain('data-zeros="0.00"');
+  });
+
+  it('keeps the currency code and has no fixed width, the zeros being as long as the figure', () => {
     expect(text(masked({ minor: 1n, currency: 'EUR' })).trim()).toBe('EUR');
-    expect(masked({ minor: 1n })).toContain('min-w-');
+    expect(masked({ minor: 1n })).not.toContain('min-w-');
     expect(masked({ minor: 1n })).toMatch(/class="[^"]*\btabular-nums\b/);
-    expect(masked({ minor: 1n }).match(/class="[^"]*min-w-[^"]*"/)![0]).toBe(masked({ minor: 99_999_999n }).match(/class="[^"]*min-w-[^"]*"/)![0]);
+    expect(masked({ minor: 1n })).toContain('data-zeros="0.00"');
+    expect(masked({ minor: 99_999_999n })).toContain('data-zeros="000,000.00"');
   });
 
   it('is a button a keyboard can reach, named as a hidden amount, with no figure in its name', () => {
@@ -93,11 +103,9 @@ describe('Amount with Privacy mode', () => {
     expect(text(out).trim()).toBe('USDHidden amount, USD. Press to reveal.');
   });
 
-  it('puts the zeros in a blurred span a reader skips, and the same zeros for every figure', () => {
+  it('puts the zeros in a blurred span a reader skips', () => {
     const small = masked({ minor: 1n });
-    const huge = masked({ minor: 2n ** 62n });
-    expect(small).toBe(huge);
-    expect(small).toMatch(/<span aria-hidden="true" data-privacy-mask="true" data-zeros="0,000\.00" class="[^"]*blur-\[0\.4em\][^"]*before:content-\[attr\(data-zeros\)\][^"]*"><\/span>/);
+    expect(small).toMatch(/<span aria-hidden="true" data-privacy-mask="true" data-zeros="0\.00" class="[^"]*blur-\[0\.4em\][^"]*before:content-\[attr\(data-zeros\)\][^"]*"><\/span>/);
     expect(small).toContain('<span aria-hidden="true">USD</span>');
   });
 });

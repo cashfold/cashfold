@@ -17,7 +17,7 @@ const today = new Date().toLocaleDateString('en-CA');
 const inAYear = `${Number(today.slice(0, 4)) + 1}${today.slice(4)}`;
 const firstOfMonth = `${today.slice(0, 8)}01`;
 
-/** A figure with its currency (1,234.56 USD) or a signed number: what a person could read off the screen. */
+/** A figure with its currency (1,234.56 USD) or a signed number: what a person could read off the screen. Only a match with a digit from 1 to 9 counts: a hidden amount is all zeros (spec 018). */
 const FIGURE = /\d[\d.,\s  ]*[.,]\d{2}\s?(USD|EUR|UAH|PLN)|[+−]\d/;
 
 /** Every piece of text the page offers a reader: what is drawn, and the labels, titles and descriptions a screen reader or a tooltip would use. */
@@ -47,7 +47,7 @@ async function readable(page: Page): Promise<string[]> {
   });
 }
 async function figuresOnPage(page: Page): Promise<string[]> {
-  return (await readable(page)).filter((text) => FIGURE.test(text));
+  return (await readable(page)).filter((text) => (text.match(FIGURE) ?? []).some((figure) => /[1-9]/.test(figure)));
 }
 
 async function addAccount(page: Page, name: string, opening: string, options: { currency?: string; kind?: string } = {}): Promise<void> {
@@ -152,11 +152,11 @@ test.describe('@ux privacy mode', () => {
     await expect(page.getByRole('link', { name: 'Euro wallet', exact: true })).toBeVisible();
     await go(page, 'Transactions');
     await expect(page.getByTestId('tx-row').first()).toBeVisible();
-    // The mask keeps the currency code, and nothing says whether money came in or went out.
+    // The mask keeps the currency code, the sign and the direction (spec 018): only the digits are zeros.
     await expect(page.getByTestId('tx-amount').first().locator(MASK)).toHaveCount(1);
     await expect(page.getByTestId('tx-amount').first()).toContainText('USD');
-    await expect(page.getByTestId('tx-amount').first()).not.toHaveAttribute('data-sign', /.+/);
-    await expect(page.getByTestId('tx-amount').first().locator('[data-sign]')).toHaveCount(0);
+    await expect(page.getByTestId('tx-amount').first().locator(MASK)).toHaveAttribute('data-zeros', /^[+−]?[0.,\s  ]+$/);
+    await expect(page.getByTestId('tx-amount').first().locator('[data-sign]').first()).toHaveAttribute('data-sign', /gain|loss|zero/);
 
     // The account dropdown lists names only.
     await openAddSheet(page);
@@ -198,6 +198,32 @@ test.describe('@ux privacy mode', () => {
     await expect(masked(page).first()).toBeVisible();
   });
 
+  test('a hidden amount is the real figure with every digit a zero: same shape, sign and colour, no shift on reveal (spec 018)', async ({ page }) => {
+    await signUpAndEnter(page);
+    await createAccount(page, 'Checking', '1234.56');
+    await addAccount(page, 'Euro wallet', '99.99', { currency: 'EUR' });
+    await go(page, 'Accounts');
+    const balances = page.getByTestId('account-balance');
+    const real = (await balances.allTextContents()).map((t) => t.trim());
+    const signs = await balances.evaluateAll((els) => els.map((e) => (e.matches('[data-sign]') ? e : e.querySelector('[data-sign]'))?.getAttribute('data-sign') ?? ''));
+    const widths = await Promise.all((await balances.all()).map(async (b) => (await b.boundingBox())!.width));
+    expect(real.join(' ')).toMatch(/1,234\.56 USD/);
+
+    await turnOn(page);
+    await go(page, 'Accounts');
+    await expect(balances.nth(1).locator(MASK)).toHaveCount(1);
+    const zeros = await balances.locator(MASK).evaluateAll((els) => els.map((e) => e.getAttribute('data-zeros') ?? ''));
+    expect(zeros).toEqual(real.map((t) => t.replace(/ [A-Z]{3}$/, '').replace(/\d/g, '0')));
+    expect(await balances.evaluateAll((els) => els.map((e) => (e.matches('[data-sign]') ? e : e.querySelector('[data-sign]'))?.getAttribute('data-sign') ?? ''))).toEqual(signs);
+    for (const [i, b] of (await balances.all()).entries()) expect(Math.abs((await b.boundingBox())!.width - widths[i]!)).toBeLessThanOrEqual(1);
+    expect(await figuresOnPage(page)).toEqual([]);
+
+    // Revealing one amount shows the real figure and moves nothing.
+    await balances.first().locator('[role="button"]').click();
+    await expect(balances.first()).toContainText('1,234.56 USD');
+    expect(Math.abs((await balances.first().boundingBox())!.width - widths[0]!)).toBeLessThanOrEqual(1);
+  });
+
   test('turns on and off with one key press, also while typing, shows the state, and does nothing when locked (user story 2)', async ({ page }) => {
     await signUpAndEnter(page);
     await createAccount(page, 'Checking', '1234.56');
@@ -210,32 +236,31 @@ test.describe('@ux privacy mode', () => {
     const indicator = page.getByTestId('privacy-switch');
 
     await expect(balance).toContainText(/\d[.,]\d{2} USD/);
-    await expect(indicator).toHaveAttribute('aria-pressed', 'false');
+    await expect(indicator).toHaveAttribute('aria-checked', 'false');
     await page.keyboard.press(key);
     await expect(balance.locator(MASK)).toHaveCount(1);
     await expect(balance).toContainText('USD');
-    await expect(indicator).toHaveAttribute('aria-pressed', 'true');
-    await expect(indicator).toContainText('Privacy mode: on');
+    await expect(indicator).toHaveAttribute('aria-checked', 'true');
     await page.keyboard.press(key);
     await expect(balance).toContainText(/\d[.,]\d{2} USD/);
-    await expect(indicator).toHaveAttribute('aria-pressed', 'false');
+    await expect(indicator).toHaveAttribute('aria-checked', 'false');
 
     // Also while a text field has focus, and it types nothing.
     await go(page, 'Transactions');
     const search = page.getByRole('searchbox');
     await search.focus();
     await page.keyboard.press(key);
-    await expect(indicator).toHaveAttribute('aria-pressed', 'true');
+    await expect(indicator).toHaveAttribute('aria-checked', 'true');
     await expect(search).toHaveValue('');
     await expect(search).toBeFocused();
 
     // The indicator turns it off again.
     await indicator.click();
-    await expect(indicator).toHaveAttribute('aria-pressed', 'false');
+    await expect(indicator).toHaveAttribute('aria-checked', 'false');
 
     // Locked, the key does nothing: the mode is what it was after unlocking.
     await page.keyboard.press(key);
-    await expect(indicator).toHaveAttribute('aria-pressed', 'true');
+    await expect(indicator).toHaveAttribute('aria-checked', 'true');
     await lock(page);
     await expect(page.getByRole('heading', { name: 'Unlock Cashfold' })).toBeVisible();
     await page.keyboard.press(key);

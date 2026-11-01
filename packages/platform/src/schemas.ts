@@ -103,11 +103,6 @@ export type SettingsSetResponse = z.infer<typeof SettingsSetResponseSchema>;
 export const ThemeRequestSchema = z.strictObject({ theme: z.enum(['system', 'light', 'dark']) });
 export type ThemeRequest = z.infer<typeof ThemeRequestSchema>;
 
-/** The primary colours of the app (apps/web/src/ui/theme/palette.ts; a test there fails if the lists differ). The shell takes an id, never a path or an image. */
-export const PRIMARY_COLORS = ['emerald', 'teal', 'cyan', 'blue', 'indigo', 'violet', 'pink', 'orange', 'amber', 'slate'] as const;
-export const PrimaryColorRequestSchema = z.strictObject({ primary: z.enum(PRIMARY_COLORS) });
-export type PrimaryColorRequest = z.infer<typeof PrimaryColorRequestSchema>;
-
 export const SessionReportSchema = z.strictObject({ state: z.enum(['locked', 'unlocked']) });
 export type SessionReport = z.infer<typeof SessionReportSchema>;
 

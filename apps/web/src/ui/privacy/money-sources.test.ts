@@ -61,16 +61,15 @@ describe('where money is turned into text', () => {
     expect(offenders).toEqual([]);
   });
 
-  it('the kit amount formats the figure only when it is shown', () => {
+  it('the kit amount turns the figure into zeros before it draws it while masked (spec 018)', () => {
     const amount = text(resolve(ui, 'kit/amount.tsx'));
     const span = amount.slice(amount.indexOf('function AmountSpan'), amount.indexOf('function RevealableAmount'));
-    // The masked branch returns before any formatter is called, and it draws no sign, direction or colour.
     const early = span.indexOf('if (masked)');
     expect(early).toBeGreaterThan(-1);
-    expect(span.indexOf('formatMoney(')).toBeGreaterThan(early);
-    expect(span.indexOf('formatSigned(')).toBeGreaterThan(early);
-    const maskedBranch = span.slice(early, span.indexOf('const sign = signOf'));
-    expect(maskedBranch).not.toMatch(/data-sign|signOf\(|text-\(--/);
+    const maskedBranch = span.slice(early, span.indexOf('return (', span.indexOf('return (', early) + 1));
+    // The only place the formatted text is used in the masked branch is inside zeroed(...), and it is never rendered as text.
+    expect(maskedBranch).toMatch(/zeroed\(figure\)/);
+    expect(maskedBranch).not.toMatch(/\{text\}|\{figure\}/);
     // The revealing component never formats on its own.
     const revealing = amount.slice(amount.indexOf('function RevealableAmount'));
     expect(revealing).not.toMatch(/\bformat(Money|Signed)\(/);

@@ -17,7 +17,6 @@ import {
   SettingsSetResponseSchema,
   SettingsUpdateSchema,
   SystemLockEventSchema,
-  PrimaryColorRequestSchema,
   ThemeRequestSchema,
   UpdateStateSchema,
   VoidResponseSchema,
@@ -65,9 +64,6 @@ export function createBridge(ipc: IpcRendererLike, platform: string = process.pl
     },
     setTheme: async (theme) => {
       await call(CHANNELS.theme, VoidResponseSchema, ThemeRequestSchema.parse({ theme }));
-    },
-    setPrimaryColor: async (primary) => {
-      await call(CHANNELS.primaryColor, VoidResponseSchema, PrimaryColorRequestSchema.parse({ primary }));
     },
     reportSession: async (state) => {
       await call(CHANNELS.session, VoidResponseSchema, SessionReportSchema.parse({ state }));
