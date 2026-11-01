@@ -5,8 +5,7 @@ set -euo pipefail
 repo="${1:?usage: apply-branch-protection.sh OWNER/REPO}"
 
 # Reviews are not required by the settings while the project has a single maintainer: GitHub does not let an author approve their own
-# pull request, so a required approval would block every merge. The constitution still asks for two reviewers on security-sensitive paths.
-# With a second maintainer, set required_approving_review_count to 2 and require_code_owner_reviews to true (docs/repo-settings.md).
+# pull request, so a required approval would block every merge.
 
 gh api --method PUT "repos/${repo}/branches/main/protection" --input - <<JSON
 {

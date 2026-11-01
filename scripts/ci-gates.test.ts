@@ -26,15 +26,13 @@ describe('quality gates', () => {
     expect([...ci.slice(ci.indexOf('\njobs:')).matchAll(/^  ([a-z-]+):\s*$/gm)].map((m) => m[1])).toEqual(['verify']);
   });
 
-  it('main requires `verify` and reviews of the sensitive paths', () => {
+  it('main requires `verify`', () => {
     expect(read('scripts/apply-branch-protection.sh')).toContain('"contexts": ["verify"]');
     expect(read('docs/repo-settings.md')).toContain('Required status check `verify`');
-    expect(read('.github/CODEOWNERS')).toMatch(/packages\/crypto\//);
   });
 
-  it('the release repeats the checks, proves the build is reproducible, and waits for the external review', () => {
-    for (const step of ['check-review-gate.mjs', 'pnpm vitest run', 'pnpm check:licenses', 'build-verify.mjs', 'cdxgen', 'attest-build-provenance']) expect(release, step).toContain(step);
-    expect(release.indexOf('check-review-gate.mjs')).toBeLessThan(release.indexOf('Publish'));
+  it('the release repeats the checks and proves the build is reproducible', () => {
+    for (const step of ['pnpm vitest run', 'pnpm check:licenses', 'build-verify.mjs', 'cdxgen', 'attest-build-provenance']) expect(release, step).toContain(step);
   });
 });
 

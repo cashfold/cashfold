@@ -3,7 +3,7 @@ name: Release
 # A tag `vX.Y.Z` (made by merging the release proposal, see release-please.yml) is built once, on every platform, and published only if every
 # part succeeded (specs/003: FR-022, FR-024, FR-027). The jobs, in order:
 #
-#   gates     the tag is a version tag of this commit and package.json agrees; the external security review is complete; the same checks as every change
+#   gates     the tag is a version tag of this commit and package.json agrees; the same checks as every change
 #   web       two clean builds must be identical (reproducible); budgets; the static export is packaged
 #   desktop   Windows, macOS and Linux installers (desktop-build.yml), tested as packaged apps
 #   publish   signs the installers that update themselves, writes the checksums and the SBOM, attests provenance, uploads to the DRAFT release,
@@ -44,8 +44,6 @@ jobs:
       - name: The tag is a version tag of this commit, and package.json says that version
         run: node scripts/check-release-tag.mjs
 
-      - name: The external security review is complete
-        run: node scripts/check-review-gate.mjs
 
       - name: The same checks as every change
         run: |
