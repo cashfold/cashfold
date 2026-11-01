@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.12.0](https://github.com/cashfold/cashfold/compare/v0.11.0...v0.12.0) (2026-11-01)
+
+
+### Features
+
+* **web:** zeros that match the real figure in privacy mode, a sidebar switch, and one app icon ([#62](https://github.com/cashfold/cashfold/issues/62)) ([6487335](https://github.com/cashfold/cashfold/commit/648733559d9ca7a20a126aaf81fa8176010fea7e))
+
+
+### Bug Fixes
+
+* **web:** use the subtle transactions border on every list so lists look the same ([#65](https://github.com/cashfold/cashfold/issues/65)) ([6e8a637](https://github.com/cashfold/cashfold/commit/6e8a63763e7923099ec202e828346fc93547c0df))
+
 ## [0.11.0](https://github.com/cashfold/cashfold/compare/v0.10.0...v0.11.0) (2026-10-31)
 
 
