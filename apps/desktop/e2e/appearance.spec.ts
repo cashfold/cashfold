@@ -47,15 +47,3 @@ test('under "system" the window follows the system theme within a second', async
   await app.evaluate(({ nativeTheme }) => void (nativeTheme.themeSource = 'light'));
   await expect.poll(() => backgroundOf(app), { timeout: 1_000 }).toBe(await expectedColour(app, LIGHT));
 });
-
-// Spec 014, user story 2: the dock and window icon follow the primary colour the page chooses, without a restart.
-const iconOf = (app: ElectronApplication) => app.evaluate(() => (globalThis as unknown as { __cashfoldTest: { appIcon(): string | undefined } }).__cashfoldTest.appIcon());
-
-test("the page's primary colour reaches the shell, and the icon follows it within a second of a change", async ({ session }) => {
-  const { app, page } = await session.launch();
-  await page.goto(`${APP_ORIGIN}/sign-in/`);
-  await page.evaluate(() => localStorage.setItem('cashfold.ui', JSON.stringify({ v: 1, primary: 'violet' })));
-  await page.reload();
-  await page.waitForLoadState('domcontentloaded');
-  await expect.poll(() => iconOf(app), { timeout: 5_000 }).toBe('violet');
-});

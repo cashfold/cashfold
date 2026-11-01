@@ -10,26 +10,29 @@ const render = (node: React.ReactNode, on: boolean) =>
 const text = (markup: string) => markup.replace(/<[^>]+>/g, '');
 
 describe('the Privacy mode switch in the sidebar', () => {
-  it('says the mode is off, with a pressed state of false and the open eye', () => {
+  it('is a switch named "Privacy mode", off, with the open eye', () => {
     const markup = render(<PrivacySidebarItem />, false);
-    expect(text(markup)).toBe('Privacy mode: off');
-    expect(markup).toContain('aria-pressed="false"');
+    expect(text(markup)).toBe('Privacy mode');
+    expect(markup).toContain('role="switch"');
+    expect(markup).toContain('aria-checked="false"');
     expect(markup).toContain('data-testid="privacy-switch"');
     expect(markup).toContain('<svg');
   });
 
-  it('says the mode is on, with a pressed state of true and a different icon', () => {
+  it('is on, with a different icon', () => {
     const off = render(<PrivacySidebarItem />, false);
     const on = render(<PrivacySidebarItem />, true);
-    expect(text(on)).toBe('Privacy mode: on');
-    expect(on).toContain('aria-pressed="true"');
-    // The states differ by words and by icon, not by a colour class alone.
-    expect(on.match(/<svg[^]*<\/svg>/)![0]).not.toBe(off.match(/<svg[^]*<\/svg>/)![0]);
+    expect(on).toContain('role="switch"');
+    expect(on).toContain('aria-checked="true"');
+    // The states differ by the switch's own state and by the icon, not by a colour class alone.
+    expect(on.match(/<svg[^]*?<\/svg>/)![0]).not.toBe(off.match(/<svg[^]*?<\/svg>/)![0]);
   });
 
-  it('is named by its visible text, and the icon is hidden from a reader', () => {
+  it('is named by the visible label, and the icon is hidden from a reader', () => {
     const markup = render(<PrivacySidebarItem />, true);
-    expect(markup).not.toContain('aria-label');
+    // The label is tied to the switch (for/id), so its name is the visible text; the browser test reads the real accessible name.
+    const target = /<label[^>]*for="([^"]+)"[^>]*>Privacy mode</.exec(markup)![1]!;
+    expect(markup).toContain(`id="${target}" role="switch"`);
     expect(markup).toMatch(/<svg[^>]*aria-hidden="true"/);
   });
 });

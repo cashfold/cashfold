@@ -2,9 +2,8 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { prefsStore, usePrefs } from '../prefs/usePrefs';
-import { mirrorPrimaryIcon } from './mirror-icon';
 import { mirrorThemeToShell } from './mirror-theme';
-import type { PrimaryChoice } from './palette';
+import { colorOf, type PrimaryChoice } from './palette';
 import { resolveTheme, type ResolvedTheme, type ThemeChoice } from './resolve-theme';
 
 interface ThemeApi {
@@ -51,9 +50,16 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     document.documentElement.dataset['primary'] = primary;
   }, [primary]);
 
-  // The icon follows the colour: the tab, the manifest, and in the desktop app the dock and window.
+  // The browser's address-bar colour follows the primary colour. The app icon does not: there is one icon (spec 018).
   useEffect(() => {
-    void mirrorPrimaryIcon(primary);
+    try {
+      const color = colorOf(primary);
+      for (const meta of document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]')) {
+        meta.content = (meta.media.includes('dark') ? color.dark : color.light).primary;
+      }
+    } catch {
+      // The address-bar colour is cosmetic.
+    }
   }, [primary]);
 
   const setChoice = useCallback((next: ThemeChoice) => prefsStore.update((p) => (p.theme === next ? p : { ...p, theme: next })), []);

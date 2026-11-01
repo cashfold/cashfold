@@ -57,7 +57,7 @@ const EFFECT: Record<string, (page: Page) => Promise<void>> = {
     await expect(page.getByRole('searchbox')).toBeFocused();
   },
   palette: (page) => expect(page.getByRole('dialog', { name: 'Command palette' }).getByRole('combobox')).toBeFocused(),
-  privacy: (page) => expect(page.getByTestId('privacy-switch')).toHaveAttribute('aria-pressed', 'true'),
+  privacy: (page) => expect(page.getByTestId('privacy-switch')).toHaveAttribute('aria-checked', 'true'),
   'go-overview': (page) => expect.poll(() => path(page)).toBe('/overview/'),
   'go-transactions': (page) => expect.poll(() => path(page)).toBe('/transactions/'),
   'go-accounts': (page) => expect.poll(() => path(page)).toBe('/accounts/'),

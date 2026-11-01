@@ -87,39 +87,49 @@ describe('the sidebar item', () => {
     }
   }
 
-  it('is reached with Tab, toggles with Enter and Space, and keeps focus', async () => {
+  it('is a switch named by its visible label, reached with Tab, toggled with Space, and keeps focus', async () => {
     const el = mount(<Harness><main>{sidebar()}</main></Harness>, 'light', 256);
     const control = el.querySelector<HTMLElement>('[data-testid="privacy-switch"]')!;
+    expect(control.getAttribute('role')).toBe('switch');
+    expect(control.getAttribute('aria-checked')).toBe('false');
+    // The accessible name is the visible text of the row.
+    const labelledby = control.getAttribute('aria-labelledby')!;
+    expect(document.getElementById(labelledby)!.textContent).toBe('Privacy mode');
     await userEvent.tab();
     expect(document.activeElement).toBe(control);
-    await userEvent.keyboard('{Enter}');
-    expect(control.getAttribute('aria-pressed')).toBe('true');
-    expect(control.textContent).toBe('Privacy mode: on');
     await userEvent.keyboard(' ');
-    expect(control.getAttribute('aria-pressed')).toBe('false');
+    expect(control.getAttribute('aria-checked')).toBe('true');
+    await userEvent.keyboard(' ');
+    expect(control.getAttribute('aria-checked')).toBe('false');
     expect(document.activeElement).toBe(control);
+  });
+
+  it('is toggled by a press on its label too', async () => {
+    const el = mount(<Harness><main>{sidebar()}</main></Harness>, 'light', 256);
+    const control = el.querySelector<HTMLElement>('[data-testid="privacy-switch"]')!;
+    await userEvent.click(el.querySelector<HTMLElement>('label')!);
+    expect(control.getAttribute('aria-checked')).toBe('true');
   });
 
   it('keeps a long label inside the sidebar at a large text size, without overlapping the item below', async () => {
     document.documentElement.style.fontSize = '24px';
     const el = mount(<Harness initial><main>{sidebar(true)}</main></Harness>, 'light', 256);
     const control = el.querySelector<HTMLElement>('[data-testid="privacy-switch"]')!;
-    const label = control.querySelector<HTMLElement>('span.truncate, [class*="truncate"]') ?? control;
-    label.textContent = 'Режим приватності: увімкнено, довгий переклад для перевірки';
+    const row = control.parentElement!;
+    el.querySelector<HTMLElement>('label')!.textContent = 'Режим приватності, довгий переклад для перевірки';
     expect(el.scrollWidth).toBeLessThanOrEqual(el.clientWidth);
-    const a = control.getBoundingClientRect();
+    const a = row.getBoundingClientRect();
     const b = el.querySelector<HTMLElement>('[data-testid="next"]')!.getBoundingClientRect();
     expect(a.bottom).toBeLessThanOrEqual(b.top + 0.5);
     expect(a.right).toBeLessThanOrEqual(el.getBoundingClientRect().right);
+    expect(control.getBoundingClientRect().right).toBeLessThanOrEqual(el.getBoundingClientRect().right);
   });
 
-  it('has no running transition or animation when its state changes, with reduced motion', async () => {
+  it('turns its transitions off for people who ask for reduced motion', () => {
     const el = mount(<Harness><main>{sidebar()}</main></Harness>, 'light', 256);
     const control = el.querySelector<HTMLElement>('[data-testid="privacy-switch"]')!;
-    control.click();
-    await new Promise((r) => setTimeout(r, 0));
-    const running = control.getAnimations({ subtree: true }).filter((a) => a.playState === 'running');
-    expect(running).toEqual([]);
+    expect(control.className).toContain('motion-reduce:transition-none');
+    expect(control.firstElementChild!.className).toContain('motion-reduce:transition-none');
   });
 });
 
