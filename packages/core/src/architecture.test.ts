@@ -74,10 +74,13 @@ describe('core stays framework-free', () => {
     expect(offenders.map((f) => relative(srcRoot, f))).toEqual([]);
   });
 
-  it('the testing support is a separate subpath export, never re-exported from the package root', () => {
+  it('the testing support and the sum evaluator are separate subpath exports, never re-exported from the package root', () => {
     const pkg = JSON.parse(readFileSync(resolve(coreRoot, 'package.json'), 'utf8')) as { exports: Record<string, string> };
-    expect(Object.keys(pkg.exports).sort()).toEqual(['.', './testing']);
-    expect(readFileSync(resolve(srcRoot, 'index.ts'), 'utf8')).not.toMatch(/testing/);
+    expect(Object.keys(pkg.exports).sort()).toEqual(['.', './amount-expression', './testing']);
+    const root = readFileSync(resolve(srcRoot, 'index.ts'), 'utf8');
+    expect(root).not.toMatch(/testing/);
+    // The evaluator is its own chunk in the web app (spec 020): only the tiny check `isAmountExpression` is in the root.
+    expect(root).not.toMatch(/shared-kernel\/amount-expression'/);
   });
 });
 
