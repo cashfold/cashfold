@@ -63,28 +63,33 @@ afterEach(() => {
 
 const amountIn = (testid: string) => document.querySelector<HTMLElement>(`[data-testid="${testid}"] > span`)!;
 const isMasked = (el: HTMLElement): boolean => el.querySelector('[data-privacy-mask]') !== null;
-const FIGURE = /\d[\d.,\s]*[.,]\d{2}\b|[+−]\d/;
+// A figure that is not hidden: money-shaped text with a digit from 1 to 9 in it (the zeros of a mask are all that is left of a hidden amount).
+const figures = (text: string): string[] => (text.match(/[+−]?\d[\d.,\s]*[.,]\d{2}\b/g) ?? []).filter((f) => /[1-9]/.test(f));
 
 describe('masked amounts', () => {
-  it('show no figure, sign, direction or colour anywhere in the page, and keep the currency code', () => {
+  it('show the figure as zeros with its sign, colour and currency code, and no digit from 1 to 9 anywhere in the page', () => {
     mount(<Screen />);
+    const expected: Record<string, string> = { first: '+0,000.00', second: '+0,000.00', third: '−0.00', cell: '+000.00' };
     for (const id of ['first', 'second', 'third', 'cell']) {
       const el = amountIn(id);
-      // The currency code is the only text; the zeros are one constant drawn as generated content, blurred and hidden from a reader.
+      // The currency code is the only text; the zeros are generated content, blurred and hidden from a reader.
       expect(el.textContent?.trim()).toMatch(/^[A-Z]{3}$/);
       const zeros = el.querySelector<HTMLElement>('[data-privacy-mask]')!;
       expect(zeros.textContent).toBe('');
-      expect(zeros.getAttribute('data-zeros')).toBe('0,000.00');
-      expect(getComputedStyle(zeros, '::before').content).toBe('"0,000.00"');
+      expect(zeros.getAttribute('data-zeros')).toBe(expected[id]);
+      expect(getComputedStyle(zeros, '::before').content).toBe(`"${expected[id]}"`);
       expect(zeros.getAttribute('aria-hidden')).toBe('true');
       expect(getComputedStyle(zeros).filter).toMatch(/blur/);
-      expect(el.getAttribute('data-sign')).toBeNull();
-      expect(el.className).not.toMatch(/success|danger/);
     }
+    // The gain keeps its colour and its sign marker, the figure without a colour request keeps none.
+    expect(amountIn('first').getAttribute('data-sign')).toBe('gain');
+    expect(amountIn('first').className).toMatch(/success/);
+    expect(amountIn('third').getAttribute('data-sign')).toBe('loss');
+    expect(amountIn('third').className).not.toMatch(/success|danger/);
     // Everything a reader could take a figure from. The zeros of a mask are generated content, so none is among it.
     const main = document.querySelector('main')!.cloneNode(true) as HTMLElement;
     const everything = [main, ...main.querySelectorAll('*')].flatMap((e) => [e === main ? (e.textContent ?? '') : '', ...[...e.attributes].filter((a) => a.name !== 'data-zeros').map((a) => a.value)]).join(' ');
-    expect(everything.replace(/2026-10/g, '')).not.toMatch(FIGURE);
+    expect(figures(everything.replace(/2026-10/g, ''))).toEqual([]);
   });
 
   it('are buttons named as hidden amounts, reachable by keyboard', async () => {
@@ -97,9 +102,12 @@ describe('masked amounts', () => {
     expect(document.activeElement).toBe(first);
   });
 
-  it('keep the same width as the mask whatever the figure', () => {
+  it('are as wide as the figure they stand in for, so revealing one moves nothing', async () => {
     mount(<Screen />);
-    expect(amountIn('first').getBoundingClientRect().width).toBe(amountIn('second').getBoundingClientRect().width);
+    const hidden = amountIn('first').getBoundingClientRect().width;
+    await userEvent.click(amountIn('first'));
+    expect(amountIn('first').textContent).toBe('+1,234.56 USD');
+    expect(Math.abs(amountIn('first').getBoundingClientRect().width - hidden)).toBeLessThanOrEqual(1);
   });
 
   it('keep a table cell and a line the same size when one is revealed (a typical figure), and stay on one line (SC-004)', async () => {
@@ -110,7 +118,7 @@ describe('masked amounts', () => {
     await userEvent.click(amountIn('cell'));
     await userEvent.click(amountIn('first'));
     expect(amountIn('cell').textContent).toBe('+999.00 USD');
-    expect(cell.getBoundingClientRect().width).toBe(before.cellWidth);
+    expect(Math.abs(cell.getBoundingClientRect().width - before.cellWidth)).toBeLessThanOrEqual(1);
     expect(line.getBoundingClientRect().height).toBe(before.lineHeight);
   });
 

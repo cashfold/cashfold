@@ -34,7 +34,7 @@ test('Command/Ctrl+Shift+M turns Privacy mode on and off, shows the state, and d
   await press(app, 'm', primary, 'shift');
   await expect(balance(page).locator('[data-privacy-mask]')).toHaveCount(1);
   await expect(balance(page)).toContainText('USD');
-  await expect(balance(page)).not.toContainText('1,234');
+  await expect(balance(page).locator('[data-privacy-mask]')).toHaveAttribute('data-zeros', '0,000.00');
   await expect(indicator(page)).toContainText('Privacy mode: on');
 
   await press(app, 'm', primary, 'shift');
