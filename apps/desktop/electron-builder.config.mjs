@@ -25,7 +25,7 @@ export default {
   copyright: 'Copyright © Cashfold contributors',
   directories: { output: 'release', buildResources: 'build' },
   // The window icon (Linux), tray and taskbar-badge images are read at run time from inside the package.
-  files: ['dist/**', 'package.json', 'build/icon.png', 'build/icons/**', 'build/badges/**', 'build/tray/**'],
+  files: ['dist/**', 'package.json', 'build/icon.png', 'build/badges/**', 'build/tray/**'],
   extraMetadata: { version },
   // Links and files from outside (spec 006, US6; research D10). The `cashfold` scheme opens a screen for review and never carries a secret. A backup
   // opens in Cashfold by default; a CSV is offered as an alternative only ("Open with"), so Cashfold never becomes the person's CSV program unasked.

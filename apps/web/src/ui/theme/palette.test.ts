@@ -1,4 +1,3 @@
-import { PRIMARY_COLORS } from '@cashfold/platform';
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_PRIMARY, PALETTE, PRIMARY_IDS, parsePrimary } from './palette';
 
@@ -47,10 +46,4 @@ describe('the palette', () => {
 describe('parsePrimary', () => {
   it.each(PRIMARY_IDS)('keeps %s', (id) => expect(parsePrimary(id)).toBe(id));
   it.each([undefined, null, '', 'purple', 3, {}, 'EMERALD'])('falls back to the default for %j', (x) => expect(parsePrimary(x)).toBe(DEFAULT_PRIMARY));
-});
-
-describe('the palette and the desktop shell', () => {
-  it('list the same colours in the same order, so the shell has an icon for every choice', () => {
-    expect([...PRIMARY_COLORS]).toEqual([...PRIMARY_IDS]);
-  });
 });

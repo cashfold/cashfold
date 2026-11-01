@@ -53,7 +53,6 @@ function setup(overrides: Partial<IpcHandlers> = {}) {
     settings: vi.fn(() => ({ settings, capabilities })),
     settingsSet: vi.fn((update: object) => ({ settings: { ...settings, ...update }, applied: { startAtLogin: true } })),
     setTheme: vi.fn(),
-    setPrimaryColor: vi.fn(),
     reportSession: vi.fn(),
     setBadge: vi.fn(),
     setRecentFolds: vi.fn(),
@@ -197,17 +196,12 @@ describe('the desktop experience channels', () => {
     const { call, fromApp, impl } = setup();
     await call(CHANNELS.theme, fromApp, { theme: 'dark' });
     expect(impl.setTheme).toHaveBeenCalledWith('dark');
-    await call(CHANNELS.primaryColor, fromApp, { primary: 'violet' });
-    expect(impl.setPrimaryColor).toHaveBeenCalledWith('violet');
     await call(CHANNELS.session, fromApp, { state: 'unlocked' });
     expect(impl.reportSession).toHaveBeenCalledWith('unlocked');
     await call(CHANNELS.badge, fromApp, { count: 4 });
     expect(impl.setBadge).toHaveBeenCalledWith(4);
     for (const [channel, bad] of [
       [CHANNELS.theme, { theme: 'sepia' }],
-      [CHANNELS.primaryColor, { primary: 'purple' }],
-      [CHANNELS.primaryColor, { primary: '../../x' }],
-      [CHANNELS.primaryColor, { primary: 'blue', path: '/tmp/x.png' }],
       [CHANNELS.session, { state: 'asleep' }],
       [CHANNELS.badge, { count: 1000 }],
       [CHANNELS.badge, { count: -1 }],

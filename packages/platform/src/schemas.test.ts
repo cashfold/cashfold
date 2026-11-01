@@ -237,11 +237,3 @@ describe('desktop experience schemas (spec 006)', () => {
     expect(IncomingItemSchema.safeParse({ kind: 'refused', reason: 'too-long' }).success).toBe(true);
   });
 });
-
-describe('the primary colour request', () => {
-  it('takes a palette id and nothing else', async () => {
-    const { PrimaryColorRequestSchema, PRIMARY_COLORS } = await import('./schemas');
-    for (const id of PRIMARY_COLORS) expect(PrimaryColorRequestSchema.safeParse({ primary: id }).success).toBe(true);
-    for (const bad of [{ primary: 'purple' }, { primary: '' }, { primary: '../x' }, { primary: 'blue', path: 'x' }, {}, null]) expect(PrimaryColorRequestSchema.safeParse(bad).success).toBe(false);
-  });
-});

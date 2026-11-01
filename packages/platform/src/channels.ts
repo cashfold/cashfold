@@ -16,7 +16,6 @@ export const CHANNELS = {
   /** The page's theme choice, so the shell's first frame and native chrome match. */
   theme: 'cashfold:theme',
   /** The page's primary colour choice (a palette id), so the dock and window icon follow it. */
-  primaryColor: 'cashfold:primary-color',
   /** Whether the page is locked or unlocked; a presentation hint only. */
   session: 'cashfold:session',
   badge: 'cashfold:badge',

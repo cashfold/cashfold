@@ -13,6 +13,7 @@
 ### Session 2026-10-30
 
 - Q: Should the chosen primary color be saved only on the device where it was picked, or follow the person to all their devices? → A: Synced across the person's devices through their encrypted settings.
+- Note (2026-11-01): spec 018 removes the icon that followed the color (user story 2); the color itself stays.
 
 ## User Scenarios & Testing *(mandatory)*
 
