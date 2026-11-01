@@ -137,7 +137,7 @@ The client UI is organised as follows. It changes presentation only; the Core Wo
 - **Scheduled transactions:** a "include scheduled" projection in balances; optional manual confirmation before posting; reminders N minutes before the event.
 - **Account deletion cascades** to the account's transactions and transfers.
 - **Import** maps source columns to Date/Time, Currency, Amount, Amount (expense), Amount (income) and Transaction Type; every import is a batch that can be undone and deduplicated.
-- **Categories** form a two-level taxonomy (root and child) with type, icon, colour and order, and can be archived.
+- **Categories** form a two-level taxonomy (root and child) with type, colour and order, and can be archived. A category no longer has an icon: field 4 of its record is reserved, never written and ignored on read (spec 019).
 - **Goals** target a saved amount by a date, tracked through a dedicated goal account.
 - **Payees and tags** are user-managed lists; usage counts are derived, not stored.
 
@@ -191,7 +191,7 @@ Kind `credit_card` and `loan` balances are conventionally ≤ 0 (liability). The
 
 ```
 Category { id, fold_id, parent_id: id?, direction: 1 expense | 2 income,
-           name, icon, color, sort_order, archived }
+           name, color, sort_order, archived }       -- field 4 (icon) is reserved and ignored
 ```
 
 - Depth ≤ 2 is enforced by the UI and **repaired by merge** if violated (§9.5).

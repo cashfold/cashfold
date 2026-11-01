@@ -143,3 +143,13 @@ describe('references typed as Id', () => {
     expect(decodeTransaction(id(2), txn({ [TXN_FIELD.categoryId]: x }))?.categoryId).toBe(x);
   });
 });
+
+describe('a category record from before spec 019', () => {
+  it('may carry the reserved icon field (4): it decodes, and the model has no icon', () => {
+    const category = decodeCategory(id(1), rec(TABLE.category, {
+      [CATEGORY_FIELD.direction]: 1n, [CATEGORY_FIELD.name]: 'Food', [CATEGORY_FIELD.icon]: 'utensils', [CATEGORY_FIELD.color]: 3n, [CATEGORY_FIELD.parentId]: null,
+    }));
+    expect(category).toMatchObject({ name: 'Food', color: 3, direction: 'expense', parentId: null });
+    expect(category).not.toHaveProperty('icon');
+  });
+});

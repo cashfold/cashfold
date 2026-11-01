@@ -25,6 +25,8 @@ export const ACCOUNT_FIELD = {
 
 export const GROUP_FIELD = { name: 1, icon: 2, color: 3, sortOrder: 4 } as const;
 
+// Field 4 (icon) is reserved: a category no longer has an icon (spec 019). It is never written and must never be reused; records from older
+// devices and backups may still carry it, and it is ignored on read.
 export const CATEGORY_FIELD = { direction: 1, parentId: 2, name: 3, icon: 4, color: 5, sortOrder: 6, archived: 7 } as const;
 
 export const LABEL_FIELD = { name: 1, color: 2 } as const; // payee and tag

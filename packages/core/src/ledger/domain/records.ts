@@ -110,7 +110,6 @@ export function decodeGroup(rec: Id, state: RecordState): AccountGroup | undefin
 
 export interface Category extends CategoryNode {
   readonly name: string;
-  readonly icon: string | null;
   readonly color: number;
   readonly sortOrder: number;
   readonly archived: boolean;
@@ -124,7 +123,7 @@ export function decodeCategory(rec: Id, state: RecordState): Category | undefine
   const parentId = f.id(CATEGORY_FIELD.parentId);
   if (direction === undefined || name === undefined || parentId === undefined) return undefined;
   return {
-    id: rec, direction, parentId, name, icon: f.nullableText(CATEGORY_FIELD.icon) ?? null, color: f.int(CATEGORY_FIELD.color, 0),
+    id: rec, direction, parentId, name, color: f.int(CATEGORY_FIELD.color, 0),
     sortOrder: f.int(CATEGORY_FIELD.sortOrder, 0), archived: f.bool(CATEGORY_FIELD.archived, false),
   };
 }
