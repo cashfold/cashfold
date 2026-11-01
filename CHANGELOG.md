@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.13.0](https://github.com/cashfold/cashfold/compare/v0.12.0...v0.13.0) (2026-11-01)
+
+
+### Features
+
+* **web:** remove category icons, so a category is a name and a color ([#66](https://github.com/cashfold/cashfold/issues/66)) ([f08397b](https://github.com/cashfold/cashfold/commit/f08397b897dd387b5ca9b91d99cb430b6d087989))
+
 ## [0.12.0](https://github.com/cashfold/cashfold/compare/v0.11.0...v0.12.0) (2026-11-01)
 
 
