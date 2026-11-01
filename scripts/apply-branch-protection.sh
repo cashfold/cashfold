@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Applies the `main` protection described in docs/repo-settings.md.
+# Applies the `main` protection described in docs/desktop.md.
 # Reviewed in PRs but run ONLY by a maintainer with admin rights: ./scripts/apply-branch-protection.sh OWNER/REPO
 set -euo pipefail
 repo="${1:?usage: apply-branch-protection.sh OWNER/REPO}"
@@ -29,5 +29,5 @@ echo "Branch protection applied to ${repo}:main"
 
 # The tag ruleset that keeps releases behind the approved release proposal is set up by hand in the repository settings (Rules > Rulesets):
 # target: tags matching v*; rules: restrict creation, restrict updates, restrict deletions; bypass list: only the release GitHub App.
-# See docs/repo-settings.md ("Releases"). A maintainer checks it by trying to push the tag v0.0.0-test, which must be rejected.
+# See docs/desktop.md ("Releases"). A maintainer checks it by trying to push the tag v0.0.0-test, which must be rejected.
 

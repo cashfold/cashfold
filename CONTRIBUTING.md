@@ -45,7 +45,7 @@ CI runs the full set on every pull request. Some files are generated and CI fail
 
 ## Releases
 
-The title decides the next version: `feat` raises the minor version, `fix` and `perf` the patch version, `!` or a `BREAKING CHANGE:` footer the major version; `docs`, `chore`, `test`, `ci`, `build`, `style` and `refactor` make no release. A bot keeps a release pull request up to date; merging it publishes the release. Never tag by hand. See [docs/repo-settings.md](docs/repo-settings.md) and [docs/desktop.md](docs/desktop.md#releasing).
+The title decides the next version: `feat` raises the minor version, `fix` and `perf` the patch version, `!` or a `BREAKING CHANGE:` footer the major version; `docs`, `chore`, `test`, `ci`, `build`, `style` and `refactor` make no release. A bot keeps a release pull request up to date; merging it publishes the release. Never tag by hand. See [docs/desktop.md](docs/desktop.md#repository-setup-maintainer) and [docs/desktop.md](docs/desktop.md#releasing).
 
 ## Security
 

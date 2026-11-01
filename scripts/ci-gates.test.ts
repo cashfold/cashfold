@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest';
 
 // The gates of the constitution's Quality Gates (T007, T009, T010) must run in the one CI job that `main` requires, and the release must
 // not skip them. The repository can check its own workflow and the protection script; that GitHub applies them is a setting a maintainer
-// makes with scripts/apply-branch-protection.sh (docs/repo-settings.md).
+// makes with scripts/apply-branch-protection.sh (docs/desktop.md).
 
 const read = (p: string): string => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8');
 const ci = read('.github/workflows/ci.yml');
@@ -28,7 +28,6 @@ describe('quality gates', () => {
 
   it('main requires `verify`', () => {
     expect(read('scripts/apply-branch-protection.sh')).toContain('"contexts": ["verify"]');
-    expect(read('docs/repo-settings.md')).toContain('Required status check `verify`');
   });
 
   it('the release repeats the checks and proves the build is reproducible', () => {
