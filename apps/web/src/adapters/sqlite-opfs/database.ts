@@ -21,7 +21,7 @@ export class DatabaseError extends Error {
   }
 }
 
-/** ChaCha20-Poly1305 with per-page authentication (SQLite3 Multiple Ciphers default scheme). See ADR-0002. */
+/** ChaCha20-Poly1305 with per-page authentication (SQLite3 Multiple Ciphers default scheme). */
 const CIPHER = 'chacha20';
 const SQLITE_INTEGER = 1;
 

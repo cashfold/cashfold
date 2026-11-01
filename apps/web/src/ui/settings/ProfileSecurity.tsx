@@ -24,7 +24,7 @@ export function ProfileSecurity() {
   const { t, locale, dir } = useI18n();
   const core = useCore();
   const details = core.account === undefined ? undefined : accountDetailsView(core.account);
-  // The desktop app locks a hidden window at the idle time (ADR-0012), so the hidden-window time does not apply there.
+  // The desktop app locks a hidden window at the idle time, so the hidden-window time does not apply there.
   const { isDesktop } = useDesktop();
   const [settings, setSettings] = useState<DeviceSettings | undefined>();
   const [saved, setSaved] = useState(false);

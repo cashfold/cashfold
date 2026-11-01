@@ -9,7 +9,7 @@ import { createPake, SrpError, type Pake } from './srp-client';
 
 // Fuzzing the SRP client and the WebAssembly big-integer module (T191). The module does constant-time arithmetic on secret exponents,
 // so its answers are checked against JavaScript's own bigint on random operands; a wrong answer anywhere would be a wrong key.
-// (Coverage-guided fuzzing of the compiled module needs a fuzzing engine such as Jazzer.js or cargo-fuzz; see docs/security-review/README.md.
+// (Coverage-guided fuzzing of the compiled module needs a fuzzing engine such as Jazzer.js or cargo-fuzz.
 // These properties exercise the same inputs through the public interface.)
 
 const dir = resolve(import.meta.dirname, '../adapters/srp-wasm');

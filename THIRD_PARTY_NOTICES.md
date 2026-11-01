@@ -7,12 +7,12 @@ Cashfold includes the following third-party software. Each is used under its own
 | Component | Licence | Notes |
 | --- | --- | --- |
 | SQLite3 Multiple Ciphers (WebAssembly build, `@aztec/sqlite3mc-wasm`) | MIT / public domain | The database and its page cipher; verified against a pinned digest by `scripts/verify-sqlite3mc.mjs`. |
-| hash-wasm (Argon2id module) | MIT | Password stretching; checked against an independent implementation (ADR-0004). |
-| SRP-6a big-integer module (`packages/crypto/src/adapters/srp-wasm`) | Cashfold, built from Rust sources and the crates listed in its `Cargo.lock` | Rebuilt in CI and compared with the committed bytes (ADR-0006). |
+| hash-wasm (Argon2id module) | MIT | Password stretching; checked against an independent implementation. |
+| SRP-6a big-integer module (`packages/crypto/src/adapters/srp-wasm`) | Cashfold, built from Rust sources and the crates listed in its `Cargo.lock` | Rebuilt in CI and compared with the committed bytes. |
 | Ubuntu font (`@fontsource/ubuntu`, woff2 files copied unmodified to `apps/web/public/fonts/`) | Ubuntu Font Licence 1.0 | Licence text shipped as `fonts/UFL.txt`; not covered by the repository's AGPL grant. |
 | Electron (the desktop app's application shell, `apps/desktop`) | MIT | Ships in every desktop installer with its own `LICENSE.electron.txt`; a development dependency of the repository, so it is not in the production list below. |
 | Chromium (inside Electron) | BSD-3-Clause and the licences of its many components | The full texts ship in every desktop installer as `LICENSES.chromium.html`. |
-| Catalyst-derived UI components (`apps/web/src/ui/kit/`) | Tailwind Plus License | Isolated in one directory with its own licence notice (`LICENSE-TAILWIND-PLUS.md`); not covered by the repository's AGPL grant (ADR-0008). |
+| Catalyst-derived UI components (`apps/web/src/ui/kit/`) | Tailwind Plus License | Isolated in one directory with its own licence notice (`LICENSE-TAILWIND-PLUS.md`); not covered by the repository's AGPL grant. |
 
 ## Production dependencies (179)
 

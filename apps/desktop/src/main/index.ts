@@ -162,7 +162,7 @@ async function main(): Promise<void> {
   const testMode = TEST_FEED_ENABLED && process.env['CASHFOLD_TEST_UPDATE_MODE'] === 'in-app';
   const aboutInfo = testMode ? { ...described, updateMode: 'in-app' as const } : described;
 
-  // Updates (ADR-0010): a local feed and key exist only in the manual test build (TEST_FEED_ENABLED is compiled out of a release).
+  // Updates: a local feed and key exist only in the manual test build (TEST_FEED_ENABLED is compiled out of a release).
   const testFeed = TEST_FEED_ENABLED ? process.env['CASHFOLD_TEST_FEED'] : undefined;
   const testKey = TEST_FEED_ENABLED ? process.env['CASHFOLD_TEST_UPDATE_KEY'] : undefined;
   if (testFeed !== undefined) {

@@ -12,7 +12,7 @@ export const APP_ORIGIN: string = identity.origin;
 export const SOURCE_REPO_URL: string = identity.sourceRepoUrl;
 export const RELEASE_PAGE_BASE = `${identity.sourceRepoUrl}/releases`;
 /**
- * Raw Ed25519 public keys (base64) that may sign updates: one, or two while a key is rotated (ADR-0010).
+ * Raw Ed25519 public keys (base64) that may sign updates: one, or two while a key is rotated.
  * Empty in development and in test builds; a release configuration with an empty list is refused by check-desktop-config.
  */
 export const UPDATE_PUBLIC_KEYS: readonly string[] = identity.updatePublicKeys;

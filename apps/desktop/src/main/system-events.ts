@@ -1,6 +1,6 @@
 import type { SystemLockEvent } from '@cashfold/platform';
 
-// The computer locking, sleeping or going idle is what locks the app (spec 006, US1, ADR-0012), instead of a click on another window. The shell
+// The computer locking, sleeping or going idle is what locks the app (spec 006, US1), instead of a click on another window. The shell
 // only reports the fact; the page, which owns the session, locks. Nothing here sees or holds data.
 
 export interface PowerMonitorLike {

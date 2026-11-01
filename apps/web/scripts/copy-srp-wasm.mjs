@@ -1,6 +1,6 @@
 // Copies the SRP big-integer module into public/ so it is served byte for byte, after checking it against the SHA-256 the
 // build pins (packages/crypto/src/adapters/srp-wasm/srp-bigint.wasm.sha256). The page checks the same hash again before it
-// instantiates the module (docs/adr/0006-srp-wasm.md).
+// instantiates the module.
 import { createHash } from 'node:crypto';
 import { copyFileSync, mkdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';

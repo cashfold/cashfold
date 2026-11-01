@@ -1,4 +1,4 @@
-// The signature that proves an application update came from the project (ADR-0010, docs/ARCHITECTURE.md section 10.1).
+// The signature that proves an application update came from the project (docs/ARCHITECTURE.md section 10.1).
 //
 // Ed25519 (RFC 8032) through WebCrypto only: no primitive of our own and no library. The signed message is
 //

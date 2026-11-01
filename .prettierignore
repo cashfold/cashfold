@@ -9,7 +9,6 @@ docs/protocol.md
 # Vendored or third-party text.
 apps/web/src/ui/kit/
 LICENSE
-docs/reference/
 
 # Spec-kit workspace, agent skills and feature specs.
 .specify/

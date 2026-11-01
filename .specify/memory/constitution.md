@@ -61,7 +61,7 @@ include third-party scripts, analytics or session replay. Secrets MUST NOT reach
 outside the encrypted store, URLs, error messages or telemetry. Keys MUST be non-extractable
 `CryptoKey` objects wherever the platform allows, and secret buffers MUST be overwritten as
 soon as they are no longer needed. JavaScript cannot guarantee memory erasure, and this limit
-MUST be documented in the threat model. Dependencies MUST be pinned, audited and minimised.
+MUST be documented in the architecture notes. Dependencies MUST be pinned, audited and minimised.
 Supply-chain controls are mandatory: lockfile enforcement, build provenance, an SBOM, and
 automated vulnerability scanning. Rationale: a browser delivers its own code, so supply-chain
 and delivery risks must be treated as first-class.
@@ -75,7 +75,7 @@ carry real cost; they are tools, not goals.
 ## Technology Constraints
 
 - **Language**: TypeScript everywhere, strict mode with `strict`, `noUncheckedIndexedAccess`
-  and `exactOptionalPropertyTypes`. `any` MUST NOT be used without a justified, reviewed
+  and `exactOptionalPropertyTypes`. `any` MUST NOT be used without a justified
   exception. ES modules only.
 - **Monorepo**: pnpm workspaces with Turborepo or Nx. Packages:
   - `core`: framework-agnostic domain and application logic. MUST NOT import React, Next,
@@ -86,7 +86,7 @@ carry real cost; they are tools, not goals.
     export. Server components, server actions and API routes MUST NOT touch user data or
     secrets. Marketing and documentation pages MAY use server rendering.
   - `apps/server`: NestJS with PostgreSQL, acting as the relay.
-- **Phasing**: Phase 1 targets the web only. The desktop shell is Electron (ADR-0009); mobile
+- **Phasing**: Phase 1 targets the web only. The desktop shell is Electron; mobile
   shells are planned later and their technology is not yet decided. No shell MAY require
   changes to `core`, `crypto` or `protocol`.
 - **Testing tools**: Vitest, Playwright, fast-check (property tests), and Testcontainers for
@@ -116,19 +116,13 @@ carry real cost; they are tools, not goals.
 
 ## Development Workflow
 
-- Commits MUST follow Conventional Commits. Pull requests MUST be small and single-concern and
-  MUST be squash-merged. `main` is protected and requires review and green CI. Commit messages,
-  PR titles and PR descriptions MUST NOT contain AI-tool attribution or co-author lines.
-- Architecture decisions MUST be recorded as ADRs in `docs/adr/`. Any change to cryptography,
-  protocol or wire formats requires an ADR and an update to `docs/ARCHITECTURE.md` in the same
-  pull request.
-- Security-sensitive changes (crypto, authentication, sync, sharing) MUST have two reviewers
-  and a threat-model note. An external security review MUST be completed before any
-  production release.
+- Commits MUST follow Conventional Commits and pull requests MUST be small and
+  single-concern, squash-merged. Commit messages, PR titles and PR descriptions MUST NOT
+  contain AI-tool attribution or co-author lines.
 - Accessibility and internationalisation (including right-to-left layouts) are part of the
   definition of done.
-- Observability: logs MUST be structured with type-based redaction; metrics and traces MUST
-  contain identifiers and counts only, never content.
+- Logs MUST be structured with type-based redaction; metrics and traces MUST contain
+  identifiers and counts only, never content.
 - Public API and protocol documentation MUST be generated from `protocol` schemas. The
   self-hosting guide MUST be kept current.
 - The project is open source. Dependencies MUST be licence-compatible, and a third-party
@@ -136,11 +130,9 @@ carry real cost; they are tools, not goals.
 
 ## Governance
 
-This constitution supersedes all other practices. Amendments require a pull request with a
-written rationale, a migration plan for affected artifacts, and maintainer approval.
-Versioning follows semantic rules: MAJOR for removed or redefined principles, MINOR for added
-principles or sections or materially expanded guidance, PATCH for clarifications. Every
-`plan.md` Constitution Check MUST cite the principles above by number (I–IX) and justify any
-deviation in Complexity Tracking. Reviewers MUST verify compliance in every pull request.
+This constitution is maintained by the project maintainer, who may amend it with a commit that
+says why. Versioning follows semantic rules: MAJOR for removed or redefined principles, MINOR
+for added principles or sections, PATCH for clarifications. A `plan.md` Constitution Check
+cites the principles above by number (I–IX) and justifies any deviation in Complexity Tracking.
 
-**Version**: 1.1.0 | **Ratified**: 2026-10-18 | **Last Amended**: 2026-10-22
+**Version**: 1.2.0 | **Ratified**: 2026-10-18 | **Last Amended**: 2026-11-01

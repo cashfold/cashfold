@@ -2,7 +2,7 @@
 
 The wire types and schemas that the client and the relay share: the operation envelope, grants,
 snapshots, the membership log entries and the request and response bodies. It also holds the
-in-house deterministic CBOR profile ([ADR-0003](../../docs/adr/0003-cbor.md)).
+in-house deterministic CBOR profile.
 
 Neither side imports the other's code, only this contract.
 
@@ -26,8 +26,7 @@ node scripts/gen-protocol-docs.mjs     # CI fails if the committed file differs
 
 ## Rules for this package
 
-- A change to a wire format needs an [ADR](../../docs/adr/README.md), an update to
-  [`docs/ARCHITECTURE.md`](../../docs/ARCHITECTURE.md) and a threat-model note in the same pull request.
+- A change to a wire format updates [`docs/ARCHITECTURE.md`](../../docs/ARCHITECTURE.md) in the same pull request.
 - Keep the contract tests between client and relay passing; frozen test vectors in
   [`vectors/`](../../vectors) must not change by accident.
 

@@ -5,8 +5,6 @@ shell around the [web app](../web/README.md)'s static export. It adds no feature
 format, so the same account works on the web and on the desktop.
 
 Installing, updating, signing and releasing are covered in [docs/desktop.md](../../docs/desktop.md).
-The decision is recorded in [ADR-0009](../../docs/adr/0009-electron-desktop-shell.md), and the update
-signature in [ADR-0010](../../docs/adr/0010-update-signatures.md).
 
 ## Layout
 
@@ -40,6 +38,4 @@ try the layout with the menu in a drawer.
 ## Security notes
 
 The page is isolated and sandboxed with no Node, and talks to the shell only through the bridge;
-every argument and answer is checked against a strict schema. Changes under `src/main/`,
-`src/preload/` and the release workflows need two reviewers and a threat-model note; see
-[Contributing](../../CONTRIBUTING.md#security-sensitive-changes).
+every argument and answer is checked against a strict schema.

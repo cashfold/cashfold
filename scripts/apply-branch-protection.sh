@@ -1,12 +1,11 @@
 #!/usr/bin/env bash
-# Applies the `main` protection described in docs/repo-settings.md.
+# Applies the `main` protection described in docs/desktop.md.
 # Reviewed in PRs but run ONLY by a maintainer with admin rights: ./scripts/apply-branch-protection.sh OWNER/REPO
 set -euo pipefail
 repo="${1:?usage: apply-branch-protection.sh OWNER/REPO}"
 
 # Reviews are not required by the settings while the project has a single maintainer: GitHub does not let an author approve their own
-# pull request, so a required approval would block every merge. The constitution still asks for two reviewers on security-sensitive paths.
-# With a second maintainer, set required_approving_review_count to 2 and require_code_owner_reviews to true (docs/repo-settings.md).
+# pull request, so a required approval would block every merge.
 
 gh api --method PUT "repos/${repo}/branches/main/protection" --input - <<JSON
 {
@@ -30,5 +29,5 @@ echo "Branch protection applied to ${repo}:main"
 
 # The tag ruleset that keeps releases behind the approved release proposal is set up by hand in the repository settings (Rules > Rulesets):
 # target: tags matching v*; rules: restrict creation, restrict updates, restrict deletions; bypass list: only the release GitHub App.
-# See docs/repo-settings.md ("Releases"). A maintainer checks it by trying to push the tag v0.0.0-test, which must be rejected.
+# See docs/desktop.md ("Releases"). A maintainer checks it by trying to push the tag v0.0.0-test, which must be rejected.
 
