@@ -29,7 +29,7 @@ The work is one new pure function in `core` and a small change to the one compon
 
 **Performance Goals**: evaluating on every keystroke is instant (a few hundred characters at most); no work for a plain number beyond one character scan
 
-**Constraints**: constitution VI (bigint minor units, no floating point, one half-even rounding at the end; `check:no-float` scans the new file), strict CSP, WCAG 2.2 AA, EN/UK/PL strings, no new dependency, initial JavaScript within its 374,784-byte budget (about 1.2 KB of headroom when this plan was written; if the evaluator does not fit it moves to a lazy chunk, research R9)
+**Constraints**: constitution VI (bigint minor units, no floating point, one half-even rounding at the end; `check:no-float` scans the new file), strict CSP, WCAG 2.2 AA, EN/UK/PL strings, no new dependency, initial JavaScript within its budget (374,784 bytes when this plan was written; the evaluator is a lazy chunk, and the feature's remaining 0.8 KB led to raising the budget by 1 KiB, research R9)
 
 **Scale/Scope**: one new core module and its tests, one component merged and extended, one filter changed, about 6 strings per language
 

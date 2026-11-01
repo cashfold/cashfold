@@ -57,7 +57,7 @@ What was found in the repository, the decision, and what else was considered.
 
 **Finding**: the initial JavaScript had about 1.2 KB of headroom under its 374,784-byte budget after the last build. The evaluator is small but is reached from the money forms.
 
-**Decision** (measured: the evaluator in the main bundle put it 474 bytes over): `evaluateAmount` is its own chunk, a subpath export `@cashfold/core/amount-expression`, loaded with `import()` by `loadAmountExpression()` in `ui/ledger/format.ts` as soon as the ledger mounts (`LedgerView.mathReady`). Only the tiny `isAmountExpression` (own file `is-amount-expression.ts`) is in the main bundle. Until the chunk is there a sum is neither an error nor a result. The chunk is stored for offline use like every other. The budget was not raised (374,644 of 374,784 bytes).
+**Decision** (measured: the evaluator in the main bundle put it 474 bytes over): `evaluateAmount` is its own chunk, a subpath export `@cashfold/core/amount-expression`, loaded with `import()` by `loadAmountExpression()` in `ui/ledger/format.ts` as soon as the ledger mounts (`LedgerView.mathReady`). Only the tiny `isAmountExpression` (own file `is-amount-expression.ts`) is in the main bundle. Until the chunk is there a sum is neither an error nor a result. The chunk is stored for offline use like every other. With the evaluator out of the main bundle the feature still adds about 0.8 KB to the initial chunk (374,644 against 373,867 bytes on a laptop; CI measured 375,274 against the 374,784 limit), so the initial budget was raised by 1 KiB, from 366 to 367 KiB (decision of 2026-11-02).
 
 ## R10. Testing approach
 
