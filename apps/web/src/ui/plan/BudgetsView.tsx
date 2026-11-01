@@ -68,7 +68,7 @@ function BudgetsBody() {
       </div>
 
       {rows.length === 0 ? <EmptyState className="mt-6" icon={FlagIcon} title={t('budgets.empty')} body={t('empty.budgets.body')} action={<Button onClick={() => setEditing({})}>{t('empty.budgets.action')}</Button>} /> : null}
-      <ul className="mt-4 divide-y divide-border-strong rounded-ui border border-border-strong empty:hidden" aria-label={t('page.budgets.title')}>
+      <ul className="mt-4 divide-y divide-zinc-950/10 rounded-xl border border-zinc-950/10 dark:divide-white/10 dark:border-white/10 empty:hidden" aria-label={t('page.budgets.title')}>
         {rows.map((row) => (
           <BudgetItem key={row.budget.id} row={row} mode={mode} onOpen={() => setViewing(row.budget.id)} onEdit={() => setEditing({ row })} onDelete={() => setRemoving(row)} />
         ))}

@@ -49,7 +49,7 @@ function GoalsBody() {
       {free.length === 0 && rows.length === 0 ? <p className="mt-3" data-testid="goals-need-account">{t('goals.needAccount')}</p> : null}
       {message ? <p role="alert" className="mt-3 text-danger">{message}</p> : null}
       {rows.length === 0 && free.length > 0 ? <EmptyState className="mt-6" icon={FlagIcon} title={t('goals.empty')} body={t('empty.goals.body')} action={<Button onClick={() => setEditing({})}>{t('empty.goals.action')}</Button>} /> : null}
-      <ul className="mt-4 divide-y divide-border-strong rounded-ui border border-border-strong empty:hidden" aria-label={t('page.goals.title')}>
+      <ul className="mt-4 divide-y divide-zinc-950/10 rounded-xl border border-zinc-950/10 dark:divide-white/10 dark:border-white/10 empty:hidden" aria-label={t('page.goals.title')}>
         {rows.map((row) => {
           const { goal, progress } = row;
           const money = (minor: bigint) => <Amount minor={minor} currency={goal.currency} locale={locale} />;

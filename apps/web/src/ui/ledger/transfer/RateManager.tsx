@@ -47,7 +47,7 @@ export function RateManager() {
       <h2 id="rates-title" className="text-lg font-semibold">{t('ledger.rates.title')}</h2>
       <p className="mt-1 text-sm text-muted">{t('ledger.rates.lede')}</p>
       {rates.length === 0 ? <p className="mt-2 text-muted">{t('ledger.rates.empty')}</p> : null}
-      <ul className="mt-2 divide-y divide-border-strong rounded-ui border border-border-strong empty:hidden" aria-label={t('ledger.rates.title')} data-testid="rate-list">
+      <ul className="mt-2 divide-y divide-zinc-950/10 rounded-xl border border-zinc-950/10 dark:divide-white/10 dark:border-white/10 empty:hidden" aria-label={t('ledger.rates.title')} data-testid="rate-list">
         {[...rates].reverse().map((r) => (
           <li key={r.id} className="flex flex-wrap items-center justify-between gap-3 p-3">
             <span>

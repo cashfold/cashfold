@@ -93,7 +93,7 @@ function SchedulesBody() {
       <section className="mt-8" aria-labelledby="sch-inbox">
         <h2 id="sch-inbox" className="text-lg font-semibold">{t('schedules.inbox')}</h2>
         {pending.length === 0 ? <p className="mt-2 text-muted">{t('schedules.inbox.empty')}</p> : null}
-        <ul className="mt-2 divide-y divide-border-strong rounded-ui border border-border-strong empty:hidden" aria-label={t('schedules.inbox')}>
+        <ul className="mt-2 divide-y divide-zinc-950/10 rounded-xl border border-zinc-950/10 dark:divide-white/10 dark:border-white/10 empty:hidden" aria-label={t('schedules.inbox')}>
           {pending.map((p) => (
             <li key={`${p.scheduleId}:${p.n}`} className="flex flex-wrap items-center justify-between gap-3 p-3" data-testid="pending-row">
               <div>
@@ -115,7 +115,7 @@ function SchedulesBody() {
         <h2 id="sch-upcoming" className="text-lg font-semibold">{t('schedules.upcoming')}</h2>
         <p className="text-sm text-muted">{t('schedules.upcoming.hint')}</p>
         {upcoming.length === 0 ? <p className="mt-2 text-muted">{t('schedules.upcoming.empty')}</p> : null}
-        <ul className="mt-2 divide-y divide-border-strong rounded-ui border border-border-strong empty:hidden" aria-label={t('schedules.upcoming')}>
+        <ul className="mt-2 divide-y divide-zinc-950/10 rounded-xl border border-zinc-950/10 dark:divide-white/10 dark:border-white/10 empty:hidden" aria-label={t('schedules.upcoming')}>
           {upcoming.map((u) => (
             <li key={`${u.scheduleId}:${u.n}`} className="flex flex-wrap items-center justify-between gap-3 p-3" data-testid="upcoming-row">
               <div>
@@ -131,7 +131,7 @@ function SchedulesBody() {
       <section className="mt-8" aria-labelledby="sch-active">
         <h2 id="sch-active" className="text-lg font-semibold">{t('schedules.active')}</h2>
         {active.length === 0 ? <EmptyState className="mt-2" icon={ArrowPathIcon} title={t('schedules.empty')} body={t('empty.schedules.body')} /> : null}
-        <ul className="mt-2 divide-y divide-border-strong rounded-ui border border-border-strong empty:hidden" aria-label={t('schedules.active')}>
+        <ul className="mt-2 divide-y divide-zinc-950/10 rounded-xl border border-zinc-950/10 dark:divide-white/10 dark:border-white/10 empty:hidden" aria-label={t('schedules.active')}>
           {active.map((s) => (
             <li key={s.id} className="p-3" data-testid="schedule-row">
               <div className="flex flex-wrap items-center justify-between gap-3">
@@ -157,7 +157,7 @@ function SchedulesBody() {
       {finished.length > 0 ? (
         <section className="mt-8" aria-labelledby="sch-done">
           <h2 id="sch-done" className="text-lg font-semibold">{t('schedules.finished')}</h2>
-          <ul className="mt-2 divide-y divide-border-strong rounded-ui border border-border-strong" aria-label={t('schedules.finished')}>
+          <ul className="mt-2 divide-y divide-zinc-950/10 rounded-xl border border-zinc-950/10 dark:divide-white/10 dark:border-white/10" aria-label={t('schedules.finished')}>
             {finished.map((s) => (
               <li key={s.id} className="flex flex-wrap items-center justify-between gap-3 p-3" data-testid="finished-row">
                 <strong>{s.name}</strong>
@@ -208,7 +208,7 @@ function ProjectedBalances() {
     <section className="mt-8" aria-labelledby="sch-projected">
       <h2 id="sch-projected" className="text-lg font-semibold">{t('schedules.projected')}</h2>
       <p className="text-sm text-muted">{t('schedules.projected.hint', { date: formatDate(asOf, locale) })}</p>
-      <ul className="mt-2 divide-y divide-border-strong rounded-ui border border-border-strong" aria-label={t('schedules.projected')}>
+      <ul className="mt-2 divide-y divide-zinc-950/10 rounded-xl border border-zinc-950/10 dark:divide-white/10 dark:border-white/10" aria-label={t('schedules.projected')}>
         {rows.map((r) => (
           <li key={r.id} className="flex flex-wrap items-center justify-between gap-3 p-3" data-testid="projected-row">
             <strong>{r.name}</strong>
@@ -229,7 +229,7 @@ function ReminderSettings() {
   const [state, setState] = useState(permission());
   if (state === 'unsupported') return <p className="mt-3 text-sm text-muted">{t('schedules.notify.unsupported')}</p>;
   return (
-    <div className="mt-4 rounded-ui border border-border-strong p-3">
+    <div className="mt-4 rounded-xl border border-zinc-950/10 p-3 dark:border-white/10">
       <p className="font-medium">{t('schedules.notify.title')}</p>
       {state === 'granted' ? <p className="text-sm text-muted">{t('schedules.notify.on')}</p> : null}
       {state === 'denied' ? <p className="text-sm text-muted">{t('schedules.notify.denied')}</p> : null}

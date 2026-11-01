@@ -59,7 +59,7 @@ export function InvitationsSection({ onChanged }: { onChanged: () => void }) {
     <section className="mt-6" aria-labelledby="invitations-title">
       <h2 id="invitations-title" className="text-lg font-semibold">{t('sharing.invitations.title')}</h2>
       {error ? <p role="alert" className="mt-2 text-danger">{error}</p> : null}
-      <ul className="mt-2 divide-y divide-border-strong rounded-ui border border-border-strong" aria-label={t('sharing.invitations.title')}>
+      <ul className="mt-2 divide-y divide-zinc-950/10 rounded-xl border border-zinc-950/10 dark:divide-white/10 dark:border-white/10" aria-label={t('sharing.invitations.title')}>
         {items.map((i) => (
           <li key={i.fold} className="p-3" data-testid="invitation-row">
             <p>{t('sharing.invitations.from', { inviter: i.inviter, date: new Intl.DateTimeFormat(`${locale}-u-nu-latn`, { dateStyle: 'medium' }).format(new Date(i.invitedAtMs)) })}</p>
