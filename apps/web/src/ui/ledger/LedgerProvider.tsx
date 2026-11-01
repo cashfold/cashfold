@@ -7,7 +7,7 @@ import { useI18n } from '../i18n/I18nProvider';
 import { sortedByName } from '../i18n/collation';
 import { maskedMoney } from '../privacy/mask';
 import { usePrivacy } from '../privacy/usePrivacy';
-import { formatMoney, formatSigned, parseMoney } from './format';
+import { formatMoney, formatSigned, loadAmountExpression, parseMoney } from './format';
 
 export type Outcome<T> = { ok: true; value: T } | { ok: false; error: { code: string; message?: string; currency?: string } };
 
@@ -34,6 +34,8 @@ export interface LedgerView {
   readonly money: (minor: bigint, currency: string) => string;
   readonly signed: (minor: bigint, currency: string) => string;
   readonly parse: (text: string, currency: string) => ReturnType<typeof parseMoney>;
+  /** True once sums can be worked out (the evaluator is loaded as soon as the ledger is in use; spec 020). */
+  readonly mathReady: boolean;
   /** A sentence for an error code, in the user's language. */
   readonly explain: (code: string) => string;
 }
@@ -45,6 +47,8 @@ const ENTRIES: ReadonlySet<string> = new Set([
 ]);
 
 const Context = createContext<LedgerView | null>(null);
+/** For tests that need a ledger view without the whole provider (a form's field only needs `parse`). */
+export const LedgerContext = Context;
 
 /** The ledger when there is one (the signed-in shell), or nothing (before sign-in). */
 export function useOptionalLedger(): LedgerView | null {
@@ -172,6 +176,12 @@ export function LedgerProvider({ children }: { children: ReactNode }) {
   // Payees and tags come from core ordered by character code; what is shown follows the language (Ł after L, Ї after І).
   const shown = useMemo(() => (basics === undefined ? undefined : { ...basics, payees: sortedByName(basics.payees, locale), tags: sortedByName(basics.tags, locale) }), [basics, locale]);
 
+  // The sum evaluator is a separate small chunk; the forms use it only after this, which is well before anyone can type a sum.
+  const [mathReady, setMathReady] = useState(false);
+  useEffect(() => {
+    void loadAmountExpression().then(() => setMathReady(true), () => undefined);
+  }, []);
+
   const value = useMemo<LedgerView>(
     () => ({
       folds, fold, selectFold: setFoldId, basics: shown, version, loading, failed, run, read, reload, refreshFolds, foldRemoved, dismissFoldRemoved: () => setFoldRemoved(false),
@@ -179,9 +189,10 @@ export function LedgerProvider({ children }: { children: ReactNode }) {
       money: (minor, currency) => (privacy ? maskedMoney(formatMoney(minor, currency, locale)) : formatMoney(minor, currency, locale)),
       signed: (minor, currency) => (privacy ? maskedMoney(formatSigned(minor, currency, locale)) : formatSigned(minor, currency, locale)),
       parse: (text, currency) => parseMoney(text, currency, locale),
+      mathReady,
       explain,
     }),
-    [folds, fold, shown, version, loading, failed, run, read, reload, refreshFolds, foldRemoved, locale, explain, privacy],
+    [folds, fold, shown, version, loading, failed, run, read, reload, refreshFolds, foldRemoved, locale, explain, privacy, mathReady],
   );
 
   return <Context.Provider value={value}>{children}</Context.Provider>;

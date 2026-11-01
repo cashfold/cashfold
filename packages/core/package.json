@@ -5,6 +5,7 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
+    "./amount-expression": "./src/shared-kernel/amount-expression.ts",
     "./testing": "./src/testing/index.ts"
   },
   "scripts": {

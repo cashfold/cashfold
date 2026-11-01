@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
-import { decimalsOf, degreesFromDevice, formatDegrees, formatRate, formatMoney, formatPlain, formatSigned, parseDegrees, parseMoney, parseRateText, percentOf, signOf } from './format';
+import { beforeAll, describe, expect, it } from 'vitest';
+import { decimalsOf, degreesFromDevice, formatDegrees, formatRate, formatMoney, formatPlain, formatSigned, loadAmountExpression, parseDegrees, parseMoney, parseRateText, percentOf, signOf } from './format';
 
 describe('formatMoney', () => {
   it('stays exact beyond what a double can hold, in any locale', () => {
@@ -43,6 +43,10 @@ describe('formatMoney', () => {
 });
 
 describe('parseMoney', () => {
+  beforeAll(async () => {
+    await loadAmountExpression();
+  });
+
   it('reads what was typed exactly', () => {
     expect(parseMoney('1,234.56', 'USD', 'en')).toEqual({ ok: true, value: 123_456n });
     expect(parseMoney('0.1', 'USD', 'en')).toEqual({ ok: true, value: 10n });
@@ -63,6 +67,36 @@ describe('parseMoney', () => {
   it('keeps large amounts exact and refuses ones beyond 64 bits', () => {
     expect(parseMoney('46116860184273879.04', 'USD', 'en')).toEqual({ ok: true, value: 2n ** 62n });
     expect(parseMoney('92233720368547758.08', 'USD', 'en')).toMatchObject({ ok: false, error: { code: 'out_of_range' } });
+  });
+
+  it('reads a sum when the text has an operator or a bracket (spec 020)', () => {
+    expect(parseMoney('12.50 + 3.20 * 2 + 4', 'USD', 'en')).toEqual({ ok: true, value: 2_290n });
+    expect(parseMoney('(10 + 5) * 2', 'USD', 'en')).toEqual({ ok: true, value: 3_000n });
+    expect(parseMoney('1 234,50 + 10,25', 'PLN', 'pl')).toEqual({ ok: true, value: 124_475n });
+    expect(parseMoney('1.234,50 + 10,25', 'EUR', 'de')).toEqual({ ok: true, value: 124_475n });
+    expect(parseMoney('10 / 3', 'USD', 'en')).toEqual({ ok: true, value: 333n });
+    expect(parseMoney('100 / 3', 'JPY', 'en')).toEqual({ ok: true, value: 33n });
+  });
+
+  it('keeps the typing leniency inside a sum, in each number', () => {
+    expect(parseMoney('1.5 + 2.5', 'PLN', 'pl')).toEqual({ ok: true, value: 400n });
+    expect(parseMoney('10\u00a0+\u00a05', 'PLN', 'pl')).toEqual({ ok: true, value: 1_500n });
+    expect(parseMoney('10\u202f+\u202f5', 'PLN', 'pl')).toEqual({ ok: true, value: 1_500n });
+    expect(parseMoney('1\u202f234,50 + 1', 'PLN', 'uk')).toEqual({ ok: true, value: 123_550n });
+  });
+
+  it('refuses an invalid sum, a division by zero and an unknown currency', () => {
+    expect(parseMoney('12 +', 'USD', 'en')).toMatchObject({ ok: false, error: { code: 'invalid_format' } });
+    expect(parseMoney('5 / 0', 'USD', 'en')).toMatchObject({ ok: false, error: { code: 'division_by_zero' } });
+    expect(parseMoney('1 + 1', 'ZZZ', 'en')).toMatchObject({ ok: false, error: { code: 'unknown_currency' } });
+    expect(parseMoney('92233720368547758.07 + 0.01', 'USD', 'en')).toMatchObject({ ok: false, error: { code: 'out_of_range' } });
+  });
+
+  it('leaves a plain number on its old rules: too many decimals is still an error, and a signed number is not a sum', () => {
+    expect(parseMoney('1.239', 'USD', 'en')).toMatchObject({ ok: false, error: { code: 'too_many_decimals' } });
+    expect(parseMoney('-5', 'USD', 'en')).toEqual({ ok: true, value: -500n });
+    expect(parseMoney('+5', 'USD', 'en')).toEqual({ ok: true, value: 500n });
+    expect(parseMoney('0.333 * 3', 'USD', 'en')).toEqual({ ok: true, value: 100n });
   });
 });
 
