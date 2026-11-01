@@ -1668,6 +1668,7 @@
   "privacy.mode.title": "Tryb prywatności",
   "privacy.mode.description": "Ukrywa kwoty na ekranie, dopóki nie odsłonisz jednej z nich. Nazwy, daty, notatki i samo okno pozostają widoczne. Eksport oraz formularze dodawania i edycji zawsze używają prawdziwych liczb.",
   "privacy.exportNote": "Eksport i kopie zapasowe zawsze zawierają prawdziwe liczby.",
+  "privacy.switch.label": "Tryb prywatności",
   "privacy.switch.on": "Tryb prywatności: włączony",
   "privacy.switch.off": "Tryb prywatności: wyłączony",
   "privacy.amount.hidden": "Ukryta kwota, {currency}. Naciśnij, aby odsłonić.",

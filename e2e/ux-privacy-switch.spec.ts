@@ -42,34 +42,35 @@ test.describe('@ux privacy switch', () => {
 
     for (const screen of ['Overview', 'Accounts', 'Transactions', 'Plan', 'Settings']) {
       await go(page, screen);
-      await expect(sidebar(page)).toHaveText('Privacy mode: off');
+      await expect(sidebar(page)).toHaveAttribute('aria-checked', 'false');
     }
     // Help and Lock keep their place under it.
     await go(page, 'Accounts');
-    const items = await page.locator('nav [data-slot="section"]').last().locator('button').allTextContents();
-    expect(items.map((s) => s.trim())).toEqual(['Privacy mode: off', 'Help', 'Lock']);
+    const items = await page.locator('nav [data-slot="section"]').last().locator('button').evaluateAll((els) => els.map((e) => e.getAttribute('role') === 'switch' ? 'switch' : (e.textContent ?? '').trim()));
+    expect(items).toEqual(['switch', 'Help', 'Lock']);
+    await expect(sidebar(page)).toHaveAccessibleName('Privacy mode');
     await expect(topbar(page)).toBeHidden();
 
     const control = sidebar(page);
-    await expect(control).toHaveAttribute('aria-pressed', 'false');
+    await expect(control).toHaveAttribute('aria-checked', 'false');
     await expect(page.getByTestId('account-balance').first()).toContainText(/\d[.,]\d{2} USD/);
     await control.click();
     await expect(page.getByTestId('account-balance').first().locator(MASK)).toHaveCount(1);
-    await expect(control).toHaveText('Privacy mode: on');
-    await expect(control).toHaveAttribute('aria-pressed', 'true');
+    await expect(control).toHaveAttribute('aria-checked', 'true');
+    await expect(control).toHaveAttribute('aria-checked', 'true');
     await expect(control).toBeFocused();
     await expect(page.getByText('Help', { exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Lock', exact: true })).toBeVisible();
 
     await control.click();
-    await expect(control).toHaveText('Privacy mode: off');
+    await expect(control).toHaveAttribute('aria-checked', 'false');
     await expect(page.getByTestId('account-balance').first().locator(MASK)).toHaveCount(0);
 
     // Quick presses end where the count says: three presses leave it on.
     await control.click();
     await control.click();
     await control.click();
-    await expect(control).toHaveText('Privacy mode: on');
+    await expect(control).toHaveAttribute('aria-checked', 'true');
 
     // A revealed amount is masked again by the press.
     await page.getByRole('button', { name: /^Hidden amount/ }).first().click();
@@ -93,9 +94,9 @@ test.describe('@ux privacy switch', () => {
     await expect(topbar(page)).toHaveAttribute('aria-pressed', 'true');
 
     await openDrawer(page);
-    await expect(sidebar(page)).toHaveText('Privacy mode: on');
+    await expect(sidebar(page)).toHaveAttribute('aria-checked', 'true');
     await sidebar(page).click();
-    await expect(sidebar(page)).toHaveText('Privacy mode: off'); // the drawer stays open
+    await expect(sidebar(page)).toHaveAttribute('aria-checked', 'false'); // the drawer stays open
     await expect(topbar(page)).toHaveAttribute('aria-pressed', 'false');
     await expect(page.getByRole('button', { name: 'Lock', exact: true })).toBeVisible();
     await noSideways(page);
@@ -147,17 +148,17 @@ test.describe('@ux privacy switch', () => {
 
     await go(page, 'Appearance');
     await page.getByTestId('privacy-mode-switch').click();
-    await expect(sidebar(page)).toHaveText('Privacy mode: on');
+    await expect(sidebar(page)).toHaveAttribute('aria-checked', 'true');
     await page.keyboard.press(key);
-    await expect(sidebar(page)).toHaveText('Privacy mode: off');
+    await expect(sidebar(page)).toHaveAttribute('aria-checked', 'false');
 
     await page.keyboard.press(key);
-    await expect(sidebar(page)).toHaveText('Privacy mode: on');
+    await expect(sidebar(page)).toHaveAttribute('aria-checked', 'true');
     await page.keyboard.press(apple(await shortcut(page)) ? 'Meta+K' : 'Control+K');
     const palette = page.getByRole('dialog', { name: 'Command palette' });
     await palette.getByRole('combobox').fill('Turn privacy mode off');
     await page.keyboard.press('Enter');
-    await expect(sidebar(page)).toHaveText('Privacy mode: off');
+    await expect(sidebar(page)).toHaveAttribute('aria-checked', 'false');
 
     await sidebar(page).click();
     await expect(page.getByTestId('privacy-mode-switch')).toHaveAttribute('aria-checked', 'true');
@@ -171,7 +172,7 @@ test.describe('@ux privacy switch', () => {
     await expect(page.getByRole('heading', { name: 'Unlock Cashfold' })).toBeVisible();
     await expect(page.locator('[data-testid^="privacy-switch"]')).toHaveCount(0);
     await unlock(page, PASSWORD);
-    await expect(sidebar(page)).toHaveText('Privacy mode: on');
+    await expect(sidebar(page)).toHaveAttribute('aria-checked', 'true');
   });
 
   test('has one switch in the drawer and one in the top bar, in the same state', async ({ page }) => {
@@ -184,14 +185,14 @@ test.describe('@ux privacy switch', () => {
     await expect(topbar(page)).toHaveAttribute('aria-pressed', 'true');
   });
 
-  for (const [locale, off] of [['uk', 'Режим приватності: вимкнено'], ['pl', 'Tryb prywatności: wyłączony']] as const) {
+  for (const [locale, off] of [['uk', 'Режим приватності'], ['pl', 'Tryb prywatności']] as const) {
     test.describe(`in ${locale}`, () => {
       test.use({ locale });
       test('the control is in the language and does not overflow', async ({ page }) => {
         await page.setViewportSize(NARROW);
         await signUpAndEnter(page);
         await openDrawer(page);
-        await expect(sidebar(page)).toContainText(off);
+        await expect(page.locator('nav label:visible', { hasText: off })).toBeVisible();
         await noSideways(page);
       });
     });

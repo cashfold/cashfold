@@ -236,32 +236,31 @@ test.describe('@ux privacy mode', () => {
     const indicator = page.getByTestId('privacy-switch');
 
     await expect(balance).toContainText(/\d[.,]\d{2} USD/);
-    await expect(indicator).toHaveAttribute('aria-pressed', 'false');
+    await expect(indicator).toHaveAttribute('aria-checked', 'false');
     await page.keyboard.press(key);
     await expect(balance.locator(MASK)).toHaveCount(1);
     await expect(balance).toContainText('USD');
-    await expect(indicator).toHaveAttribute('aria-pressed', 'true');
-    await expect(indicator).toContainText('Privacy mode: on');
+    await expect(indicator).toHaveAttribute('aria-checked', 'true');
     await page.keyboard.press(key);
     await expect(balance).toContainText(/\d[.,]\d{2} USD/);
-    await expect(indicator).toHaveAttribute('aria-pressed', 'false');
+    await expect(indicator).toHaveAttribute('aria-checked', 'false');
 
     // Also while a text field has focus, and it types nothing.
     await go(page, 'Transactions');
     const search = page.getByRole('searchbox');
     await search.focus();
     await page.keyboard.press(key);
-    await expect(indicator).toHaveAttribute('aria-pressed', 'true');
+    await expect(indicator).toHaveAttribute('aria-checked', 'true');
     await expect(search).toHaveValue('');
     await expect(search).toBeFocused();
 
     // The indicator turns it off again.
     await indicator.click();
-    await expect(indicator).toHaveAttribute('aria-pressed', 'false');
+    await expect(indicator).toHaveAttribute('aria-checked', 'false');
 
     // Locked, the key does nothing: the mode is what it was after unlocking.
     await page.keyboard.press(key);
-    await expect(indicator).toHaveAttribute('aria-pressed', 'true');
+    await expect(indicator).toHaveAttribute('aria-checked', 'true');
     await lock(page);
     await expect(page.getByRole('heading', { name: 'Unlock Cashfold' })).toBeVisible();
     await page.keyboard.press(key);
