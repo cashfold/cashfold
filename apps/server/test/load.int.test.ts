@@ -6,7 +6,7 @@ import { createPgStore } from '../src/store/pg-store.js';
 import type { OpRow, Store } from '../src/store/store.js';
 
 // Load test of the relay's store: push and pull throughput, and what happens when many devices push into one Fold or into many
-// (R-13, T194). It decides how `server_seq` is assigned; the outcome is recorded in docs/adr/0007-fold-sequence.md.
+// (R-13, T194). It decides how `server_seq` is assigned.
 // Opt in with LOAD=1 (it takes minutes and starts PostgreSQL): `LOAD=1 pnpm --filter @cashfold/server test:integration -t load`.
 
 const enabled = process.env['LOAD'] === '1';

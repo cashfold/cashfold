@@ -27,7 +27,7 @@ exact money amounts (integers, never floating point), and treats the server as u
   rest is an encrypted SQLite database.
 - **Recovery you control.** An Emergency Kit, an optional Recovery Key, encrypted backups, and
   optional quick unlock with your device's biometrics or PIN.
-- **Open source.** AGPL-3.0, with documented [architecture decisions](docs/adr/) and a reproducible web build.
+- **Open source.** AGPL-3.0, with a documented [architecture](docs/ARCHITECTURE.md) and a reproducible web build.
 
 ## Get Cashfold
 
@@ -99,7 +99,6 @@ Start at the [documentation index](docs/README.md). The most useful pages:
 | know what the service can see          | [docs/privacy.md](docs/privacy.md)           |
 | understand the design                  | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) |
 | build, test or release the desktop app | [docs/desktop.md](docs/desktop.md)           |
-| see why a technology was chosen        | [docs/adr/](docs/adr/)                       |
 
 ## Development
 

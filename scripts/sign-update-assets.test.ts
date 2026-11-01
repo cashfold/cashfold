@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest';
 // @ts-expect-error a plain script module without types
 import { generateUpdateKeyPair, verifyUpdate } from './lib/update-signature.mjs';
 
-// The release signs every installer that updates itself (ADR-0010). The script is run over the folder the release job assembled.
+// The release signs every installer that updates itself. The script is run over the folder the release job assembled.
 
 const script = new URL('./sign-update-assets.mjs', import.meta.url).pathname;
 const V = '1.2.3';

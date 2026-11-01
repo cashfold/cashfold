@@ -86,7 +86,7 @@ carry real cost; they are tools, not goals.
     export. Server components, server actions and API routes MUST NOT touch user data or
     secrets. Marketing and documentation pages MAY use server rendering.
   - `apps/server`: NestJS with PostgreSQL, acting as the relay.
-- **Phasing**: Phase 1 targets the web only. The desktop shell is Electron (ADR-0009); mobile
+- **Phasing**: Phase 1 targets the web only. The desktop shell is Electron; mobile
   shells are planned later and their technology is not yet decided. No shell MAY require
   changes to `core`, `crypto` or `protocol`.
 - **Testing tools**: Vitest, Playwright, fast-check (property tests), and Testcontainers for

@@ -2,7 +2,7 @@
 
 The wire types and schemas that the client and the relay share: the operation envelope, grants,
 snapshots, the membership log entries and the request and response bodies. It also holds the
-in-house deterministic CBOR profile ([ADR-0003](../../docs/adr/0003-cbor.md)).
+in-house deterministic CBOR profile.
 
 Neither side imports the other's code, only this contract.
 

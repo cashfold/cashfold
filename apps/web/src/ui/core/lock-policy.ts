@@ -1,5 +1,5 @@
 // When the app covers its content and when it tells the session worker the window was left (FR-007 of spec 001, amended for the desktop app by
-// spec 006 and ADR-0012).
+// spec 006).
 //
 // In a browser, losing focus or being hidden covers the content at once and starts the worker's short timers: another tab or window is a normal
 // thing to look at, and a browser tab is easy to leave on a shared screen. In the desktop app, clicking another window is just that, so by default

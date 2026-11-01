@@ -5,8 +5,7 @@ All of Cashfold's cryptography, behind narrow interfaces (`Aead`, `Kdf`, `Hpke`,
 [`@noble/*`](https://github.com/paulmillr/noble-curves), Argon2id and SRP in WebAssembly.
 
 It imports nothing from `@cashfold/core`. The design is in [Architecture](../../docs/ARCHITECTURE.md)
-(sections 5 and 6), the decisions in [ADR-0004](../../docs/adr/0004-argon2id-wasm.md) and
-[ADR-0006](../../docs/adr/0006-srp-wasm.md).
+(sections 5 and 6).
 
 ## What is here
 

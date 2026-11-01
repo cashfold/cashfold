@@ -247,7 +247,7 @@ export async function createPgStore(databaseUrl: string, options: { migrations?:
       async push(foldId, ops) {
         return inTransaction(async (c) => {
           // The fold row is the lock that orders concurrent pushes, so server_seq is gapless and monotone. Everything else is set-based:
-          // one lookup for operations already stored, one for each device's last sequence number, one insert (load test, ADR-0007).
+          // one lookup for operations already stored, one for each device's last sequence number, one insert (load test).
           const locked = await c.query('SELECT head_seq FROM fold WHERE fold_id = $1 FOR UPDATE', [buf(foldId)]);
           if (locked.rowCount === 0) return ops.map((o): PushOutcome => ({ op: o.opId, status: 'seq_gap' }));
           let head = big(locked.rows[0]['head_seq']);

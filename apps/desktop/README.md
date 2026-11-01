@@ -5,8 +5,6 @@ shell around the [web app](../web/README.md)'s static export. It adds no feature
 format, so the same account works on the web and on the desktop.
 
 Installing, updating, signing and releasing are covered in [docs/desktop.md](../../docs/desktop.md).
-The decision is recorded in [ADR-0009](../../docs/adr/0009-electron-desktop-shell.md), and the update
-signature in [ADR-0010](../../docs/adr/0010-update-signatures.md).
 
 ## Layout
 

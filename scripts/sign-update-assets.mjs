@@ -1,4 +1,4 @@
-// Signs the installers that update themselves, for the release (ADR-0010):  node scripts/sign-update-assets.mjs <folder>
+// Signs the installers that update themselves, for the release:  node scripts/sign-update-assets.mjs <folder>
 //
 // The folder is the one the release job assembled from the build artifacts: the installers, and the update feeds (latest.yml, latest-mac.yml,
 // latest-linux.yml). For the Windows installer, both Mac zips and the AppImage it writes `<name>.sig` next to the file: the Ed25519 signature
