@@ -6,7 +6,7 @@ import { ACCOUNT_KINDS } from '@cashfold/core';
 import { MESSAGES_EN } from '../errors/catalogue';
 import en from '../i18n/messages/en.json' with { type: 'json' };
 import { SHARING_ERROR_CODES } from '../sharing/errors';
-import { COLOR_COUNT, ICON_KEYS } from './palette';
+import { COLOR_COUNT } from './palette';
 
 const messages: Record<string, string> = { ...MESSAGES_EN, ...en };
 const here = import.meta.dirname;
@@ -50,7 +50,6 @@ describe('the ledger screens only use words that exist', () => {
       ...['invalid_degrees', 'too_precise', 'out_of_bounds'].map((c) => `ledger.place.${c}`),
       ...['this_month', 'last_month', 'this_year', 'last_30', 'all_time', 'custom'].map((p) => `ledger.dash.period.${p}`),
       ...Array.from({ length: COLOR_COUNT }, (_, i) => `ledger.color.${i}`),
-      ...ICON_KEYS.map((k) => `ledger.icon.${k}`),
       ...['expense', 'income'].map((d) => `ledger.categories.${d}`),
       ...['day', 'week', 'month', 'year', 'custom'].map((u) => `budgets.unit.${u}`),
       ...['day', 'week', 'month', 'year'].flatMap((u) => [`schedules.unit.${u}`, `schedules.every.${u}`]),

@@ -22,4 +22,11 @@ describe('default categories with starter names (FR-015)', () => {
   it('ignores a blank name and keeps the English one', () => {
     expect(defaultCategories(fold, { 'expense.food': '   ' }).find((c) => c.key === 'expense.food')!.name).toBe('Food & Drink');
   });
+
+  it('has no icon: a default category is a name and a color (spec 019, FR-003)', () => {
+    for (const c of english) expect(c, c.key).not.toHaveProperty('icon');
+    expect(english.every((c) => Number.isInteger(c.color))).toBe(true);
+    // The ids, names and order are those of the English set whatever else changes.
+    expect(defaultCategories(fold).map((c) => c.id)).toEqual(english.map((c) => c.id));
+  });
 });

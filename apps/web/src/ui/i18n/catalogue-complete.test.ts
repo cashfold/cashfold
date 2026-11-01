@@ -15,7 +15,7 @@ const IDENTICAL_ALLOWED = new Set<string>([
   // nothing but placeholders and symbols
   'schedules.transferAmount', 'goals.percentValue', 'settings.about.systemValue',
   // words that happen to be the same in Polish
-  'ledger.tx.status', 'ledger.filter.status', 'field.tx.status', 'ledger.color.6', 'ledger.icon.bus', 'ledger.icon.landmark', 'budgets.mode.limit', 'budgets.form.limit',
+  'ledger.tx.status', 'ledger.filter.status', 'field.tx.status', 'ledger.color.6', 'budgets.mode.limit', 'budgets.form.limit',
   'nav.plan', 'page.plan.title', 'plan.title', 'settings.about.system', 'starter.category.expense.transport', 'starter.category.expense.transport.parking',
   'starter.category.expense.health.fitness', 'unit.kb', 'unit.mb', 'unit.gb',
 ]);

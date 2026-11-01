@@ -9,23 +9,22 @@ interface Root {
   readonly key: string;
   readonly direction: Direction;
   readonly name: string;
-  readonly icon: string;
   readonly children: readonly string[];
 }
 
 const ROOTS: readonly Root[] = [
-  { key: 'expense.food', direction: 'expense', name: 'Food & Drink', icon: 'utensils', children: ['Groceries', 'Restaurants', 'Coffee & Snacks'] },
-  { key: 'expense.home', direction: 'expense', name: 'Home', icon: 'home', children: ['Rent or Mortgage', 'Utilities', 'Maintenance', 'Furnishings'] },
-  { key: 'expense.transport', direction: 'expense', name: 'Transport', icon: 'bus', children: ['Fuel', 'Public Transit', 'Taxi & Rideshare', 'Parking', 'Vehicle Maintenance'] },
-  { key: 'expense.health', direction: 'expense', name: 'Health', icon: 'heart', children: ['Doctor', 'Pharmacy', 'Insurance', 'Fitness'] },
-  { key: 'expense.personal', direction: 'expense', name: 'Personal', icon: 'user', children: ['Clothing', 'Beauty & Care', 'Gifts'] },
-  { key: 'expense.leisure', direction: 'expense', name: 'Leisure', icon: 'ticket', children: ['Entertainment', 'Hobbies', 'Subscriptions', 'Travel'] },
-  { key: 'expense.family', direction: 'expense', name: 'Family', icon: 'users', children: ['Childcare', 'Education', 'Pets'] },
-  { key: 'expense.finance', direction: 'expense', name: 'Finance', icon: 'landmark', children: ['Fees & Charges', 'Taxes', 'Loan Interest'] },
-  { key: 'expense.other', direction: 'expense', name: 'Other', icon: 'tag', children: [] },
-  { key: 'income.work', direction: 'income', name: 'Work', icon: 'briefcase', children: ['Salary', 'Bonus', 'Freelance'] },
-  { key: 'income.investment', direction: 'income', name: 'Investments', icon: 'trending-up', children: ['Interest', 'Dividends'] },
-  { key: 'income.other', direction: 'income', name: 'Other income', icon: 'coins', children: ['Refunds', 'Gifts Received', 'Reimbursements'] },
+  { key: 'expense.food', direction: 'expense', name: 'Food & Drink', children: ['Groceries', 'Restaurants', 'Coffee & Snacks'] },
+  { key: 'expense.home', direction: 'expense', name: 'Home', children: ['Rent or Mortgage', 'Utilities', 'Maintenance', 'Furnishings'] },
+  { key: 'expense.transport', direction: 'expense', name: 'Transport', children: ['Fuel', 'Public Transit', 'Taxi & Rideshare', 'Parking', 'Vehicle Maintenance'] },
+  { key: 'expense.health', direction: 'expense', name: 'Health', children: ['Doctor', 'Pharmacy', 'Insurance', 'Fitness'] },
+  { key: 'expense.personal', direction: 'expense', name: 'Personal', children: ['Clothing', 'Beauty & Care', 'Gifts'] },
+  { key: 'expense.leisure', direction: 'expense', name: 'Leisure', children: ['Entertainment', 'Hobbies', 'Subscriptions', 'Travel'] },
+  { key: 'expense.family', direction: 'expense', name: 'Family', children: ['Childcare', 'Education', 'Pets'] },
+  { key: 'expense.finance', direction: 'expense', name: 'Finance', children: ['Fees & Charges', 'Taxes', 'Loan Interest'] },
+  { key: 'expense.other', direction: 'expense', name: 'Other', children: [] },
+  { key: 'income.work', direction: 'income', name: 'Work', children: ['Salary', 'Bonus', 'Freelance'] },
+  { key: 'income.investment', direction: 'income', name: 'Investments', children: ['Interest', 'Dividends'] },
+  { key: 'income.other', direction: 'income', name: 'Other income', children: ['Refunds', 'Gifts Received', 'Reimbursements'] },
 ];
 
 export const slug = (text: string): string => text.toLowerCase().replaceAll('&', 'and').replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
@@ -36,7 +35,6 @@ export interface DefaultCategory {
   readonly parentId: Id | null;
   readonly direction: Direction;
   readonly name: string;
-  readonly icon: string;
   /** Index into the app's category colour tokens. */
   readonly color: number;
   readonly sortOrder: number;
@@ -57,10 +55,10 @@ export function defaultCategories(fold: Id, names: Readonly<Record<string, strin
   ROOTS.forEach((root, rootIndex) => {
     const rootId = uuidV5(fold, root.key);
     const color = rootIndex % PALETTE_SIZE;
-    out.push({ key: root.key, id: rootId, parentId: null, direction: root.direction, name: nameOf(root.key, root.name), icon: root.icon, color, sortOrder: rootIndex });
+    out.push({ key: root.key, id: rootId, parentId: null, direction: root.direction, name: nameOf(root.key, root.name), color, sortOrder: rootIndex });
     root.children.forEach((child, i) => {
       const key = `${root.key}.${slug(child)}`;
-      out.push({ key, id: uuidV5(fold, key), parentId: rootId, direction: root.direction, name: nameOf(key, child), icon: root.icon, color, sortOrder: i });
+      out.push({ key, id: uuidV5(fold, key), parentId: rootId, direction: root.direction, name: nameOf(key, child), color, sortOrder: i });
     });
   });
   return out;
