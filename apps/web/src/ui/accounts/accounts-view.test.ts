@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { budgetsUsingGroup, effectiveView } from './accounts-view';
 
 const asId = (s: string) => s as Id;
-const group = (id: string): AccountGroup => ({ id: asId(id), name: id, icon: null, color: 0, sortOrder: 0 });
+const group = (id: string): AccountGroup => ({ id: asId(id), name: id, icon: null, color: 0, sortOrder: 0, currency: null });
 const account = (id: string, groupIds: string[] = [], archived = false) => ({ id: asId(id), groupIds: groupIds.map(asId), archived }) as unknown as AccountRow;
 
 describe('effectiveView', () => {
