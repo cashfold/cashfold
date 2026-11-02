@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.13.0](https://github.com/cashfold/cashfold/compare/v0.12.0...v0.13.0) (2026-11-02)
+
+
+### Features
+
+* **web:** remove category icons, so a category is a name and a color ([#66](https://github.com/cashfold/cashfold/issues/66)) ([f08397b](https://github.com/cashfold/cashfold/commit/f08397b897dd387b5ca9b91d99cb430b6d087989))
+* **web:** remove the example placeholder from money fields so they look less noisy ([#70](https://github.com/cashfold/cashfold/issues/70)) ([c566e9a](https://github.com/cashfold/cashfold/commit/c566e9a73417b695ae15dfd22b8c25546d98103b))
+* **web:** show each account group in its own currency ([#69](https://github.com/cashfold/cashfold/issues/69)) ([103adfa](https://github.com/cashfold/cashfold/commit/103adfa5702dab03cbad98b62d33fd16ea50d97e))
+* **web:** type a sum in any money field, such as 12.50 + 3.20 * 2 ([#67](https://github.com/cashfold/cashfold/issues/67)) ([760082e](https://github.com/cashfold/cashfold/commit/760082e8a978e08a9ed8b03c7869340082821e3d))
+
 ## [0.12.0](https://github.com/cashfold/cashfold/compare/v0.11.0...v0.12.0) (2026-11-01)
 
 
