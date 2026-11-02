@@ -2,21 +2,25 @@
 
 import { useEffect, useState } from 'react';
 import type { BudgetRow, Id } from '@cashfold/core';
-import { InputField } from '../forms/Field';
+import { InputField, SelectField } from '../forms/Field';
 import { useI18n } from '../i18n/I18nProvider';
 import type { Translate } from '../i18n/i18n';
-import { Alert, Button, Sheet } from '../kit';
+import { Alert, Button, Sheet, SelectOption } from '../kit';
 import { useLedger } from '../ledger/LedgerProvider';
 import { budgetsUsingGroup, type BudgetUsingGroup } from './accounts-view';
+import { CURRENCIES } from './currencies';
 
-/** The add-or-rename form: one name field, its reason when refused, and the two buttons. */
-export function GroupFormView({ t, mode, name, error, busy = false, onChange, onSubmit, onCancel }: {
-  t: Translate; mode: 'create' | 'rename'; name: string; error: string | undefined; busy?: boolean;
-  onChange: (name: string) => void; onSubmit: () => void; onCancel: () => void;
+/** The add-or-rename form: the name and the currency the group is shown in, the reason when refused, and the two buttons. */
+export function GroupFormView({ t, mode, name, currency, error, busy = false, onChange, onCurrencyChange, onSubmit, onCancel }: {
+  t: Translate; mode: 'create' | 'rename'; name: string; currency: string; error: string | undefined; busy?: boolean;
+  onChange: (name: string) => void; onCurrencyChange: (currency: string) => void; onSubmit: () => void; onCancel: () => void;
 }) {
   return (
     <form onSubmit={(event) => { event.preventDefault(); onSubmit(); }} className="space-y-4">
       <InputField label={t('ledger.groups.name')} value={name} onChange={(e) => onChange(e.target.value)} required maxLength={80} autoFocus />
+      <SelectField label={t('ledger.groups.currency')} value={currency} onChange={onCurrencyChange}>
+        {CURRENCIES.map((c) => <SelectOption key={c} value={c}>{c}</SelectOption>)}
+      </SelectField>
       {error ? <p role="alert" className="text-(--danger)">{error}</p> : null}
       <div className="flex flex-wrap justify-end gap-3">
         <Button plain type="button" onClick={onCancel}>{t('ledger.cancel')}</Button>
@@ -47,16 +51,17 @@ export function GroupDeleteView({ t, name, accountCount, budgets, busy = false, 
 }
 
 /** The add and rename sheet: it writes through the worker and shows the reason from `ledger.explain` when the name is refused. */
-export function GroupFormDialog({ group, onClose }: { group: { id: Id; name: string } | 'new'; onClose: (saved?: boolean) => void }) {
+export function GroupFormDialog({ group, onClose }: { group: { id: Id; name: string; currency: string | null } | 'new'; onClose: (saved?: boolean) => void }) {
   const { t } = useI18n();
   const ledger = useLedger();
   const [name, setName] = useState(group === 'new' ? '' : group.name);
+  const [currency, setCurrency] = useState((group === 'new' ? null : group.currency) ?? ledger.basics?.baseCurrency ?? 'USD');
   const [error, setError] = useState<string | undefined>();
   const [busy, setBusy] = useState(false);
 
   async function submit() {
     setBusy(true);
-    const r = group === 'new' ? await ledger.run('ledger.createGroup', { name }) : await ledger.run('ledger.updateGroup', { id: group.id, name });
+    const r = group === 'new' ? await ledger.run('ledger.createGroup', { name, currency }) : await ledger.run('ledger.updateGroup', { id: group.id, name, currency });
     setBusy(false);
     if (r.ok) onClose(true);
     else setError(ledger.explain(r.error.code));
@@ -64,7 +69,7 @@ export function GroupFormDialog({ group, onClose }: { group: { id: Id; name: str
 
   return (
     <Sheet open onClose={() => onClose()} title={group === 'new' ? t('ledger.groups.add') : t('ledger.groups.rename')}>
-      <GroupFormView t={t} mode={group === 'new' ? 'create' : 'rename'} name={name} error={error} busy={busy} onChange={setName} onSubmit={() => void submit()} onCancel={() => onClose()} />
+      <GroupFormView t={t} mode={group === 'new' ? 'create' : 'rename'} name={name} currency={currency} error={error} busy={busy} onChange={setName} onCurrencyChange={setCurrency} onSubmit={() => void submit()} onCancel={() => onClose()} />
     </Sheet>
   );
 }
