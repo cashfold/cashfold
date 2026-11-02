@@ -11,16 +11,16 @@ sets). The numbers are part of the wire format and live in
 a shipped number is never reused or renumbered. [`vectors/ops/schema-1-ledger.json`](../vectors/ops/schema-1-ledger.json) is a frozen
 set of ops written with schema 1; `frozen-fixture.test.ts` replays it and fails if a number moves.
 
-| Table         | Code | Notes                                                    |
-| ------------- | ---- | -------------------------------------------------------- |
-| account       | 1    | `group_ids` is an add-wins set                           |
-| account group | 2    |                                                          |
-| category      | 3    | `parent_id` null for a root; depth at most 2             |
-| payee, tag    | 4, 5 | name and colour                                          |
-| transaction   | 6    | `tag_ids` is an add-wins set; see the amount group below |
-| transfer      | 7    | one record, two amounts; see below                       |
-| exchange rate | 11   |                                                          |
-| settings      | 13   | the Fold's name and base currency                        |
+| Table         | Code | Notes                                                     |
+| ------------- | ---- | --------------------------------------------------------- |
+| account       | 1    | `group_ids` is an add-wins set                            |
+| account group | 2    | `currency` (field 5) is optional; absent means the Fold's |
+| category      | 3    | `parent_id` null for a root; depth at most 2              |
+| payee, tag    | 4, 5 | name and colour                                           |
+| transaction   | 6    | `tag_ids` is an add-wins set; see the amount group below  |
+| transfer      | 7    | one record, two amounts; see below                        |
+| exchange rate | 11   |                                                           |
+| settings      | 13   | the Fold's name and base currency                         |
 
 **Amount group.** `amount_minor`, `currency`, `base_amount_minor`, `base_currency`, `fx_rate_id`, `fx_base_rate_id` and `direction`
 are written together or not at all (`LEDGER_GROUPS`), so a concurrent edit of the amount cannot be torn from its currency or its
@@ -42,6 +42,19 @@ result does not depend on the order entries are visited in. A balance beyond 64 
 
 A balance adjustment is an ordinary entry of direction `adjustment` for `target − balance(account, date)`. Reports leave adjustments
 out unless the user turns on "adjustments as income and expenses"; then a negative one counts as spending and a positive one as income.
+
+## Group currency
+
+A group has a currency, kept in field 5 of its record. It is optional: a group made before it existed has none and reads as the Fold's
+currency, and an older device that does not know the field leaves it alone. A new group stores the currency chosen for it (the Fold's by
+default), so a later change of the Fold's currency does not move it. The currency only changes how the group is displayed; no account,
+balance or transaction changes with it.
+
+On the Accounts page (group view) `groupBalances` shows each account of a group in the group's currency with the rule of the Overview's
+net worth: the latest rate dated on or before the end of today, USD as the pivot, one division and one half-even rounding per account.
+The group's subtotal is the plain sum of those rounded figures, so it equals the figures shown. A currency with no rate is named in the
+note "Left out: no exchange rate for …", its account is left out of the subtotal, and a group with nothing that can be converted says
+"No total yet" instead of showing zero. Ungrouped accounts and the by-type view are not converted.
 
 ## Transfers
 

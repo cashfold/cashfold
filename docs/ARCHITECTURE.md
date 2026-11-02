@@ -185,6 +185,15 @@ Account {
 }
 ```
 
+```
+AccountGroup {                       -- table 2
+  id, fold_id, name, icon, color: u8, sort_order: i32,
+  currency: [3..8]*ALPHA?            -- field 5, optional: the currency the group is shown in; absent (groups made before spec 021) means the Fold's currency
+}
+```
+
+The group currency is a display choice. It never changes an account, a balance or a transaction.
+
 Kind `credit_card` and `loan` balances are conventionally ≤ 0 (liability). The sign convention is unchanged: positive adds to the account.
 
 ### 3.4 Categories

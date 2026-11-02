@@ -67,11 +67,11 @@ test.describe('@ux account groups', () => {
     await expect(household.getByTestId('group-subtotal')).toContainText('Subtotal, Household');
     await expect(household.getByTestId('group-subtotal')).toContainText('150.50 USD');
 
-    // Two currencies are two amounts and never a combined figure.
+    // A group is shown in its own currency (spec 021): the Euro wallet has no rate yet, so it is left out and named, never added at face value.
     const travel = section(page, 'Travel');
-    await expect(travel.getByTestId('group-subtotal').locator('[data-sign]')).toHaveCount(2);
-    await expect(travel.getByTestId('group-subtotal')).toContainText('20.00 EUR');
+    await expect(travel.getByTestId('group-subtotal').locator('[data-sign]')).toHaveCount(1);
     await expect(travel.getByTestId('group-subtotal')).toContainText('10.00 USD');
+    await expect(travel.getByRole('status')).toContainText('Left out: no exchange rate for EUR');
 
     const empty = section(page, 'Empty');
     await expect(empty).toContainText('No accounts in this group yet');
