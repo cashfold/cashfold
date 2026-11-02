@@ -37,7 +37,7 @@ export function AmountInput({ label, currency, value, onChange, hint, error, req
     : hint ?? t('ledger.amount.hint', { decimals: decimalsOf(currency) });
   return (
     <InputField
-      label={known ? `${label} (${currency})` : label} value={value} onChange={(e) => onChange(e.target.value)} inputMode="text" autoComplete="off" placeholder={t('ledger.amount.placeholder')}
+      label={known ? `${label} (${currency})` : label} value={value} onChange={(e) => onChange(e.target.value)} inputMode="text" autoComplete="off"
       hint={note} error={problem} {...(required ? { required: true } : {})} {...(disabled ? { disabled: true } : {})} {...(autoFocus ? { autoFocus: true } : {})}
     />
   );
