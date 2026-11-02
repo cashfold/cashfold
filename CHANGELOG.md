@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.14.0](https://github.com/cashfold/cashfold/compare/v0.13.0...v0.14.0) (2026-11-02)
+
+
+### Features
+
+* **web:** show only the group total on the accounts page and rename Rename group to Edit group ([#71](https://github.com/cashfold/cashfold/issues/71)) ([19c3915](https://github.com/cashfold/cashfold/commit/19c391514fd676a950206c0c43e5ade85f7cbc06))
+
 ## [0.13.0](https://github.com/cashfold/cashfold/compare/v0.12.0...v0.13.0) (2026-11-02)
 
 
