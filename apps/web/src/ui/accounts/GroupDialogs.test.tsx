@@ -1,12 +1,13 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { createTranslator } from '../i18n/i18n';
+import { CURRENCIES } from './currencies';
 import { GroupDeleteView, GroupFormView } from './GroupDialogs';
 
 const t = createTranslator('en');
 const noop = () => undefined;
 const form = (over: Partial<Parameters<typeof GroupFormView>[0]> = {}) =>
-  renderToStaticMarkup(<GroupFormView t={t} mode="create" name="" error={undefined} onChange={noop} onSubmit={noop} onCancel={noop} {...over} />);
+  renderToStaticMarkup(<GroupFormView t={t} mode="create" name="" currency="USD" error={undefined} onChange={noop} onCurrencyChange={noop} onSubmit={noop} onCancel={noop} {...over} />);
 const del = (over: Partial<Parameters<typeof GroupDeleteView>[0]> = {}) =>
   renderToStaticMarkup(<GroupDeleteView t={t} name="Household" accountCount={2} budgets={[]} onConfirm={noop} onCancel={noop} {...over} />);
 
@@ -18,6 +19,21 @@ describe('the add and rename group form', () => {
     expect(html).toContain('Group name');
     expect(html).toContain('Add group');
     expect(html).toContain('Cancel');
+  });
+
+  it('has a labelled Currency select showing the given currency, in create and rename mode', () => {
+    for (const mode of ['create', 'rename'] as const) {
+      const html = form({ mode, currency: 'EUR' });
+      expect(html).toMatch(/<label[^>]*>Currency<\/label>/);
+      expect(html).toMatch(/aria-haspopup="listbox"[\s\S]*>EUR<\/span>/);
+    }
+  });
+
+  it('offers only supported currencies, never an empty or unknown one', () => {
+    expect(CURRENCIES).toContain('PLN');
+    expect(CURRENCIES).not.toContain('');
+    expect(CURRENCIES).not.toContain('ZZZ');
+    expect(CURRENCIES.every((c) => /^[A-Z]{3}$/.test(c))).toBe(true);
   });
 
   it('says Save when renaming', () => {

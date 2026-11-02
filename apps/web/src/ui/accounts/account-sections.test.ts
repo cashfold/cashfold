@@ -5,7 +5,7 @@ import { accountSections, groupOf } from './account-sections';
 
 const asId = (s: string) => s as Id;
 const cur = (c: string) => c as CurrencyCode;
-const group = (id: string, sortOrder = 0): AccountGroup => ({ id: asId(id), name: id.toUpperCase(), icon: null, color: 0, sortOrder });
+const group = (id: string, sortOrder = 0): AccountGroup => ({ id: asId(id), name: id.toUpperCase(), icon: null, color: 0, sortOrder, currency: null });
 const account = (id: string, { groupIds = [], currency = 'USD', ...over }: Partial<Omit<AccountRow, 'groupIds' | 'currency'>> & { groupIds?: string[]; currency?: string } = {}): AccountRow => ({
   id: asId(id), groupIds: groupIds.map(asId), currency: cur(currency), kind: 'checking', name: id, openingBalanceMinor: 0n, openingDate: 0 as never, includeInNetWorth: true, creditLimitMinor: null,
   icon: null, color: 0, sortOrder: 0, archived: false, balanceMinor: 0n, ...over,
@@ -99,5 +99,58 @@ describe('accountSections in general', () => {
     const start = performance.now();
     accountSections({ accounts, groups, view: 'group' });
     expect(performance.now() - start).toBeLessThan(50);
+  });
+});
+
+describe('accountSections: converted group subtotals (spec 021)', () => {
+  const E12 = 10n ** 12n;
+  const rates = [
+    { id: asId('r1'), quote: cur('EUR'), asOfUtcS: 100, rateE12: (9n * E12) / 10n, source: 'service' },
+    { id: asId('r2'), quote: cur('PLN'), asOfUtcS: 50, rateE12: 4n * E12, source: 'service' },
+  ] as never;
+  const eur: AccountGroup = { ...group('g1'), currency: 'EUR' };
+  const accounts = [
+    account('a1', { groupIds: ['g1'], currency: 'EUR', balanceMinor: 10_000n }),
+    account('a2', { groupIds: ['g1'], currency: 'USD', balanceMinor: 5_000n }),
+    account('a3', { groupIds: ['g1'], currency: 'PLN', balanceMinor: 20_000n }),
+    account('a4', { groupIds: ['g1'], currency: 'USD', balanceMinor: 1_000n, archived: true }),
+    account('loose', { currency: 'USD', balanceMinor: 700n }),
+  ];
+  const sections = (list = accounts, g: AccountGroup = eur) => accountSections({ accounts: list, groups: [g], view: 'group', rates, baseCurrency: 'USD', asOfUtcS: 10_000 });
+
+  it('gives a group the converted subtotal, the per-account figures and the oldest rate date', () => {
+    const live = accounts.filter((a) => !a.archived);
+    const c = sections(live)[0]!.converted!;
+    expect(c).toMatchObject({ currency: 'EUR', subtotalMinor: 10_000n + 4_500n + 4_500n, missing: [], overflow: false, ratesFrom: 50 });
+    expect([...c.rows.values()].map((r) => r.convertedMinor)).toEqual([10_000n, 4_500n, 4_500n]);
+  });
+
+  it('adds up to the rows shown: archived accounts are in only when they are passed', () => {
+    expect(sections(accounts.filter((a) => !a.archived))[0]!.converted!.subtotalMinor).toBe(19_000n);
+    expect(sections(accounts)[0]!.converted!.subtotalMinor).toBe(19_900n);
+  });
+
+  it('is the plain sum for a group whose accounts are all in its own currency', () => {
+    const only = [account('a1', { groupIds: ['g1'], currency: 'EUR', balanceMinor: 100n }), account('a2', { groupIds: ['g1'], currency: 'EUR', balanceMinor: 250n })];
+    expect(sections(only)[0]!.converted).toMatchObject({ subtotalMinor: 350n, ratesFrom: null });
+  });
+
+  it('follows the Fold currency for a group without one, and keeps Ungrouped and the type view unconverted', () => {
+    expect(sections(accounts, group('g1'))[0]!.converted!.currency).toBe('USD');
+    const withLoose = sections();
+    expect(withLoose.find((s) => s.kind === 'ungrouped')!.converted).toBeUndefined();
+    expect(accountSections({ accounts, groups: [eur], view: 'type', rates, baseCurrency: 'USD' }).every((s) => s.converted === undefined)).toBe(true);
+  });
+
+  it('has no subtotal for an empty group, and none at all without rates', () => {
+    expect(sections([])[0]!.converted).toBeUndefined();
+    expect(accountSections({ accounts, groups: [eur], view: 'group' })[0]!.converted).toBeUndefined();
+  });
+
+  it('carries a missing rate through: the account has no figure and its currency is named', () => {
+    const c = sections([account('a1', { groupIds: ['g1'], currency: 'GBP', balanceMinor: 100n }), account('a2', { groupIds: ['g1'], currency: 'EUR', balanceMinor: 100n })])[0]!.converted!;
+    expect(c.missing).toEqual(['GBP']);
+    expect(c.rows.get('a1')!.convertedMinor).toBeNull();
+    expect(c.subtotalMinor).toBe(100n);
   });
 });

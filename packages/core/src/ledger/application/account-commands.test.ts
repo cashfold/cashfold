@@ -149,6 +149,31 @@ describe('groups', () => {
     await h.run(accounts.updateAccountGroup, { fold: h.fold, id: id(70), name: 'Banks', sortOrder: 5 });
     expect((await h.ledger()).groups.get(id(70))).toMatchObject({ name: 'Banks', sortOrder: 5 });
   });
+
+  it('gives a new group the Fold currency unless another is chosen, and refuses an unknown one', async () => {
+    const base = (await h.ledger()).baseCurrency ?? 'USD';
+    expect((await h.ledger()).groups.get(id(70))!.currency).toBe(base);
+    await h.run(accounts.createAccountGroup, { fold: h.fold, id: id(71), name: 'Euro', currency: 'EUR' });
+    expect((await h.ledger()).groups.get(id(71))!.currency).toBe('EUR');
+    const before = await h.replica.oplog.list(h.fold);
+    expect(await h.run(accounts.createAccountGroup, { fold: h.fold, id: id(72), name: 'Bad', currency: 'ZZZ' })).toMatchObject({ ok: false, error: { code: 'unknown_currency' } });
+    expect(await h.replica.oplog.list(h.fold)).toHaveLength(before.length);
+  });
+
+  it('changes only the currency when only the currency is given, and refuses an unknown one', async () => {
+    await h.run(accounts.updateAccountGroup, { fold: h.fold, id: id(70), color: 4, sortOrder: 3 });
+    expect(await h.run(accounts.updateAccountGroup, { fold: h.fold, id: id(70), currency: 'PLN' })).toMatchObject({ ok: true });
+    expect((await h.ledger()).groups.get(id(70))).toMatchObject({ name: 'Cash and bank', color: 4, sortOrder: 3, currency: 'PLN' });
+    expect(await h.run(accounts.updateAccountGroup, { fold: h.fold, id: id(70), currency: 'ZZZ' })).toMatchObject({ ok: false, error: { code: 'unknown_currency' } });
+    await h.run(accounts.updateAccountGroup, { fold: h.fold, id: id(70), name: 'Banks' });
+    expect((await h.ledger()).groups.get(id(70))!.currency).toBe('PLN');
+  });
+
+  it('keeps a group made without a currency (an older device) reading as null after a rename', async () => {
+    await h.replica.writePath.submit({ fold: h.fold, rec: id(73), table: TABLE.accountGroup, fields: new Map<number, FieldValue>([[GROUP_FIELD.name, 'Old'], [GROUP_FIELD.icon, null], [GROUP_FIELD.color, 0n], [GROUP_FIELD.sortOrder, 9n]]), sets: new Map() });
+    await h.run(accounts.updateAccountGroup, { fold: h.fold, id: id(73), name: 'Older' });
+    expect((await h.ledger()).groups.get(id(73))).toMatchObject({ name: 'Older', currency: null });
+  });
 });
 
 describe('moveAccountToGroup', () => {

@@ -23,7 +23,8 @@ export const ACCOUNT_FIELD = {
   creditLimitMinor: 7, icon: 8, color: 9, sortOrder: 10, archived: 11, groupIds: 12,
 } as const;
 
-export const GROUP_FIELD = { name: 1, icon: 2, color: 3, sortOrder: 4 } as const;
+/** `currency` is optional text: absent for groups made before spec 021, which read as the Fold's currency. */
+export const GROUP_FIELD = { name: 1, icon: 2, color: 3, sortOrder: 4, currency: 5 } as const;
 
 // Field 4 (icon) is reserved: a category no longer has an icon (spec 019). It is never written and must never be reused; records from older
 // devices and backups may still carry it, and it is ignored on read.
