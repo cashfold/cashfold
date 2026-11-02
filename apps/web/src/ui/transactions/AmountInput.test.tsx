@@ -56,9 +56,9 @@ describe('AmountInput with sums', () => {
     expect(text(render('abc'))).toContain('Enter the amount using digits');
   });
 
-  it('asks for the full keyboard, so the operators can be typed, and shows a sum as the example', () => {
+  it('asks for the full keyboard, so the operators can be typed, and shows no placeholder', () => {
     expect(render('')).toContain('inputMode="text"');
-    expect(render('')).toContain('placeholder="e.g. 6.25 or 6.25 + 2.75 × 2"');
+    expect(render('')).not.toContain('placeholder="');
   });
 
   it('takes an error from outside when the text itself is fine, and works with no currency (a disabled filter)', () => {

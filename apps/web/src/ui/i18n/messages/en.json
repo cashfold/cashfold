@@ -166,7 +166,6 @@
   "ledger.amount.invalid_expression": "That sum cannot be worked out. Use numbers with + − × ÷ and brackets, such as 6.25 + 2.75 × 2.",
   "ledger.amount.division_by_zero": "A sum cannot divide by zero.",
   "ledger.amount.result": "= {amount}",
-  "ledger.amount.placeholder": "e.g. 6.25 or 6.25 + 2.75 × 2",
   "ledger.rate.explain": "To count amounts in {currency} you need an exchange rate. Enter one now; you can change it later.",
   "ledger.rate.label": "Rate: {currency} per 1 USD",
   "ledger.rate.hint": "How many units of this currency one US dollar buys.",
