@@ -7,7 +7,7 @@ import { TextField } from '../forms/TextField';
 import { useI18n } from '../i18n/I18nProvider';
 import { LedgerFrame } from './LedgerFrame';
 import { useLedger } from './LedgerProvider';
-import { COLOR_COUNT, ICON_KEYS, colorFor, iconFor } from './palette';
+import { COLOR_COUNT, colorFor } from './palette';
 import { Badge, Button, Select, Tabs, SelectOption } from '../kit';
 import { useRowContextMenu } from '../desktop/ContextMenu';
 import { categoryActions, labelActions } from './category-actions';
@@ -198,7 +198,6 @@ function CategoryRow({ c, used, index, count, onEdit, onMerge, onDelete, onArchi
   return (
     <div className="flex items-center gap-3 p-3" onContextMenu={onContextMenu}>
       <span aria-hidden="true" className="inline-block size-4 shrink-0 rounded-ui" style={{ background: colorFor(c.color) }} />
-      <span aria-hidden="true">{iconFor(c.icon)}</span>
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-x-2">
           <strong className="truncate">{c.name}</strong>
@@ -218,7 +217,6 @@ function CategoryForm({ dialog, onDone }: { dialog: Extract<Dialog, { kind: 'new
   const editing = dialog.kind === 'edit' ? dialog.category : undefined;
   const direction: Direction = editing?.direction ?? (dialog as Extract<Dialog, { kind: 'new' }>).direction;
   const [name, setName] = useState(editing?.name ?? '');
-  const [icon, setIcon] = useState(editing?.icon ?? '');
   const [color, setColor] = useState(editing?.color ?? 0);
   const [parentId, setParentId] = useState<string>(editing?.parentId ?? (dialog.kind === 'new' ? dialog.parentId ?? '' : ''));
   const [error, setError] = useState<string | undefined>();
@@ -228,12 +226,12 @@ function CategoryForm({ dialog, onDone }: { dialog: Extract<Dialog, { kind: 'new
   async function submit(event: FormEvent) {
     event.preventDefault();
     if (editing === undefined) {
-      const r = await ledger.run('ledger.createCategory', { direction, parentId: parentId === '' ? null : parentId, name, icon: icon === '' ? null : icon, color });
+      const r = await ledger.run('ledger.createCategory', { direction, parentId: parentId === '' ? null : parentId, name, color });
       if (r.ok) onDone();
       else setError(ledger.explain(r.error.code));
       return;
     }
-    const changes = { name, icon: icon === '' ? null : icon, color };
+    const changes = { name, color };
     const r = await ledger.run('ledger.updateCategory', { id: editing.id, changes });
     if (!r.ok) return setError(ledger.explain(r.error.code));
     if ((editing.parentId ?? '') !== parentId) {
@@ -251,13 +249,6 @@ function CategoryForm({ dialog, onDone }: { dialog: Extract<Dialog, { kind: 'new
         <Select id="cat-parent" value={parentId} onChange={setParentId} disabled={hasChildren}>
           <SelectOption value="">{t('ledger.categories.form.topLevel')}</SelectOption>
           {roots.map((r) => <SelectOption key={r.id} value={r.id}>{r.name}</SelectOption>)}
-        </Select>
-      </div>
-      <div className="mt-4">
-        <label htmlFor="cat-icon" className="mb-3 block font-medium">{t('ledger.categories.form.icon')}</label>
-        <Select id="cat-icon" value={icon} onChange={setIcon}>
-          <SelectOption value="">{t('ledger.categories.form.noIcon')}</SelectOption>
-          {ICON_KEYS.map((k) => <SelectOption key={k} value={k}>{iconFor(k)} {t(`ledger.icon.${k}`)}</SelectOption>)}
         </Select>
       </div>
       <div className="mt-4">

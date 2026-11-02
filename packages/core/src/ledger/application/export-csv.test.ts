@@ -21,6 +21,16 @@ describe('CSV export (FR-092)', () => {
     expect(lines[3]).toBe('2026-02-03,Main,expense,-123.45,USD,Food > Veg,,,Market,posted,,,');
   });
 
+  it('has no category icon: the columns are fixed and no value is an icon key (spec 019)', () => {
+    const f = new LedgerFixture();
+    const main = f.account({ name: 'Main' });
+    const food = f.category({ name: 'Food' });
+    f.transaction(main, { amountMinor: -500n, categoryId: food, localDate: date(2026, 2, 3), note: 'Lunch' });
+    const text = exportLedgerCsv(buildLedger(f.fold));
+    expect(CSV_COLUMNS.some((c) => /icon/i.test(c))).toBe(false);
+    expect(text).not.toMatch(/icon|utensils/i);
+  });
+
   it('keeps fixed English column names and dot decimals whatever language the names are in (spec 004)', () => {
     const f = new LedgerFixture();
     const main = f.account({ name: 'Рахунок' });

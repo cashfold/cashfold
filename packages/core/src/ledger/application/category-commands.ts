@@ -15,21 +15,20 @@ export type LabelCommandError = LabelError | NotFound | DomainError<'label_exist
 
 export interface CategoryChanges {
   readonly name?: string;
-  readonly icon?: string | null;
   readonly color?: number;
   readonly sortOrder?: number;
   readonly archived?: boolean;
 }
 
 export function createCategoryCommands() {
-  const createCategory: CommandDef<{ fold: Id; id: Id; direction: Direction; parentId: Id | null; name: string; icon?: string | null; color?: number }, Id, CategoryCommandError> = {
+  const createCategory: CommandDef<{ fold: Id; id: Id; direction: Direction; parentId: Id | null; name: string; color?: number }, Id, CategoryCommandError> = {
     name: 'createCategory',
     requires: 'editor',
     foldOf: (c) => c.fold,
     async handle(c, ctx) {
       if ((await ctx.reader.getRecord(c.fold, c.id)) !== undefined) return err('category_exists', 'A category with this id already exists');
       const ledger = await loadLedger(ctx, c.fold);
-      const input: NewCategory = { direction: c.direction, parentId: c.parentId, name: c.name, icon: c.icon ?? null, color: c.color ?? 0 };
+      const input: NewCategory = { direction: c.direction, parentId: c.parentId, name: c.name, color: c.color ?? 0 };
       const valid = validateNewCategory(input, ledger.categories);
       if (!valid.ok) return valid;
       const siblings = [...ledger.categories.values()].filter((x) => x.direction === c.direction && x.parentId === c.parentId);
@@ -52,7 +51,7 @@ export function createCategoryCommands() {
         if ((await ctx.reader.getRecord(c.fold, d.id)) !== undefined) continue; // already there, or the user changed or deleted it
         drafts.push({
           fold: c.fold, rec: d.id, table: TABLE.category, sets: noSets,
-          fields: categoryFieldPatch({ direction: d.direction, parentId: d.parentId, name: d.name, icon: d.icon, color: d.color, sortOrder: d.sortOrder, archived: false }),
+          fields: categoryFieldPatch({ direction: d.direction, parentId: d.parentId, name: d.name, color: d.color, sortOrder: d.sortOrder, archived: false }),
         });
       }
       if (drafts.length === 0) return ok(0);

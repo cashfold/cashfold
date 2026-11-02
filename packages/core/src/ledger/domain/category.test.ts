@@ -82,4 +82,10 @@ describe('Category: record fields', () => {
     expect(patch.get(CATEGORY_FIELD.parentId)).toBeNull();
     expect(patch.get(CATEGORY_FIELD.name)).toBe('Work');
   });
+
+  it('writes no icon: field 4 is reserved and never written (spec 019, FR-005)', () => {
+    const patch = categoryFieldPatch({ direction: 'expense', parentId: null, name: 'Food', color: 3, sortOrder: 2, archived: false });
+    expect(patch.has(CATEGORY_FIELD.icon)).toBe(false);
+    expect([...patch.keys()].sort()).toEqual([CATEGORY_FIELD.direction, CATEGORY_FIELD.parentId, CATEGORY_FIELD.name, CATEGORY_FIELD.color, CATEGORY_FIELD.sortOrder, CATEGORY_FIELD.archived].sort());
+  });
 });

@@ -20,7 +20,6 @@ export interface NewCategory {
   readonly direction: Direction;
   readonly parentId: Id | null;
   readonly name: string;
-  readonly icon?: string | null;
   readonly color?: number;
   readonly sortOrder?: number;
 }
@@ -67,7 +66,6 @@ export function categoryFieldPatch(changes: Partial<NewCategory> & { archived?: 
   if (changes.direction !== undefined) f.set(CATEGORY_FIELD.direction, directionCode(changes.direction));
   if (changes.parentId !== undefined) f.set(CATEGORY_FIELD.parentId, changes.parentId);
   if (changes.name !== undefined) f.set(CATEGORY_FIELD.name, changes.name);
-  if (changes.icon !== undefined) f.set(CATEGORY_FIELD.icon, changes.icon);
   if (changes.color !== undefined) f.set(CATEGORY_FIELD.color, BigInt(changes.color));
   if (changes.sortOrder !== undefined) f.set(CATEGORY_FIELD.sortOrder, BigInt(changes.sortOrder));
   if (changes.archived !== undefined) f.set(CATEGORY_FIELD.archived, changes.archived);

@@ -67,6 +67,21 @@ describe('encrypted backup and restore (FR-091)', () => {
     expect((await alice.ledger(TO)).transactions.size).toBe(2);
   });
 
+  it('restores a category record that carries the reserved icon field (4) without the icon (spec 019, FR-006)', async () => {
+    alice.now += 1000;
+    const r = await alice.writePath.submit({
+      fold: FROM, rec: id(40), table: TABLE.category,
+      fields: new Map<number, never>([[1, 1n], [2, null], [3, 'Food'], [4, 'utensils'], [5, 3n]] as never), sets: new Map(),
+    });
+    expect(r.ok).toBe(true);
+    const file = await service().create(FROM, pass('p'));
+    await alice.createFold(TO, 'Restored');
+    expect(await service().restore(file, pass('p'), TO)).toMatchObject({ ok: true });
+    const food = (await alice.ledger(TO)).categories.get(id(40));
+    expect(food).toMatchObject({ name: 'Food', color: 3, direction: 'expense', parentId: null });
+    expect(food).not.toHaveProperty('icon');
+  });
+
   it('the restored data syncs like any other: it is ops waiting to be pushed', async () => {
     const file = await service().create(FROM, pass('p'));
     await alice.createFold(TO, 'Restored');

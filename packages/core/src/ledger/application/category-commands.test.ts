@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { LedgerFixture, date, id, ledgerHarness, type LedgerHarness } from '../../testing/index';
 import { defaultCategories } from '../domain/default-categories';
+import { CATEGORY_FIELD, TABLE } from '../domain/tables';
 import { createAccountCommands } from './account-commands';
 import { createCategoryCommands, createLabelCommands, labelUsage } from './category-commands';
 import { createTransactionCommands } from './transaction-commands';
@@ -54,6 +55,23 @@ describe('default categories', () => {
     const ledger = await h.ledger();
     expect(ledger.categories.get(food.id)).toMatchObject({ name: 'Їжа та напої', parentId: null });
     expect(ledger.categories.size).toBe(defaultCategories(h.fold).length);
+  });
+
+  it('writes no icon (field 4) when seeding, creating or updating, and accepts one from an older device (spec 019)', async () => {
+    await h.run(categories.seedDefaultCategories, { fold: h.fold });
+    const hasIcon = async () => [...(await h.replica.projections.listRecords(h.fold))].filter(([, st]) => st.table === TABLE.category && st.fields.has(CATEGORY_FIELD.icon));
+    expect(await hasIcon()).toEqual([]);
+    await h.run(categories.createCategory, { fold: h.fold, id: id(70), direction: 'expense' as const, parentId: null, name: 'Gadgets', color: 4 });
+    const food = defaultCategories(h.fold).find((c) => c.key === 'expense.food')!;
+    await h.run(categories.updateCategory, { fold: h.fold, id: food.id, changes: { name: 'Eating', color: 2 } });
+    expect(await hasIcon()).toEqual([]);
+
+    // A device that has not updated still writes the icon: the record takes it, and nothing else about the category changes.
+    const older = await h.replica.writePath.submit({ fold: h.fold, rec: id(70), table: TABLE.category, fields: new Map([[CATEGORY_FIELD.icon, 'cart']]) as never, sets: new Map() });
+    expect(older.ok).toBe(true);
+    const gadgets = (await h.ledger()).categories.get(id(70));
+    expect(gadgets).toMatchObject({ name: 'Gadgets', color: 4, parentId: null, direction: 'expense' });
+    expect(gadgets).not.toHaveProperty('icon');
   });
 
   it('seeding on two devices converges on the same records', async () => {
