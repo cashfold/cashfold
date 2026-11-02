@@ -118,11 +118,10 @@ describe('accountSections: converted group subtotals (spec 021)', () => {
   ];
   const sections = (list = accounts, g: AccountGroup = eur) => accountSections({ accounts: list, groups: [g], view: 'group', rates, baseCurrency: 'USD', asOfUtcS: 10_000 });
 
-  it('gives a group the converted subtotal, the per-account figures and the oldest rate date', () => {
+  it('gives a group the converted subtotal and the oldest rate date', () => {
     const live = accounts.filter((a) => !a.archived);
     const c = sections(live)[0]!.converted!;
     expect(c).toMatchObject({ currency: 'EUR', subtotalMinor: 10_000n + 4_500n + 4_500n, missing: [], overflow: false, ratesFrom: 50 });
-    expect([...c.rows.values()].map((r) => r.convertedMinor)).toEqual([10_000n, 4_500n, 4_500n]);
   });
 
   it('adds up to the rows shown: archived accounts are in only when they are passed', () => {
@@ -147,10 +146,9 @@ describe('accountSections: converted group subtotals (spec 021)', () => {
     expect(accountSections({ accounts, groups: [eur], view: 'group' })[0]!.converted).toBeUndefined();
   });
 
-  it('carries a missing rate through: the account has no figure and its currency is named', () => {
+  it('carries a missing rate through: its currency is named and the rest is still summed', () => {
     const c = sections([account('a1', { groupIds: ['g1'], currency: 'GBP', balanceMinor: 100n }), account('a2', { groupIds: ['g1'], currency: 'EUR', balanceMinor: 100n })])[0]!.converted!;
     expect(c.missing).toEqual(['GBP']);
-    expect(c.rows.get('a1')!.convertedMinor).toBeNull();
     expect(c.subtotalMinor).toBe(100n);
   });
 });

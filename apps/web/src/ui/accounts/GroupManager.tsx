@@ -5,7 +5,7 @@ import { useI18n } from '../i18n/I18nProvider';
 import { Button } from '../kit';
 
 /** The type view's list of groups, always visible, each with rename and delete. Nothing is drawn while there are no groups. */
-export function GroupManager({ groups, onRename, onDelete }: { groups: readonly AccountGroup[]; onRename: (group: AccountGroup) => void; onDelete: (group: AccountGroup) => void }) {
+export function GroupManager({ groups, onEdit, onDelete }: { groups: readonly AccountGroup[]; onEdit: (group: AccountGroup) => void; onDelete: (group: AccountGroup) => void }) {
   const { t } = useI18n();
   if (groups.length === 0) return null;
   return (
@@ -17,7 +17,7 @@ export function GroupManager({ groups, onRename, onDelete }: { groups: readonly 
           <li key={g.id} className="flex flex-wrap items-center justify-between gap-2 p-3" data-testid="group-row">
             <span className="min-w-0 break-words font-medium">{g.name}</span>
             <span className="flex flex-wrap gap-2">
-              <Button type="button" outline onClick={() => onRename(g)} aria-label={`${t('ledger.groups.rename')}: ${g.name}`}>{t('ledger.groups.rename')}</Button>
+              <Button type="button" outline onClick={() => onEdit(g)} aria-label={`${t('ledger.groups.edit')}: ${g.name}`}>{t('ledger.groups.edit')}</Button>
               <Button type="button" outline onClick={() => onDelete(g)} aria-label={`${t('ledger.groups.delete')}: ${g.name}`}>{t('ledger.groups.delete')}</Button>
             </span>
           </li>

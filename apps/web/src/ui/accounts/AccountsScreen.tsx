@@ -10,7 +10,7 @@ import { useRowContextMenu } from '../desktop/ContextMenu';
 import { usePrivacy } from '../privacy/usePrivacy';
 import { useI18n } from '../i18n/I18nProvider';
 import { Amount, Avatar, Badge, Button, ConfirmDialog, Disclosure, EmptyState, BanknotesIcon, Label, Sheet, Switch, SwitchField, SelectOption } from '../kit';
-import { dateToInput, formatDate, inputToDate, localDateOfUtcSeconds, todayLocal } from '../ledger/dates';
+import { dateToInput, inputToDate, todayLocal } from '../ledger/dates';
 import { decimalsOf, formatPlain } from '../ledger/format';
 import { LedgerFrame } from '../ledger/LedgerFrame';
 import { useLedger, type Outcome } from '../ledger/LedgerProvider';
@@ -21,7 +21,7 @@ import { useStatus } from '../shell/StatusProvider';
 import { AmountInput } from '../transactions/AmountInput';
 import { accountActions } from './account-actions';
 import { moveWithin } from './account-order';
-import { accountSections, groupOf, type AccountSection, type SectionConversion } from './account-sections';
+import { accountSections, groupOf, type AccountSection } from './account-sections';
 import { effectiveView } from './accounts-view';
 import { CURRENCIES } from './currencies';
 import { AccountsViewSwitch } from './AccountsViewSwitch';
@@ -125,7 +125,6 @@ export function AccountsScreen() {
       {section.accounts.map((a, index) => (
         <AccountItem
           key={a.id} a={a} index={index} count={section.accounts.length} showGroup={view === 'type'} groups={groups} locale={locale}
-          conversion={section.converted && a.currency !== section.converted.currency ? section.converted : undefined}
           onAdd={() => openAdd({ accountId: a.id })} onAdjust={() => setAdjusting(a)} onEdit={() => setEditing(a)}
           onMove={(direction) => void move(section.accounts, index, direction)} onMoveToGroup={(group) => void moveToGroup(a, group)}
           onToggleArchived={() => void archive(a, !a.archived)} onRemove={() => void askDelete(a)}
@@ -167,7 +166,7 @@ export function AccountsScreen() {
             key={section.key} section={section}
             actions={section.group ? (
               <span className="flex flex-wrap gap-2">
-                <Button plain onClick={() => setGroupForm(section.group)} aria-label={`${t('ledger.groups.rename')}: ${section.group.name}`}>{t('ledger.groups.rename')}</Button>
+                <Button plain onClick={() => setGroupForm(section.group)} aria-label={`${t('ledger.groups.edit')}: ${section.group.name}`}>{t('ledger.groups.edit')}</Button>
                 <Button plain onClick={() => setGroupDelete(section.group)} aria-label={`${t('ledger.groups.delete')}: ${section.group.name}`}>{t('ledger.groups.delete')}</Button>
               </span>
             ) : undefined}
@@ -177,7 +176,7 @@ export function AccountsScreen() {
         ),
       )}
 
-      {view === 'type' ? <GroupManager groups={groups} onRename={setGroupForm} onDelete={setGroupDelete} /> : null}
+      {view === 'type' ? <GroupManager groups={groups} onEdit={setGroupForm} onDelete={setGroupDelete} /> : null}
 
       {groupForm ? <GroupFormDialog key={groupForm === 'new' ? 'new' : groupForm.id} group={groupForm} onClose={() => setGroupForm(undefined)} /> : null}
       {groupDelete ? <GroupDeleteDialog key={groupDelete.id} group={groupDelete} onClose={() => setGroupDelete(undefined)} /> : null}
@@ -234,12 +233,12 @@ export function AccountsScreen() {
 }
 
 interface AccountItemProps {
-  a: AccountRow; index: number; count: number; showGroup: boolean; groups: readonly AccountGroup[]; locale: string; conversion?: SectionConversion | undefined;
+  a: AccountRow; index: number; count: number; showGroup: boolean; groups: readonly AccountGroup[]; locale: string;
   onAdd: () => void; onAdjust: () => void; onEdit: () => void; onMove: (direction: -1 | 1) => void; onMoveToGroup: (group: AccountGroup | undefined) => void;
   onToggleArchived: () => void; onRemove: () => void;
 }
 
-function AccountItem({ a, index, count, showGroup, groups, locale, conversion, onAdd, onAdjust, onEdit, onMove, onMoveToGroup, onToggleArchived, onRemove }: AccountItemProps) {
+function AccountItem({ a, index, count, showGroup, groups, locale, onAdd, onAdjust, onEdit, onMove, onMoveToGroup, onToggleArchived, onRemove }: AccountItemProps) {
   const { t } = useI18n();
   const { on: privacy } = usePrivacy();
   const current = groupOf(a, groups);
@@ -256,15 +255,6 @@ function AccountItem({ a, index, count, showGroup, groups, locale, conversion, o
     moveToGroup: (id) => onMoveToGroup(id === null ? undefined : groups.find((g) => g.id === id)),
   });
   // The desktop pop-up takes at most 12 short, plain items, so it leaves out the one-per-group moves; the actions button has them all.
-  const row = conversion?.rows.get(a.id);
-  const [before = '', after = ''] = t('ledger.groups.converted', { amount: '\u0000' }).split('\u0000');
-  const convertedLine = conversion === undefined || row === undefined ? null : row.convertedMinor === null ? (
-    <p className="text-sm text-muted" data-testid="account-converted">{conversion.missing.includes(a.currency) || conversion.missing.includes(conversion.currency) ? t('ledger.groups.noRate') : t('ledger.groups.tooLarge')}</p>
-  ) : (
-    <p className="text-sm text-muted" data-testid="account-converted" title={row.rateAsOf === null ? undefined : t('ledger.groups.ratesFrom', { date: formatDate(localDateOfUtcSeconds(row.rateAsOf), locale) })}>
-      {before}<Amount minor={row.convertedMinor} currency={conversion.currency} locale={locale} />{after}
-    </p>
-  );
   const onContextMenu = useRowContextMenu(actions.filter((x) => !x.id.startsWith('move-to:')));
   return (
     <li className="flex flex-wrap items-center gap-3 p-3" data-testid="account-row" data-account-id={a.id} onContextMenu={onContextMenu}>
@@ -282,7 +272,6 @@ function AccountItem({ a, index, count, showGroup, groups, locale, conversion, o
         <div className="text-lg" {...(privacy ? {} : { 'data-sign': a.balanceMinor === null ? 'zero' : a.balanceMinor > 0n ? 'gain' : a.balanceMinor < 0n ? 'loss' : 'zero' })} data-testid="account-balance">
           {a.balanceMinor === null ? t('ledger.accounts.balanceUnavailable') : <Amount minor={a.balanceMinor} currency={a.currency} locale={locale} />}
         </div>
-        {convertedLine}
       </div>
       <RowActionsMenu label={`${t('ledger.list.actions')} ${a.name}`} actions={actions} />
     </li>

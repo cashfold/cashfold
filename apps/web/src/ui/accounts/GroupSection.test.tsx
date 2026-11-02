@@ -59,7 +59,7 @@ describe('a group section', () => {
 
 describe('a converted group section (spec 021)', () => {
   const conv = (over: Partial<NonNullable<AccountSection['converted']>> = {}): NonNullable<AccountSection['converted']> => ({
-    currency: cur('EUR'), subtotalMinor: 14_500n, rows: new Map(), ratesFrom: 1_761_955_200, missing: [], overflow: false, ...over,
+    currency: cur('EUR'), subtotalMinor: 14_500n, ratesFrom: 1_761_955_200, missing: [], overflow: false, ...over,
   });
   const converted = (over: Partial<NonNullable<AccountSection['converted']>> = {}) => render(section({ converted: conv(over) }));
 

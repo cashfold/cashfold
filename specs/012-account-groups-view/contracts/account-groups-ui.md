@@ -66,7 +66,7 @@ Each key must exist in `en.json`, `uk.json` and `pl.json` (`catalogue-complete.t
 | `status.accountMoved`               | Moved to {name}                                                                                                                        |
 | `status.accountUngrouped`           | Moved out of its group                                                                                                                 |
 | `ledger.groups.add`                 | Add group                                                                                                                              |
-| `ledger.groups.rename`              | Rename group                                                                                                                           |
+| `ledger.groups.edit`                | Edit group    |
 | `ledger.groups.delete`              | Delete group                                                                                                                           |
 | `ledger.groups.ungrouped`           | Ungrouped                                                                                                                              |
 | `ledger.groups.empty`               | No accounts in this group yet                                                                                                          |

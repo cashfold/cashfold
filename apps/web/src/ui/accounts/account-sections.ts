@@ -1,5 +1,5 @@
 import {
-  ACCOUNT_KINDS, endOfDayUtcS, groupBalances, type AccountGroup, type AccountKind, type AccountRow, type CurrencyCode, type ExchangeRate, type GroupBalanceRow,
+  ACCOUNT_KINDS, endOfDayUtcS, groupBalances, type AccountGroup, type AccountKind, type AccountRow, type CurrencyCode, type ExchangeRate,
 } from '@cashfold/core';
 import { todayLocal } from '../ledger/dates';
 
@@ -13,7 +13,6 @@ export interface SectionConversion {
   readonly currency: CurrencyCode;
   /** `null` when no account could be converted. */
   readonly subtotalMinor: bigint | null;
-  readonly rows: ReadonlyMap<string, GroupBalanceRow>;
   /** The oldest rate date used, in UTC seconds; `null` when no rate was needed. */
   readonly ratesFrom: number | null;
   readonly missing: readonly CurrencyCode[];
@@ -74,7 +73,7 @@ export function accountSections(input: {
     const r = groupBalances({ accounts: own, groupCurrency: currency, rates, asOfUtcS });
     const dates = r.rows.map((x) => x.rateAsOf).filter((d): d is number => d !== null);
     const ratesFrom = dates.length === 0 ? null : dates.reduce((a, b) => (b < a ? b : a));
-    return { ...section, converted: { currency, subtotalMinor: r.subtotalMinor, rows: new Map(r.rows.map((x) => [x.id, x])), ratesFrom, missing: r.missing, overflow: r.overflow } };
+    return { ...section, converted: { currency, subtotalMinor: r.subtotalMinor, ratesFrom, missing: r.missing, overflow: r.overflow } };
   });
   if (loose.length > 0) sections.push({ key: 'ungrouped', kind: 'ungrouped', accounts: loose, totals: totalsOf(loose) });
   return sections;

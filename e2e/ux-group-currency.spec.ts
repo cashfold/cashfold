@@ -41,7 +41,7 @@ async function setRate(page: Page, currency: string, rate: string): Promise<void
 }
 
 async function changeCurrency(page: Page, group: string, currency: string): Promise<void> {
-  await page.getByRole('button', { name: `Rename group: ${group}` }).click();
+  await page.getByRole('button', { name: `Edit group: ${group}` }).click();
   const dialog = page.getByRole('dialog');
   await choose(dialog.getByLabel('Currency'), currency);
   await dialog.getByRole('button', { name: 'Save' }).click();
@@ -65,7 +65,7 @@ test.describe('@ux group currency', () => {
     await addAccount(page, 'Main', '10.00', 'USD', 'Savings');
 
     await changeCurrency(page, 'Savings', 'EUR');
-    await page.getByRole('button', { name: 'Rename group: Savings' }).click();
+    await page.getByRole('button', { name: 'Edit group: Savings' }).click();
     await expect(page.getByRole('dialog').getByLabel('Currency')).toContainText('EUR');
     await page.getByRole('button', { name: 'Cancel' }).click();
 
@@ -73,7 +73,7 @@ test.describe('@ux group currency', () => {
     await page.reload();
     await unlock(page, PASSWORD);
     await go(page, 'Accounts');
-    await page.getByRole('button', { name: 'Rename group: Savings' }).click();
+    await page.getByRole('button', { name: 'Edit group: Savings' }).click();
     await expect(page.getByRole('dialog').getByLabel('Currency')).toContainText('PLN');
   });
 
@@ -92,22 +92,18 @@ test.describe('@ux group currency', () => {
     const savings = section(page, 'Savings');
     await expect(savings.getByTestId('group-subtotal')).toContainText('190.00 EUR');
     const row = (name: string) => savings.getByTestId('account-row').filter({ has: page.getByRole('link', { name, exact: true }) });
-    await expect(row('Euro').getByTestId('account-converted')).toHaveCount(0);
-    await expect(row('Dollar').getByTestId('account-converted')).toContainText('≈ 45.00 EUR');
-    await expect(row('Zloty').getByTestId('account-converted')).toContainText('≈ 45.00 EUR');
+    await expect(savings.getByTestId('account-converted')).toHaveCount(0); // only the group's sum is converted, never a single account
     await expect(savings.getByTestId('group-subtotal').locator('[title^="Converted at rates from"]')).toHaveCount(1);
 
     // The group's currency changes how it is shown; the accounts keep their balances.
     await changeCurrency(page, 'Savings', 'PLN');
     await expect(savings.getByTestId('group-subtotal')).toContainText('844.44 PLN');
-    await expect(row('Dollar').getByTestId('account-converted')).toContainText('≈ 200.00 PLN');
     await expect(row('Euro').getByTestId('account-balance')).toContainText('100.00 EUR');
     await expectNoA11yViolations();
 
-    // Privacy mode hides the converted figures too.
+    // Privacy mode hides the converted subtotal too.
     await page.getByTestId('privacy-switch').click();
     await expect(savings.getByTestId('group-subtotal').locator('[data-privacy-mask]')).toHaveCount(1);
-    await expect(row('Dollar').getByTestId('account-converted').locator('[data-privacy-mask]')).toHaveCount(1);
   });
 
   test('says plainly when a rate is missing, and never shows zero (user story 3)', async ({ page, expectNoA11yViolations }) => {
@@ -120,7 +116,6 @@ test.describe('@ux group currency', () => {
     await expect(travel.getByTestId('group-subtotal')).toContainText('No total yet');
     await expect(travel.getByTestId('group-subtotal')).not.toContainText('0.00');
     await expect(travel.getByTestId('account-row')).toContainText('20.00 EUR');
-    await expect(travel.getByTestId('account-converted')).toHaveText('no rate');
     await expect(page.getByText('Account saved')).toHaveCount(0, { timeout: 15_000 }); // a toast fading out is not what is being checked
     await expectNoA11yViolations();
     await page.emulateMedia({ colorScheme: 'dark' });
@@ -134,7 +129,6 @@ test.describe('@ux group currency', () => {
     await go(page, 'Accounts');
     await expect(section(page, 'Travel').getByTestId('group-subtotal')).toContainText('25.00 USD');
     await expect(section(page, 'Travel').getByRole('status')).toHaveCount(0);
-    await expect(section(page, 'Travel').getByTestId('account-converted')).toContainText('≈ 25.00 USD');
   });
 
   test.describe('a Polish session', () => {

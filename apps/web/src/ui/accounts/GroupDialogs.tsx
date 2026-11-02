@@ -68,7 +68,7 @@ export function GroupFormDialog({ group, onClose }: { group: { id: Id; name: str
   }
 
   return (
-    <Sheet open onClose={() => onClose()} title={group === 'new' ? t('ledger.groups.add') : t('ledger.groups.rename')}>
+    <Sheet open onClose={() => onClose()} title={group === 'new' ? t('ledger.groups.add') : t('ledger.groups.edit')}>
       <GroupFormView t={t} mode={group === 'new' ? 'create' : 'rename'} name={name} currency={currency} error={error} busy={busy} onChange={setName} onCurrencyChange={setCurrency} onSubmit={() => void submit()} onCancel={() => onClose()} />
     </Sheet>
   );
