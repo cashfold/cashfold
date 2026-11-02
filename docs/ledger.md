@@ -30,6 +30,10 @@ uses two rates, and both are recorded.
 **Last change (FR-053)** is not a stored field. It is read from the field clocks: the newest write to the record and the device that
 made it.
 
+## Amounts you type
+
+A money field takes a plain number (`12.50`) or a sum made of numbers, `+`, `−` (`-`), `×` (`*`, `x`), `÷` (`/`) and brackets, such as `12.50 + 3.20 * 2 + 4`. The sum stays in the field as typed, the field shows its result beside it, and only the result is saved: nothing about the sum is stored, synced or exported. Sums are worked out exactly (a value is a fraction of two `bigint`s, so `10 / 3 * 3` is `10`), in the language's own number marks, and rounded once at the end, half to even, to the currency's decimals. A plain number with more decimals than the currency has is still an error; only a calculated result is rounded. The code is `shared-kernel/amount-expression.ts` in `core`, loaded as its own small chunk by the web app.
+
 ## Balances
 
 `balance(account, asOf) = opening + Σ posted entries dated ≤ asOf`, as `bigint`, computed from the entries every time and never

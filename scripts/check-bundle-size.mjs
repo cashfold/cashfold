@@ -1,5 +1,5 @@
 // Bundle budgets for the static export (research R-12), gzipped:
-//   initial: the JavaScript the home page loads up front (scripts referenced by out/index.html)  <= 366 KiB
+//   initial: the JavaScript the home page loads up front (scripts referenced by out/index.html)  <= 367 KiB
 //   worker:  every other JavaScript chunk (Core Worker and lazily loaded code)                   <= 278 KiB
 // The first targets (250 and 150 KiB) were set before the app existed. Measured at the end of the first release: 254.5 and 266.0 KiB, the
 // worker holding the protocol schemas (zod), the SQLite and Argon2 glue and every command and query. These limits are the measurement plus
@@ -25,7 +25,9 @@ import { join } from 'node:path';
 import { gzipSync } from 'node:zlib';
 
 const OUT = 'apps/web/out';
-const INITIAL_BUDGET = Number(process.env.BUNDLE_INITIAL_BUDGET_BYTES ?? 366 * 1024);
+// 367 KiB (was 366): math in amount fields (spec 020) adds about 0.8 KB to the initial chunk (the sum check, the amount field's result line and
+// their English strings; the evaluator itself is a lazy chunk), and CI measures about 0.6 KB more than a laptop build of the same code.
+const INITIAL_BUDGET = Number(process.env.BUNDLE_INITIAL_BUDGET_BYTES ?? 367 * 1024);
 const WORKER_BUDGET = Number(process.env.BUNDLE_WORKER_BUDGET_BYTES ?? 278 * 1024);
 const CATALOGUE_BUDGET = Number(process.env.BUNDLE_CATALOGUE_BUDGET_BYTES ?? 40 * 1024);
 // A catalogue chunk is a JSON module whose first key is the first error message.

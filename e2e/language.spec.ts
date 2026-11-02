@@ -92,6 +92,24 @@ test.describe('@language', () => {
         await noSideways(page, `the add sheet in ${language}`);
       });
 
+      test('a sum is read with the language\'s marks and its result is written in them (spec 020)', async ({ page }) => {
+        test.setTimeout(180_000);
+        const words = TEXT[language];
+        await page.goto('/sign-up/');
+        await signUp(page, words.starterFold);
+        await go(page, 'Accounts');
+        await page.locator('main h1').locator('xpath=..').getByRole('button').last().click();
+        const dialog = page.getByRole('dialog');
+        const opening = dialog.getByLabel(words.opening);
+        await opening.fill('1 234,50 + 10,25');
+        await expect(dialog.getByTestId('amount-result')).toHaveText(/^= 1[\s\u00a0\u202f]244,75 /);
+        await opening.fill('1.5 + 2.5');
+        await expect(dialog.getByTestId('amount-result')).toHaveText(/^= 4,00 /);
+        await opening.fill('12 +');
+        await expect(dialog.getByTestId('amount-result')).toHaveCount(0);
+        await expect(opening).toHaveAttribute('aria-invalid', 'true');
+      });
+
       test('an amount typed with an ordinary space and a comma is saved and shown back the way the language writes it', async ({ page }) => {
         test.setTimeout(180_000);
         const words = TEXT[language];

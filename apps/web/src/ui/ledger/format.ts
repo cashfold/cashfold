@@ -1,4 +1,4 @@
-import { exponentOf, formatAmount, parseAmountText, parseCurrency, type AmountTextError, type DomainError, type Result } from '@cashfold/core';
+import { exponentOf, formatAmount, isAmountExpression, parseAmountText, parseCurrency, type AmountTextError, type DomainError, type Result } from '@cashfold/core';
 import { separatorsFor } from '../i18n/i18n';
 
 // Exact money text in and out. Amounts are bigint minor units everywhere; text is parsed and printed with the
@@ -41,10 +41,27 @@ export function normalizeAmountText(text: string, locale: string): string {
   return out;
 }
 
+type EvaluateAmount = typeof import('@cashfold/core/amount-expression').evaluateAmount;
+let evaluate: EvaluateAmount | undefined;
+
+/**
+ * Loads the sum evaluator, which is its own small chunk so the screens that never see a sum do not carry it (spec 020). The ledger asks for it as soon as
+ * it is in use, well before a person can type a sum; until it is there a sum cannot be worked out and reads as "not ready".
+ */
+export async function loadAmountExpression(): Promise<void> {
+  if (evaluate === undefined) evaluate = (await import('@cashfold/core/amount-expression')).evaluateAmount;
+}
+export const amountExpressionLoaded = (): boolean => evaluate !== undefined;
+
 export function parseMoney(text: string, currency: string, locale: string): Result<bigint, MoneyTextError> {
   const code = parseCurrency(currency);
   if (!code.ok) return code;
-  const r = parseAmountText(normalizeAmountText(text, locale), code.value, separatorsFor(locale));
+  // A sum ("12.50 + 3.20 * 2") is worked out exactly and rounded once at the end (spec 020); the evaluator applies the typing leniency to each number
+  // itself. Anything else is a plain amount and keeps the old rules, including "too many decimals" being an error.
+  if (isAmountExpression(text) && evaluate === undefined) return { ok: false, error: { code: 'invalid_format', message: 'Sums are not ready yet' } };
+  const r = isAmountExpression(text) && evaluate !== undefined
+    ? evaluate(text, code.value, separatorsFor(locale))
+    : parseAmountText(normalizeAmountText(text, locale), code.value, separatorsFor(locale));
   return r.ok ? { ok: true, value: r.value.minor } : r;
 }
 

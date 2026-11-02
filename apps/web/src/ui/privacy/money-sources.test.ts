@@ -19,8 +19,8 @@ const files = [...sources(src)];
 const text = (file: string): string => readFileSync(file, 'utf8');
 const rel = (file: string): string => relative(src, file);
 
-/** The files allowed to turn a number into money text. */
-const FORMATTERS: ReadonlySet<string> = new Set(['ui/ledger/format.ts', 'ui/ledger/LedgerProvider.tsx', 'ui/kit/amount.tsx', 'ui/desktop/ReminderService.tsx']);
+/** The files allowed to turn a number into money text. `AmountInput` is a form field: it shows the real result of the sum being typed (forms always use real figures, spec 016 FR-012). */
+const FORMATTERS: ReadonlySet<string> = new Set(['ui/ledger/format.ts', 'ui/ledger/LedgerProvider.tsx', 'ui/kit/amount.tsx', 'ui/desktop/ReminderService.tsx', 'ui/transactions/AmountInput.tsx']);
 
 /**
  * `.money(` and `.signed(` calls (the ledger's strings) per file. A string cannot be revealed on its own, so new uses belong in an `<Amount>`. This table

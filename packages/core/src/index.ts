@@ -4,6 +4,7 @@ export * from './shared-kernel/money';
 export * from './shared-kernel/rate';
 export * from './shared-kernel/fx';
 export * from './shared-kernel/amount-text';
+export * from './shared-kernel/is-amount-expression';
 export * from './shared-kernel/local-date';
 export * from './shared-kernel/id';
 export * from './sync/domain/hlc';
