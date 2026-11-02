@@ -58,6 +58,13 @@ describe('decodeGroup, decodeCategory, decodeLabel', () => {
     expect(decodeGroup(id(1), rec(TABLE.tag, { [GROUP_FIELD.name]: 'x' }))).toBeUndefined();
   });
 
+  it('decodes the optional group currency, and reads a missing or non-text one as null', () => {
+    const group = (extra: Record<number, unknown>) => decodeGroup(id(1), rec(TABLE.accountGroup, { [GROUP_FIELD.name]: 'Banks', ...extra }));
+    expect(group({ [GROUP_FIELD.currency]: 'EUR' })).toMatchObject({ currency: 'EUR' });
+    expect(group({})).toMatchObject({ currency: null });
+    expect(group({ [GROUP_FIELD.currency]: 7n })).toMatchObject({ currency: null });
+  });
+
   it('decodes a category with its parent, and rejects bad shapes', () => {
     const ok = decodeCategory(id(1), rec(TABLE.category, { [CATEGORY_FIELD.direction]: 2n, [CATEGORY_FIELD.name]: 'Pay', [CATEGORY_FIELD.parentId]: id(2) }));
     expect(ok).toMatchObject({ direction: 'income', parentId: id(2), archived: false });

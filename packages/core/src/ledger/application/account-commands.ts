@@ -1,3 +1,4 @@
+import { parseCurrency } from '../../shared-kernel/currency';
 import type { Id } from '../../shared-kernel/id';
 import { err, ok, type DomainError } from '../../shared-kernel/result';
 import type { CommandDef, QueryDef } from '../../sync/application/buses';
@@ -14,7 +15,7 @@ import { loadAccount, loadLedger, noSets, type NotFound } from './context';
 
 export type AccountExists = DomainError<'account_exists'>;
 export type OpeningDateError = DomainError<'opening_date_after_entries'>;
-export type GroupError = DomainError<'invalid_group_name' | 'group_exists' | 'group_name_taken' | 'unknown_group'>;
+export type GroupError = DomainError<'invalid_group_name' | 'group_exists' | 'group_name_taken' | 'unknown_group' | 'unknown_currency'>;
 export type ConfirmationRequired = DomainError<'confirmation_required'>;
 
 const MAX_GROUP_NAME = 80;
@@ -90,7 +91,7 @@ export function createAccountCommands() {
 
   // ---- groups
 
-  const createAccountGroup: CommandDef<{ fold: Id; id: Id; name: string; icon?: string | null; color?: number }, Id, GroupError> = {
+  const createAccountGroup: CommandDef<{ fold: Id; id: Id; name: string; icon?: string | null; color?: number; currency?: string }, Id, GroupError> = {
     name: 'createAccountGroup',
     requires: 'editor',
     foldOf: (c) => c.fold,
@@ -99,10 +100,13 @@ export function createAccountCommands() {
       if (name === undefined) return err('invalid_group_name', 'A group name has 1 to 80 characters');
       if ((await ctx.reader.getRecord(c.fold, c.id)) !== undefined) return err('group_exists', 'A group with this id already exists');
       const ledger = await loadLedger(ctx, c.fold);
+      const currency = parseCurrency(c.currency ?? ledger.baseCurrency ?? 'USD');
+      if (!currency.ok) return currency;
       if ([...ledger.groups.values()].some((g) => sameLabel(g.name, name))) return err('group_name_taken', GROUP_NAME_TAKEN);
       const fields = new Map<number, FieldValue>([
         [GROUP_FIELD.name, name], [GROUP_FIELD.icon, c.icon ?? null], [GROUP_FIELD.color, BigInt(c.color ?? 0)],
         [GROUP_FIELD.sortOrder, BigInt(maxOf([...ledger.groups.values()].map((g) => g.sortOrder), -1) + 1)],
+        [GROUP_FIELD.currency, currency.value],
       ]);
       const written = await ctx.submit([{ fold: c.fold, rec: c.id, table: TABLE.accountGroup, fields, sets: noSets }]);
       if (!written.ok) return written as never;
@@ -110,7 +114,7 @@ export function createAccountCommands() {
     },
   };
 
-  const updateAccountGroup: CommandDef<{ fold: Id; id: Id; name?: string; icon?: string | null; color?: number; sortOrder?: number }, true, GroupError> = {
+  const updateAccountGroup: CommandDef<{ fold: Id; id: Id; name?: string; icon?: string | null; color?: number; sortOrder?: number; currency?: string }, true, GroupError> = {
     name: 'updateAccountGroup',
     requires: 'editor',
     foldOf: (c) => c.fold,
@@ -128,6 +132,11 @@ export function createAccountCommands() {
       if (c.icon !== undefined) fields.set(GROUP_FIELD.icon, c.icon);
       if (c.color !== undefined) fields.set(GROUP_FIELD.color, BigInt(c.color));
       if (c.sortOrder !== undefined) fields.set(GROUP_FIELD.sortOrder, BigInt(c.sortOrder));
+      if (c.currency !== undefined) {
+        const currency = parseCurrency(c.currency);
+        if (!currency.ok) return currency;
+        fields.set(GROUP_FIELD.currency, currency.value);
+      }
       if (fields.size > 0) {
         const written = await ctx.submit([{ fold: c.fold, rec: c.id, table: TABLE.accountGroup, fields, sets: noSets }]);
         if (!written.ok) return written as never;

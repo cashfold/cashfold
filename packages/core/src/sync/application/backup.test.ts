@@ -82,6 +82,19 @@ describe('encrypted backup and restore (FR-091)', () => {
     expect(food).not.toHaveProperty('icon');
   });
 
+  it('restores a group currency, and a group without one still reads as the Fold currency (spec 021)', async () => {
+    alice.now += 1000;
+    const put = (n: number, fields: Array<[number, unknown]>) => alice.writePath.submit({ fold: FROM, rec: id(n), table: TABLE.accountGroup, fields: new Map(fields as never), sets: new Map() });
+    expect((await put(50, [[1, 'Euro'], [2, null], [3, 0n], [4, 0n], [5, 'EUR']])).ok).toBe(true);
+    expect((await put(51, [[1, 'Old'], [2, null], [3, 0n], [4, 1n]])).ok).toBe(true);
+    const file = await service().create(FROM, pass('p'));
+    await alice.createFold(TO, 'Restored');
+    expect(await service().restore(file, pass('p'), TO)).toMatchObject({ ok: true });
+    const restored = await alice.ledger(TO);
+    expect(restored.groups.get(id(50))!.currency).toBe('EUR');
+    expect(restored.groups.get(id(51))!.currency).toBeNull();
+  });
+
   it('the restored data syncs like any other: it is ops waiting to be pushed', async () => {
     const file = await service().create(FROM, pass('p'));
     await alice.createFold(TO, 'Restored');

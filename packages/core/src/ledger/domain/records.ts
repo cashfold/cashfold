@@ -98,6 +98,8 @@ export interface AccountGroup {
   readonly icon: string | null;
   readonly color: number;
   readonly sortOrder: number;
+  /** The currency the group is shown in; null follows the Fold's currency. */
+  readonly currency: string | null;
 }
 
 export function decodeGroup(rec: Id, state: RecordState): AccountGroup | undefined {
@@ -105,7 +107,7 @@ export function decodeGroup(rec: Id, state: RecordState): AccountGroup | undefin
   const f = new Fields(state);
   const name = f.text(GROUP_FIELD.name);
   if (name === undefined) return undefined;
-  return { id: rec, name, icon: f.nullableText(GROUP_FIELD.icon) ?? null, color: f.int(GROUP_FIELD.color, 0), sortOrder: f.int(GROUP_FIELD.sortOrder, 0) };
+  return { id: rec, name, icon: f.nullableText(GROUP_FIELD.icon) ?? null, color: f.int(GROUP_FIELD.color, 0), sortOrder: f.int(GROUP_FIELD.sortOrder, 0), currency: f.nullableText(GROUP_FIELD.currency) ?? null };
 }
 
 export interface Category extends CategoryNode {
