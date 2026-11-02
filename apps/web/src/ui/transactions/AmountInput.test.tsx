@@ -58,7 +58,7 @@ describe('AmountInput with sums', () => {
 
   it('asks for the full keyboard, so the operators can be typed, and shows a sum as the example', () => {
     expect(render('')).toContain('inputMode="text"');
-    expect(render('')).toContain('placeholder="e.g. 12.50 or 12.50 + 3.20 × 2"');
+    expect(render('')).toContain('placeholder="e.g. 6.25 or 6.25 + 2.75 × 2"');
   });
 
   it('takes an error from outside when the text itself is fine, and works with no currency (a disabled filter)', () => {
