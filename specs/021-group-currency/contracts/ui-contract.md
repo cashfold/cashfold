@@ -37,14 +37,14 @@ Pure, bigint only, the same rule as the Overview's `netWorth`.
 | Section heading | the name only |
 | Subtotal | one `Amount` in the group's currency, `data-testid="group-subtotal"`; with a missing rate it is of the others and the note below says so; with none convertible: "No total yet" |
 | Note | `role="status"`: "Left out: no exchange rate for USD, PLN" with a link "Enter rates" to where rates are entered |
-| Account row | the account's own balance as today; when its currency differs from its group's: a second figure "≈ 183.20 EUR" (`data-testid="account-converted"`), or "no rate" |
-| Rates date | the tooltip (`title`) of the subtotal and of each "≈" figure: "Converted at rates from 30 Oct 2026"; no separate line |
-| Privacy mode | converted amounts are `Amount`s and follow it |
+| Account row | the account's own balance in its own currency only; no converted figure (removed after release 0.13) |
+| Rates date | the tooltip (`title`) of the subtotal: "Converted at rates from 30 Oct 2026"; no separate line |
+| Privacy mode | the converted subtotal is an `Amount` and follows it |
 | Ungrouped section and by-type view | unchanged |
 
 ## 5. Strings (EN, UK, PL)
 
-Added: `ledger.groups.currency`, `ledger.groups.converted` ("≈ {amount}"), `ledger.groups.noRate`, `ledger.groups.leftOut`, `ledger.groups.noTotal`, `ledger.groups.ratesFrom`, `ledger.groups.enterRates`, `ledger.groups.tooLarge`.
+Added: `ledger.groups.currency`, `ledger.groups.leftOut`, `ledger.groups.noTotal`, `ledger.groups.ratesFrom`, `ledger.groups.enterRates`, `ledger.groups.tooLarge`.
 
 ## 6. Unchanged
 

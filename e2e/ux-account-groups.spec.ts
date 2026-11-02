@@ -247,7 +247,7 @@ test.describe('@ux account groups', () => {
     await go(page, 'Accounts');
 
     // Rename updates the heading and every account's label.
-    await section(page, 'Household').getByRole('button', { name: 'Rename group: Household' }).click();
+    await section(page, 'Household').getByRole('button', { name: 'Edit group: Household' }).click();
     await page.getByRole('dialog').getByLabel('Group name').fill('Home');
     await page.getByRole('dialog').getByRole('button', { name: 'Save' }).click();
     await expect(page.getByRole('heading', { level: 2, name: 'Home' })).toBeVisible();
@@ -348,7 +348,7 @@ test.describe('@ux account groups', () => {
     await go(second.page, 'Accounts');
     await expect(section(second.page, 'Household')).toBeVisible({ timeout: 60_000 });
 
-    await section(page, 'Household').getByRole('button', { name: 'Rename group: Household' }).click();
+    await section(page, 'Household').getByRole('button', { name: 'Edit group: Household' }).click();
     await page.getByRole('dialog').getByLabel('Group name').fill('Home');
     await page.getByRole('dialog').getByRole('button', { name: 'Save' }).click();
     await expect(page.locator('[data-sync-state]')).toHaveAttribute('data-sync-state', 'synced', { timeout: 60_000 });
