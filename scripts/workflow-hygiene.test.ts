@@ -92,6 +92,30 @@ describe('pr-title.yml', () => {
   });
 });
 
+describe('the release pipeline', () => {
+  it('restores no dependency cache in release.yml: a poisoned cache could reach a signed release, and a release is rare enough for a cold install', () => {
+    for (const step of stepsOf(load('release.yml')).filter((s) => s.uses?.startsWith('actions/setup-node@'))) {
+      expect(step.with?.['cache'], 'release.yml: remove `cache:` from setup-node').toBeUndefined();
+      expect(step.with?.['package-manager-cache'], 'release.yml: set package-manager-cache: false, newer setup-node versions cache by themselves').toBe(false);
+    }
+  });
+
+  it('gives every GitHub App token the permissions it needs by name, instead of every permission the installation has', () => {
+    for (const file of files) {
+      for (const step of stepsOf(load(file)).filter((s) => s.uses?.startsWith('actions/create-github-app-token@'))) {
+        const named = Object.keys(step.with ?? {}).filter((key) => key.startsWith('permission-'));
+        expect(named.length, `${file}: add permission-contents, permission-pull-requests, ... to the app token`).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  it('release-please asks for the three permissions docs/desktop.md says its App has, and no more', () => {
+    const step = stepsOf(load('release-please.yml')).find((s) => s.uses?.startsWith('actions/create-github-app-token@'))!;
+    const named = Object.fromEntries(Object.entries(step.with ?? {}).filter(([key]) => key.startsWith('permission-')));
+    expect(named).toEqual({ 'permission-contents': 'write', 'permission-pull-requests': 'write', 'permission-issues': 'write' });
+  });
+});
+
 describe('the added checks', () => {
   const permissionsOf = (file: string) => Object.values(load(file).jobs).map((job) => job.permissions);
 

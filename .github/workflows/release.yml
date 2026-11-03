@@ -40,7 +40,10 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version-file: .nvmrc
-          cache: pnpm
+          # No dependency cache in the release path: a cache written by another run could put altered files into what is signed and published (zizmor:
+          # cache-poisoning). Newer setup-node versions cache by themselves when package.json names a package manager, so this is spelled out; the
+          # pinned v4.4.0 does not know the input yet and ignores it with a warning.
+          package-manager-cache: false
       - run: pnpm install --frozen-lockfile
 
       - name: The tag is a version tag of this commit, and package.json says that version
@@ -71,7 +74,10 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version-file: .nvmrc
-          cache: pnpm
+          # No dependency cache in the release path: a cache written by another run could put altered files into what is signed and published (zizmor:
+          # cache-poisoning). Newer setup-node versions cache by themselves when package.json names a package manager, so this is spelled out; the
+          # pinned v4.4.0 does not know the input yet and ignores it with a warning.
+          package-manager-cache: false
       - run: pnpm install --frozen-lockfile
 
       - name: Reproducible build (two clean builds must be identical)
@@ -132,7 +138,10 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version-file: .nvmrc
-          cache: pnpm
+          # No dependency cache in the release path: a cache written by another run could put altered files into what is signed and published (zizmor:
+          # cache-poisoning). Newer setup-node versions cache by themselves when package.json names a package manager, so this is spelled out; the
+          # pinned v4.4.0 does not know the input yet and ignores it with a warning.
+          package-manager-cache: false
       - run: pnpm install --frozen-lockfile
 
       - name: Is the release already public? Then there is nothing to do (a re-run must not publish twice)

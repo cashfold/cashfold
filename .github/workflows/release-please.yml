@@ -29,6 +29,11 @@ jobs:
         with:
           app-id: ${{ secrets.RELEASE_APP_ID }}
           private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+          # Exactly what release-please needs (docs/desktop.md): it commits the version and changelog, opens and updates the proposal, and labels
+          # it. Without these lines the token carries every permission the installation has (zizmor: github-app).
+          permission-contents: write
+          permission-pull-requests: write
+          permission-issues: write
       - uses: googleapis/release-please-action@5c625bfb5d1ff62eadeeb3772007f7f66fdcf071 # v4.4.1
         with:
           token: ${{ steps.app-token.outputs.token }}
