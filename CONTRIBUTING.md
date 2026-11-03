@@ -30,6 +30,8 @@ CI runs the full set on every pull request. Some files are generated and CI fail
 
 ## The code
 
+How code and tests are written is in [CODING_STANDARDS.md](CODING_STANDARDS.md). The short version:
+
 - TypeScript in strict mode.
 - Money is a `bigint` in minor units, never a `number` (`pnpm check:no-float`).
 - `packages/core` does not import React, Next, Nest, the DOM or Node-only modules; the server holds no domain model.
