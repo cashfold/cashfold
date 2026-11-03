@@ -11,6 +11,8 @@ own in a few minutes.
   and must only be reached over HTTPS.
 - A place to serve the web app's static files (`apps/web/out`, from `pnpm --filter @cashfold/web build`): any static host.
 
+You do not install Node for the relay: the image brings its own, which is the oldest version the project supports (`engines` in `package.json`, today Node 22). Development and CI use the newer version in `.nvmrc`. `scripts/node-versions.test.ts` keeps the three in order: the image is never older than `engines` and never newer than what CI tests.
+
 ## Steps
 
 1. Copy the example settings and fill them in.

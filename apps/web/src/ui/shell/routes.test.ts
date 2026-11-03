@@ -1,3 +1,5 @@
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { DESKTOP_SETTINGS_GROUP, INSTALL_SETTINGS_GROUP, PRIMARY_SECTIONS, REDIRECTS, ROUTES, SETTINGS_GROUPS, matchSection, redirectTarget } from './routes';
 
@@ -89,5 +91,26 @@ describe('matchSection', () => {
     expect(matchSection('/')).toBeUndefined();
     expect(matchSection('/sign-up/')).toBeUndefined();
     expect(matchSection('/settingsx/')).toBeUndefined();
+  });
+});
+
+describe('the pages behind the old addresses', () => {
+  const appDir = join(import.meta.dirname, '..', '..', 'app');
+  const pageOf = (from: string) => join(appDir, ...from.split('/').filter(Boolean), 'page.tsx');
+
+  it('exist for every old address, and send the person to that same address', () => {
+    for (const { from } of REDIRECTS) {
+      expect(existsSync(pageOf(from)), `${from} has no page at ${pageOf(from)}: the static export would answer 404`).toBe(true);
+      expect(readFileSync(pageOf(from), 'utf8'), from).toContain(`<RedirectStub from="${from}" />`);
+    }
+  });
+
+  it('are all in the redirect table: a stub page for an address the table does not know would send people to the overview', () => {
+    const stubs = readdirSync(appDir, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory() && existsSync(join(appDir, entry.name, 'page.tsx')))
+      .filter((entry) => readFileSync(join(appDir, entry.name, 'page.tsx'), 'utf8').includes('<RedirectStub'))
+      .map((entry) => `/${entry.name}/`)
+      .sort();
+    expect(stubs).toEqual(REDIRECTS.map((r) => r.from).sort());
   });
 });
