@@ -30,6 +30,8 @@ CI runs the full set on every pull request. Some files are generated and CI fail
 
 ## The code
 
+How code and tests are written is in [CODING_STANDARDS.md](CODING_STANDARDS.md). The short version:
+
 - TypeScript in strict mode.
 - Money is a `bigint` in minor units, never a `number` (`pnpm check:no-float`).
 - `packages/core` does not import React, Next, Nest, the DOM or Node-only modules; the server holds no domain model.
@@ -42,6 +44,7 @@ CI runs the full set on every pull request. Some files are generated and CI fail
 - Branch from `main`. Pull requests are squash-merged, so the **title** is the commit on `main`.
 - Titles and commits follow [Conventional Commits](https://www.conventionalcommits.org/) (`feat:`, `fix:`, `docs:`, `chore:`, and so on); a hook checks the message. They carry no AI-tool attribution.
 - Keep a pull request to one purpose, and say what changed and how you tested it.
+- Dependabot proposes dependency updates weekly (`.github/dependabot.yml`). They wait seven days after a release, are titled `chore(deps)` so they make no release, and need the same checks as any change. If an update fixes a vulnerability that reaches users, retitle it `fix(deps)` before merging so it ships.
 
 ## Releases
 

@@ -1,0 +1,127 @@
+# Automated dependency updates (constitution VIII: dependencies are pinned, audited and minimised).
+#
+# - Every dependency is pinned to an exact version (.npmrc save-exact), so each update is a reviewed pull request, never a silent range bump.
+# - `cooldown` waits a few days after a release before proposing it, which gives the community time to catch a compromised or broken
+#   publish. Security updates ignore the cooldown.
+# - Pull requests are titled `chore(deps): ...` (or `ci(deps)`, `build(deps)`), which release-please ignores, so an update never makes a
+#   release by itself. When an update fixes a vulnerability that reaches users, retitle it `fix(deps): ...` before merging so it ships.
+# - Related packages are grouped so they move together (one Electron, one Vitest, one Playwright). Packages that appear in several
+#   package.json files are grouped so their versions cannot drift apart. Cryptography packages (@noble/*, hash-wasm) are deliberately
+#   NOT grouped: each update gets its own pull request and a careful review.
+# - CI (the `verify` job) is the gate; there is no auto-merge.
+#
+# Not covered, on purpose:
+# - Cargo (packages/crypto/wasm/srp-bigint): the SRP module is committed as bytes and CI rebuilds it and compares. A crate bump needs a
+#   rebuild on Linux x86_64 (scripts/build-srp-wasm.sh), so it is done by hand.
+# - Node itself (.nvmrc, engines): changed deliberately, together with the Docker base image.
+
+version: 2
+
+updates:
+  - package-ecosystem: npm
+    directories:
+      - /
+      - /apps/*
+      - /packages/*
+      - /tests/*
+    schedule:
+      interval: weekly
+      day: monday
+      time: '06:00'
+      timezone: Europe/Kyiv
+    open-pull-requests-limit: 10
+    cooldown:
+      default-days: 7
+      semver-major-days: 14
+    commit-message:
+      prefix: chore
+      prefix-development: chore
+      include: scope
+    ignore:
+      # @types/node follows the Node version in .nvmrc, not the newest release.
+      - dependency-name: '@types/node'
+        update-types: ['version-update:semver-major']
+    groups:
+      electron:
+        patterns: ['electron', 'electron-*', '@electron/*']
+        update-types: [minor, patch]
+      vitest:
+        patterns: ['vitest', '@vitest/*']
+        update-types: [minor, patch]
+      playwright:
+        patterns: ['@playwright/*', 'playwright*', '@axe-core/*', 'axe-core']
+        update-types: [minor, patch]
+      lint:
+        patterns: ['eslint', 'eslint-*', 'typescript-eslint', '@typescript-eslint/*']
+        update-types: [minor, patch]
+      commitlint:
+        patterns: ['@commitlint/*']
+      nestjs:
+        patterns: ['@nestjs/*']
+        update-types: [minor, patch]
+      testcontainers:
+        patterns: ['testcontainers', '@testcontainers/*']
+      next-react:
+        patterns: ['next', 'react', 'react-dom', '@types/react', '@types/react-dom']
+        update-types: [minor, patch]
+      tailwind:
+        patterns: ['tailwindcss', '@tailwindcss/*', 'postcss']
+        update-types: [minor, patch]
+      # The same package is declared in more than one package.json; the versions must stay equal.
+      shared:
+        patterns: ['zod', 'esbuild', 'yaml', '@types/node']
+        update-types: [minor, patch]
+
+  - package-ecosystem: github-actions
+    # The workflows, and the local composite action they share (.github/actions/setup), which pins actions of its own.
+    directories:
+      - /
+      - /.github/actions/*
+    schedule:
+      interval: weekly
+      day: monday
+      time: '06:00'
+      timezone: Europe/Kyiv
+    cooldown:
+      default-days: 7
+    commit-message:
+      prefix: ci
+      include: scope
+    groups:
+      actions:
+        patterns: ['*']
+        update-types: [minor, patch]
+
+  - package-ecosystem: docker
+    directory: /deploy
+    schedule:
+      interval: weekly
+      day: monday
+      time: '06:00'
+      timezone: Europe/Kyiv
+    cooldown:
+      default-days: 7
+    commit-message:
+      prefix: build
+      include: scope
+    ignore:
+      # The Node major is chosen with .nvmrc and engines, not by a bot.
+      - dependency-name: node
+        update-types: ['version-update:semver-major']
+
+  - package-ecosystem: docker-compose
+    directory: /deploy
+    schedule:
+      interval: weekly
+      day: monday
+      time: '06:00'
+      timezone: Europe/Kyiv
+    cooldown:
+      default-days: 7
+    commit-message:
+      prefix: build
+      include: scope
+    ignore:
+      # A PostgreSQL major needs a data migration for self-hosters (docs/self-hosting.md), so it is never automatic.
+      - dependency-name: postgres
+        update-types: ['version-update:semver-major']
