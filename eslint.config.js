@@ -79,7 +79,56 @@ export default tseslint.config(
     files: ['packages/core/**/*.ts'],
     ignores: ['**/*.test.ts', 'packages/core/src/testing/**'],
     rules: {
-      'no-restricted-imports': ['error', { patterns: ['react', 'react-dom', 'next', 'next/*', '@nestjs/*', 'node:*'] }],
+      // Cryptography stays in packages/crypto, behind its ports (constitution VIII): `core` gets it as a port, never from a library.
+      'no-restricted-imports': ['error', { patterns: ['react', 'react-dom', 'next', 'next/*', '@nestjs/*', 'node:*', '@noble/*', 'hash-wasm'] }],
+    },
+  },
+  {
+    // Cryptography lives in packages/crypto, behind narrow ports (constitution VIII, docs/ARCHITECTURE.md 5). Feature code asks a port for what it
+    // needs; it does not reach for WebCrypto or a primitive library, because that is how a second, unreviewed implementation starts.
+    files: ['apps/**/*.{ts,tsx}', 'packages/core/**/*.ts', 'packages/protocol/**/*.ts', 'packages/platform/**/*.ts'],
+    ignores: ['**/*.test.ts', '**/*.test.tsx', '**/*.browser.test.tsx', '**/testing/**'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: "MemberExpression[property.name='subtle']",
+          message: 'WebCrypto (`crypto.subtle`) is used only inside packages/crypto: ask one of its ports (Aead, Kdf, Hpke, Signer, ...) instead.',
+        },
+      ],
+    },
+  },
+  {
+    files: ['apps/**/*.{ts,tsx}', 'packages/protocol/**/*.ts', 'packages/platform/**/*.ts'],
+    ignores: ['**/*.test.ts', '**/*.test.tsx', '**/*.browser.test.tsx', '**/testing/**'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        { patterns: [{ group: ['@noble/*', 'hash-wasm'], message: 'Cryptographic primitives are imported only inside packages/crypto: use its ports.' }] },
+      ],
+    },
+  },
+  {
+    // The two uses outside the crypto package, neither of which handles a secret:
+    //  - the offline worker hashes the public static files it caches, to check them against the published manifest (sw/core.ts);
+    //  - the browser check before sign-in asks whether `crypto.subtle` exists, and never calls it (ui/support/detect.ts).
+    files: ['apps/web/src/sw/core.ts', 'apps/web/src/ui/support/detect.ts'],
+    rules: { 'no-restricted-syntax': 'off' },
+  },
+  {
+    // The Core Worker and the offline worker run where `window` and `document` do not exist. The TypeScript project includes the DOM library (the
+    // page code needs it), so a mistake compiles and fails only at run time, in the browser. These names are errors here instead. Only files
+    // that run in a worker are listed: sw/register.ts and sw/update-state.ts run in the page, where `window` is right.
+    files: ['apps/web/src/worker/**/*.ts', 'apps/web/src/sw/service-worker.ts', 'apps/web/src/sw/core.ts'],
+    ignores: ['**/*.test.ts', '**/*.browser.test.ts'],
+    rules: {
+      'no-restricted-globals': [
+        'error',
+        ...['window', 'document', 'localStorage', 'sessionStorage', 'alert', 'confirm', 'prompt'].map((name) => ({
+          name,
+          message: `\`${name}\` does not exist in a worker (apps/web/src/worker and the offline worker run outside the page). Do the page-side work in apps/web/src/ui and pass the result in a message.`,
+        })),
+      ],
     },
   },
   {
