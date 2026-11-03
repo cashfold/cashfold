@@ -11,14 +11,14 @@ import { suggestDestination } from '../ledger/transfer/suggest';
 import { Button, Disclosure, SelectOption } from '../kit';
 import { AmountInput } from './AmountInput';
 import { isDirty } from './dirty';
-import type { ModeReport } from './modes';
+import type { Carry, ModeReport } from './modes';
 import { RatePrompt } from './RatePrompt';
 import { prefsStore } from '../prefs/usePrefs';
 import { recordRecents } from './recents';
 import { AccountOption } from '../accounts/AccountOption';
 
 /** Move money between two accounts (the transfer mode of the add sheet). The command and payload are those of the former Transfers screen. */
-export function TransferMode({ formId, existing, accountId, report }: { formId: string; existing?: TransferRow | undefined; accountId?: string | undefined; report: ModeReport }) {
+export function TransferMode({ formId, existing, accountId, carry, report }: { formId: string; existing?: TransferRow | undefined; accountId?: string | undefined; carry?: Carry | undefined; report: ModeReport }) {
   const { t, locale } = useI18n();
   const ledger = useLedger();
   const basics = ledger.basics!;
@@ -30,16 +30,17 @@ export function TransferMode({ formId, existing, accountId, report }: { formId: 
   const sameCurrency = from !== undefined && to !== undefined && from.currency === to.currency;
 
   const initialWhen = existing === undefined ? nowInput() : momentToInput(existing.occurredUtcMs, existing.tzOffsetMin);
-  const [fromText, setFromText] = useState(existing === undefined || from === undefined ? '' : formatPlain(existing.fromAmountMinor, from.currency, locale));
+  const initialFrom = existing === undefined || from === undefined ? '' : formatPlain(existing.fromAmountMinor, from.currency, locale);
+  const [fromText, setFromText] = useState(existing === undefined ? carry?.amount ?? initialFrom : initialFrom);
   const [toText, setToText] = useState(existing === undefined || to === undefined ? '' : formatPlain(existing.toAmountMinor, to.currency, locale));
   const [when, setWhen] = useState(initialWhen);
-  const [note, setNote] = useState(existing?.note ?? '');
+  const [note, setNote] = useState(existing?.note ?? carry?.note ?? '');
   const [status, setStatus] = useState<TxnStatus>(existing?.status ?? 'posted');
   const [rateId, setRateId] = useState<string | null>(existing?.fxRateId ?? null);
   const [error, setError] = useState<string | undefined>();
   const [hint, setHint] = useState<string | undefined>();
   const [needRate, setNeedRate] = useState<{ currency: string; asOfUtcS: number } | undefined>();
-  const initial = useRef({ fromId, toId, fromText, toText, when, note, status });
+  const initial = useRef({ fromId, toId, fromText: initialFrom, toText, when, note: existing?.note ?? '', status });
 
   const fromParsed = from === undefined || fromText.trim() === '' ? undefined : ledger.parse(fromText, from.currency);
   const toParsed = to === undefined ? undefined : sameCurrency ? fromParsed : toText.trim() === '' ? undefined : ledger.parse(toText, to.currency);
@@ -47,6 +48,7 @@ export function TransferMode({ formId, existing, accountId, report }: { formId: 
   useEffect(() => {
     report.dirty(isDirty(initial.current, { fromId, toId, fromText, toText, when, note, status }));
   }, [fromId, toId, fromText, toText, when, note, status, report]);
+  useEffect(() => report.carry({ amount: fromText, note }), [fromText, note, report]);
 
   function suggest() {
     setHint(undefined);

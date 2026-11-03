@@ -7,7 +7,7 @@ import { Button, ConfirmDialog, Sheet, Tabs } from '../kit';
 import { useLedger } from '../ledger/LedgerProvider';
 import type { AddRequest } from '../shell/add-context';
 import { useStatus } from '../shell/StatusProvider';
-import type { ModeReport } from './modes';
+import type { Carry, ModeReport } from './modes';
 import { TransactionMode, type TxKind } from './TransactionMode';
 import { TransferMode } from './TransferMode';
 
@@ -25,6 +25,8 @@ export function AddSheet({ request, existing, existingTransfer, onClose }: { req
   const editing = existing !== undefined || existingTransfer !== undefined;
   const [mode, setMode] = useState<Mode>(existingTransfer ? 'transfer' : existing ? (existing.direction === 'income' ? 'income' : 'expense') : (request?.type ?? 'expense'));
   const dirty = useRef(false);
+  const latest = useRef<Carry>({ amount: '', note: '' });
+  const [carried, setCarried] = useState<Carry | undefined>();
   const [busy, setBusy] = useState(false);
   const [rate, setRate] = useState(false);
   const [confirming, setConfirming] = useState(false);
@@ -32,6 +34,7 @@ export function AddSheet({ request, existing, existingTransfer, onClose }: { req
   const report = useMemo<ModeReport>(
     () => ({
       dirty: (d) => { dirty.current = d; },
+      carry: (values) => { latest.current = values; },
       busy: setBusy,
       rateMode: setRate,
       done: (key) => { dirty.current = false; status.notify(key); onClose(); },
@@ -64,12 +67,12 @@ export function AddSheet({ request, existing, existingTransfer, onClose }: { req
         ) : (
           <div className="space-y-4">
             {editing || rate ? null : (
-              <Tabs value={mode} onChange={(v) => { dirty.current = false; setMode(v as Mode); }} label={t('ledger.add.kind.label')}
+              <Tabs value={mode} onChange={(v) => { dirty.current = false; setCarried(latest.current); setMode(v as Mode); }} label={t('ledger.add.kind.label')}
                 items={(['expense', 'income', 'transfer'] as const).map((k) => ({ value: k, label: t(`ledger.add.kind.${k}`) }))} />
             )}
             {mode === 'transfer'
-              ? <TransferMode key={key} formId={FORM_ID} existing={existingTransfer} accountId={request?.accountId} report={report} />
-              : <TransactionMode key={key} formId={FORM_ID} kind={(adjustment ? 'adjustment' : mode) as TxKind} existing={existing} accountId={request?.accountId} report={report} />}
+              ? <TransferMode key={key} formId={FORM_ID} existing={existingTransfer} accountId={request?.accountId} carry={carried} report={report} />
+              : <TransactionMode key={key} formId={FORM_ID} kind={(adjustment ? 'adjustment' : mode) as TxKind} existing={existing} accountId={request?.accountId} carry={carried} report={report} />}
           </div>
         )}
       </Sheet>
