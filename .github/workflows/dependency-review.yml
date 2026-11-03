@@ -1,0 +1,39 @@
+name: Dependency review
+
+# A pull request that adds or changes a dependency is checked against GitHub's advisory database before it can merge: a new package with a known
+# high or critical vulnerability fails here. `pnpm audit` and the license check in CI look at the whole tree after the fact; this looks at what
+# the change itself brings in, and says so on the pull request.
+#
+# Not a required check: it runs only when a manifest or lockfile changes.
+
+on:
+  pull_request:
+    paths:
+      - 'package.json'
+      - '**/package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - '**/Cargo.lock'
+      - 'deploy/Dockerfile*'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dependency-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  review:
+    name: Dependency review
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+        with:
+          fail-on-severity: high
+          # No comment on the pull request: that would need `pull-requests: write`. The result is in the job summary.
+          comment-summary-in-pr: never

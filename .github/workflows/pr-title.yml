@@ -1,0 +1,35 @@
+name: PR title
+
+# A pull request is squash-merged, so its title becomes the commit on `main`, and release-please reads that commit to decide whether to release and
+# which version (CONTRIBUTING.md). A title that is not a Conventional Commit is quietly ignored: a fix could ship nothing, and a breaking change
+# could ship as a patch. The commit hook checks messages on a laptop; this checks the title, and runs again each time it is edited.
+#
+# It is a required check (scripts/apply-branch-protection.sh), so it has no path filter: a required check that does not run on a pull request
+# would wait forever.
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-title-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  pr-title:
+    name: pr-title
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+      - name: The title is a Conventional Commit
+        # The title is data from the pull request's author: it reaches the command through the environment, never through the script text.
+        env:
+          TITLE: ${{ github.event.pull_request.title }}
+        run: printf '%s\n' "$TITLE" | pnpm exec commitlint --config commitlint.pr-title.config.js

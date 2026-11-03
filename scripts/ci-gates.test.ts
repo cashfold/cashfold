@@ -76,8 +76,8 @@ describe('quality gates', () => {
     expect(String(ci.concurrency?.['cancel-in-progress'])).toContain("github.event_name == 'pull_request'");
   });
 
-  it('main requires `verify`', () => {
-    expect(read('scripts/apply-branch-protection.sh')).toContain('"contexts": ["verify"]');
+  it('main requires `verify` (all of CI) and `pr-title` (the squash title decides the release)', () => {
+    expect(read('scripts/apply-branch-protection.sh')).toContain('"contexts": ["verify", "pr-title"]');
     expect(jobs['verify']).toBeDefined();
   });
 
