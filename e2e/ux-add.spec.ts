@@ -96,4 +96,22 @@ test.describe('@ux add sheet', () => {
     await page.getByRole('tab', { name: 'Transfer' }).click();
     await expect(page.getByLabel('From account', { exact: false })).toBeVisible();
   });
+
+  test('keeps the amount when switching between Expense, Income and Transfer', async ({ page }) => {
+    test.setTimeout(240_000);
+    await intoApp(page);
+    await addAccount(page, 'Everyday', '100.00');
+    await go(page, 'Transactions');
+    await page.getByRole('button', { name: 'Add', exact: true }).first().click();
+    await page.getByLabel(/^Amount/).fill('12.50');
+    await page.getByRole('tab', { name: 'Income' }).click();
+    await expect(page.getByLabel(/^Amount/)).toHaveValue('12.50');
+    await page.getByRole('tab', { name: 'Transfer' }).click();
+    await expect(page.getByLabel('Amount leaving')).toHaveValue('12.50');
+    await page.getByLabel('Amount leaving').fill('7.00');
+    await page.getByRole('tab', { name: 'Expense' }).click();
+    await expect(page.getByLabel(/^Amount/)).toHaveValue('7.00');
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('button', { name: 'Keep editing' })).toBeVisible(); // the carried amount counts as typed input
+  });
 });
