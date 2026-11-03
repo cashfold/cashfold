@@ -1,0 +1,16 @@
+# Findings that are understood and accepted, so that zizmor (.github/workflows/zizmor.yml) fails only on something new. zizmor finds this file by
+# itself. Each entry says why; scripts/workflow-hygiene.test.ts keeps the list to what is written here.
+rules:
+  self-repository:
+    # zizmor 1.30 wants a workflow's own local action written `$/.github/actions/setup`, the form GitHub added in July 2026, instead of
+    # `./.github/actions/setup`. Not adopted yet, for three reasons: a workflow that uses it cannot be checked by actionlint, which rejects the
+    # form; whether Dependabot reads it is not known; and the hazard the rule names (a step replacing the files before the action runs) does not
+    # apply here, because every job checks out the repository itself and nothing else writes into the workspace first.
+    # Listed by file, not disabled, so a new workflow that uses `./` is reported and gets decided on. Revisit when actionlint and Dependabot
+    # handle `$/`: then `zizmor --fix=safe` rewrites these in one step and this entry goes away.
+    ignore:
+      - ci.yml
+      - flaky.yml
+      - knip.yml
+      - pr-title.yml
+      - release.yml

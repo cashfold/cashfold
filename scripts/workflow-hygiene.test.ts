@@ -116,6 +116,22 @@ describe('the release pipeline', () => {
   });
 });
 
+describe('.github/zizmor.yml', () => {
+  const config = parse(readFileSync(new URL('../.github/zizmor.yml', import.meta.url), 'utf8')) as { rules: Record<string, { disable?: boolean; ignore?: string[] }> };
+
+  it('accepts one kind of finding only, and does not switch an audit off (a disabled audit also hides what it would find later)', () => {
+    expect(Object.keys(config.rules)).toEqual(['self-repository']);
+    expect(config.rules['self-repository']!.disable).toBeUndefined();
+  });
+
+  it('names workflows that exist and that really call a local action with ./, so the list cannot go stale', () => {
+    const ignored = config.rules['self-repository']!.ignore ?? [];
+    // A step (`- uses: ./.github/actions/setup`) or a whole job (`uses: ./.github/workflows/desktop-build.yml`).
+    const usesLocal = files.filter((file) => /^\s*(?:-\s*)?uses:\s*\.\//m.test(readFileSync(join(dir, file), 'utf8')));
+    expect([...ignored].sort()).toEqual([...usesLocal].sort());
+  });
+});
+
 describe('the added checks', () => {
   const permissionsOf = (file: string) => Object.values(load(file).jobs).map((job) => job.permissions);
 
