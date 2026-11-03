@@ -14,7 +14,7 @@ import { prefsStore, usePrefs } from '../prefs/usePrefs';
 import { visibleFields, type FieldGroup } from '../prefs/visible-fields';
 import { AmountInput } from './AmountInput';
 import { isDirty } from './dirty';
-import type { ModeReport } from './modes';
+import type { Carry, ModeReport } from './modes';
 import { RatePrompt } from './RatePrompt';
 import { orderCategories, recordRecents, pickDefaultAccount } from './recents';
 import { includesLetters } from '../i18n/collation';
@@ -25,7 +25,7 @@ interface CategoryOption { id: string; label: string; recent: boolean }
 const NO_CATEGORY: CategoryOption = { id: '', label: '', recent: false };
 
 /** The expense/income form of the add sheet: five essential fields, everything else under "More details" (FR-008 to FR-011, FR-020). */
-export function TransactionMode({ formId, kind, existing, accountId, report }: { formId: string; kind: TxKind; existing?: TransactionRow | undefined; accountId?: string | undefined; report: ModeReport }) {
+export function TransactionMode({ formId, kind, existing, accountId, carry, report }: { formId: string; kind: TxKind; existing?: TransactionRow | undefined; accountId?: string | undefined; carry?: Carry | undefined; report: ModeReport }) {
   const { t, locale } = useI18n();
   const ledger = useLedger();
   const core = useCore();
@@ -38,7 +38,8 @@ export function TransactionMode({ formId, kind, existing, accountId, report }: {
   const [accountIdState, setAccountId] = useState(existing?.accountId ?? accountId ?? pickDefaultAccount(prefs, foldId, usable) ?? '');
   const account = basics.accounts.find((a) => a.id === accountIdState);
   const currency = account?.currency ?? basics.baseCurrency ?? 'USD';
-  const [amount, setAmount] = useState(existing === undefined ? '' : formatPlain(existing.direction === 'adjustment' ? existing.amountMinor : existing.amountMinor < 0n ? -existing.amountMinor : existing.amountMinor, existing.currency, locale));
+  const initialAmount = existing === undefined ? '' : formatPlain(existing.direction === 'adjustment' ? existing.amountMinor : existing.amountMinor < 0n ? -existing.amountMinor : existing.amountMinor, existing.currency, locale);
+  const [amount, setAmount] = useState(existing === undefined ? carry?.amount ?? initialAmount : initialAmount);
   const [when, setWhen] = useState(initialWhen);
   const [categoryId, setCategoryId] = useState(existing?.categoryId ?? '');
   const initialPayee = existing?.payeeId == null ? '' : basics.payees.find((p) => p.id === existing.payeeId)?.name ?? '';
@@ -47,7 +48,7 @@ export function TransactionMode({ formId, kind, existing, accountId, report }: {
   const initialTags = (existing?.tagIds ?? []).map((id) => basics.tags.find((x) => x.id === id)?.name).filter((n): n is string => n !== undefined);
   const [tagNames, setTagNames] = useState<string[]>(initialTags);
   const [tagText, setTagText] = useState('');
-  const [note, setNote] = useState(existing?.note ?? '');
+  const [note, setNote] = useState(existing?.note ?? carry?.note ?? '');
   const [status, setStatus] = useState<TxnStatus>(existing?.status ?? 'posted');
   const [isRefund, setIsRefund] = useState(existing?.isRefund ?? false);
   const [isPinned, setIsPinned] = useState(existing?.isPinned ?? false);
@@ -58,7 +59,7 @@ export function TransactionMode({ formId, kind, existing, accountId, report }: {
   const [attachment, setAttachment] = useState<AttachmentChoice>({ file: undefined, remove: false });
   const [error, setError] = useState<string | undefined>();
   const [needRate, setNeedRate] = useState<{ currency: string; asOfUtcS: number } | undefined>();
-  const initialSnapshot = useRef({ accountIdState, amount, when, categoryId, payeeName, tagNames, note, status, isRefund, isPinned, placeName, lat, lon });
+  const initialSnapshot = useRef({ accountIdState, amount: initialAmount, when, categoryId, payeeName, tagNames, note: existing?.note ?? '', status, isRefund, isPinned, placeName, lat, lon });
 
   // What the entry held when it opened decides which hidden fields show and whether the group starts open: it must not jump while typing.
   const initialValues = useMemo(() => ({
@@ -71,6 +72,8 @@ export function TransactionMode({ formId, kind, existing, accountId, report }: {
   useEffect(() => {
     report.dirty(isDirty(initialSnapshot.current, { accountIdState, amount, when, categoryId, payeeName: payeeName || payeeText, tagNames: tagText ? [...tagNames, tagText] : tagNames, note, status, isRefund, isPinned, placeName, lat, lon }) || attachment.file !== undefined || attachment.remove);
   }, [accountIdState, amount, when, categoryId, payeeName, payeeText, tagNames, tagText, note, status, isRefund, isPinned, placeName, lat, lon, attachment, report]);
+
+  useEffect(() => report.carry({ amount, note }), [amount, note, report]);
 
   const categories = useMemo(() => {
     const direction = kind === 'income' ? 'income' : 'expense';
