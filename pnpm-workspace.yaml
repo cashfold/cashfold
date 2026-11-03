@@ -2,3 +2,13 @@ packages:
   - "packages/*"
   - "apps/*"
   - "tests/*"
+
+# Install-time supply-chain controls (constitution VIII). Both apply when pnpm resolves a version (adding or updating a dependency); an install
+# from the frozen lockfile installs exactly what was reviewed.
+#
+# A version must be a day old before pnpm will pick it: most malicious releases are pulled within hours, so a day's delay avoids nearly all of
+# them. A fix that cannot wait is installed by naming the package in `minimumReleaseAgeExclude` for the length of the change.
+minimumReleaseAge: 1440
+# Refuse a version that was published with weaker evidence than an earlier one (for example without the provenance the earlier ones had): that
+# is what a stolen publishing token looks like.
+trustPolicy: no-downgrade
