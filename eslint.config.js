@@ -4,6 +4,7 @@ import tseslint from 'typescript-eslint';
 import boundaries from 'eslint-plugin-boundaries';
 import noNumberInMoney from './eslint-rules/no-number-in-money.js';
 import uiKit from './eslint-rules/ui-kit-boundaries.js';
+import noUntranslatedStrings from './eslint-rules/no-untranslated-strings.js';
 
 const root = dirname(fileURLToPath(import.meta.url));
 
@@ -136,6 +137,14 @@ export default tseslint.config(
     ignores: ['**/*.test.ts'],
     plugins: { cashfold: { rules: { 'no-number-in-money': noNumberInMoney } } },
     rules: { 'cashfold/no-number-in-money': 'error' },
+  },
+  {
+    // Interface text comes from the message catalogues, never from the component (docs/i18n.md). The kit is vendored and its components take text
+    // from their callers. e2e/pseudo-walk.spec.ts stays as the backstop for what this heuristic cannot see.
+    files: ['apps/web/src/ui/**/*.tsx', 'apps/web/src/app/**/*.tsx'],
+    ignores: ['apps/web/src/ui/kit/**', '**/*.test.tsx'],
+    plugins: { i18n: { rules: { 'no-untranslated-strings': noUntranslatedStrings } } },
+    rules: { 'i18n/no-untranslated-strings': ['error', { allow: ['Cashfold'] }] },
   },
   {
     // The interface is built from the kit (R-UX-03): every screen uses its components, never the bare elements.
