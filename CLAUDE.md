@@ -84,6 +84,6 @@ CI fails when these are stale.
 ## Detailed rules
 
 How code and tests are written is in [CODING_STANDARDS.md](CODING_STANDARDS.md). Path-scoped rules in `.claude/rules/` attach when you touch matching files: `architecture.md`,
-`money.md`, `ui.md`, `i18n.md`, `testing.md`, `desktop.md`. Read the matching document in `docs/`
+`money.md`, `ui.md`, `i18n.md`, `testing.md`, `desktop.md`. Run `/cashfold-review` (`.claude/skills/cashfold-review`) on your diff before opening a pull request: it reviews through eight parallel lenses. Read the matching document in `docs/`
 before larger work: [ledger](docs/ledger.md), [sync](docs/sync.md), [languages](docs/i18n.md),
 [privacy](docs/privacy.md), [desktop](docs/desktop.md).
