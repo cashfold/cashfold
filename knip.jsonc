@@ -1,0 +1,72 @@
+{
+  // Finds files, dependencies and binaries that nothing uses (.github/workflows/knip.yml; run it with `pnpm knip`). Unused exports and types are
+  // switched off for now: the first run listed about 175 of them, mostly the public surface of packages and the vendored kit, and sorting them
+  // is a separate job from keeping the rest clean.
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "rules": {
+    "exports": "off",
+    "types": "off",
+    "nsExports": "off",
+    "nsTypes": "off",
+    "duplicates": "off"
+  },
+  // Name the vitest configs. By default knip also reads vitest.workspace.ts, which fails to load: vitest 5 has no `defineWorkspace`.
+  "vitest": {
+    "config": ["vitest.config.ts", "packages/*/vitest*.config.ts", "apps/*/vitest*.config.ts", "tests/*/vitest*.config.ts"]
+  },
+  "ignore": [
+    // Dead since vitest 5, which dropped workspace files: it is never loaded, so the per-package settings it listed (the shared setup file, the
+    // 120 s timeout of tests/stack) do not apply to `pnpm vitest run` from the root. Delete it or move its list to `test.projects` in
+    // vitest.config.ts; this entry is here until that is decided.
+    "vitest.workspace.ts"
+  ],
+  "ignoreBinaries": [
+    // A tool of the operating system, not a package: scripts/check-signing-env.mjs reads a signing certificate's end date with it.
+    "openssl"
+  ],
+  "ignoreUnresolved": [
+    // setupFiles of the per-package vitest configs, relative to the package; knip resolves them from another folder.
+    "../../vitest.setup.ts"
+  ],
+  "workspaces": {
+    ".": {
+      "entry": ["scripts/**/*.{mjs,ts}", "eslint-rules/*.js", "commitlint*.config.js", "e2e/**/*.ts"],
+      "project": ["scripts/**", "eslint-rules/**", "e2e/**", "*.{js,ts,mjs}"]
+    },
+    "apps/web": {
+      // The two workers are started by name, not imported: esbuild bundles the offline worker (scripts/build-sw.mjs) and the page starts the core
+      // worker with `new Worker(new URL(...))`.
+      "entry": ["src/sw/service-worker.ts", "src/worker/core-worker.ts", "scripts/*.mjs", "src/**/*.test.{ts,tsx}", "vitest*.config.ts"],
+      "project": ["src/**", "scripts/**"],
+      "ignoreDependencies": [
+        // scripts/copy-fonts.mjs finds the package with createRequire(...).resolve(...), which knip cannot follow.
+        "@fontsource/ubuntu"
+      ]
+    },
+    "apps/desktop": {
+      "entry": ["src/main/index.ts", "src/preload/index.ts", "scripts/*.mjs", "e2e/**/*.ts", "electron-builder.config.mjs"],
+      "project": ["src/**", "scripts/**", "e2e/**"],
+      "ignoreDependencies": [
+        // Unused: the Windows target is NSIS, and electron-builder loads this package only for a Squirrel target. Remove it after a packaging run
+        // (`pnpm --filter @cashfold/desktop package`) confirms nothing needs it.
+        "electron-builder-squirrel-windows"
+      ]
+    },
+    "apps/server": {
+      "entry": ["src/main.ts", "scripts/*.mjs", "test/**/*.ts"],
+      "project": ["src/**", "scripts/**", "test/**"],
+      "ignoreDependencies": [
+        // Never imported here, and pinned beside @testcontainers/postgresql, which depends on it (the Dependabot group moves both together).
+        "testcontainers"
+      ]
+    },
+    "packages/*": {
+      "entry": ["src/**/*.test.ts"],
+      "project": ["src/**"]
+    },
+    "tests/*": {
+      "entry": ["src/**/*.test.ts"],
+      "project": ["src/**"]
+    }
+  }
+}

@@ -1,0 +1,31 @@
+name: knip
+
+# Finds files, dependencies and binaries that nothing uses (knip.jsonc explains the setup and each exception). An unused dependency is
+# supply-chain surface for no benefit, and a file nobody imports is code somebody still has to read. Run it locally with `pnpm knip`.
+#
+# Not a required check: it is advice about tidiness, not about whether the change works. The repository is clean today, so a finding means
+# the pull request added something unused.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: knip-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  knip:
+    name: knip
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+      - run: pnpm knip
