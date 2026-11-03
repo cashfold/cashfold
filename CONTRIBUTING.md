@@ -42,6 +42,7 @@ CI runs the full set on every pull request. Some files are generated and CI fail
 - Branch from `main`. Pull requests are squash-merged, so the **title** is the commit on `main`.
 - Titles and commits follow [Conventional Commits](https://www.conventionalcommits.org/) (`feat:`, `fix:`, `docs:`, `chore:`, and so on); a hook checks the message. They carry no AI-tool attribution.
 - Keep a pull request to one purpose, and say what changed and how you tested it.
+- Dependabot proposes dependency updates weekly (`.github/dependabot.yml`). They wait seven days after a release, are titled `chore(deps)` so they make no release, and need the same checks as any change. If an update fixes a vulnerability that reaches users, retitle it `fix(deps)` before merging so it ships.
 
 ## Releases
 
