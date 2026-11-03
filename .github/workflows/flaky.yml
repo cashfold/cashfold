@@ -1,0 +1,64 @@
+name: Flaky-test check
+
+# A new or changed Playwright spec is run several times in a row, with no retries, on chromium. A spec that passes some of those runs and fails
+# others is flaky: it would fail a stranger's pull request one day. The result is written to the run summary and the job turns red.
+#
+# Not a required check: a path-filtered required check would wait forever on pull requests that touch no spec (the same reason as
+# desktop-smoke.yml). It is there to be looked at before merging. Only spec files in e2e/ are watched; a change to a shared fixture is not.
+
+on:
+  pull_request:
+    paths:
+      - 'e2e/*.spec.ts'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: flaky-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  repeat:
+    name: Repeat the changed specs
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      REPEAT_EACH: '5'
+      BASE_REF: ${{ github.base_ref }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/setup
+      - name: Which specs changed
+        id: specs
+        run: |
+          files="$(git diff --name-only --diff-filter=AM "origin/${BASE_REF}...HEAD" -- 'e2e/*.spec.ts' | tr '\n' ' ')"
+          echo "files=${files}" >> "$GITHUB_OUTPUT"
+          echo "Changed specs: ${files:-none (only deletions)}"
+      - run: pnpm exec playwright install --with-deps chromium
+        if: steps.specs.outputs.files != ''
+      - name: Run each changed spec ${{ env.REPEAT_EACH }} times
+        if: steps.specs.outputs.files != ''
+        env:
+          FILES: ${{ steps.specs.outputs.files }}
+          # Playwright resolves a relative report path against the config's folder (e2e/), so give it an absolute one.
+          PLAYWRIGHT_JSON_OUTPUT_NAME: ${{ github.workspace }}/flaky-report.json
+        run: |
+          set +e
+          # Three workers: the sign-up specs (Argon2) time out when many run at once.
+          pnpm exec playwright test -c e2e/playwright.config.ts $FILES --project=chromium --repeat-each="${REPEAT_EACH}" --retries=0 --workers=3 --reporter=list,json
+          tests=$?
+          node scripts/summarize-flaky.mjs flaky-report.json >> "$GITHUB_STEP_SUMMARY"
+          summary=$?
+          [ "$tests" -eq 0 ] && [ "$summary" -eq 0 ]
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: failure()
+        with:
+          name: flaky-report
+          path: |
+            flaky-report.json
+            playwright-report
+            test-results
+          retention-days: 7

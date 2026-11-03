@@ -1,5 +1,9 @@
 name: CI
 
+# The checks run as parallel jobs so a pull request is green as soon as the slowest one is, not after all of them in a row. `main` requires one
+# check, `verify` (scripts/apply-branch-protection.sh); it is the last job here and is green only when every other job succeeded. A job that
+# is added below must be added to the `needs` of `verify`, and scripts/ci-gates.test.ts fails until it is.
+
 on:
   pull_request:
   push:
@@ -7,20 +11,20 @@ on:
 
 permissions:
   contents: read
-  id-token: write
-  attestations: write
+
+concurrency:
+  group: ci-${{ github.ref }}
+  # A newer push to a pull request makes the older run pointless. Runs on main always finish (the provenance of a published build).
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  verify:
+  static:
+    name: Type-check, lint and generated files
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
-      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
-        with:
-          node-version-file: .nvmrc
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
+      - uses: ./.github/actions/setup
       - run: pnpm typecheck
       - run: pnpm lint
       - name: Documentation is formatted
@@ -29,37 +33,148 @@ jobs:
         run: node scripts/gen-migrations.mjs && git diff --exit-code apps/web/src/adapters/sqlite-opfs/migrations/generated.ts
       - name: Protocol docs are up to date
         run: node scripts/gen-protocol-docs.mjs && git diff --exit-code docs/protocol.md
-      - run: pnpm vitest run --coverage   # unit + property tests, coverage floors
-      - run: pnpm build                   # static export and server
-      - run: pnpm check:bundle
-      - run: pnpm check:licenses
       - run: pnpm check:no-float
       - run: pnpm check:desktop-config
+
+  unit:
+    name: Unit and property tests with coverage floors
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: ./.github/actions/setup
+      # unit and property tests, 1000 property cases; the second reporter puts each failure on the pull request's Files tab
+      - run: pnpm vitest run --coverage --reporter=default --reporter=github-actions
+
+  supply-chain:
+    name: Licenses, notices, audit and SBOM
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: ./.github/actions/setup
+      - run: pnpm check:licenses
       - name: Third-party notices are up to date
         run: node scripts/gen-third-party-notices.mjs --check
-      - name: Reproducible build (two clean builds are identical)
-        run: node scripts/build-verify.mjs
-      - run: pnpm check:sqlite3mc
       - run: pnpm audit --audit-level=high
-      - name: Install browsers
-        run: pnpm exec playwright install --with-deps
-      - name: Browser adapter tests (OPFS, workers, WASM)
-        run: pnpm --filter @cashfold/web test:browser
-      - name: Playwright (includes blocking axe WCAG 2.2 AA assertions)
-        run: pnpm test:e2e
-      - name: "Testcontainers (PostgreSQL, store contract and the relay's HTTP scenarios)"
-        run: pnpm --filter @cashfold/server test:integration
-      - name: SRP module rebuilds to the committed bytes
-        run: |
-          rustup target add wasm32-unknown-unknown
-          bash scripts/build-srp-wasm.sh
-          git diff --exit-code packages/crypto/src/adapters/srp-wasm
-      - name: The relay image builds
-        run: docker build -f deploy/Dockerfile.server -t cashfold-relay .
       - name: SBOM
         run: pnpm dlx @cyclonedx/cdxgen -o sbom.cdx.json
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with: { name: sbom, path: sbom.cdx.json }
+
+  build:
+    name: Build, bundle budgets and provenance
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: ./.github/actions/setup
+      - run: pnpm build # static export and server
+      - run: pnpm check:bundle
+      - run: pnpm check:sqlite3mc
       - uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2.4.0
         if: github.ref == 'refs/heads/main'
         with: { subject-path: 'apps/web/out/**' }
+
+  reproducible:
+    name: Reproducible build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: ./.github/actions/setup
+      - name: Two clean builds are identical
+        run: node scripts/build-verify.mjs
+
+  srp-wasm:
+    name: SRP module rebuilds to the committed bytes
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - run: |
+          rustup target add wasm32-unknown-unknown
+          bash scripts/build-srp-wasm.sh
+          git diff --exit-code packages/crypto/src/adapters/srp-wasm
+
+  relay-image:
+    name: The relay image builds
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - run: docker build -f deploy/Dockerfile.server -t cashfold-relay .
+
+  browser:
+    name: Browser adapter tests (OPFS, workers, WASM)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: ./.github/actions/setup
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm --filter @cashfold/web test:browser
+
+  integration:
+    name: Testcontainers (PostgreSQL, store contract and the relay's HTTP scenarios)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: ./.github/actions/setup
+      - run: pnpm --filter @cashfold/server test:integration
+
+  # Playwright, including the blocking axe WCAG 2.2 AA assertions. One job per project of e2e/playwright.config.ts, each installing only its own
+  # browser; chromium, the largest, is split in two. Every job builds its own copy of the app because the e2e build allows the test relay in its
+  # content policy (CSP_CONNECT_SOURCES), so it cannot be the production build. scripts/ci-gates.test.ts fails when a project is missing here.
+  e2e:
+    name: Playwright ${{ matrix.project }} ${{ matrix.shard }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { project: chromium, browser: chromium, shard: '1/2' }
+          - { project: chromium, browser: chromium, shard: '2/2' }
+          - { project: firefox, browser: firefox, shard: '1/1' }
+          - { project: webkit, browser: webkit, shard: '1/1' }
+          - { project: rtl, browser: chromium, shard: '1/1' }
+          - { project: pseudo, browser: chromium, shard: '1/1' }
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: ./.github/actions/setup
+      - run: pnpm exec playwright install --with-deps ${{ matrix.browser }}
+      - run: pnpm exec playwright test -c e2e/playwright.config.ts --project=${{ matrix.project }} --shard=${{ matrix.shard }}
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: failure()
+        with:
+          name: playwright-${{ matrix.project }}-${{ strategy.job-index }}
+          path: |
+            playwright-report
+            test-results
+          retention-days: 7
+
+  # The one check `main` requires. It runs even when another job failed or was cancelled (`always()`), and is green only when every job
+  # succeeded: a skipped job is not a pass, because GitHub counts a skipped required check as passing.
+  verify:
+    name: verify
+    if: ${{ always() }}
+    needs: [static, unit, supply-chain, build, reproducible, srp-wasm, relay-image, browser, integration, e2e]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Every job succeeded
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+        run: |
+          node -e '
+            const needs = JSON.parse(process.env.NEEDS);
+            for (const [name, job] of Object.entries(needs)) console.log(job.result.padEnd(10), name);
+            const bad = Object.entries(needs).filter(([, job]) => job.result !== "success").map(([name]) => name);
+            if (bad.length > 0) { console.error("Not successful: " + bad.join(", ")); process.exit(1); }
+          '

@@ -73,7 +73,10 @@ updates:
         update-types: [minor, patch]
 
   - package-ecosystem: github-actions
-    directory: /
+    # The workflows, and the local composite action they share (.github/actions/setup), which pins actions of its own.
+    directories:
+      - /
+      - /.github/actions/*
     schedule:
       interval: weekly
       day: monday

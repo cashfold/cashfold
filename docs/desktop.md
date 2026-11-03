@@ -195,7 +195,7 @@ Settings that live in GitHub, not in a file. `scripts/apply-branch-protection.sh
 `main` is protected:
 
 - **Pull requests only.** Nobody pushes to `main`, administrators included.
-- **Required status check `verify`,** on a branch that is up to date with `main`. It is the CI job: type-check, lint, tests and coverage floors, build, bundle, license and no-float gates, audit, Playwright with blocking axe WCAG 2.2 AA assertions, Testcontainers, SBOM.
+- **Required status check `verify`,** on a branch that is up to date with `main`. It is the last job of `.github/workflows/ci.yml` and is green only when every other job succeeded (a skipped job is not a pass). The jobs run in parallel: type-check, lint and generated files; unit and property tests with coverage floors; licenses, notices, audit and SBOM; build, bundle budgets and provenance; the reproducible build; the SRP module rebuild; the relay image; browser adapter tests; Testcontainers; and Playwright with blocking axe WCAG 2.2 AA assertions, one job per browser project (chromium in two shards). A new job must be added to the `needs` of `verify`; `scripts/ci-gates.test.ts` fails until it is.
 - **Linear history and squash merge only.** Merge commits and rebase merging are switched off, so the pull request title is the commit on `main` and decides the version (see [CONTRIBUTING.md](../CONTRIBUTING.md#releases)).
 - **No force pushes and no deletions** of `main`.
 - **The rules apply to administrators.** Relaxing them for an emergency is a deliberate change in the repository settings, not a button on the pull request.
