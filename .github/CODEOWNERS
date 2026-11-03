@@ -1,0 +1,8 @@
+# The owner is requested for review automatically on every pull request. Branch protection does not
+# require code-owner approval while the project has one maintainer (scripts/apply-branch-protection.sh),
+# because GitHub does not let an author approve their own pull request.
+#
+# When a second maintainer joins, add narrower lines below (the last matching pattern wins), for example
+# for the security model (/packages/crypto/, /packages/protocol/, /apps/server/) and for release and
+# supply-chain files (/.github/, /scripts/, /deploy/), and then turn on require_code_owner_reviews.
+* @pogulailo
