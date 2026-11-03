@@ -12,3 +12,12 @@ minimumReleaseAge: 1440
 # Refuse a version that was published with weaker evidence than an earlier one (for example without the provenance the earlier ones had): that
 # is what a stolen publishing token looks like.
 trustPolicy: no-downgrade
+# Versions the trust policy flags although nothing is wrong, each checked by hand. pnpm keeps ONE entry per package, so several versions of one
+# package go in one entry joined with `||`; a second line for the same package replaces the first.
+#  - semver 5.7.2 and 6.3.1: published together on 2023-07-10 as security backports to the old 5.x and 6.x lines. A maintainer (lukekarrys)
+#    published them by hand, while the 7.x releases that carry provenance came from the npm-cli-ops automation. The check compares publish dates,
+#    so it reads a backport made after 7.5.3 as a downgrade. They come in through electron-builder and its tooling.
+# To add one: look the version up (`npm view <name> time dist.attestations`), confirm it is an old-line backport and not a recent release that lost
+# its provenance, and say why here.
+trustPolicyExclude:
+  - "semver@5.7.2 || 6.3.1"
