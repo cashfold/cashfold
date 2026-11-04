@@ -117,5 +117,3 @@ reports violations on merged state. The rules never write; every device repairs 
   Screens read a ledger projected in memory from the merge state and cached per Fold until the next change. That is exact and fast enough
   for thousands of transactions; the 50,000-transaction target (SC-008) is measured on the raw tables and needs these read models, or an
   incrementally maintained projection, before the screens can claim it.
-- **A transaction's place** is stored (`place_name`, `lat_e7`, `lon_e7` as integers) but the entry form has no field for it yet.
-- **Attachments** wait for user story 9.

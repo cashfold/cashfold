@@ -11,6 +11,7 @@ The [documentation index](docs/README.md) lists every page. These answer most qu
 | ------------------------------------------------------- | ------------------------------------------------------------------------------------ |
 | How do I install the desktop app, and why does it warn? | [README](README.md#get-cashfold), [docs/desktop.md](docs/desktop.md#troubleshooting) |
 | How do I run my own relay?                              | [docs/self-hosting.md](docs/self-hosting.md)                                         |
+| My relay or web app does not work                       | [docs/self-hosting.md, Troubleshooting](docs/self-hosting.md#troubleshooting)        |
 | What can the service see about me?                      | [docs/privacy.md](docs/privacy.md)                                                   |
 | How does sync work, and what is not built yet?          | [docs/sync.md](docs/sync.md)                                                         |
 | How does the app protect my data?                       | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)                                         |
