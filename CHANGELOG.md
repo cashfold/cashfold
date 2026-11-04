@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.14.1](https://github.com/cashfold/cashfold/compare/v0.14.0...v0.14.1) (2026-11-04)
+
+
+### Bug Fixes
+
+* **web:** keep the amount and note when switching between expense, income and transfer ([#73](https://github.com/cashfold/cashfold/issues/73)) ([49c86cf](https://github.com/cashfold/cashfold/commit/49c86cf4bd39351758b154600cea4a61c934023b))
+
 ## [0.14.0](https://github.com/cashfold/cashfold/compare/v0.13.0...v0.14.0) (2026-11-02)
 
 
