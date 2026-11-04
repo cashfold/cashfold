@@ -1,0 +1,63 @@
+name: Upstream pins
+
+# Some pins are chosen on purpose and Dependabot does not update them (.github/dependabot.yml): the Rust toolchain and the crypto-bigint crate
+# behind the SRP module, whose compiled bytes CI compares, and the Node version of the relay image. A pin nobody looks at goes stale, and these
+# are the ones a stale version costs most. Weekly, scripts/check-upstream-pins.mjs compares them with upstream; while any is behind it keeps one
+# issue open, and when all are current it closes it.
+
+on:
+  schedule:
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  # A manual run during the weekly one would otherwise open a second issue.
+  group: upstream-pins
+  cancel-in-progress: false
+
+jobs:
+  check:
+    name: Check the upstream pins
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version-file: .nvmrc
+      - name: Compare the pins with upstream
+        id: check
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set +e
+          node scripts/check-upstream-pins.mjs --markdown upstream-pins.md
+          status=$?
+          echo "status=${status}" >> "$GITHUB_OUTPUT"
+          # 0 is current and 3 is behind: both are answers. Anything else (1: a source could not be read) fails the job, so a quiet week is never
+          # confused with a check that did not run.
+          [ "$status" -eq 0 ] || [ "$status" -eq 3 ]
+      - name: Open, update or close the issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          STATUS: ${{ steps.check.outputs.status }}
+        run: |
+          title="Upstream pins are behind"
+          number="$(gh issue list --state open --search "\"$title\" in:title" --json number --jq '.[0].number // empty')"
+          if [ "$STATUS" = "3" ]; then
+            if [ -n "$number" ]; then
+              gh issue edit "$number" --body-file upstream-pins.md
+            else
+              gh issue create --title "$title" --body-file upstream-pins.md
+            fi
+          elif [ -n "$number" ]; then
+            gh issue close "$number" --comment "Every pin is current again."
+          fi

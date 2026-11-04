@@ -1,0 +1,40 @@
+name: zizmor
+
+# Static analysis of the workflows themselves (zizmor): script injection through `${{ }}`, permissions wider than a job needs, credentials left
+# in a checkout, an action referenced by a name that can move, a workflow triggered in a way that runs a fork's code with a token. The release
+# pipeline signs and publishes what people install, so a flaw in a workflow matters as much as one in the app.
+#
+# Not a required check: it runs only when something under .github changes, and a required check that does not run would wait forever. A finding
+# that is understood and accepted goes in .github/zizmor.yml with the reason, never in a comment on the line.
+
+on:
+  pull_request:
+    paths:
+      - '.github/**'
+  push:
+    branches: [main]
+    paths:
+      - '.github/**'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: zizmor-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  zizmor:
+    name: zizmor
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: zizmorcore/zizmor-action@85b2b9fb8e3325e7a23d7d0a9d7ba5ae0f999e3e # v0.7.1
+        with:
+          # Findings are printed in the log and as annotations, and fail the job. The Code Scanning upload needs `security-events: write`, which
+          # this job should not have.
+          advanced-security: false
+          annotations: true

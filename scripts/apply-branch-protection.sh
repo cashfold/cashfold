@@ -9,7 +9,7 @@ repo="${1:?usage: apply-branch-protection.sh OWNER/REPO}"
 
 gh api --method PUT "repos/${repo}/branches/main/protection" --input - <<JSON
 {
-  "required_status_checks": { "strict": true, "contexts": ["verify"] },
+  "required_status_checks": { "strict": true, "contexts": ["verify", "pr-title"] },
   "enforce_admins": true,
   "required_pull_request_reviews": {
     "dismiss_stale_reviews": true,
