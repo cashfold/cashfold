@@ -1,8 +1,19 @@
 # What the service can see
 
-Cashfold keeps your financial data encrypted on your devices. The service (the relay) stores and forwards ciphertext. This page lists **exactly** what it can learn, so you can judge the trade-off (FR-011, FR-012). Anything not listed here is either encrypted with a key the service never has, or not sent to it at all.
+Cashfold keeps your financial data encrypted on your devices. The service (the relay) stores and forwards ciphertext. This page lists **exactly** what it can learn, so you can judge the trade-off. Anything not listed here is either encrypted with a key the service never has, or not sent to it at all.
 
 If you run your own service, everything below is visible to whoever runs it.
+
+## In short
+
+|                              | The service                                                                                                                                  |
+| ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Cannot read**              | Amounts, dates, names, notes, categories, payees, tags, budgets, goals, attachments, your password, your Secret Key and your Recovery Key.   |
+| **Can see**                  | Your email address, that your account and devices exist, who belongs to a shared Fold and in what role, and your network address.            |
+| **Can work out from timing** | That you are active, when, on how many devices, and roughly how much you changed (sizes are not padded). It cannot tell what the change was. |
+| **Never receives**           | Anything at all, if you chose **Keep everything on this device** at sign-up.                                                                 |
+
+The rest of this page is the exact list.
 
 ## If you keep everything on this device
 

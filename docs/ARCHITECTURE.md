@@ -1,10 +1,28 @@
 # Cashfold — Architectural Blueprint & Technical Specification
 
-**Status:** Draft 0.2 (aligned with constitution v1.0.1) · **Date:** 2026-10-18 · **Audience:** engineers implementing the Cashfold TypeScript core, the web client (Phase 1), the NestJS relay server, and later the Tauri desktop/mobile shells.
+**Status:** Draft 0.2 (aligned with constitution v1.0.1) · **Date:** 2026-10-18 · **Audience:** engineers working on the Cashfold TypeScript core, the web client, the NestJS relay server and the Electron desktop shell (§10.1); mobile shells come later.
 
 Cashfold is a local-first, end-to-end encrypted (E2EE) personal-finance engine: an exact-arithmetic ledger, envelope budgeting, recurring transactions and multi-currency support, synchronised across devices and users through an untrusted relay server.
 
 Normative keywords (MUST, SHOULD, MAY) follow RFC 2119.
+
+## How to read this document
+
+It is long. Start from the question you have:
+
+| If you want to know…                                                       | Read                                                                                                               |
+| -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| what Cashfold promises, and what it does not defend against                | [§1 Goals, non-goals, threat model](#1-goals-non-goals-threat-model)                                               |
+| what the records are and how they relate                                   | [§3 Domain model](#3-cashfold-domain-model-normative), [§4 Ledger rules](#4-ledger-rules)                          |
+| how keys are made, held and protected                                      | [§5 Cryptographic architecture](#5-cryptographic-architecture)                                                     |
+| how sign-in works without sending the password                             | [§6 Zero-knowledge authentication](#6-zero-knowledge-authentication-srp-6a-4096-bit)                               |
+| how people share a Fold, and how removing someone works                    | [§7 Sharing and access control](#7-sharing-and-access-control)                                                     |
+| how data is stored on a device                                             | [§8 Local storage](#8-local-storage--sqlite-wasm-on-opfs)                                                          |
+| how changes merge and travel between devices                               | [§9 Sync engine](#9-sync-engine--crdt-payload-and-protocol), and [sync.md](sync.md)                                |
+| how the client protects secrets in memory, and how the desktop shell works | [§10 Client hardening](#10-client-hardening-and-memory-hygiene)                                                    |
+| how the design is tested, and what is still open                           | [§11 Verification](#11-verification-requirements), [§12 Open questions](#12-open-questions-and-verification-todos) |
+
+Plain-language companions: [what the service can see](privacy.md), [the ledger](ledger.md) and [sync across devices](sync.md).
 
 ---
 

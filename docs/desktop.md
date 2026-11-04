@@ -1,6 +1,15 @@
 # Cashfold desktop app
 
-The desktop app is the web app in its own window, for Windows, macOS and Linux. It adds no features and changes no data format: the same account works on the web and on the desktop, and the two sync like any two devices. Design: (the shell), (update signatures), [ARCHITECTURE.md §10.1](ARCHITECTURE.md), specification in `specs/003-desktop-apps-releases/`.
+The desktop app is the web app in its own window, for Windows, macOS and Linux. It adds no features and changes no data format: the same account works on the web and on the desktop, and the two sync like any two devices. Design: [ARCHITECTURE.md §10.1](ARCHITECTURE.md); specification in `specs/003-desktop-apps-releases/`.
+
+## Where to look
+
+| You are…                     | Read                                                                                                                                                                                                                                                   |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **using the app**            | [Installing](#installing), [Where the data lives](#where-the-data-lives), [Updating](#updating), [Known differences from the web app](#known-differences-from-the-web-app), [Troubleshooting](#troubleshooting)                                        |
+| **running a relay for it**   | [Using your own relay](#using-your-own-relay)                                                                                                                                                                                                          |
+| **working on the shell**     | [How it is built](#how-it-is-built), [Working on it](#working-on-it), [How the window behaves like an application](#how-the-window-behaves-like-an-application), [Presence, background, links and the frame](#presence-background-links-and-the-frame) |
+| **releasing or maintaining** | [Releasing](#releasing), [Signing and secrets](#signing-and-secrets), [Verified on](#verified-on), [Repository setup (maintainer)](#repository-setup-maintainer)                                                                                       |
 
 ## How it is built
 

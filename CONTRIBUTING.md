@@ -16,6 +16,18 @@ pnpm --filter @cashfold/desktop dev    # the desktop app, from source
 
 The end-to-end tests need browsers once: `pnpm exec playwright install --with-deps`. Running the relay yourself is in [docs/self-hosting.md](docs/self-hosting.md); the desktop app is in [docs/desktop.md](docs/desktop.md).
 
+## Your first change
+
+1. Look for something to do: an [open issue](https://github.com/cashfold/cashfold/issues), a typo in the documentation, or a bug you
+   met. For a larger idea, open an issue first, so we can agree on the shape before you write it.
+2. Branch from `main`, and make the change. Start a bug fix with a test that reproduces the bug.
+3. Run `pnpm verify`. It is the same check CI runs first.
+4. Open a pull request with a [Conventional Commits](https://www.conventionalcommits.org/) title (see below). The pull request form asks
+   what changed and how you tested it.
+
+Documentation changes are welcome and need no code: edit the page, run `pnpm format:docs`, and open a pull request with a `docs:` title.
+Pages under `docs/` that say they are generated are changed through their generator.
+
 ## Check your change
 
 | Command                                    | What it checks                                        |

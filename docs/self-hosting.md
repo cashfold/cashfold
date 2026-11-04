@@ -4,6 +4,12 @@ The relay is the small service your devices sync through. It stores encrypted da
 dates, passwords or Secret Keys ever reach it (see [the architecture notes](ARCHITECTURE.md)). You can use someone else's, or run your
 own in a few minutes.
 
+This page has two parts: [run the relay](#part-1-run-the-relay) (Docker, a database, a reverse proxy) and
+[publish the web app](#part-2-publish-the-web-app) (a static site). The desktop app needs only the relay.
+
+Before you start, read [what the service can see](privacy.md): whoever runs a relay sees all of it, so be sure you want to be that
+person for the people who use yours.
+
 ## What you need
 
 - A machine with Docker and Docker Compose, reachable from the internet if your devices roam (a small VPS is plenty).
@@ -13,7 +19,7 @@ own in a few minutes.
 
 You do not install Node for the relay: the image brings its own, which is the oldest version the project supports (`engines` in `package.json`, today Node 22). Development and CI use the newer version in `.nvmrc`. `scripts/node-versions.test.ts` keeps the three in order: the image is never older than `engines` and never newer than what CI tests.
 
-## Steps
+## Part 1: run the relay
 
 1. Copy the example settings and fill them in.
 
@@ -23,7 +29,8 @@ You do not install Node for the relay: the image brings its own, which is the ol
    openssl rand -hex 32     # and for POSTGRES_PASSWORD
    ```
 
-   Set `ALLOWED_ORIGINS` and `PUBLIC_URL` to the address of your web app, for example `https://cashfold.example.com`.
+   Set `ALLOWED_ORIGINS` and `PUBLIC_URL` to the address of your web app, for example `https://cashfold.example.com`. Keep a copy of
+   `SERVER_SECRET` somewhere safe: with a new one nobody can sign in.
 
 2. Start it.
 
@@ -44,7 +51,12 @@ You do not install Node for the relay: the image brings its own, which is the ol
    WebSocket upgrades must pass through (Caddy and nginx with `proxy_set_header Upgrade` do). Do not cache responses, and do not
    log request bodies.
 
-4. Build the web app with your relay's address as the default, and pin the content security policy to it. Without
+**You are done with the relay when** `https://relay.example.com/healthz` answers over HTTPS from outside your network. The desktop app
+can use it now (add `app://cashfold` to `ALLOWED_ORIGINS`, see [the desktop app](desktop.md#using-your-own-relay)).
+
+## Part 2: publish the web app
+
+1. Build the web app with your relay's address as the default, and pin the content security policy to it. Without
    `CSP_CONNECT_SOURCES` the app may talk to any `https://` or `wss://` service (people choose their own address at sign-up); set
    it to your relay to allow only that one.
 
@@ -55,7 +67,7 @@ You do not install Node for the relay: the image brings its own, which is the ol
 
    With that setting sign-up offers your relay with its address filled in. People can still choose to keep everything on their device (nothing is sent to any service), or type another address, but the browser will refuse to reach it. Without the setting, sign-up starts on keeping everything on the device.
 
-5. Serve `apps/web/out` with the headers in `apps/web/out/_headers` (written by the build; Netlify and Cloudflare Pages read it as it is).
+2. Serve `apps/web/out` with the headers in `apps/web/out/_headers` (written by the build; Netlify and Cloudflare Pages read it as it is).
    Every page already carries its own Content-Security-Policy and a no-referrer policy as `<meta>` tags, and every script and
    stylesheet is pinned by an integrity hash, so the app is protected even on a host that cannot set headers. Real headers add what a
    `<meta>` cannot: `frame-ancestors`, `Permissions-Policy` and HSTS. The Ubuntu font is served from the same origin under `/fonts/`
@@ -87,6 +99,8 @@ You do not install Node for the relay: the image brings its own, which is the ol
    match, and the app would refuse to run them. Releases publish the hash of every file of the web app (`SHA256SUMS.tree`) and of every download (`SHA256SUMS`); you can rebuild a tag with
    `node scripts/build-verify.mjs` and compare.
 
+**You are done when** you open your web app's address, create an account, and sign-up offers your relay.
+
 ## Settings
 
 All settings are environment variables; [`deploy/example.config.yml`](../deploy/example.config.yml) lists them with their defaults.
@@ -105,13 +119,27 @@ All settings are environment variables; [`deploy/example.config.yml`](../deploy/
 ## Backups and upgrades
 
 - **Back up** the `pgdata` volume (`pg_dump cashfold`) and `SERVER_SECRET`. What is in the database is ciphertext: a stolen backup
-  is no use without people's passwords and Secret Keys.
+  is no use without people's passwords and Secret Keys. Keep more than one copy, in more than one place.
 - **Upgrade** with `git pull && docker compose … up -d --build`. Migrations run before the relay accepts requests, inside a lock, so
   two copies starting together do not collide.
 - Devices keep working offline while the relay is down and catch up afterwards.
+
+## Troubleshooting
+
+| What you see                                                  | What to check                                                                                                                                                                                                                                                                                               |
+| ------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `curl http://127.0.0.1:8080/healthz` does not answer          | The containers are running (`docker compose … ps`), and the relay's log shows no error. Migrations run before it accepts requests.                                                                                                                                                                          |
+| The relay stops at start                                      | Read the log: it names the setting. It refuses a `SERVER_SECRET` shorter than 64 hex characters, a `REGISTRATION` other than `open` or `invite`, a `MAIL` other than `smtp`, `none` or `log`, `MAIL=smtp` without `SMTP_URL` and `MAIL_FROM`, and a `RATE_LIMIT_SCALE` that is not a number greater than 0. |
+| The web app cannot reach the relay                            | `ALLOWED_ORIGINS` holds the exact origin of the web app. For the desktop app add `app://cashfold`.                                                                                                                                                                                                          |
+| The browser refuses a relay address someone typed at sign-up  | You built with `CSP_CONNECT_SOURCES`; only the addresses listed there are allowed.                                                                                                                                                                                                                          |
+| Sync does not come online                                     | The reverse proxy passes WebSocket upgrades through, and does not cache responses.                                                                                                                                                                                                                          |
+| Nobody can sign in after a restart or a move                  | `SERVER_SECRET` is the same value as before. A new secret breaks every sign-in.                                                                                                                                                                                                                             |
+| The app refuses to start after you edited the built files     | Do not rewrite or minify `apps/web/out`: the integrity hashes no longer match. Rebuild.                                                                                                                                                                                                                     |
+| Rate-limit errors when many accounts sign in from one address | If the proxy is not on the relay's machine or private network, add it to `TRUST_PROXY`, so clients' real addresses are used. Only tests should raise `RATE_LIMIT_SCALE`.                                                                                                                                    |
 
 ## What the operator can and cannot see
 
 You can see that accounts exist, their email addresses (as typed, to send confirmation mail) and device counts, when they connect,
 and how large their encrypted data is. You cannot see anything in it. You can remove an account or a device; people lose sync, not
-their data on their own devices. If you lose the database, devices still hold everything and can register with a fresh relay.
+their data on their own devices. If you lose the database, devices still hold everything and can register with a fresh relay. The
+exact list is in [what the service can see](privacy.md).
