@@ -14,7 +14,7 @@ Cashfold includes the following third-party software. Each is used under its own
 | Chromium (inside Electron) | BSD-3-Clause and the licences of its many components | The full texts ship in every desktop installer as `LICENSES.chromium.html`. |
 | Catalyst-derived UI components (`apps/web/src/ui/kit/`) | Tailwind Plus License | Isolated in one directory with its own licence notice (`LICENSE-TAILWIND-PLUS.md`); not covered by the repository's AGPL grant. |
 
-## Production dependencies (179)
+## Production dependencies (173)
 
 | Package | Version | Licence | Home |
 | --- | --- | --- | --- |
@@ -28,7 +28,7 @@ Cashfold includes the following third-party software. Each is used under its own
 | @fastify/formbody | 9.0.1 | MIT | https://github.com/fastify/fastify-formbody#readme |
 | @fastify/forwarded | 3.1.1 | MIT | https://github.com/fastify/forwarded#readme |
 | @fastify/merge-json-schemas | 0.2.2 | MIT | https://github.com/fastify/merge-json-schemas#readme |
-| @fastify/middie | 9.3.5 | MIT | https://github.com/fastify/middie#readme |
+| @fastify/middie | 9.3.6 | MIT | https://github.com/fastify/middie#readme |
 | @fastify/proxy-addr | 5.1.2 | MIT | https://github.com/fastify/proxy-addr#readme |
 | @floating-ui/core | 1.8.0 | MIT | https://floating-ui.com |
 | @floating-ui/dom | 1.8.0 | MIT | https://floating-ui.com |
@@ -36,7 +36,7 @@ Cashfold includes the following third-party software. Each is used under its own
 | @floating-ui/react-dom | 2.1.9 | MIT | https://floating-ui.com/docs/react-dom |
 | @floating-ui/utils | 0.2.12 | MIT | https://floating-ui.com |
 | @formatjs/fast-memoize | 3.1.7 | MIT | https://github.com/formatjs/formatjs#readme |
-| @formatjs/icu-messageformat-parser | 3.5.21 | MIT | https://github.com/formatjs/formatjs#readme |
+| @formatjs/icu-messageformat-parser | 3.5.22 | MIT | https://github.com/formatjs/formatjs#readme |
 | @formatjs/icu-skeleton-parser | 2.1.12 | MIT | https://github.com/formatjs/formatjs#readme |
 | @headlessui/react | 2.2.10 | MIT | https://github.com/tailwindlabs/headlessui#readme |
 | @heroicons/react | 2.2.0 | MIT | https://github.com/tailwindlabs/heroicons#readme |
@@ -50,10 +50,10 @@ Cashfold includes the following third-party software. Each is used under its own
 | @jridgewell/sourcemap-codec | 1.6.0 | MIT | https://github.com/jridgewell/sourcemaps/tree/main/packages/sourcemap-codec |
 | @jridgewell/trace-mapping | 0.3.31 | MIT | https://github.com/jridgewell/sourcemaps/tree/main/packages/trace-mapping |
 | @lukeed/csprng | 1.1.0 | MIT | https://github.com/lukeed/csprng#readme |
-| @nestjs/common | 12.1.3 | MIT | https://nestjs.com |
-| @nestjs/core | 12.1.3 | MIT | https://nestjs.com |
-| @nestjs/platform-fastify | 12.1.3 | MIT | https://nestjs.com |
-| @next/env | 16.4.2 | MIT | https://github.com/vercel/next.js#readme |
+| @nestjs/common | 12.3.2 | MIT | https://nestjs.com |
+| @nestjs/core | 12.3.2 | MIT | https://nestjs.com |
+| @nestjs/platform-fastify | 12.3.2 | MIT | https://nestjs.com |
+| @next/env | 16.4.3 | MIT | https://github.com/vercel/next.js#readme |
 | @noble/curves | 2.4.0 | MIT | https://paulmillr.com/noble/ |
 | @noble/hashes | 2.4.0 | MIT | https://paulmillr.com/noble/ |
 | @pinojs/redact | 0.4.0 | MIT | https://github.com/pinojs/redact#readme |
@@ -68,7 +68,7 @@ Cashfold includes the following third-party software. Each is used under its own
 | @tailwindcss/postcss | 4.3.3 | MIT | https://tailwindcss.com |
 | @tanstack/react-virtual | 3.14.21 | MIT | https://tanstack.com/virtual |
 | @tanstack/virtual-core | 3.19.6 | MIT | https://tanstack.com/virtual |
-| @tokenizer/inflate | 0.4.1 | MIT | https://github.com/Borewit/tokenizer-inflate#readme |
+| @tokenizer/inflate | 0.5.2 | MIT | https://github.com/Borewit/tokenizer-inflate#readme |
 | @tokenizer/token | 0.3.0 | MIT | https://github.com/Borewit/tokenizer-token#readme |
 | @types/node | 26.6.5 | MIT | https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/node |
 | abstract-logging | 2.0.1 | MIT | https://github.com/jsumners/abstract-logging#readme |
@@ -83,12 +83,11 @@ Cashfold includes the following third-party software. Each is used under its own
 | caniuse-lite | 1.0.30001816 | CC-BY-4.0 | https://github.com/browserslist/caniuse-lite#readme |
 | client-only | 0.0.1 | MIT | https://reactjs.org/ |
 | clsx | 2.1.1 | MIT | https://github.com/lukeed/clsx#readme |
-| cookie | 1.1.1 | MIT | https://github.com/jshttp/cookie#readme |
 | cookie | 2.0.1 | MIT | https://github.com/jshttp/cookie#readme |
 | debug | 4.4.3 | MIT | https://github.com/debug-js/debug#readme |
 | dequal | 2.0.3 | MIT | https://github.com/lukeed/dequal#readme |
 | detect-libc | 2.1.2 | Apache-2.0 | https://github.com/lovell/detect-libc#readme |
-| electron-updater | 6.8.9 | MIT | https://github.com/electron-userland/electron-builder |
+| electron-updater | 6.8.11 | MIT | https://github.com/electron-userland/electron-builder |
 | enhanced-resolve | 5.26.0 | MIT | https://github.com/webpack/enhanced-resolve#readme |
 | fast-decode-uri-component | 1.0.1 | MIT | https://github.com/delvedor/fast-decode-uri-component#readme |
 | fast-deep-equal | 3.1.3 | MIT | https://github.com/epoberezkin/fast-deep-equal#readme |
@@ -97,18 +96,16 @@ Cashfold includes the following third-party software. Each is used under its own
 | fast-safe-stringify | 2.1.1 | MIT | https://github.com/davidmarkclements/fast-safe-stringify#readme |
 | fast-uri | 3.1.8 | BSD-3-Clause | https://github.com/fastify/fast-uri |
 | fast-uri | 4.2.2 | BSD-3-Clause | https://github.com/fastify/fast-uri |
-| fastify | 5.12.5 | MIT | https://fastify.dev/ |
 | fastify | 5.12.7 | MIT | https://fastify.dev/ |
 | fastify-plugin | 6.0.1 | MIT | https://github.com/fastify/fastify-plugin#readme |
 | fastq | 1.20.3 | ISC | https://github.com/mcollina/fastq#readme |
-| file-type | 22.1.1 | MIT | https://github.com/sindresorhus/file-type#readme |
+| file-type | 22.2.0 | MIT | https://github.com/sindresorhus/file-type#readme |
 | find-my-way | 9.10.0 | MIT | https://github.com/delvedor/find-my-way#readme |
-| find-my-way | 9.9.0 | MIT | https://github.com/delvedor/find-my-way#readme |
 | fs-extra | 10.1.0 | MIT | https://github.com/jprichardson/node-fs-extra |
 | graceful-fs | 4.2.11 | ISC | https://github.com/isaacs/node-graceful-fs#readme |
 | hash-wasm | 4.12.0 | MIT | https://github.com/Daninet/hash-wasm#readme |
 | ieee754 | 1.2.1 | BSD-3-Clause | https://github.com/feross/ieee754#readme |
-| intl-messageformat | 12.1.3 | BSD-3-Clause | https://github.com/formatjs/formatjs |
+| intl-messageformat | 12.1.4 | BSD-3-Clause | https://github.com/formatjs/formatjs |
 | ipaddr.js | 2.5.0 | MIT | https://github.com/whitequark/ipaddr.js#readme |
 | iterare | 1.2.1 | ISC | https://github.com/felixfbecker/iterare#readme |
 | jiti | 2.7.0 | MIT | https://github.com/unjs/jiti#readme |
@@ -118,7 +115,6 @@ Cashfold includes the following third-party software. Each is used under its own
 | jsonfile | 6.2.1 | MIT | https://github.com/jprichardson/node-jsonfile#readme |
 | kysely | 0.29.7 | MIT | https://kysely.dev |
 | lazy-val | 1.0.5 | MIT | https://github.com/develar/lazy-val |
-| light-my-request | 6.6.0 | BSD-3-Clause | https://github.com/fastify/light-my-request#readme |
 | light-my-request | 6.8.0 | BSD-3-Clause | https://github.com/fastify/light-my-request#readme |
 | lightningcss | 1.32.0 | MPL-2.0 | https://github.com/parcel-bundler/lightningcss#readme |
 | load-esm | 1.0.3 | MIT | https://github.com/Borewit/load-esm#readme |
@@ -127,7 +123,7 @@ Cashfold includes the following third-party software. Each is used under its own
 | magic-string | 0.30.21 | MIT | https://github.com/Rich-Harris/magic-string#readme |
 | ms | 2.1.3 | MIT | https://github.com/vercel/ms#readme |
 | nanoid | 3.3.20 | MIT | https://github.com/ai/nanoid#readme |
-| next | 16.4.2 | MIT | https://nextjs.org |
+| next | 16.4.3 | MIT | https://nextjs.org |
 | nodemailer | 10.2.1 | MIT-0 | https://nodemailer.com/ |
 | on-exit-leak-free | 2.1.2 | MIT | https://github.com/mcollina/on-exit-or-gc#readme |
 | path-to-regexp | 8.4.2 | MIT | https://github.com/pillarjs/path-to-regexp#readme |
@@ -146,12 +142,11 @@ Cashfold includes the following third-party software. Each is used under its own
 | playwright | 1.64.1 | Apache-2.0 | https://playwright.dev |
 | playwright-core | 1.64.1 | Apache-2.0 | https://playwright.dev |
 | postcss | 8.5.23 | MIT | https://postcss.org/ |
-| postcss | 8.5.30 | MIT | https://postcss.org/ |
+| postcss | 8.5.32 | MIT | https://postcss.org/ |
 | postgres-array | 2.0.0 | MIT | https://github.com/bendrucker/postgres-array#readme |
 | postgres-bytea | 1.0.1 | MIT | https://github.com/bendrucker/postgres-bytea#readme |
 | postgres-date | 1.0.7 | MIT | https://github.com/bendrucker/postgres-date#readme |
 | postgres-interval | 1.2.0 | MIT | https://github.com/bendrucker/postgres-interval#readme |
-| process-warning | 4.0.1 | MIT | https://github.com/fastify/fastify-warning#readme |
 | process-warning | 5.1.1 | MIT | https://github.com/fastify/fastify-warning#readme |
 | qrcode-generator | 2.0.4 | MIT | https://github.com/kazuhikoarase/qrcode-generator#readme |
 | quick-format-unescaped | 4.0.4 | MIT | https://github.com/davidmarkclements/quick-format#readme |
@@ -173,7 +168,6 @@ Cashfold includes the following third-party software. Each is used under its own
 | secure-json-parse | 4.1.1 | BSD-3-Clause | https://github.com/fastify/secure-json-parse#readme |
 | semver | 7.7.4 | ISC | https://github.com/npm/node-semver#readme |
 | semver | 7.8.5 | ISC | https://github.com/npm/node-semver#readme |
-| set-cookie-parser | 2.7.2 | MIT | https://github.com/nfriedly/set-cookie-parser |
 | set-cookie-parser | 3.1.4 | MIT | https://github.com/nfriedly/set-cookie-parser |
 | sharp | 0.35.5 | Apache-2.0 | https://sharp.pixelplumbing.com |
 | sonic-boom | 4.2.1 | MIT | https://github.com/pinojs/sonic-boom#readme |
