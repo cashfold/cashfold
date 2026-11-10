@@ -113,7 +113,7 @@ Cashfold includes the following third-party software. Each is used under its own
 | json-schema-ref-resolver | 3.0.1 | MIT | https://github.com/fastify/json-schema-ref-resolver#readme |
 | json-schema-traverse | 1.0.0 | MIT | https://github.com/epoberezkin/json-schema-traverse#readme |
 | jsonfile | 6.2.1 | MIT | https://github.com/jprichardson/node-jsonfile#readme |
-| kysely | 0.29.7 | MIT | https://kysely.dev |
+| kysely | 0.29.8 | MIT | https://kysely.dev |
 | lazy-val | 1.0.5 | MIT | https://github.com/develar/lazy-val |
 | light-my-request | 6.8.0 | BSD-3-Clause | https://github.com/fastify/light-my-request#readme |
 | lightningcss | 1.32.0 | MPL-2.0 | https://github.com/parcel-bundler/lightningcss#readme |
@@ -124,7 +124,7 @@ Cashfold includes the following third-party software. Each is used under its own
 | ms | 2.1.3 | MIT | https://github.com/vercel/ms#readme |
 | nanoid | 3.3.20 | MIT | https://github.com/ai/nanoid#readme |
 | next | 16.4.3 | MIT | https://nextjs.org |
-| nodemailer | 10.2.1 | MIT-0 | https://nodemailer.com/ |
+| nodemailer | 10.3.1 | MIT-0 | https://nodemailer.com/ |
 | on-exit-leak-free | 2.1.2 | MIT | https://github.com/mcollina/on-exit-or-gc#readme |
 | path-to-regexp | 8.4.2 | MIT | https://github.com/pillarjs/path-to-regexp#readme |
 | pg | 8.23.1 | MIT | https://github.com/brianc/node-postgres |
@@ -188,6 +188,6 @@ Cashfold includes the following third-party software. Each is used under its own
 | undici-types | 8.9.0 | MIT | https://undici.nodejs.org |
 | universalify | 2.0.1 | MIT | https://github.com/RyanZim/universalify#readme |
 | use-sync-external-store | 1.7.0 | MIT | https://github.com/react/react#readme |
-| ws | 8.22.0 | MIT | https://github.com/websockets/ws |
+| ws | 8.22.1 | MIT | https://github.com/websockets/ws |
 | xtend | 4.0.2 | MIT | https://github.com/Raynos/xtend |
 | zod | 4.6.7 | MIT | https://zod.dev |
