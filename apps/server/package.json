@@ -22,7 +22,7 @@
     "zod": "4.6.7",
     "@cashfold/protocol": "workspace:*",
     "ws": "8.22.1",
-    "nodemailer": "10.3.1"
+    "nodemailer": "10.4.0"
   },
   "devDependencies": {
     "@testcontainers/postgresql": "12.2.1",
