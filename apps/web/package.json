@@ -21,7 +21,7 @@
     "@heroicons/react": "2.2.0",
     "@tailwindcss/postcss": "4.3.3",
     "clsx": "2.1.1",
-    "intl-messageformat": "12.1.4",
+    "intl-messageformat": "12.1.5",
     "next": "16.4.3",
     "postcss": "8.5.32",
     "qrcode-generator": "2.0.4",
