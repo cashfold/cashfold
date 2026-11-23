@@ -2,13 +2,13 @@
 # The relay is one bundled file plus its SQL migrations; nothing else is needed at run time.
 # Both base images are pinned by digest, so a build uses exactly the image that was reviewed. Dependabot moves the tag and the digest together
 # (.github/dependabot.yml). To look one up: docker buildx imagetools inspect node:22-slim
-FROM node:22-slim@sha256:4b150b48b4116e2a22f2c39cc27025fbf4f153e2078fd3b14d159fdb5c7279da AS build
+FROM node:22-slim@sha256:e9f565d32859f0cbfb52125eafe8be39390f24dac302dc3cdf566e8ba3ab21ee AS build
 WORKDIR /repo
 RUN corepack enable
 COPY . .
 RUN pnpm install --frozen-lockfile --ignore-scripts --filter "@cashfold/server..." && pnpm --filter @cashfold/server build
 
-FROM node:22-slim@sha256:4b150b48b4116e2a22f2c39cc27025fbf4f153e2078fd3b14d159fdb5c7279da
+FROM node:22-slim@sha256:e9f565d32859f0cbfb52125eafe8be39390f24dac302dc3cdf566e8ba3ab21ee
 WORKDIR /app
 ENV NODE_ENV=production \
     MIGRATIONS_DIR=/app/migrations \
